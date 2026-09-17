@@ -591,8 +591,12 @@ public class DefinitionResolveNameVisitor implements ConcreteResolvableDefinitio
   }
 
   private boolean addExternalParameters(Concrete.GeneralDefinition def) {
-    List<? extends Concrete.Parameter> defParams = def == null ? Collections.emptyList() : def.getParameters();
-    if (defParams.isEmpty()) {
+    if (def == null) {
+      return false;
+    }
+    Concrete.LevelParameters levelParams = def instanceof Concrete.ResolvableDefinition ? ((Concrete.ResolvableDefinition) def).getLevelParameters() : null;
+    List<? extends Concrete.Parameter> defParams = def.getParameters();
+    if (defParams.isEmpty() && levelParams == null) {
       return false;
     }
 
@@ -608,8 +612,51 @@ public class DefinitionResolveNameVisitor implements ConcreteResolvableDefinitio
         newParams.add(defParam);
       }
     }
-    myExternalParameters.put(def.getData(), new Concrete.ExternalParameters(newParams, def instanceof Concrete.Definition ? ((Concrete.Definition) def).getLevelParameters() : null));
+    myExternalParameters.put(def.getData(), new Concrete.ExternalParameters(newParams, levelParams));
     return true;
+  }
+
+  private void inheritLevelParameters(Concrete.ResolvableDefinition def) {
+    if (myExternalParameters.isEmpty()) {
+      return;
+    }
+
+    Set<Referable> levelRefs = new HashSet<>();
+    def.accept(new FindLevelVariablesVisitor(levelRefs), null);
+    Concrete.LevelParameters ownParams = def.getLevelParameters();
+    if (ownParams != null) {
+      levelRefs.removeAll(ownParams.referables);
+    }
+    if (levelRefs.isEmpty()) {
+      return;
+    }
+
+    Concrete.LevelParameters enclosingParams = null;
+    for (Concrete.ExternalParameters externalParameters : myExternalParameters.values()) {
+      Concrete.LevelParameters params = externalParameters.pLevelParameters();
+      if (params == null || Collections.disjoint(params.referables, levelRefs)) {
+        continue;
+      }
+      if (enclosingParams == null) {
+        enclosingParams = params;
+      } else if (!enclosingParams.referables.equals(params.referables)) {
+        reportDifferentLevels(def, ownParams);
+        return;
+      }
+    }
+    if (enclosingParams == null) {
+      return;
+    }
+
+    if (ownParams != null) {
+      reportDifferentLevels(def, ownParams);
+    } else {
+      def.setLevelParameters(Concrete.LevelParameters.copyLevelParameters(def.getData(), enclosingParams));
+    }
+  }
+
+  private void reportDifferentLevels(Concrete.ResolvableDefinition def, Concrete.LevelParameters ownParams) {
+    new ConcreteProxyErrorReporter(def).report(new NameResolverError("Definition refers to different levels", ownParams != null ? ownParams : def));
   }
 
   private ArendInstances addInstances(ArendInstances instances, List<TCDefReferable> list) {
@@ -654,6 +701,7 @@ public class DefinitionResolveNameVisitor implements ConcreteResolvableDefinitio
     if (def instanceof Concrete.ResolvableDefinition) {
       Scope classScope = dynamicScopeProvider == null ? cachedScope : new MergeScope(new DynamicScope(dynamicScopeProvider, myTypingInfo, DynamicScope.Extent.WITH_SUPER_DYNAMIC), cachedScope);
       ((Concrete.ResolvableDefinition) def).accept(this, classScope);
+      inheritLevelParameters((Concrete.ResolvableDefinition) def);
 
       List<Referable> parameters = new ArrayList<>();
       for (Concrete.Parameter parameter : def.getParameters()) {

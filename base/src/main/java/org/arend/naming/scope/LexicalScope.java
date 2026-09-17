@@ -3,10 +3,12 @@ package org.arend.naming.scope;
 import org.arend.ext.module.ModulePath;
 import org.arend.ext.module.ModuleLocation;
 import org.arend.naming.reference.*;
+import org.arend.term.concrete.Concrete;
 import org.arend.term.group.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -33,6 +35,11 @@ public class LexicalScope implements Scope {
 
   public static LexicalScope opened(ConcreteGroup group) {
     return new LexicalScope(EmptyScope.INSTANCE, group, null, true, false);
+  }
+
+  private List<? extends LevelReferable> getLevelParameters() {
+    Concrete.LevelParameters parameters = myGroup.definition() == null ? null : myGroup.definition().getLevelParameters();
+    return parameters == null ? Collections.emptyList() : parameters.getReferables();
   }
 
   private Referable checkReferable(Referable referable, Predicate<Referable> pred) {
@@ -130,6 +137,12 @@ public class LexicalScope implements Scope {
 
     if (myWithAdditionalContent && (context == null || context == ScopeContext.STATIC)) {
       for (ParameterReferable ref : myGroup.externalParameters()) {
+        if (pred.test(ref)) return ref;
+      }
+    }
+
+    if (myWithAdditionalContent && (context == null || context == ScopeContext.LEVEL)) {
+      for (LevelReferable ref : getLevelParameters()) {
         if (pred.test(ref)) return ref;
       }
     }
@@ -253,11 +266,20 @@ public class LexicalScope implements Scope {
     }
 
     if (myWithAdditionalContent && resolveType == ResolveType.REF) {
-      List<? extends Referable> refs = myGroup.externalParameters();
-      for (int i = refs.size() - 1; i >= 0; i--) {
-        Referable ref = refs.get(i);
-        if (ref != null && ref.getRefName().equals(name)) {
-          return ref;
+      if (context == null || context == ScopeContext.STATIC) {
+        List<? extends Referable> refs = myGroup.externalParameters();
+        for (int i = refs.size() - 1; i >= 0; i--) {
+          Referable ref = refs.get(i);
+          if (ref != null && ref.getRefName().equals(name)) {
+            return ref;
+          }
+        }
+      }
+      if (context == null || context == ScopeContext.LEVEL) {
+        for (LevelReferable ref : getLevelParameters()) {
+          if (ref.getRefName().equals(name)) {
+            return ref;
+          }
         }
       }
     }
