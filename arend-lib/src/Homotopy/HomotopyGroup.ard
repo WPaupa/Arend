@@ -1,0 +1,56 @@
+\import Algebra.Group
+\import Algebra.Group.Aut
+\import Algebra.Group.GroupHom
+\import Equiv
+\import Equiv.Univalence
+\import Homotopy.EckmannHilton
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Space
+\import Homotopy.Sphere
+\import Logic
+\import Paths
+\import Set \hiding (#, .#)
+
+\func pi.{u} (n : Nat) (X : Pointed.{u}) => Trunc0 (Omega^ n X)
+
+\func piMap.{u} (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (t : pi n X) : pi n Y
+  => Trunc0.map t (Omega^-Func n f).1
+
+\lemma piMap-isEquiv.{u} (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (e : IsEquiv f.1) : IsEquiv (piMap n f)
+  => Trunc0.map-isEquiv (Omega^-Func.isEquiv n f e)
+
+\lemma piMap-id.{u} (n : Nat) {X : Pointed.{u}} (t : pi n X) : piMap n (->*.id {X}) t = t
+  => pmap (Trunc0.map t) (pmap __.1 (Omega^-Func.id n {X})) *> Trunc0.map-id t
+
+\func piSphereEquiv.{u} (n : Nat) (X : Pointed.{u}) : QEquiv {Trunc0 (Sphere.pointed n ->* X)} {pi n X}
+  => Trunc0.mapEquiv (Equiv.toQEquiv (=_Equiv (omegaSphere n X)))
+
+\instance PiGroup.{u} (n : Nat) (X : Pointed.{u}) : Group (Trunc0 (Omega^ (suc n) X))
+  => Aut (base {Omega^ n X})
+
+\instance PiCGroup.{u} (n : Nat) (X : Pointed.{u}) : CGroup (Trunc0 (Omega^ (suc (suc n)) X))
+  | Group => PiGroup (suc n) X
+  | *-comm {x} {y} => \case \elim x, \elim y \with {
+    | in0 p, in0 q => pmap in0 (Omega^2-Commutative.Commutative {\new Omega^2-Commutative (Omega^ n X)} p q)
+  }
+
+\func piGroupMap.{u} (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) : GroupHom (PiGroup n X) (PiGroup n Y) \cowith
+  | func => piMap (suc n) f
+  | func-* {x} {y} => \case \elim x, \elim y \with {
+    | in0 p, in0 q => pmap in0 (Loop-Func_*> (Omega^-Func n f) p q)
+  }
+
+\func piLoopShift.{u} (n : Nat) (X : Pointed.{u}) : QEquiv {pi n (Loop X)} {pi (suc n) X}
+  => Trunc0.mapEquiv (Equiv.toQEquiv (=_Equiv (pmap (BaseSpace.E {__}) (omegaLoopShift n X))))
+
+\func basepointMap.{u} {X : \Type u} {x y : X} (p : x = y) : Pointed.make x ->* Pointed.make y
+  => (\lam z => z, p)
+
+\func piBasepointEquiv.{u} (n : Nat) {X : \Type u} {x y : X} (p : x = y)
+  : QEquiv {pi n (Pointed.make x)} {pi n (Pointed.make y)}
+  => IsEquiv.toQEquiv (piMap-isEquiv n (basepointMap p) (inP idEquiv))
+
+\func piBasepointHom.{u} (n : Nat) {X : \Type u} {x y : X} (p : x = y)
+  : GroupHom (PiGroup n (Pointed.make x)) (PiGroup n (Pointed.make y))
+  => piGroupMap n (basepointMap p)

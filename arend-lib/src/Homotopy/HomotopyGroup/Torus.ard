@@ -1,0 +1,10 @@
+\import Arith.Int
+\import Equiv
+\import Equiv.Univalence
+\import Homotopy.HomotopyGroup
+\import Homotopy.Pointed
+\import Homotopy.Torus
+\import Set \hiding (#, .#)
+
+\func Pi_Torus-equiv : QEquiv {pi 1 (Pointed.make point)} {\Sigma Int Int}
+  => transQEquiv (Trunc0.mapEquiv (Equiv.toQEquiv (=_Equiv Loop_S1^2))) Trunc0.setEquiv

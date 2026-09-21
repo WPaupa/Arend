@@ -1,7 +1,9 @@
 \import Equiv
+\import Equiv.Path
 \import Equiv.Sigma
 \import Function.Iterate
 \import Homotopy.HLevel
+\import Homotopy.Space
 \import Logic
 \import Logic.Unique
 \import Homotopy.Pointed
@@ -19,6 +21,14 @@
 
 \func Loop-Func {X Y : Pointed} (f : X ->* Y) : Loop X ->* Loop Y
   => (\lam z => inv f.2 *> pmap f.1 z *> f.2, pmap (_ *>) (idp_*> _) *> inv_*> _)
+  \where {
+    \lemma isEquiv {X Y : Pointed} (f : X ->* Y) (e : IsEquiv f.1) : IsEquiv (Loop-Func f).1
+      => lem f.1 f.2 e
+      \where
+        \lemma lem {X : Pointed} {E : \Type} (f1 : X -> E) {y : E} (f2 : f1 base = y) (e : IsEquiv f1)
+          : IsEquiv (\lam (z : base {X} = base) => inv f2 *> (pmap f1 z *> f2)) \elim y, f2
+          | _, idp => transport IsEquiv (inv (path \lam i z => idp_*> (pmap f1 z) @ i)) (pmapIsEquiv e)
+  }
 
 \lemma loop-level {X : \Type}
                   (n : Nat)
@@ -70,9 +80,35 @@
                        (\lam b => idp))
   | suc n => SuspLoopEquiv (Sphere.pointed n) B *> SphereLoopEquiv n (Loop B)
 
+\func Loop-Func-id {X : Pointed} : Loop-Func (->*.id {X}) = ->*.id
+  => ->*.ext (\lam z => idp_*> z) idp
+
+\func Loop-Func_*> {X Y : Pointed} (f : X ->* Y) (p q : Loop X)
+  : (Loop-Func f).1 (p *> q) = (Loop-Func f).1 p *> (Loop-Func f).1 q
+  => lem f.1 f.2 p q
+  \where
+    \func lem {X : Pointed} {E : \Type} (f1 : X -> E) {y : E} (f2 : f1 base = y) (p q : base {X} = base)
+      : inv f2 *> (pmap f1 (p *> q) *> f2) = (inv f2 *> (pmap f1 p *> f2)) *> (inv f2 *> (pmap f1 q *> f2)) \elim y, f2
+      | _, idp => idp_*> _ *> pmap_*>-comm f1 p q *> inv (pmap2 (*>) (idp_*> _) (idp_*> _))
+
 \func Omega^.{u} (n : Nat) (X : Pointed.{u}) : Pointed.{u}
   => iterr {Pointed.{u}} (Loop __) n X
 
 \func Omega^-Func.{u} (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) : Omega^ n X ->* Omega^ n Y \elim n
   | 0 => f
   | suc n => Loop-Func (Omega^-Func n f)
+  \where {
+    \lemma isEquiv.{u} (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (e : IsEquiv f.1) : IsEquiv (Omega^-Func n f).1 \elim n
+      | 0 => e
+      | suc n => Loop-Func.isEquiv (Omega^-Func n f) (isEquiv n f e)
+
+    \func id.{u} (n : Nat) {X : Pointed.{u}} : Omega^-Func n (->*.id {X}) = ->*.id \elim n
+      | 0 => idp
+      | suc n => pmap (Loop-Func {Omega^ n X} {Omega^ n X}) (id n) *> Loop-Func-id
+  }
+
+\func omegaLoopShift.{u} (n : Nat) (X : Pointed.{u}) : Omega^ n (Loop X) = Omega^ (suc n) X
+  => iterr-step (Loop __) n X
+
+\func omegaSphere.{u} (n : Nat) (X : Pointed.{u}) : (Sphere.pointed n ->* X) = Omega^ n X
+  => SphereLoopEquiv n X *> pmap (BaseSpace.E {__}) (iterl=iterr {Pointed.{u}} (Loop __) n X)
