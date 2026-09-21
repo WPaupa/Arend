@@ -6,16 +6,21 @@
 \import Equiv
 \import Homotopy.Fibration
 \import Homotopy.HLevel
+\import Arith.Nat
 \import Homotopy.Join
 \import Homotopy.Localization.Accessible
 \import Homotopy.Localization.Connected
 \import Homotopy.Localization.Equiv
 \import Homotopy.Localization.Truncation
 \import Homotopy.Localization.Universe
+\import Homotopy.Loop
+\import Homotopy.Pointed
 \import Homotopy.Sphere
+\import Homotopy.Suspension
 \import Homotopy.Truncation
 \import Logic
 \import Logic.Unique
+\import Order.PartialOrder
 \import Paths
 \import Paths.Meta
 
@@ -65,6 +70,20 @@
 \lemma trunc-in-nconnected.{u} {n : Nat} {A : \Type u} : isNConnectedMap n (inT {n} {A})
   => lEta-connected {truncUniverse n}
 
+\lemma inhabited=>nconnected0.{u} {A : \Type u} (a : A) : isNConnectedType 0 A
+  => propExt.conv (nconnected-iff-trunc-contr 0 A)
+                  (isProp=>isContr (ToProp.fromProp (isTruncated {Trunc_-1+.level 0 A})) (inT a))
+
+\lemma nconnected-mono.{u} {m n : Nat} {A : \Type u} (p : m <= n) (c : isNConnectedType n A) : isNConnectedType m A
+  => \lam Z => c (\new Local {truncUniverse n} Z (HLevel_-1_<= m n p Z.local))
+
+\lemma loop-nconnected.{u} {n : Nat} (X : Pointed.{u}) (c : isNConnectedType (suc n) X) : isNConnectedType n (Loop X)
+  => propExt.conv (nconnected-iff-trunc-contr n (Loop X))
+      (Contr.Contr_QEquiv (Trunc_-1+.equality base base)
+        (isProp=>PathContr (Trunc_-1+ (suc n) X)
+                           (isContr=>isProp (propExt.dir (nconnected-iff-trunc-contr (suc n) X) c))
+                           (inT base) (inT base)))
+
 \lemma nconnected_join.{u} {m n : Nat} (X Y : \Type u) (cx : isNConnectedType m X) (cy : isNConnectedType n Y)
   : isNConnectedType (suc (m Nat.+ n)) (Join X Y)
   => propExt.conv (toSphereNull (suc (m Nat.+ n)) (Join X Y))
@@ -74,3 +93,13 @@
   \where
     \lemma toSphereNull.{u} (n : Nat) (X : \Type u) : isNConnectedType n X = isConnectedType {nullTypeUniverse (Sphere n)} X
       => connectedType-local-cong {truncUniverse n} {nullTypeUniverse (Sphere n)} (\lam Z => inv (sphereNull_iff_truncated n Z)) X
+
+\lemma sphere0-nconnected.{u} : isNConnectedType.{u} 0 (Sphere 0)
+  => inhabited=>nconnected0 north
+
+\lemma susp-nconnected.{u} {n : Nat} {A : \Type u} (c : isNConnectedType n A) : isNConnectedType (suc n) (Susp A)
+  => nconnected-equiv (suc n) (Join_Sphere0 A) (nconnected_join.{u} {0} {n} (Sphere 0) A sphere0-nconnected.{u} c)
+
+\lemma sphere-nconnected.{u} (n : Nat) : isNConnectedType.{u} n (Sphere n) \elim n
+  | 0 => sphere0-nconnected
+  | suc n => susp-nconnected (sphere-nconnected n)
