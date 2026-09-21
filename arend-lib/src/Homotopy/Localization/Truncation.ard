@@ -4,12 +4,19 @@
  -}
 
 \import Equiv
+\import Equiv.Fiber
 \import Homotopy.HLevel
+\import Homotopy.Localization.Accessible
 \import Homotopy.Localization.Modality
 \import Homotopy.Localization.Universe
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Sphere
+\import Homotopy.Suspension
 \import Homotopy.Truncation
 \import Logic
 \import Paths
+\import Paths.Meta
 
 \instance truncTypes.{u} (n : Nat) : Universe.{u}
   | isLocal A => A ofHLevel_-1+ n
@@ -30,3 +37,19 @@
     }
   }
   | isModality A B => \new Local (\Sigma (a : A) (B a)) (HLevels-sigma (\lam a => B a) A.local (\lam a => (B a).local))
+
+-- | The HoTT book, Theorem 7.2.9, in the form of Example 2.3(v) of the paper
+\lemma sphereNull_iff_truncated.{u} (n : Nat) (X : \Type u)
+  : isLocal {nullTypeUniverse (Sphere n)} X = (X ofHLevel_-1+ n)
+  => nullTypeUniverse.localDesc (Sphere n) X *> const_north *> north_hLevel
+  \where {
+    \lemma const_north.{u} {n : Nat} {X : \Type u}
+      : IsEquiv {X} {Sphere n -> X} (\lam x _ => x) = IsEquiv (\lam (f : Sphere n -> X) => f north)
+      => propExt (\lam e => inP (QEquiv.rightFactor (IsEquiv.toQEquiv e) idEquiv))
+                 (\lam e => inP (QEquiv.leftFactor (IsEquiv.toQEquiv e) idEquiv))
+
+    \lemma north_hLevel.{u} {n : Nat} {X : \Type u}
+      : IsEquiv (\lam (f : Sphere n -> X) => f north) = (X ofHLevel_-1+ n)
+      => propExt (\lam e => loop-level-iter n \lam x0 => rewriteI (SphereLoopEquiv n (\new Pointed X x0)) (IsEquiv=>contrFibers e x0))
+                 (\lam h => contrFibers=>IsEquiv \lam x0 => rewrite (SphereLoopEquiv n (\new Pointed X x0)) (loop-level-iter-inv n h x0))
+  }

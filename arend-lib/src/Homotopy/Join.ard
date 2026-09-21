@@ -228,3 +228,6 @@
 \func Join_Sphere.{u} (A : \Type u) (n : Nat) : Join (Sphere n) A = iterr (Susp __) (suc n) A \elim n
   | 0 => QEquiv_= (Join_Sphere0 A)
   | suc n => Join_Susp (Sphere n) A *> pmap (Susp __) (Join_Sphere A n)
+
+\func Join_Sphere_Sphere (m n : Nat) : Join (Sphere m) (Sphere n) = Sphere (suc (m Nat.+ n))
+  => Join_Sphere (Sphere n) m *> inv (iterr_+ {\Type0} (Susp __) (suc m) (suc n) Empty)

@@ -36,6 +36,11 @@
     | f_sec g => path (\lam i x => (pmap (lift g) (c.contraction (inL x)) *> lift-prop g x) @ i)
   })
 
+\lemma connectedType-local-cong.{u} {U V : Universe.{u}} (p : \Pi (Z : \Type u) -> isLocal {U} Z = isLocal {V} Z) (X : \Type u)
+  : isConnectedType {U} X = isConnectedType {V} X
+  => propExt (\lam c Z => c (\new Local {U} Z (propExt.conv (p Z) Z.local)))
+             (\lam c Z => c (\new Local {V} Z (propExt.dir (p Z) Z.local)))
+
 \lemma isConnected-equiv.{u} {U : Universe.{u}} {X Y : \Type u} (e : QEquiv {X} {Y}) (c : isConnectedType X) : isConnectedType Y
   => transport isConnectedType (path (QEquiv_= e)) c
 

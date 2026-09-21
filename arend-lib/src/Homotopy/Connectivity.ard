@@ -6,14 +6,18 @@
 \import Equiv
 \import Homotopy.Fibration
 \import Homotopy.HLevel
+\import Homotopy.Join
+\import Homotopy.Localization.Accessible
 \import Homotopy.Localization.Connected
 \import Homotopy.Localization.Equiv
 \import Homotopy.Localization.Truncation
 \import Homotopy.Localization.Universe
+\import Homotopy.Sphere
 \import Homotopy.Truncation
 \import Logic
 \import Logic.Unique
 \import Paths
+\import Paths.Meta
 
 \func isNConnectedType.{u} (n : Nat) (A : \Type u) : \Prop
   => isConnectedType {truncUniverse n} A
@@ -60,3 +64,13 @@
 -- | Corollary 7.5.8.
 \lemma trunc-in-nconnected.{u} {n : Nat} {A : \Type u} : isNConnectedMap n (inT {n} {A})
   => lEta-connected {truncUniverse n}
+
+\lemma nconnected_join.{u} {m n : Nat} (X Y : \Type u) (cx : isNConnectedType m X) (cy : isNConnectedType n Y)
+  : isNConnectedType (suc (m Nat.+ n)) (Join X Y)
+  => propExt.conv (toSphereNull (suc (m Nat.+ n)) (Join X Y))
+      (rewriteI (Join_Sphere_Sphere m n)
+                (connected_join X Y (Sphere m) (Sphere n) (propExt.dir (toSphereNull m X) cx)
+                                                          (propExt.dir (toSphereNull n Y) cy)))
+  \where
+    \lemma toSphereNull.{u} (n : Nat) (X : \Type u) : isNConnectedType n X = isConnectedType {nullTypeUniverse (Sphere n)} X
+      => connectedType-local-cong {truncUniverse n} {nullTypeUniverse (Sphere n)} (\lam Z => inv (sphereNull_iff_truncated n Z)) X
