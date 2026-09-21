@@ -215,4 +215,20 @@
         | in0 a => idp
       }
       | f_sec _ => idp
+
+    \func productEquiv {A B : \Type} : QEquiv {Trunc0 (\Sigma A B)} {\Sigma (Trunc0 A) (Trunc0 B)} \cowith
+      | f t => (map t (\lam p => p.1), map t (\lam p => p.2))
+      | ret p => pair p.1 p.2
+      | ret_f (t : Trunc0 (\Sigma A B)) : pair (map t (\lam p => p.1)) (map t (\lam p => p.2)) = t \with {
+        | in0 p => idp
+      }
+      | f_sec p => pair-proj p.1 p.2
+      \where {
+        \func pair {A B : \Type} (x : Trunc0 A) (y : Trunc0 B) : Trunc0 (\Sigma A B) \elim x, y
+          | in0 a, in0 b => in0 (a,b)
+
+        \lemma pair-proj {A B : \Type} (x : Trunc0 A) (y : Trunc0 B)
+          : ((map (pair x y) (\lam p => p.1), map (pair x y) (\lam p => p.2)) : \Sigma (Trunc0 A) (Trunc0 B)) = (x,y) \elim x, y
+          | in0 a, in0 b => idp
+      }
   }

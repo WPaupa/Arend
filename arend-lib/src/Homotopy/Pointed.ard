@@ -16,9 +16,26 @@
 \instance UnitPointed : Pointed (\Sigma)
   | base => ()
 
+\func PointedProduct (X Y : Pointed) : Pointed \cowith
+  | E => \Sigma X Y
+  | base => (base, base)
+  \where {
+    \func proj1 {X Y : Pointed} : PointedProduct X Y ->* X => (\lam t => t.1, idp)
+
+    \func proj2 {X Y : Pointed} : PointedProduct X Y ->* Y => (\lam t => t.2, idp)
+  }
+
 \func \infixr 1 ->* (A B : Pointed) => \Sigma (f : A -> B) (f base = base)
   \where {
     \func id {X : Pointed} : X ->* X => (\lam x => x, idp)
+
+    \func \fixl 8 compose \alias \infixl 8 ∘* {X Y Z : Pointed} (g : Y ->* Z) (f : X ->* Y) : X ->* Z
+      => (\lam x => g.1 (f.1 x), pmap g.1 f.2 *> g.2)
+
+    \func compose-assoc {W X Y Z : Pointed} (h : Y ->* Z) (g : X ->* Y) (f : W ->* X)
+      : h ∘* (g ∘* f) = (h ∘* g) ∘* f
+      => ext (\lam _ => idp)
+             (idp_*> _ *> inv (pmap (`*> h.2) (pmap_*>-comm h.1 (pmap g.1 f.2) g.2) *> *>-assoc _ _ _))
 
     \func ext {A B : Pointed} {f g : A ->* B} (p : \Pi (x : A) -> f.1 x = g.1 x) (q : p base *> g.2 = f.2) : f = g =>
       \let | p' => path (\lam i x => p x @ i)
