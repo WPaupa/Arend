@@ -1,0 +1,62 @@
+{- | Numeric connectedness, the HoTT book, Section 7.5, indexed as in {ofHLevel_-1+} rather than as in the book:
+     ``isNConnectedType n`` is the book's ``(n-1)``-connectedness, so ``n = 0`` is mere inhabitedness and
+     ``n = 1`` is ordinary connectedness. The same shift applies to {isNConnectedMap} and {isNTruncatedMap}.
+ -}
+
+\import Equiv
+\import Homotopy.Fibration
+\import Homotopy.HLevel
+\import Homotopy.Localization.Connected
+\import Homotopy.Localization.Equiv
+\import Homotopy.Localization.Truncation
+\import Homotopy.Localization.Universe
+\import Homotopy.Truncation
+\import Logic
+\import Logic.Unique
+\import Paths
+
+\func isNConnectedType.{u} (n : Nat) (A : \Type u) : \Prop
+  => isConnectedType {truncUniverse n} A
+
+\func isNConnectedMap.{u} (n : Nat) {A B : \Type u} (f : A -> B) : \Prop
+  => isConnectedMap {truncUniverse n} f
+
+\func isNTruncatedMap.{u} (n : Nat) {A B : \Type u} (f : A -> B) : \Prop
+  => \Pi (b : B) -> Fib f b ofHLevel_-1+ n
+
+\lemma nconnected-iff-trunc-contr.{u} (n : Nat) (A : \Type u) : isNConnectedType n A = Contr (Trunc_-1+ n A)
+  => propExt (isConnected=>contr {truncUniverse n} A) (contr=>isConnected {truncUniverse n} A)
+
+\lemma nconnected-map-fibers.{u} (n : Nat) {A B : \Type u} (f : A -> B)
+  : isNConnectedMap n f = (\Pi (b : B) -> Contr (Trunc_-1+ n (Fib f b)))
+  => path \lam i => \Pi (b : B) -> nconnected-iff-trunc-contr n (Fib f b) @ i
+
+\lemma nconnected-equiv.{u} (n : Nat) {A B : \Type u} (e : QEquiv {A} {B}) (c : isNConnectedType n A) : isNConnectedType n B
+  => isConnected-equiv {truncUniverse n} e c
+
+\lemma nconnected-contr.{u} (n : Nat) {A : \Type u} (c : Contr A) : isNConnectedType n A
+  => contr=>isConnectedType {truncUniverse n} c
+
+\lemma nconnected-map-equiv.{u} (n : Nat) {A B : \Type u} {f : A -> B} (e : IsEquiv f) : isNConnectedMap n f
+  => equiv=>isConnectedMap {truncUniverse n} e
+
+\func TruncMap.{u} (n : Nat) {A B : \Type u} (f : A -> B) (x : Trunc_-1+ n A) : Trunc_-1+ n B
+  => Trunc_-1+.elim (\lam _ => Trunc_-1+.level n B) (\lam a => inT (f a)) x
+  \where {
+    \func =lmap.{u} {n : Nat} {A B : \Type u} (f : A -> B) (x : Trunc_-1+ n A) : TruncMap n f x = lmap {truncUniverse n} f x
+      => trunc-unique (Trunc_-1+.level n B) (TruncMap n f) (lmap {truncUniverse n} f)
+                      (\lam a => inv (Localization.lift-prop {localization {truncUniverse n} A} (\lam a => inT (f a)) a)) x
+
+    \func equiv.{u} {n : Nat} {A B : \Type u} (e : QEquiv {A} {B}) : QEquiv {Trunc_-1+ n A} {Trunc_-1+ n B}
+      => transport (\lam T => QEquiv {Trunc_-1+ n A} {Trunc_-1+ n T}) (QEquiv_= e) idEquiv
+  }
+
+-- | The HoTT Book, Lemma 7.5.14.
+\lemma nconnected-map=>trunc-equiv.{u} {n : Nat} {A B : \Type u} (f : A -> B) (c : isNConnectedMap n f)
+  : IsEquiv (TruncMap n f)
+  => transport IsEquiv (inv (path \lam i x => TruncMap.=lmap f x i))
+                       (transport (\lam X => X) (localEquivMap {truncUniverse n} f) (connected_isLocalEquiv f c))
+
+-- | Corollary 7.5.8.
+\lemma trunc-in-nconnected.{u} {n : Nat} {A : \Type u} : isNConnectedMap n (inT {n} {A})
+  => lEta-connected {truncUniverse n}

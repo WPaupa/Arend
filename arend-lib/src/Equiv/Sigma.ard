@@ -70,6 +70,30 @@
   | ret_f g => idp
   | f_sec a => idp
 
+\func fib-precomp {A A' B : \Type} (e : QEquiv {A} {A'}) (g : A' -> B) (b : B)
+  : QEquiv {Fib (\lam a => g (e a)) b} {Fib g b}
+  => sigma-left {A} {A'} {g __ = b} e
+
+\func proj-fib {C : \Type} (F : C -> \Type) (c : C) : QEquiv {Fib (\lam (t : \Sigma (c' : C) (F c')) => t.1) c} {F c} \cowith
+  | f t => transport F t.2 t.1.2
+  | ret u => ((c,u), idp)
+  | ret_f t => lem F c t.1.1 t.1.2 t.2
+  | f_sec _ => idp
+  \where
+    \func lem {C : \Type} (F : C -> \Type) (c c' : C) (u : F c') (p : c' = c)
+      : ((c, transport F p u), idp) = {Fib (\lam (t : \Sigma (c'' : C) (F c'')) => t.1) c} ((c',u),p) \elim c, p
+      | _, idp => idp
+
+\func totalFib {A B : \Type} (f : A -> B) : QEquiv {A} {\Sigma (b : B) (Fib f b)} \cowith
+  | f a => (f a, (a, idp))
+  | ret t => t.2.1
+  | ret_f _ => idp
+  | f_sec t => lem f t.2.1 t.1 t.2.2
+  \where
+    \func lem {A B : \Type} (f : A -> B) (a : A) (b : B) (p : f a = b)
+      : ((f a, (a,idp)) : \Sigma (b' : B) (Fib f b')) = (b, (a,p)) \elim b, p
+      | _, idp => idp
+
 -- | The HoTT book, Theorem 4.7.7
 \lemma totalEquiv.{u} {J : \Type u} {A B : J -> \Type u} (f : \Pi (j : J) -> A j -> B j)
   : (\Pi (j : J) -> IsEquiv (f j)) = IsEquiv (total f)
