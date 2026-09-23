@@ -1,5 +1,6 @@
 \import Algebra.Pointed.PointedHom
 \import Equiv
+\import Equiv.HalfAdjoint
 \import Homotopy.Space
 \import Logic
 \import Meta
@@ -60,9 +61,29 @@
   | map : X ->* Y
   | map-isEquiv : IsEquiv map.1
   \where {
+    \func id {X : Pointed} : PointedEquiv X X \cowith
+      | map => ->*.id
+      | map-isEquiv => inP idEquiv
+
+    \func toHAEquiv (e : PointedEquiv) : HAEquiv e.map.1
+      => IsEquiv.toQEquiv e.map-isEquiv
+
     \func inverse (e : PointedEquiv) : PointedEquiv e.Y e.X \cowith
-      | map => (IsEquiv.ret e.map-isEquiv, pmap (IsEquiv.ret e.map-isEquiv) (inv e.map.2) *> IsEquiv.ret_f e.map-isEquiv)
-      | map-isEquiv => IsEquiv.ret-equiv e.map-isEquiv
+      | map => (Section.ret {toHAEquiv e},
+                pmap (Section.ret {toHAEquiv e}) (inv e.map.2) *> Section.ret_f {toHAEquiv e} base)
+      | map-isEquiv => inP (symQEquiv (toHAEquiv e))
+
+    \func inverse-sec (e : PointedEquiv) : e.map ->*.∘* (inverse e).map = ->*.id {e.Y}
+      => ->*.ext (Retraction.f_sec {toHAEquiv e})
+             (inv (pmap (`*> e.map.2) (pmap_*>-comm e.map.1 (pmap (Section.ret {toHAEquiv e}) (inv e.map.2))
+                                                            (Section.ret_f {toHAEquiv e} base))
+                   *> pmap (\lam z => (pmap (\lam y => e.map.1 (Section.ret {toHAEquiv e} y)) (inv e.map.2) *> z) *> e.map.2)
+                           (HAEquiv.f_ret_f=f_sec_f {toHAEquiv e} base)
+                   *> pmap (`*> e.map.2)
+                           (homotopy-isNatural (\lam y => e.map.1 (Section.ret {toHAEquiv e} y)) (\lam y => y)
+                                               (Retraction.f_sec {toHAEquiv e}) (inv e.map.2))
+                   *> *>-assoc (Retraction.f_sec {toHAEquiv e} base) (inv e.map.2) e.map.2
+                   *> pmap (Retraction.f_sec {toHAEquiv e} base *>) (inv_*> e.map.2)))
 
     \func \fixl 8 compose \alias \infixl 8 ∘~ {X Y Z : Pointed} (g : PointedEquiv Y Z) (f : PointedEquiv X Y)
       : PointedEquiv X Z \cowith

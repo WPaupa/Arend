@@ -44,6 +44,10 @@
     \lemma isEquiv {X Y : Pointed} (f : X ->* Y) (e : IsEquiv f.1) : IsEquiv (Loop-Func f).1
       => loopMap.isEquiv f.1 f.2 e
 
+\func loopEquiv (e : PointedEquiv) : PointedEquiv (Loop e.X) (Loop e.Y) \cowith
+  | map => Loop-Func e.map
+  | map-isEquiv => Loop-Func.isEquiv e.map e.map-isEquiv
+
 \func Loop-Func-comp {X Y Z : Pointed} (g : Y ->* Z) (f : X ->* Y)
   : Loop-Func (g ->*.∘* f) = Loop-Func g ->*.∘* Loop-Func f
   => ->*.ext (loopMap.comp f.1 f.2 g.1 g.2) (loopMap.comp-coh f.1 f.2 g.1 g.2)
@@ -177,6 +181,44 @@
 
 \func omegaLoopShift.{u} (n : Nat) (X : Pointed.{u}) : Omega^ n (Loop X) = Omega^ (suc n) X
   => iterr-step (Loop __) n X
+
+\func omegaShift.{u} (n : Nat) (X : Pointed.{u}) : Omega^ n (Loop X) ->* Omega^ (suc n) X \elim n
+  | 0 => ->*.id
+  | suc n => Loop-Func (omegaShift n X)
+  \where {
+    \lemma isEquiv.{u} (n : Nat) (X : Pointed.{u}) : IsEquiv (omegaShift n X).1 \elim n
+      | 0 => inP idEquiv
+      | suc n => Loop-Func.isEquiv (omegaShift n X) (isEquiv n X)
+
+    \func natural.{u} (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y)
+      : omegaShift n Y ->*.∘* Omega^-Func n {Loop X} {Loop Y} (Loop-Func f)
+        = Omega^-Func (suc n) f ->*.∘* omegaShift n X \elim n
+      | 0 => inv (->*.compose-id (Loop-Func f))
+      | suc n =>
+        inv (Loop-Func-comp (omegaShift n Y) (Omega^-Func n {Loop X} {Loop Y} (Loop-Func f)))
+        *> pmap (Loop-Func {Omega^ n (Loop X)} {Omega^ (suc n) Y}) (natural n f)
+        *> Loop-Func-comp (Omega^-Func (suc n) f) (omegaShift n X)
+  }
+
+\func omegaShiftEquiv.{u} (n : Nat) (X : Pointed.{u})
+  : PointedEquiv (Omega^ n (Loop X)) (Omega^ (suc n) X) \cowith
+  | map => omegaShift n X
+  | map-isEquiv => omegaShift.isEquiv n X
+
+\func omegaShiftInv.{u} (n : Nat) (X : Pointed.{u}) : Omega^ (suc n) X ->* Omega^ n (Loop X)
+  => PointedEquiv.map {PointedEquiv.inverse (omegaShiftEquiv n X)}
+  \where {
+    \lemma isEquiv.{u} (n : Nat) (X : Pointed.{u}) : IsEquiv (omegaShiftInv n X).1
+      => PointedEquiv.map-isEquiv {PointedEquiv.inverse (omegaShiftEquiv n X)}
+
+    \func left.{u} (n : Nat) (X : Pointed.{u}) (z : Omega^ n (Loop X))
+      : (omegaShiftInv n X).1 ((omegaShift n X).1 z) = z
+      => Section.ret_f {PointedEquiv.toHAEquiv (omegaShiftEquiv n X)} z
+
+    \func right.{u} (n : Nat) (X : Pointed.{u}) (c : Omega^ (suc n) X)
+      : (omegaShift n X).1 ((omegaShiftInv n X).1 c) = c
+      => Retraction.f_sec {PointedEquiv.toHAEquiv (omegaShiftEquiv n X)} c
+  }
 
 \func omegaSphere.{u} (n : Nat) (X : Pointed.{u}) : (Sphere.pointed n ->* X) = Omega^ n X
   => SphereLoopEquiv n X *> pmap (BaseSpace.E {__}) (iterl=iterr {Pointed.{u}} (Loop __) n X)

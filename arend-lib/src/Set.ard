@@ -208,6 +208,19 @@
         | in0 b => pmap in0 (e.f_sec b)
       }
 
+    \lemma equality {A : \Type} (x y : A) : (in0 x = {Trunc0 A} in0 y) = TruncP (x = y)
+      => propExt (encode (in0 x) (in0 y)) (\lam c => \case c \with { | inP p => pmap in0 p })
+      \where {
+        \func code {A : \Type} (t t' : Trunc0 A) : \Prop \elim t, t'
+          | in0 x, in0 y => TruncP (x = y)
+
+        \lemma refl {A : \Type} (t : Trunc0 A) : code t t \elim t
+          | in0 x => inP idp
+
+        \lemma encode {A : \Type} (t t' : Trunc0 A) (p : t = t') : code t t'
+          => transport (code t) p (refl t)
+      }
+
     \func setEquiv {A : \Set} : QEquiv {Trunc0 A} {A} \cowith
       | f => remove'
       | ret => in0

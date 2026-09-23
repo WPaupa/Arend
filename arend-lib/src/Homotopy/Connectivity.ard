@@ -49,6 +49,13 @@
 \lemma nconnected-map-equiv.{u} (n : Nat) {A B : \Type u} {f : A -> B} (e : IsEquiv f) : isNConnectedMap n f
   => equiv=>isConnectedMap {truncUniverse n} e
 
+\lemma nconnected-map-mono.{u} {m n : Nat} {A B : \Type u} {f : A -> B} (p : m <= n)
+                               (c : isNConnectedMap n f) : isNConnectedMap m f
+  => propExt.conv (nconnected-map-fibers m f)
+      (\lam b => propExt.dir (nconnected-iff-trunc-contr m (Fib f b))
+          (nconnected-mono p (propExt.conv (nconnected-iff-trunc-contr n (Fib f b))
+                                           (propExt.dir (nconnected-map-fibers n f) c b))))
+
 \func TruncMap.{u} (n : Nat) {A B : \Type u} (f : A -> B) (x : Trunc_-1+ n A) : Trunc_-1+ n B
   => Trunc_-1+.elim (\lam _ => Trunc_-1+.level n B) (\lam a => inT (f a)) x
   \where {

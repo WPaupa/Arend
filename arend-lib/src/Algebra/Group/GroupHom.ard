@@ -16,6 +16,11 @@
   \lemma func-inverse {a : Dom} : func (inverse a) = inverse (func a)
     => func-InvElem (Group.makeInv a) (Group.makeInv (func a)) idp
 
+  \lemma injective (p : \Pi {a : Dom} -> func a = ide -> a = ide) : IsInj func
+    => \lam {x} {y} q => cancel_*-right (inverse y)
+        (p (func-* *> pmap (func x *) func-inverse *> pmap (`* inverse (func y)) q *> inverse-right)
+         *> inv inverse-right)
+
   \func IsIsomorphism : \Prop
     => \Sigma (IsInj func) (IsSurj func)
 } \where {
