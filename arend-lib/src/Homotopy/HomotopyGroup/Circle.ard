@@ -1,6 +1,7 @@
 \import Algebra.Group
 \import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
+\import Algebra.Pointed (ide)
 \import Arith.Int
 \import Category \hiding (id, o)
 \import Equiv
@@ -10,8 +11,11 @@
 \import Homotopy.Pointed
 \import Homotopy.Sphere
 \import Homotopy.Sphere.Circle
+\import Homotopy.Suspension
 \import Logic
+\import Logic.Unique
 \import Paths
+\import Paths.Meta
 \import Set \hiding (#, .#)
 
 \func PiGroup_S1.{u} : PiGroup 0 (Sphere.pointed 1) = {Group.{u}} AddGroup.toGroup IntRing
@@ -37,4 +41,18 @@
       => (GroupCat.Iso<->Inj+Surj hom).2
           (IsInj.comp windEquiv.isInj circleEquiv.isInj,
            IsSurj.comp windEquiv.isSurj circleEquiv.isSurj)
+  }
+
+\lemma circle-pi-high-contr.{u} (r : Nat) : Contr (pi.{u} (suc (suc r)) (Sphere.pointed 1))
+  => at r north
+  \where {
+    \lemma at.{u} (r : Nat) (x : Sphere 1) : Contr (pi.{u} (suc (suc r)) (Pointed.make x))
+      => pi-high-contr-of-loopSet r (Pointed.make x) (circle-isGpd x x)
+
+    \lemma hit.{u} (r : Nat) : Contr (pi.{u} (suc (suc r)) (Pointed.make base1))
+      => pi-high-contr-of-loopSet r (Pointed.make base1) (rewrite Loop_S1 \lam _ _ => prop-isProp)
+
+    \lemma trivial.{u} (r : Nat) (z : PiCGroup.{u} r (Sphere.pointed 1))
+      : z = ide {PiCGroup.{u} r (Sphere.pointed 1)}
+      => isContr=>isProp (circle-pi-high-contr r) z _
   }

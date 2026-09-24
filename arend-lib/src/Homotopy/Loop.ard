@@ -73,7 +73,13 @@
                   (n : Nat)
                   (p : \Pi (x0 : X) -> (x0 = x0) ofHLevel_-1+ n)
   : X ofHLevel_-1+ suc n
-  => \lam x x' => hLevel-inh n (later rewriteI __ (p x))
+  => \lam x x' => hLevel-inh n (later rewriteI __ (p x)) \where {
+  \func set {X : \Type} (pr : \Pi (x0 : X) -> isSet (x0 = x0)) (x y : X) (p q : x = y) : isProp (p = q) \elim p
+    | idp => pr x idp q
+
+  \func prop {X : \Type} (pr : \Pi (x0 : X) -> isProp (x0 = x0)) (x y : X) (p q : x = y) : p = q \elim p
+    | idp => pr x idp q
+}
 
 \lemma loop-level-iter.{u} {X : \Type u}
                            (n : Nat)
@@ -86,6 +92,9 @@
   : Contr (iterl {Pointed.{u}} (Loop __) n (\new Pointed X x0)) \elim n
   | 0 => isProp=>isContr (ToProp.fromProp h) x0
   | suc n => loop-level-iter-inv n (h x0 x0) idp
+
+\lemma loop-contr (X : Pointed) (c : Contr X) : Contr (Loop X)
+  => isProp=>PathContr X (isContr=>isProp c) base base
 
 \func SuspLoopEquiv.{u} (A B : Pointed.{u}) : (Susp.pointed A ->* B) = (A ->* Loop B) =>
   \let S => Square { | Y => B | U => A | V => \Sigma | X => \Sigma | uv _ => () | ux _ => () } \in
