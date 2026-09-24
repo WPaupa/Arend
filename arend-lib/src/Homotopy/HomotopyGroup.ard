@@ -79,10 +79,20 @@
   }
 
 \func PiGroup_LoopShift.{u} (n : Nat) (X : Pointed.{u}) : PiGroup n (Loop X) = {Group.{u}} PiGroup (suc n) X
-  => pmap (\lam (P : Pointed.{u}) => (Aut (base {P}) : Group.{u})) (omegaLoopShift n X)
-  \where
+  => Cat.isotoid (iso n X)
+  \where {
     \func equiv.{u} (n : Nat) (X : Pointed.{u}) : QEquiv {pi n (Loop X)} {pi (suc n) X}
       => Trunc0.mapEquiv (Equiv.toQEquiv (=_Equiv (pmap (BaseSpace.E {__}) (omegaLoopShift n X))))
+
+    \func hom.{u} (n : Nat) (X : Pointed.{u}) : GroupHom (PiGroup n (Loop X)) (PiGroup (suc n) X) \cowith
+      | func t => Trunc0.map t (omegaShift (suc n) X).1
+      | func-* {x} {y} => \case \elim x, \elim y \with {
+        | in0 p, in0 q => pmap in0 (Loop-Func_*> (omegaShift n X) p q)
+      }
+
+    \func iso.{u} (n : Nat) (X : Pointed.{u}) : Iso {GroupCat.{u}} (hom n X)
+      => GroupCat.isoOfEquiv (hom n X) (IsEquiv.toQEquiv (Trunc0.map-isEquiv (omegaShift.isEquiv (suc n) X)))
+  }
 
 \func PiGroup_basepoint.{u} (n : Nat) {X : \Type u} {x y : X} (p : x = y)
   : PiGroup n (Pointed.make x) = {Group.{u}} PiGroup n (Pointed.make y)

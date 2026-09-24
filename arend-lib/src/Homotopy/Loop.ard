@@ -113,6 +113,10 @@
                                                                                                          idpe idpe) >==
   (\Sigma (p : \Sigma (b2 : B) (base = b2)) (\Sigma (g : A -> base = p.1) (g base = p.2))) ==< QEquiv_= (contr-left (lsigma base)) >==
   (\Sigma (g : A -> Loop B) (g base = base))                                               `qed
+  \where
+    -- | The unit of the adjunction, the HoTT book, Section 8.6.
+    \func unit (X : Pointed) : X ->* Loop (Susp.pointed X)
+      => (\lam x => pmerid x *> inv (pmerid base), *>_inv (pmerid base))
 
 \func SphereLoopEquiv.{u} (n : Nat) (B : Pointed.{u}) : (Sphere.pointed n ->* B) = iterl {Pointed.{u}} (Loop __) n B \elim n
   | 0 => \let smap (b : B) (s : Sphere 0) : B => \case s \with { | pinl _ => base | pinr _ => b | pglue () _ }

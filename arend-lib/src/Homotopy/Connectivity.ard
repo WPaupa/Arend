@@ -4,11 +4,14 @@
  -}
 
 \import Equiv
+\import Equiv.Path
+\import Equiv.Sigma
 \import Homotopy.Fibration
 \import Homotopy.HLevel
 \import Arith.Nat
 \import Homotopy.Join
 \import Homotopy.Localization.Accessible
+\import Homotopy.Localization.BlakersMassey
 \import Homotopy.Localization.Connected
 \import Homotopy.Localization.Equiv
 \import Homotopy.Localization.Truncation
@@ -23,6 +26,8 @@
 \import Order.PartialOrder
 \import Paths
 \import Paths.Meta
+
+\open genBlakersMassey (POData, Data)
 
 \func isNConnectedType.{u} (n : Nat) (A : \Type u) : \Prop
   => isConnectedType {truncUniverse n} A
@@ -84,12 +89,29 @@
 \lemma nconnected-mono.{u} {m n : Nat} {A : \Type u} (p : m <= n) (c : isNConnectedType n A) : isNConnectedType m A
   => \lam Z => c (\new Local {truncUniverse n} Z (HLevel_-1_<= m n p Z.local))
 
+\lemma nconnected-path.{u} {n : Nat} {A : \Type u} (c : isNConnectedType (suc n) A) (a a' : A)
+  : isNConnectedType n (a = a')
+  => propExt.conv (nconnected-iff-trunc-contr n (a = a'))
+      (Contr.Contr_QEquiv (Trunc_-1+.equality a a')
+        (isProp=>PathContr (Trunc_-1+ (suc n) A)
+                           (isContr=>isProp (propExt.dir (nconnected-iff-trunc-contr (suc n) A) c))
+                           (inT a) (inT a')))
+
 \lemma loop-nconnected.{u} {n : Nat} (X : Pointed.{u}) (c : isNConnectedType (suc n) X) : isNConnectedType n (Loop X)
-  => propExt.conv (nconnected-iff-trunc-contr n (Loop X))
-      (Contr.Contr_QEquiv (Trunc_-1+.equality base base)
-        (isProp=>PathContr (Trunc_-1+ (suc n) X)
-                           (isContr=>isProp (propExt.dir (nconnected-iff-trunc-contr (suc n) X) c))
-                           (inT base) (inT base)))
+  => nconnected-path c base base
+
+\lemma nconnected-map-comp-left.{u} (n : Nat) {A B C : \Type u} {f : A -> B} (g : QEquiv {B} {C})
+                                    (c : isNConnectedMap n f) : isNConnectedMap n (\lam a => g (f a))
+  => \lam z => nconnected-equiv n (fibEquiv g f z) (c (g.ret z))
+  \where
+    \func fibEquiv {A B C : \Type} (g : QEquiv {B} {C}) (f : A -> B) (z : C)
+      : QEquiv {Fib f (g.ret z)} {Fib (\lam a => g (f a)) z}
+      => sigma-right (\lam a => transQEquiv (IsEquiv.toQEquiv (pmapIsEquiv (inP g) {f a} {g.ret z}))
+                                            (pathConcatEquiv-right (g.f_ret z)))
+
+\lemma nconnected-map-comp-right.{u} (n : Nat) {A B C : \Type u} {f : B -> C} (e : QEquiv {A} {B})
+                                     (c : isNConnectedMap n f) : isNConnectedMap n (\lam a => f (e a))
+  => \lam z => nconnected-equiv n (symQEquiv (fib-precomp e f z)) (c z)
 
 \lemma nconnected_join.{u} {m n : Nat} (X Y : \Type u) (cx : isNConnectedType m X) (cy : isNConnectedType n Y)
   : isNConnectedType (suc (m Nat.+ n)) (Join X Y)
@@ -100,6 +122,26 @@
   \where
     \lemma toSphereNull.{u} (n : Nat) (X : \Type u) : isNConnectedType n X = isConnectedType {nullTypeUniverse (Sphere n)} X
       => connectedType-local-cong {truncUniverse n} {nullTypeUniverse (Sphere n)} (\lam Z => inv (sphereNull_iff_truncated n Z)) X
+
+-- | {genBlakersMassey} in the numeric indexing.
+\lemma nBlakersMassey.{u} (r s : Nat) {X Y : \Type u} (Q : X -> Y -> \Type u)
+                          (rowConn : \Pi (x : X) -> isNConnectedType (suc r) (\Sigma (y : Y) (Q x y)))
+                          (colConn : \Pi (y : Y) -> isNConnectedType (suc s) (\Sigma (x : X) (Q x y)))
+                          (x0 : X) (y0 : Y)
+  : isNConnectedMap (suc (r Nat.+ s)) (POData.pbMap {\new POData X Y Q} {x0} {y0})
+  => genBlakersMassey {\new Data {
+       | ReflUniverse => truncUniverse (suc (r Nat.+ s))
+       | X => X
+       | Y => Y
+       | Q => Q
+       | ch {x} {x'} {y} {y'} q0 q1 q2 => nconnected_join
+           (\Sigma (p : y = y') (transport (Q x) p q0 = q1))
+           (\Sigma (p : x = x') (transport (Q __ y) p q0 = q2))
+           (nconnected-equiv r (sigmaEquiv (Q x) (y, q0) (y', q1))
+                             (nconnected-path.{u} {r} {\Sigma (y : Y) (Q x y)} (rowConn x) (y, q0) (y', q1)))
+           (nconnected-equiv s (sigmaEquiv (Q __ y) (x, q0) (x', q2))
+                             (nconnected-path.{u} {s} {\Sigma (x : X) (Q x y)} (colConn y) (x, q0) (x', q2)))
+     }} x0 y0
 
 \lemma sphere0-nconnected.{u} : isNConnectedType.{u} 0 (Sphere 0)
   => inhabited=>nconnected0 north
