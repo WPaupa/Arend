@@ -12,6 +12,7 @@
 \import Homotopy.Space
 \import Homotopy.Sphere
 \import Logic
+\import Logic.Unique
 \import Paths
 \import Set \hiding (#, .#)
 
@@ -115,3 +116,11 @@
     \func iso.{u} (n : Nat) {X : \Type u} {x y : X} (p : x = y) : Iso {GroupCat} (hom n p)
       => GroupCat.isoOfEquiv (hom n p) (IsEquiv.toQEquiv (piMap-isEquiv (suc n) (map p) (inP idEquiv)))
   }
+
+\lemma pi-high-contr-of-loopSet.{u} (r : Nat) (X : Pointed.{u}) (h : isSet (Loop X))
+  : Contr (pi (suc (suc r)) X)
+  => Trunc0.contr (lemma r) \where {
+  \func lemma (r : Nat) : Contr (Omega^ (suc (suc r)) X) \with
+    | 0 => isProp=>isContr (h idp idp) idp
+    | suc r => loop-contr (Omega^ (suc (suc r)) X) (lemma r)
+}

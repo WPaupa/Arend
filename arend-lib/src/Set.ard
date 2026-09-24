@@ -198,6 +198,12 @@
     \lemma map-isEquiv {A B : \Type} {g : A -> B} (e : IsEquiv g) : IsEquiv (\lam (t : Trunc0 A) => map t g) \elim e
       | inP e => inP (mapEquiv e)
 
+    \lemma contr {A : \Type} (c : Contr A) : Contr (Trunc0 A)
+      => Contr.make (in0 c.center) (contr-center c)
+      \where
+        \lemma contr-center {A : \Type} (c : Contr A) (t : Trunc0 A) : in0 c.center = t \elim t
+          | in0 a => pmap in0 (c.contraction a)
+
     \func mapEquiv {A B : \Type} (e : QEquiv {A} {B}) : QEquiv {Trunc0 A} {Trunc0 B} \cowith
       | f t => map t e
       | ret t => map t e.ret
