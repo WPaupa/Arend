@@ -7,6 +7,7 @@
 \import Equiv
 \import Function
 \import Homotopy.HomotopyGroup
+\import Homotopy.HomotopyGroup.Truncation
 \import Homotopy.Loop
 \import Homotopy.Pointed
 \import Homotopy.Sphere

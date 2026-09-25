@@ -10,6 +10,7 @@
 \import Equiv.Univalence
 \import Homotopy.HomotopyGroup
 \import Homotopy.HomotopyGroup.Circle
+\import Homotopy.HomotopyGroup.Truncation
 \import Homotopy.Pointed
 \import Homotopy.Sphere
 \import Homotopy.Sphere.Circle
