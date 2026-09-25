@@ -16,6 +16,7 @@
 \import Homotopy.Sphere
 \import Homotopy.Suspension
 \import Order.PartialOrder
+\import Paths
 \import Set \hiding (#, .#)
 
 \func piStabilization.{u} (k : Nat) (X : Pointed.{u}) (t : pi k X) : pi (suc k) (Susp.pointed X)
@@ -46,7 +47,42 @@
                   (h : suc k <= r Nat.+ r)
       : Iso {GroupCat.{u}} (hom k X)
       => GroupCat.isoOfEquiv (hom k X) (IsEquiv.toQEquiv (isEquiv r (suc k) X c h))
+
+    \lemma natural.{u} (k : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (t : pi k X)
+      : piMap (suc k) (Susp-Func f) (piStabilization k X t) = piStabilization k Y (piMap k f t)
+      => trunc0-map3 t (Omega^-Func k {X} {Loop (Susp.pointed X)} (SuspLoopEquiv.unit X)).1
+                       (omegaShift k (Susp.pointed X)).1
+                       (Omega^-Func (suc k) (Susp-Func f)).1
+         *> pmap (Trunc0.map t) (pmap __.1 (square k f))
+         *> inv (trunc0-map3 t (Omega^-Func k f).1
+                               (Omega^-Func k {Y} {Loop (Susp.pointed Y)} (SuspLoopEquiv.unit Y)).1
+                               (omegaShift k (Susp.pointed Y)).1)
+
+    \func square.{u} (k : Nat) {X Y : Pointed.{u}} (f : X ->* Y)
+      : Omega^-Func (suc k) (Susp-Func f)
+          ->*.∘* (omegaShift k (Susp.pointed X)
+                  ->*.∘* Omega^-Func k {X} {Loop (Susp.pointed X)} (SuspLoopEquiv.unit X))
+        = omegaShift k (Susp.pointed Y)
+          ->*.∘* (Omega^-Func k {Y} {Loop (Susp.pointed Y)} (SuspLoopEquiv.unit Y)
+                  ->*.∘* Omega^-Func k f)
+      => ->*.compose-assoc (Omega^-Func (suc k) (Susp-Func f)) (omegaShift k (Susp.pointed X))
+                           (Omega^-Func k {X} {Loop (Susp.pointed X)} (SuspLoopEquiv.unit X))
+         *> pmap (\lam h => h ->*.∘* Omega^-Func k {X} {Loop (Susp.pointed X)} (SuspLoopEquiv.unit X))
+                 (inv (omegaShift.natural k {Susp.pointed X} {Susp.pointed Y} (Susp-Func f)))
+         *> inv (->*.compose-assoc (omegaShift k (Susp.pointed Y))
+                                   (Omega^-Func k {Loop (Susp.pointed X)} {Loop (Susp.pointed Y)}
+                                                 (Loop-Func (Susp-Func f)))
+                                   (Omega^-Func k {X} {Loop (Susp.pointed X)} (SuspLoopEquiv.unit X)))
+         *> pmap (omegaShift k (Susp.pointed Y) ->*.∘*)
+                 (inv (Omega^-Func.comp k {X} {Loop (Susp.pointed X)} {Loop (Susp.pointed Y)}
+                                        (Loop-Func (Susp-Func f)) (SuspLoopEquiv.unit X))
+                  *> pmap (Omega^-Func k {X} {Loop (Susp.pointed Y)}) (SuspLoopEquiv.unit.natural f)
+                  *> Omega^-Func.comp k {X} {Y} {Loop (Susp.pointed Y)} (SuspLoopEquiv.unit Y) f)
   }
+
+\private \lemma trunc0-map3 {A B C D : \Type} (t : Trunc0 A) (F1 : A -> B) (F2 : B -> C) (F3 : C -> D)
+  : Trunc0.map (Trunc0.map (Trunc0.map t F1) F2) F3 = Trunc0.map t (\lam a => F3 (F2 (F1 a)))
+  => Trunc0.map-comp (Trunc0.map t F1) F2 F3 *> Trunc0.map-comp t F1 (\lam b => F3 (F2 b))
 
 \func sphereStabilization.{u} (d k : Nat) (t : pi.{u} k (Sphere.pointed d))
   : pi.{u} (suc k) (Sphere.pointed (suc d))

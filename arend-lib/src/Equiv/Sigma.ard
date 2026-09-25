@@ -60,6 +60,27 @@
   | ret_f p => path (\lam i => (p.1, (q p.1).ret_f p.2 i))
   | f_sec p' => path (\lam i => (p'.1, (q p'.1).f_sec p'.2 i))
 
+\func pi-right {A : \Type} {B B' : A -> \Type} (q : \Pi (a : A) -> QEquiv {B a} {B' a})
+  : QEquiv {\Pi (a : A) -> B a} {\Pi (a : A) -> B' a} \cowith
+  | f h a => q a (h a)
+  | ret k a => (q a).ret (k a)
+  | ret_f h => path (\lam i a => (q a).ret_f (h a) i)
+  | f_sec k => path (\lam i a => (q a).f_sec (k a) i)
+
+-- | Reindexing a dependent product along an equivalence.
+\func pi-left {A A' : \Type} {B' : A' -> \Type} (e : HAEquiv {A} {A'})
+  : QEquiv {\Pi (a' : A') -> B' a'} {\Pi (a : A) -> B' (e a)} \cowith
+  | f h a => h (e a)
+  | ret k a' => transport B' (e.f_sec a') (k (e.ret a'))
+  | ret_f h => path (\lam i a' => pmapd h (e.f_sec a') i)
+  | f_sec k => path (\lam i a => lem {A} {A'} {B'} e k a i)
+  \where
+    \func lem {A A' : \Type} {B' : A' -> \Type} (e : HAEquiv {A} {A'}) (k : \Pi (a : A) -> B' (e a)) (a : A)
+      : transport B' (e.f_sec (e a)) (k (e.ret (e a))) = k a
+      => pmap (\lam p => transport B' p (k (e.ret (e a)))) (inv (e.f_ret_f=f_sec_f a))
+         *> transport_pmap B' e (e.ret_f a) (k (e.ret (e a)))
+         *> pmapd k (e.ret_f a)
+
 \func sigma-equiv {A A' : \Type} {B : A -> \Type} {B' : A' -> \Type} (e1 : QEquiv {A} {A'}) (e2 : \Pi (a : A) -> QEquiv {B a} {B' (e1 a)})
   : QEquiv {\Sigma (a : A) (B a)} {\Sigma (a : A') (B' a)}
   => sigma-right e2 `transQEquiv` sigma-left e1

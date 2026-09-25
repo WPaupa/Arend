@@ -117,6 +117,31 @@
     -- | The unit of the adjunction, the HoTT book, Section 8.6.
     \func unit (X : Pointed) : X ->* Loop (Susp.pointed X)
       => (\lam x => pmerid x *> inv (pmerid base), *>_inv (pmerid base))
+      \where {
+        \func natural.{u} {X Y : Pointed.{u}} (f : X ->* Y)
+          : Loop-Func (Susp-Func f) ->*.∘* unit X = unit Y ->*.∘* f
+          => ->*.ext (pt f.1 f.2) (coh f.1 f.2)
+
+        \func loopMap_*>-inv {S T : \Type} {n s : S} (G : S -> T) (m1 m2 : n = s)
+          : loopMap G idp (m1 *> inv m2) = pmap G m1 *> inv (pmap G m2) \elim s, m2
+          | _, idp => idp_*> (pmap G m1)
+
+        \func pt {X : Pointed} {E : \Type} (g : X -> E) {y : E} (e : g base = y) (x : X)
+          : loopMap (Susp.map g) idp (pmerid x *> inv (pmerid base)) = pmerid (g x) *> inv (pmerid y)
+          => loopMap_*>-inv (Susp.map g) (pmerid x) (pmerid base)
+             *> pmap (\lam w => pmerid (g x) *> inv (pmerid w)) e
+
+        \func coh {X : Pointed} {E : \Type} (g : X -> E) {y : E} (e : g base = y)
+          : pt g e base *> (pmap (\lam z => pmerid z *> inv (pmerid y)) e *> *>_inv (pmerid y))
+            = pmap (loopMap (Susp.map g) idp) (*>_inv (pmerid (base {X})))
+              *> loopMap.idp-case (Susp.map g) {north} {north} idp \elim y, e
+          | _, idp => coh-raw (Susp.map g) (pmerid (base {X}))
+
+        \func coh-raw {S T : \Type} {n s : S} (G : S -> T) (m : n = s)
+          : loopMap_*>-inv G m m *> (idp *> *>_inv (pmap G m))
+            = pmap (loopMap G idp) (*>_inv m) *> loopMap.idp-case G idp \elim s, m
+          | _, idp => idp
+      }
 
 \func SphereLoopEquiv.{u} (n : Nat) (B : Pointed.{u}) : (Sphere.pointed n ->* B) = iterl {Pointed.{u}} (Loop __) n B \elim n
   | 0 => \let smap (b : B) (s : Sphere 0) : B => \case s \with { | pinl _ => base | pinr _ => b | pglue () _ }
