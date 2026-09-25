@@ -244,6 +244,40 @@
       (\lam _ => idp) (\lam _ => idp)
       (pi-exact-base S.proj k)
 
+-- | In positive degrees the connecting map of a fibre sequence is a group homomorphism.
+\func piBoundaryGroup.{u} (n : Nat) {F T B : Pointed.{u}} (S : FiberSequence F T B)
+  : GroupHom (PiGroup (suc n) B) (PiGroup n F) \cowith
+  | func x => piBoundarySeq (suc n) S x
+  | func-* {x} {y} => \case \elim x, \elim y \with {
+    | in0 p, in0 q => pmap in0 (
+        pmap (\lam z => (Omega^-Func (suc n) {PointedFib S.proj} {F} (gapInverse S)).1
+                          ((Omega^-Func (suc n) {Loop B} {PointedFib S.proj} (fibBoundary S.proj)).1 z))
+             (omegaShiftInv.concat n B p q)
+        *> pmap (Omega^-Func (suc n) {PointedFib S.proj} {F} (gapInverse S)).1
+                (Loop-Func_*> (Omega^-Func n {Loop B} {PointedFib S.proj} (fibBoundary S.proj)) _ _)
+        *> Loop-Func_*> (Omega^-Func n {PointedFib S.proj} {F} (gapInverse S)) _ _)
+  }
+
+\lemma piGroup-exact-boundary.{u} (n : Nat) {F T B : Pointed.{u}} (S : FiberSequence F T B)
+  : ExactAt (piGroupMap (suc n) {T} {B} S.proj) (piBoundaryGroup n S)
+  => ExactAt-transport
+      (piGroupMap (suc n) {T} {B} S.proj) (piBoundaryGroup n S)
+      (piGroup-exact.counit (suc n) T) (\lam b => inP (b,idp))
+      (piGroup-exact.unit (suc n) B) (\lam b => inP (b,idp)) (\lam p => p)
+      (piGroup-exact.unit n F) (\lam p => p)
+      (\lam _ => idp) (\lam _ => idp)
+      (seq-exact-base S (suc n))
+
+\lemma piGroup-exact-fiber.{u} (n : Nat) {F T B : Pointed.{u}} (S : FiberSequence F T B)
+  : ExactAt (piBoundaryGroup n S) (piGroupMap n {F} {T} S.incl)
+  => ExactAt-transport
+      (piBoundaryGroup n S) (piGroupMap n {F} {T} S.incl)
+      (piGroup-exact.counit (suc n) B) (\lam b => inP (b,idp))
+      (piGroup-exact.unit n F) (\lam b => inP (b,idp)) (\lam p => p)
+      (piGroup-exact.unit n T) (\lam p => p)
+      (\lam _ => idp) (\lam _ => idp)
+      (seq-exact-fiber S (suc n))
+
 \lemma piGroup-exact.{u} (n : Nat) {A B C : Pointed.{u}} (g1 : A ->* B) (g2 : B ->* C)
                          (e : ExactAt (piHom.{u} (suc n) {A} {B} g1) (piHom.{u} (suc n) {B} {C} g2))
   : ExactAt (piGroupMap n {A} {B} g1) (piGroupMap n {B} {C} g2)

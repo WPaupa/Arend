@@ -256,6 +256,14 @@
     \func right.{u} (n : Nat) (X : Pointed.{u}) (c : Omega^ (suc n) X)
       : (omegaShift n X).1 ((omegaShiftInv n X).1 c) = c
       => Retraction.f_sec {PointedEquiv.toHAEquiv (omegaShiftEquiv n X)} c
+
+    \func concat.{u} (n : Nat) (X : Pointed.{u}) (u v : Omega^ (suc (suc n)) X)
+      : (omegaShiftInv (suc n) X).1 (u *> v)
+        = (omegaShiftInv (suc n) X).1 u *> (omegaShiftInv (suc n) X).1 v
+      => IsEquiv.isInj (omegaShift.isEquiv (suc n) X)
+          (right (suc n) X (u *> v)
+           *> inv (Loop-Func_*> (omegaShift n X) _ _
+                   *> pmap2 (*>) (right (suc n) X u) (right (suc n) X v)))
   }
 
 \func omegaSphere.{u} (n : Nat) (X : Pointed.{u}) : (Sphere.pointed n ->* X) = Omega^ n X

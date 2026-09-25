@@ -147,6 +147,27 @@
             | right => tinr (g x) (coe2 (\lam i => F (pglue x i)) j w right)
           }
 
+        -- | {tinl} and {tinr} do not depend on the interval parameter of {TotalPushout}.
+        \func tinl-coe (y : B) (t : F (pinl y))
+          : coe TotalPushout (tinl y t) right = tinl y t
+          => pathOver.conv (path (\lam i => tinl {A} {B} {C} {f} {g} {F} {i} y t))
+
+        \func tinr-coe (z : C) (t : F (pinr z))
+          : coe TotalPushout (tinr z t) right = tinr z t
+          => pathOver.conv (path (\lam i => tinr {A} {B} {C} {f} {g} {F} {i} z t))
+
+        \func pinl-comp (y : B) (t : F (pinl y))
+          : transport (\lam T => T) (flattening F) (pinl (y, t))
+            = ((pinl y, t) : \Sigma (w : PushoutData f g) (F w))
+          => transport_*> (\lam T => T) _ _ _ *> transport_*> (\lam T => T) _ _ _
+             *> pmap totalPushoutRight.LR (tinl-coe y t)
+
+        \func pinr-comp (z : C) (t : F (pinr z))
+          : transport (\lam T => T) (flattening F) (pinr (z, t))
+            = ((pinr z, t) : \Sigma (w : PushoutData f g) (F w))
+          => transport_*> (\lam T => T) _ _ _ *> transport_*> (\lam T => T) _ _ _
+             *> pmap totalPushoutRight.LR (tinr-coe z t)
+
         \func totalPushoutLeft : QEquiv {total} {TotalPushout left} \cowith
           | f => LR
           | ret => RL
