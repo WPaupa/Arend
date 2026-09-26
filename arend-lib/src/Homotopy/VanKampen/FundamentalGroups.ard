@@ -1,0 +1,16 @@
+-- | Fundamental groups computed with the van Kampen theorem.
+
+\import Algebra.Group
+\import Algebra.Group.Pushout
+\import Homotopy.Connected
+\import Homotopy.HomotopyGroup
+\import Homotopy.HomotopyGroup.FundamentalGroupoid
+\import Homotopy.Pointed
+\import Homotopy.Pushout
+\import Homotopy.VanKampen.Group
+\import Homotopy.Wedge
+
+\func PiGroup_Wedge.{u} (B C : Pointed.{u})
+  : GroupPushout (map0Hom (\lam (_ : \Sigma) => base {B}) ()) (map0Hom (\lam (_ : \Sigma) => base {C}) ())
+    = {Group.{u}} PiGroup 0 (Pointed.make (pinl {\Sigma} {B} {C} {\lam _ => base} {\lam _ => base} base))
+  => PiGroup_Pushout {UnitConnected0} (\lam _ => base) (\lam _ => base) ()
