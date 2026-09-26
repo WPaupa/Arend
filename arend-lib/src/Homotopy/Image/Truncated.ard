@@ -49,7 +49,7 @@
       | ret_f _ => prop _ _
       | f_sec _ => prop-pi
       \where
-        \func prop.{u} {X : \Type u} : isProp (Trunc_-1+ 0 X) => ToProp.fromProp (isTruncated {Trunc_-1+.level 0 X})
+        \lemma prop.{u} {X : \Type u} : isProp (Trunc_-1+ 0 X) => ToProp.fromProp (isTruncated {Trunc_-1+.level 0 X})
 
 -- # Orthogonality
 

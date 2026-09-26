@@ -58,7 +58,7 @@
 
     \func codesRec {L : Group} (a : GroupHom (Aut (f a0)) L) (b : GroupHom (Aut (g a0)) L) (e : \Pi (x : a0 =0 a0) -> a (map0 f x) = b (map0 g x))
       : GroupHom (CodeGroup V (inl (f a0))) L \cowith
-      | func (c : V.Code (inl (f a0)) (inl (f a0))) : L \with {
+      | func (_ : V.Code (inl (f a0)) (inl (f a0))) : L \with {
         | in~ w => psiB w
         | ~-equiv _ _ r => psiB-rel r
       }
