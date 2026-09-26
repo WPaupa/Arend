@@ -235,6 +235,16 @@
       }
       | f_sec _ => idp
 
+    \lemma in0-isEquiv {A : \Type} (p : isSet A) : IsEquiv (in0 {A})
+      => inP \new QEquiv {
+        | ret => remove p
+        | ret_f a => \peval remove p (in0 a)
+        | f_sec => in0-remove p
+      }
+      \where
+        \lemma in0-remove {A : \Type} (p : isSet A) (t : Trunc0 A) : in0 (remove p t) = t \elim t
+          | in0 a => pmap in0 (\peval remove p (in0 a))
+
     \func productEquiv {A B : \Type} : QEquiv {Trunc0 (\Sigma A B)} {\Sigma (Trunc0 A) (Trunc0 B)} \cowith
       | f t => (map t (\lam p => p.1), map t (\lam p => p.2))
       | ret p => pair p.1 p.2

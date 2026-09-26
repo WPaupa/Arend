@@ -31,7 +31,7 @@
 \lemma nconnected-piMap-isEquiv.{u} {n k : Nat} {X Y : Pointed.{u}} (f : X ->* Y)
                                     (c : isNConnectedMap n f.1) (h : k NatOrder.< n)
   : IsEquiv (piMap k f) \elim n, k, h
-  | suc n, 0, _ => pi0-isEquiv f c
+  | suc n, 0, _ => pi0-isEquiv f.1 c
   | n, suc k, h => inP (QEquiv.fromInjSurj
       (exact-middle-injective
         (piGroup-exact k {PointedFib f} {X} {Y} (fibProj f) f (pi-exact-total f (suc k)))
@@ -39,18 +39,18 @@
       (exact-middle-surjective (pi-exact-base f k)
                                (pi-vanishes-below (nconnected-fiber f c) (<-transitive id<suc h))))
   \where {
-    \func pi0-isEquiv.{u} {n : Nat} {X Y : Pointed.{u}} (f : X ->* Y)
-                          (c : isNConnectedMap (suc n) f.1) : IsEquiv (piMap 0 f)
+    \func pi0-isEquiv.{u} {n : Nat} {A B : \Type u} (f : A -> B)
+                          (c : isNConnectedMap (suc n) f) : IsEquiv (\lam (t : Trunc0 A) => Trunc0.map t f)
       => transport IsEquiv (ext (trunc0-square f))
           (IsEquiv.trans
             (IsEquiv.trans (inP (symQEquiv pi-vanishes-below.trunc1-Trunc0-equiv))
-                           (nconnected-map=>trunc-equiv f.1 (nconnected-map-mono (suc<=suc zero<=_) c)))
+                           (nconnected-map=>trunc-equiv f (nconnected-map-mono (suc<=suc zero<=_) c)))
             (inP pi-vanishes-below.trunc1-Trunc0-equiv))
 
-    \func trunc0-square.{u} {X Y : Pointed.{u}} (f : X ->* Y) (t : Trunc0 X)
+    \func trunc0-square.{u} {A B : \Type u} (f : A -> B) (t : Trunc0 A)
       : pi-vanishes-below.trunc1-Trunc0-equiv
-          (TruncMap 1 f.1 (QEquiv.ret {pi-vanishes-below.trunc1-Trunc0-equiv} t)) = Trunc0.map t f.1 \elim t
-      | in0 a => pmap (\lam z => pi-vanishes-below.trunc1-Trunc0-equiv (TruncMap 1 f.1 z)) Trunc0.rec-eval
+          (TruncMap 1 f (QEquiv.ret {pi-vanishes-below.trunc1-Trunc0-equiv} t)) = Trunc0.map t f \elim t
+      | in0 a => pmap (\lam z => pi-vanishes-below.trunc1-Trunc0-equiv (TruncMap 1 f z)) Trunc0.rec-eval
   }
 
 \lemma nconnected-piGroup-iso.{u} {n k : Nat} {X Y : Pointed.{u}} (f : X ->* Y)
