@@ -5,9 +5,12 @@
 \import Homotopy.HomotopyGroup.FundamentalGroupoid
 \import Homotopy.Pushout
 \import Logic
+\import Logic.Unique
 \import Paths
+\import Paths.Meta
 \import Relation.Equivalence
 \import Set
+\import Set.Hedberg
 \open PushoutData (ppglue)
 
 \func Start.{u} {B C : \Type u} (x y : Or B C) : \Set u \elim x, y
@@ -49,6 +52,49 @@
     | inl b => toB (s : S) (Raw x (inr (g (k s)))) (f (k s) =0 b)
     | inr c => segC (Start x (inr c))
     | inr c => toC (s : S) (Raw x (inl (f (k s)))) (g (k s) =0 c)
+
+  \lemma Raw-isSet (Sset : isSet S) {x y : Or B C} : isSet (Raw x y)
+    => Set-lemma RawEq (\lam {w} => RawEq-refl Sset w) (\lam {w} {w'} => RawEq-eq Sset w w')
+    \where {
+      \func RawEq {x y : Or B C} (w w' : Raw x y) : \Prop \elim y, w, w'
+        | inl b, segB st, segB st' => st = st'
+        | inl b, toB s w p, toB s' w' p' => \Sigma (TruncP (s = s'))
+            (\Pi (e : s = s') -> \Sigma (RawEq w (transport (\lam t => Raw x (inr (g (k t)))) (inv e) w'))
+                                        (p = transport (\lam t => f (k t) =0 b) (inv e) p'))
+        | inr c, segC st, segC st' => st = st'
+        | inr c, toC s w q, toC s' w' q' => \Sigma (TruncP (s = s'))
+            (\Pi (e : s = s') -> \Sigma (RawEq w (transport (\lam t => Raw x (inl (f (k t)))) (inv e) w'))
+                                        (q = transport (\lam t => g (k t) =0 c) (inv e) q'))
+        | inl _, segB _, toB _ _ _ => Empty
+        | inl _, toB _ _ _, segB _ => Empty
+        | inr _, segC _, toC _ _ _ => Empty
+        | inr _, toC _ _ _, segC _ => Empty
+
+      \lemma RawEq-refl (Sset : isSet S) {x y : Or B C} (w : Raw x y) : RawEq w w \elim y, w
+        | inl b, segB st => idp
+        | inl b, toB s w p => (inP idp, \lam e => rewrite (Sset s s e idp) (RawEq-refl Sset w, idp))
+        | inr c, segC st => idp
+        | inr c, toC s w q => (inP idp, \lam e => rewrite (Sset s s e idp) (RawEq-refl Sset w, idp))
+
+      \func RawEq-eq (Sset : isSet S) {x y : Or B C} (w w' : Raw x y) (r : RawEq w w') : w = w' \elim y, w, w', r
+        | inl b, segB st, segB st', r => pmap segB r
+        | inl b, toB s w p, toB s' w' p', (t, h) =>
+          \let e => TruncP.remove (Sset s s') t
+          \in cross {_} {\lam t => Raw x (inr (g (k t)))} {\lam t => f (k t) =0 b} (\lam t w0 p0 => toB t w0 p0) e (RawEq-eq Sset w _ (h e).1) (h e).2
+        | inr c, segC st, segC st', r => pmap segC r
+        | inr c, toC s w q, toC s' w' q', (t, h) =>
+          \let e => TruncP.remove (Sset s s') t
+          \in cross {_} {\lam t => Raw x (inl (f (k t)))} {\lam t => g (k t) =0 c} (\lam t w0 q0 => toC t w0 q0) e (RawEq-eq Sset w _ (h e).1) (h e).2
+        | inl _, segB _, toB _ _ _, r => \case r \with {}
+        | inl _, toB _ _ _, segB _, r => \case r \with {}
+        | inr _, segC _, toC _ _ _, r => \case r \with {}
+        | inr _, toC _ _ _, segC _, r => \case r \with {}
+
+      \func cross {Y : S -> \Type} {Z : S -> \Type} {W : \Type} (h : \Pi (s : S) -> Y s -> Z s -> W) {s s' : S} (e : s = s')
+                  {w : Y s} {w' : Y s'} {p : Z s} {p' : Z s'} (ew : w = transport Y (inv e) w') (ep : p = transport Z (inv e) p')
+        : h s w p = h s' w' p' \elim e
+        | idp => pmap2 (h s) ew ep
+    }
 
   \func appendB {x : Or B C} {b b' : B} (w : Raw x (inl b)) (p : b =0 b') : Raw x (inl b') \elim w
     | segB st => segB (startB st p)

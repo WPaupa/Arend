@@ -22,6 +22,7 @@
 \import Homotopy.VanKampen.Words
 \import Logic
 \import Paths
+\import Paths.Meta
 \import Relation.Equivalence
 \import Set
 \open VKSpan.Raw
@@ -156,6 +157,70 @@
         | in0 _ => pmap in0 (pmap (__ *> _) (idp_*> _) *> *>-assoc _ _ _)
       })
 
+    \func hom-equiv : QEquiv hom
+      => transQEquiv codesEquiv (IsEquiv.toQEquiv (evalQ-isEquiv {V} {inl (f a0)} {inl (f a0)}))
+
     \func iso : Iso {GroupCat} hom
-      => GroupCat.isoOfEquiv hom (transQEquiv codesEquiv (IsEquiv.toQEquiv (evalQ-isEquiv {V} {inl (f a0)} {inl (f a0)})))
+      => GroupCat.isoOfEquiv hom hom-equiv
+  }
+
+\lemma piGroupMap_map0Hom.{u} {X Y : \Type u} (h : X -> Y) (x0 : X) : piGroupMap 0 {Pointed.make x0} {Pointed.make (h x0)} (h, idp) = map0Hom h x0
+  => exts \lam t => \case \elim t \with { | in0 p => pmap in0 (idp_*> _) }
+
+\func pushoutPointing {A B C : \Type} {f : A -> B} {g : A -> C} {a0 : A} {b0 : B} {c0 : C} (f0 : f a0 = b0) (g0 : g a0 = c0)
+  : pinr {A} {B} {C} {f} {g} c0 = pinl b0
+  => pmap pinr (inv g0) *> inv (PushoutData.ppglue a0) *> pmap pinl f0
+
+\lemma pushoutPointing-agree.{u} {A B C : \Type u} {f : A -> B} {g : A -> C} {a0 : A} {b0 : B} {c0 : C} (f0 : f a0 = b0) (g0 : g a0 = c0)
+                                 (t : PiGroup 0 (Pointed.make a0))
+  : piGroupMap 0 {Pointed.make b0} {Pointed.make (pinl {A} {B} {C} {f} {g} b0)} (pinl, idp) (piGroupMap 0 {Pointed.make a0} {Pointed.make b0} (f, f0) t)
+    = piGroupMap 0 {Pointed.make c0} {Pointed.make (pinl {A} {B} {C} {f} {g} b0)} (pinr, pushoutPointing f0 g0) (piGroupMap 0 {Pointed.make a0} {Pointed.make c0} (g, g0) t)
+    \elim b0, c0, f0, g0, t
+  | _, _, idp, idp, in0 a => pmap in0 (idp_*> _ *> pmap (pmap pinl) (idp_*> _) *> glue-nat a
+      *> inv (pmap2 (\lam u v => inv u *> pmap pinr v *> u) (idp_*> _) (idp_*> _) *> pmap (__ *> _) (inv_inv _)))
+  \where
+    \func glue-nat {a a' : A} (p : a = a')
+      : pmap (\lam x => pinl {A} {B} {C} {f} {g} (f x)) p = PushoutData.ppglue a *> pmap (\lam x => pinr (g x)) p *> inv (PushoutData.ppglue a') \elim p
+      | idp => inv (pmap (_ *>) (idp_*> _) *> *>_inv _)
+
+-- | Theorem 8.7.5 for pointed maps, preserving both inclusions.
+\func PiGroup_PushoutPointed.{u} {A : Connected0.{u}} {B C : \Type u} (f : A -> B) (g : A -> C) (a0 : A) {b0 : B} {c0 : C} (f0 : f a0 = b0) (g0 : g a0 = c0)
+  : Iso {GroupCat.{u}} (groupPushoutRec {_} {_} {_} {_} {piGroupMap 0 {Pointed.make a0} {Pointed.make b0} (f, f0)} {piGroupMap 0 {Pointed.make a0} {Pointed.make c0} (g, g0)}
+                                        (inclLeft f g b0) (inclRight f0 g0) (pushoutPointing-agree f0 g0)) \elim f0, g0
+  | idp, idp =>
+    \let | gl => inclLeft f g (f a0)
+         | gr => inclRight {A} {B} {C} {f} {g} {a0} idp idp
+    \in subst {Aut a0} {Aut (f a0)} {Aut (g a0)} {PiGroup 0 (Pointed.make (pinl {A} {B} {C} {f} {g} (f a0)))} {gl} {gr}
+          (\lam phi psi e => Iso {GroupCat.{u}} (groupPushoutRec {_} {_} {_} {_} {phi} {psi} gl gr e))
+          {_} {map0Hom f a0} {_} {map0Hom g a0} (piGroupMap_map0Hom f a0) (piGroupMap_map0Hom g a0)
+          (transport (\lam h => Iso {GroupCat.{u}} h) (canonical-hom _) (PiGroup_Pushout.iso {A} {B} {C} {f} {g} {a0}))
+  \where {
+    \func inclLeft (f : A -> B) (g : A -> C) (b0 : B) : GroupHom (PiGroup 0 (Pointed.make b0)) (PiGroup 0 (Pointed.make (pinl {A} {B} {C} {f} {g} b0)))
+      => piGroupMap 0 {Pointed.make b0} {Pointed.make (pinl {A} {B} {C} {f} {g} b0)} (pinl, idp)
+
+    \func inclRight {f : A -> B} {g : A -> C} {a0 : A} {b0 : B} {c0 : C} (f0 : f a0 = b0) (g0 : g a0 = c0)
+      : GroupHom (PiGroup 0 (Pointed.make c0)) (PiGroup 0 (Pointed.make (pinl {A} {B} {C} {f} {g} b0)))
+      => piGroupMap 0 {Pointed.make c0} {Pointed.make (pinl {A} {B} {C} {f} {g} b0)} (pinr, pushoutPointing f0 g0)
+
+    \lemma canonical-hom (e : \Pi (x : a0 =0 a0) -> inclLeft f g (f a0) (map0Hom f a0 x) = inclRight {A} {B} {C} {f} {g} {a0} idp idp (map0Hom g a0 x))
+      : PiGroup_Pushout.hom {A} {B} {C} {f} {g} {a0} = groupPushoutRec {_} {_} {_} {_} {map0Hom f a0} {map0Hom g a0} (inclLeft f g (f a0)) (inclRight idp idp) e
+      => groupPushout-unique {_} {_} {_} {_} {map0Hom f a0} {map0Hom g a0} {PiGroup_Pushout.hom {A} {B} {C} {f} {g} {a0}}
+                             {groupPushoutRec {_} {_} {_} {_} {map0Hom f a0} {map0Hom g a0} (inclLeft f g (f a0)) (inclRight idp idp) e}
+          (\lam h => PiGroup_Pushout.hom-left {A} {B} {C} {f} {g} {a0} h *> left-eq h
+                       *> inv (groupPushoutRec-left {_} {_} {_} {_} {map0Hom f a0} {map0Hom g a0} (inclLeft f g (f a0)) (inclRight idp idp) e h))
+          (\lam q => PiGroup_Pushout.hom-right {A} {B} {C} {f} {g} {a0} q *> right-eq q *> inv (groupPushoutRec-right {_} {_} {_} {_} {map0Hom f a0} {map0Hom g a0} (inclLeft f g (f a0)) (inclRight idp idp) e q))
+
+    \lemma left-eq (h : f a0 =0 f a0) : map0 (pinl {A} {B} {C} {f} {g}) h = inclLeft f g (f a0) h \elim h
+      | in0 p => pmap in0 (inv (idp_*> _))
+
+    \lemma right-eq (q : g a0 =0 g a0)
+      : in0 (PushoutData.ppglue a0) *>0 map0 pinr q *>0 in0 (inv (PushoutData.ppglue a0)) = inclRight {A} {B} {C} {f} {g} {a0} idp idp q \elim q
+      | in0 q => pmap in0 (pmap2 (\lam u v => u *> pmap pinr q *> v) (inv (inv_inv _) *> pmap inv (inv (idp_*> _))) (inv (idp_*> _)))
+
+    \func subst {G H K L : Group} {a : GroupHom H L} {b : GroupHom K L}
+                (P : \Pi (phi : GroupHom G H) (psi : GroupHom G K) -> (\Pi (x : G) -> a (phi x) = b (psi x)) -> \Type)
+                {phi phi' : GroupHom G H} {psi psi' : GroupHom G K} (pe : phi = phi') (qe : psi = psi') {e : \Pi (x : G) -> a (phi x) = b (psi x)}
+                (i : P phi' psi' (transport2 (\lam (p : GroupHom G H) (q : GroupHom G K) => \Pi (x : G) -> a (p x) = b (q x)) pe qe e))
+      : P phi psi e \elim pe, qe
+      | idp, idp => i
   }

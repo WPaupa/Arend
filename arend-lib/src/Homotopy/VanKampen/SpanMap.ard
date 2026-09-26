@@ -1,11 +1,16 @@
 -- | Naturality of van Kampen codes in the span.
 
 \import Data.Or
+\import Equiv
+\import Equiv.Path
 \import Homotopy.HomotopyGroup.FundamentalGroupoid
 \import Homotopy.Pushout
+\import Homotopy.VanKampen.Code
+\import Homotopy.VanKampen.Groupoid
 \import Homotopy.VanKampen.Words
 \import Logic
 \import Paths
+\import Paths.Meta
 \import Relation.Equivalence
 \import Set
 \open PushoutData (ppglue)
@@ -198,4 +203,19 @@
           : inv (pmap j G) *> inv gl *> pmap i F = inv ((pmap i (inv F) *> gl) *> pmap j G) \elim F, G
           | idp, idp => idp_*> (inv gl) *> inv (pmap inv (idp_*> gl))
       }
+  }
+
+-- | Codes are invariant under equivalences of spans.
+\lemma mapQ-isEquiv.{u} {V V' : VKCover.{u}} (M : VKSpanMap V V') (eA : IsEquiv M.mapA) (eB : IsEquiv M.mapB) (eC : IsEquiv M.mapC)
+                        {x y : Or V.B V.C} : IsEquiv (M.mapQ {x} {y})
+  => IsEquiv.leftFactor (evalQ-isEquiv {V'}) (transportInv IsEquiv (ext M.mapQ-evalQ) (IsEquiv.trans (evalQ-isEquiv {V}) (evalMap-isEquiv x y)))
+  \where {
+    \lemma pushoutMap-isEquiv : IsEquiv M.pushoutMap
+      => PushoutData.congr.isEquiv V.f V.g V'.f V'.g (IsEquiv.toQEquiv eA) (IsEquiv.toQEquiv eB) (IsEquiv.toQEquiv eC) M.map-f M.map-g
+
+    \lemma evalMap-isEquiv (x y : Or V.B V.C) : IsEquiv (M.evalMap {x} {y}) \elim x, y
+      | inl _, inl _ => Trunc0.map-isEquiv (pmapIsEquiv pushoutMap-isEquiv)
+      | inl _, inr _ => Trunc0.map-isEquiv (pmapIsEquiv pushoutMap-isEquiv)
+      | inr _, inl _ => Trunc0.map-isEquiv (pmapIsEquiv pushoutMap-isEquiv)
+      | inr _, inr _ => Trunc0.map-isEquiv (pmapIsEquiv pushoutMap-isEquiv)
   }

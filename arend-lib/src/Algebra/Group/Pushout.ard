@@ -4,12 +4,15 @@
 
 \import Algebra.Group
 \import Algebra.Group.Free
+\import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
 \import Algebra.Group.QuotientProperties
 \import Algebra.Group.SubGroup
 \import Algebra.Meta
 \import Algebra.Monoid
 \import Algebra.Pointed
+\import Algebra.Pointed.PointedHom
+\import Category
 \import Data.Bool
 \import Data.List
 \import Data.Or
@@ -122,3 +125,43 @@
   | ret t => groupPushoutRec t.1 t.2 t.3
   | ret_f _ => groupPushout-unique (\lam _ => ide-right) (\lam _ => ide-right)
   | f_sec _ => ext (exts \lam _ => ide-right, exts \lam _ => ide-right)
+
+\func imageClosure {G H : Group} (phi : GroupHom G H) : NormalSubGroup H
+  => normalClosure (Image phi)
+  \where
+    \func Image {G H : Group} (phi : GroupHom G H) (h : H) : \Prop
+      => TruncP (\Sigma (g : G) (phi g = h))
+
+-- | Amalgamating with a trivial group is the quotient by the normal closure of the image.
+\func GroupPushout_trivial.{u} {G H K : Group.{u}} (phi : GroupHom G H) (psi : GroupHom G K) (triv : \Pi (k : K) -> k = ide)
+  : GroupPushout phi psi = {Group.{u}} H // imageClosure phi
+  => Cat.isotoid (GroupCat.isoOfEquiv to equiv)
+  \where {
+    \func trivialHom : GroupHom K (H // imageClosure phi) \cowith
+      | func _ => ide {H // imageClosure phi}
+      | func-* => inv ide-left
+
+    \lemma image-trivial (g : G) : NormalSubGroup.quotHom {imageClosure phi} (phi g) = ide {H // imageClosure phi}
+      => ~-pequiv (transportInv (imageClosure phi) ide-right
+                    (NormalSubGroup.contains_inverse {imageClosure phi} (normalClosure.gen (imageClosure.Image phi) (inP (g, idp)))))
+
+    \func to : GroupHom (GroupPushout phi psi) (H // imageClosure phi)
+      => groupPushoutRec NormalSubGroup.quotHom trivialHom image-trivial
+
+    \func from : GroupHom (H // imageClosure phi) (GroupPushout phi psi)
+      => normalClosure.lift {_} {_} {imageClosure.Image phi} groupPushoutLeft (\case __ \with {
+        | inP (g, p) => pmap groupPushoutLeft (inv p) *> groupPushout-agree g *> pmap groupPushoutRight (triv (psi g))
+                          *> func-ide {groupPushoutRight {_} {_} {_} {phi} {psi}}
+      })
+
+    \func equiv : QEquiv to \cowith
+      | ret => from
+      | ret_f x => pmap (\lam (m : GroupHom (GroupPushout phi psi) (GroupPushout phi psi)) => m x)
+          (groupPushout-unique {_} {_} {_} {_} {phi} {psi} {from GroupHom.∘ to} {GroupHom.id}
+            (\lam h => pmap from (groupPushoutRec-left {_} {_} {_} {_} {phi} {psi} _ trivialHom image-trivial h))
+            (\lam k => pmap from (groupPushoutRec-right {_} {_} {_} {_} {phi} {psi} _ trivialHom image-trivial k) *> func-ide {from}
+                         *> inv (func-ide {groupPushoutRight {_} {_} {_} {phi} {psi}}) *> pmap groupPushoutRight (inv (triv k))))
+      | f_sec y => \case \elim y \with {
+        | in~ h => groupPushoutRec-left {_} {_} {_} {_} {phi} {psi} _ trivialHom image-trivial h
+      }
+  }
