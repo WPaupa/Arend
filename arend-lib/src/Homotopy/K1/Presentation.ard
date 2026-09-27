@@ -24,6 +24,7 @@
 \import Homotopy.HomotopyGroup.Connectivity
 \import Homotopy.HomotopyGroup.FundamentalGroupoid
 \import Homotopy.K1
+\import Homotopy.K1.Basic
 \import Homotopy.Pointed \hiding (map, base)
 \import Homotopy.Pushout
 \import Homotopy.Space
@@ -262,9 +263,6 @@
 \func KG1-to-K1.{u} {G : Group.{u}} (x : KG1 G) : K1 G
   => Trunc_-1+.elim (\lam _ => \new Truncated_-1+ 2 (K1 G) K1-level) complexMap x
   \where {
-    \func K1-level : K1 G ofHLevel_-1+ 2
-      => \lam _ _ _ _ => toProp (\lam _ _ => prop-pi)
-
     \func bouquetMap (z : Bouquet G) : K1 G
       => Susp.rec base base (\lam (a : Or G (\Sigma)) => \case a \with {
         | inl g => path (loop g)

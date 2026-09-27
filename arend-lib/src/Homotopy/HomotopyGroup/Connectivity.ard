@@ -54,6 +54,13 @@
       => Contr.Contr_QEquiv trunc1-Trunc0-equiv (propExt.dir (nconnected-iff-trunc-contr 1 X) c)
   }
 
+\lemma pi-vanishes-above.{u} {n k : Nat} {X : Pointed.{u}} (h : X ofHLevel_-1+ n) (p : n <= k) : Contr (pi k X)
+  => Trunc0.contr (isProp=>isContr (ToProp.fromProp (omega-level k 0 (HLevel_-1_<= n k p h))) base)
+  \where
+    \lemma omega-level.{u} (k m : Nat) {X : Pointed.{u}} (h : X ofHLevel_-1+ k Nat.+ m) : Omega^ k X ofHLevel_-1+ m \elim k
+      | 0 => h
+      | suc k => omega-level k (suc m) h base base
+
 -- | The HoTT book, Corollary 8.3.3: ``pi k (S^n)`` vanishes for ``k < n``.
 \lemma sphere-pi-vanishes.{u} {k n : Nat} (p : k NatOrder.< n) : Contr (pi k (Sphere.pointed n))
   => pi-vanishes-below (sphere-nconnected.{u} n) p

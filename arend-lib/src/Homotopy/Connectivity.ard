@@ -6,6 +6,7 @@
 \import Equiv
 \import Equiv.Path
 \import Equiv.Sigma
+\import Homotopy.Connected
 \import Homotopy.Fibration
 \import Homotopy.HLevel
 \import Arith.Nat
@@ -152,3 +153,28 @@
 \lemma sphere-nconnected.{u} (n : Nat) : isNConnectedType.{u} n (Sphere n) \elim n
   | 0 => sphere0-nconnected
   | suc n => susp-nconnected (sphere-nconnected n)
+
+\lemma connected0=>nconnected1.{u} (A : Connected0.{u}) : isNConnectedType 1 A
+  => \case A.isInh \with {
+    | inP a0 => propExt.conv (nconnected-iff-trunc-contr 1 A) (Contr.make (inT a0)
+        (Trunc_-1+.elim (\lam t => \new Truncated_-1+ 1 (inT a0 = t) (HLevel_-1_suc {_} {1} (isTruncated {Trunc_-1+.level 1 A}) _ t))
+                        (\lam x => TruncP.rec (ToProp.fromProp (isTruncated {Trunc_-1+.level 1 A} _ _)) (A.isConn0 a0 x) (pmap inT))))
+  }
+
+\lemma nconnected1-path.{u} {A : \Type u} (c : isNConnectedType 1 A) (a a' : A) : TruncP (a = a')
+  => Trunc_-1+.elim (\lam _ => \new Truncated_-1+ 0 (TruncP (a = a')) (toProp (\lam _ _ => prop-pi))) inP
+       (Trunc_-1+.equality {0} a a' (isContr=>isProp (propExt.dir (nconnected-iff-trunc-contr 1 A) c) (inT a) (inT a')))
+
+\lemma nconnected-trunc.{u} {k l : Nat} {A : \Type u} (p : k <= l) (c : isNConnectedType k A)
+  : isNConnectedType k (Trunc_-1+ l A)
+  => propExt.conv (nconnected-iff-trunc-contr k (Trunc_-1+ l A))
+      (Contr.Contr_QEquiv (IsEquiv.toQEquiv (nconnected-map=>trunc-equiv inT (nconnected-map-mono p trunc-in-nconnected)))
+                          (propExt.dir (nconnected-iff-trunc-contr k A) c))
+
+\lemma inT-isEquiv.{u} {n : Nat} {A : \Type u} (h : A ofHLevel_-1+ n) : IsEquiv (inT {n} {A})
+  => \let r => Trunc_-1+.elim (\lam _ => \new Truncated_-1+ n A h) (\lam a => a)
+     \in inP \new QEquiv {
+       | ret => r
+       | ret_f _ => idp
+       | f_sec => trunc-unique (Trunc_-1+.level n A) (\lam t => inT (r t)) (\lam t => t) (\lam _ => idp)
+     }
