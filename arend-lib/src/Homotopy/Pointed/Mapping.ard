@@ -1,0 +1,198 @@
+{- | Pointed mapping spaces and their loop spaces.
+
+ `Map X Z` is the type of functions `X -> Z` pointed by the constant map, and `Map* X Z` the type of pointed
+ maps pointed by `->*.zero`. Loops in either are computed pointwise: `mapLoop` and `mapLoop*` are pointed
+ equivalences `Map X (Loop Z) = Loop (Map X Z)` and `Map* X (Loop Z) = Loop (Map* X Z)`, whose inverses are
+ definitional. Concatenation of loops corresponds to `funPath.concat` and `pointwiseConcat`.
+ -}
+
+\import Equiv
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Logic
+\import Paths
+
+\open ->* (∘*)
+
+-- | Function extensionality as a named map.
+\func funPath {X Y : \Type} {f g : X -> Y} (h : \Pi (x : X) -> f x = g x) : f = g
+  => path (\lam i x => h x @ i)
+  \where {
+    \func concat {X Y : \Type} {f g l : X -> Y} (h : \Pi (x : X) -> f x = g x) (k : \Pi (x : X) -> g x = l x)
+      : funPath (\lam x => h x *> k x) = funPath h *> funPath k
+      => inv (path (\lam i => funPath (\lam x => pmap_*>-comm (\lam (F : X -> Y) => F x) (funPath h) (funPath k) @ i)))
+
+    \func inverse {X Y : \Type} {f g : X -> Y} (h : \Pi (x : X) -> f x = g x)
+      : funPath (\lam x => inv (h x)) = inv (funPath h)
+      => inv (path (\lam i => funPath (\lam x => pmap_inv-comm (\lam (F : X -> Y) => F x) (funPath h) @ i)))
+  }
+
+\func Map (X : \Type) (Z : Pointed) : Pointed
+  => Pointed.make {X -> Z} (\lam _ => base)
+  \where {
+    \func pre {X' X : \Type} (s : X' -> X) (Z : Pointed) : Map X Z ->* Map X' Z
+      => (\lam f x => f (s x), idp)
+
+    \func post (X : \Type) {Z Z' : Pointed} (g : Z ->* Z') : Map X Z ->* Map X Z'
+      => (\lam f x => g.1 (f x), funPath (\lam _ => g.2))
+
+    \func postEquiv (X : \Type) {Z Z' : Pointed} (e : PointedEquiv Z Z') : PointedEquiv (Map X Z) (Map X Z') \cowith
+      | map => post X e.map
+      | map-isEquiv => inP \new QEquiv {
+        | ret f x => Section.ret {PointedEquiv.toHAEquiv e} (f x)
+        | ret_f f => funPath \lam x => Section.ret_f {PointedEquiv.toHAEquiv e} (f x)
+        | f_sec f => funPath \lam x => Retraction.f_sec {PointedEquiv.toHAEquiv e} (f x)
+      }
+  }
+
+\func mapLoop (X : \Type) (Z : Pointed) : PointedEquiv (Map X (Loop Z)) (Loop (Map X Z)) \cowith
+  | map => (funPath, idp)
+  | map-isEquiv => inP \new QEquiv {
+    | ret a x => pmap (__ x) a
+    | ret_f _ => idp
+    | f_sec _ => idp
+  }
+  \where {
+    \func pre {X' X : \Type} (s : X' -> X) {Z : Pointed} (h : X -> Loop Z)
+      : funPath (\lam x => h (s x)) = (Loop-Func (Map.pre s Z)).1 (funPath h)
+      => inv (idp_*> _)
+
+    \func post {X : \Type} {Z Z' : Pointed} (g : Z ->* Z') (h : X -> Loop Z)
+      : funPath (\lam x => (Loop-Func g).1 (h x)) = (Loop-Func (Map.post X g)).1 (funPath h)
+      => funPath.concat (\lam _ => inv g.2) (\lam x => pmap g.1 (h x) *> g.2)
+         *> pmap2 (*>) (funPath.inverse (\lam _ => g.2)) (funPath.concat (\lam x => pmap g.1 (h x)) (\lam _ => g.2))
+  }
+
+\func Map* (X Z : Pointed) : Pointed
+  => Pointed.make {X ->* Z} (->*.zero X Z)
+  \where {
+    \func pre {X' X : Pointed} (s : X' ->* X) (Z : Pointed) : Map* X Z ->* Map* X' Z
+      => (\lam f => f ∘* s, idp)
+
+    \func post (X : Pointed) {Z Z' : Pointed} (g : Z ->* Z') : Map* X Z ->* Map* X Z'
+      => (\lam f => g ∘* f, path (\lam i => (\lam _ => g.2 @ i, idp_*>-over g.2 @ i)))
+
+    \func idp_*>-over {A : \Type} {a b : A} (p : a = b) : Path (\lam i => p @ i = b) (idp *> p) idp \elim p
+      | idp => idp
+
+    \func postEquiv (X : Pointed) {Z Z' : Pointed} (e : PointedEquiv Z Z') : PointedEquiv (Map* X Z) (Map* X Z') \cowith
+      | map => post X e.map
+      | map-isEquiv => inP \new QEquiv {
+        | ret f => (PointedEquiv.inverse e).map ∘* f
+        | ret_f f => ->*.compose-assoc (PointedEquiv.inverse e).map e.map f *> pmap (`∘* f) (PointedEquiv.inverse-ret e)
+        | f_sec f => ->*.compose-assoc e.map (PointedEquiv.inverse e).map f *> pmap (`∘* f) (PointedEquiv.inverse-sec e)
+      }
+  }
+
+\func pointwiseConcat {X W : Pointed} (h k : X ->* Loop W) : X ->* Loop W
+  => (\lam x => h.1 x *> k.1 x, pmap (h.1 base *>) k.2 *> h.2)
+
+\func pointwiseInv {X W : Pointed} (h : X ->* Loop W) : X ->* Loop W
+  => (\lam x => inv (h.1 x), pmap inv h.2)
+
+\func mapLoop* (X W : Pointed) : PointedEquiv (Map* X (Loop W)) (Loop (Map* X W)) \cowith
+  | map => (fromHom, idp)
+  | map-isEquiv => inP \new QEquiv {
+    | ret => toHom
+    | ret_f _ => idp
+    | f_sec _ => idp
+  }
+  \where {
+    \func fromHom {X W : Pointed} (h : X ->* Loop W) : Loop (Map* X W)
+      => path (\lam i => (\lam x => h.1 x @ i, path (\lam j => h.2 @ j @ i)))
+
+    \func toHom {X W : Pointed} (a : Loop (Map* X W)) : X ->* Loop W
+      => (->*.happly a, path (\lam j => path (\lam i => (a @ i).2 @ j)))
+
+    \func squareToPath {A : \Type} {a0 a1 b0 b1 : A} (p : a0 = a1) (q : b0 = b1) {t : a0 = b0} {b : a1 = b1}
+                       (s : Path (\lam j => p @ j = q @ j) t b) : t *> q = p *> b \elim p, q
+      | idp, idp => s *> inv (idp_*> b)
+
+    \func squareToPath-idp {A : \Type} {a0 a1 : A} (p : a0 = a1) : squareToPath p p (path (\lam j => idp {A} {p @ j})) = idp_*> p \elim p
+      | idp => idp
+
+    -- | The witness of `toHom` is the basepoint coherence `->*.happly-base`, read as a square.
+    \func toHom-witness {X W : Pointed} {f g : X ->* W} (a : f = g)
+      : squareToPath f.2 g.2 (path (\lam j => path (\lam i => (a @ i).2 @ j))) = ->*.happly-base a \elim a
+      | idp => squareToPath-idp f.2
+
+    \func happly-base_*> {X W : Pointed} {f g h : X ->* W} (a : f = g) (b : g = h)
+      : ->*.happly-base (a *> b)
+        = pmap (`*> h.2) (pmap_*>-comm (\lam (k : X ->* W) => k.1 base) a b) *> *>-assoc _ _ _
+          *> pmap (->*.happly a base *>) (->*.happly-base b) *> ->*.happly-base a \elim a, b
+      | idp, idp => lem f.2
+      \where
+        \func lem {A : \Type} {a w : A} (q : a = w) : idp_*> q = idp *> *>-assoc idp idp q *> pmap (idp *>) (idp_*> q) *> idp_*> q \elim q
+          | idp => idp
+
+    \func toHom-concat {X W : Pointed} (a b : Loop (Map* X W)) : toHom (a *> b) = pointwiseConcat (toHom a) (toHom b)
+      => ->*.ext (\lam x => pmap_*>-comm (\lam (k : X ->* W) => k.1 x) a b)
+                 (pmap (_ *>) (pmap2 (\lam u v => pmap (->*.happly a base *>) v *> u) (toHom-witness a) (toHom-witness b) *> inv (idp_*> _))
+                  *> inv (happly-base_*> a b) *> inv (toHom-witness (a *> b)))
+
+    \func fromHom-concat {X W : Pointed} (h k : X ->* Loop W) : fromHom (pointwiseConcat h k) = fromHom h *> fromHom k
+      => inv (pmap fromHom (toHom-concat (fromHom h) (fromHom k)))
+
+    \func fromHom-inv {X W : Pointed} (h : X ->* Loop W) : fromHom (pointwiseInv h) = inv (fromHom h)
+      => cancel (inv (fromHom-concat (pointwiseInv h) h)
+                 *> pmap fromHom (->*.ext {X} {Loop W} {pointwiseConcat (pointwiseInv h) h} { ->*.zero X (Loop W)} (\lam x => inv_*> (h.1 x)) (lem h.2)))
+      \where {
+        \func lem {A : \Type} {a : A} {p : a = a} (c : p = idp) : inv_*> p = pmap (inv p *>) c *> pmap inv c \elim c
+          | idp => idp
+
+        \func cancel {A : \Type} {a b : A} {p : a = b} {q : b = a} (e : p *> q = idp) : p = inv q \elim q
+          | idp => e
+      }
+
+    \func happly-base_pre {X' X W : Pointed} (s : X' ->* X) {f g : X ->* W} (a : f = g)
+      : ->*.happly-base (pmap (`∘* s) a) = preCoh s.2 (->*.happly a) (->*.happly-base a) \elim a
+      | idp => preCoh-idp s.2 f.1 f.2
+
+    \func preCoh {E W : \Type} {y x0 : E} (v : y = x0) {f1 g1 : E -> W} (H : \Pi (e : E) -> f1 e = g1 e)
+                 {w : W} {f2 : f1 x0 = w} {g2 : g1 x0 = w} (c : H x0 *> g2 = f2)
+      : H y *> pmap g1 v *> g2 = pmap f1 v *> f2 \elim v
+      | idp => pmap (H y *>) (idp_*> g2) *> c *> inv (idp_*> f2)
+
+    \func preCoh-idp {E W : \Type} {y x0 : E} (v : y = x0) (f1 : E -> W) {w : W} (f2 : f1 x0 = w)
+      : idp_*> (pmap f1 v *> f2) = preCoh v (\lam e => idp {W} {f1 e}) (idp_*> f2) \elim v, f2
+      | idp, idp => idp
+
+    \func preCoh-loop {E W : \Type} {y x0 : E} (v : y = x0) {w : W} (H : E -> w = w) (c : H x0 = idp)
+      : preCoh {E} {W} {y} {x0} v {\lam _ => w} {\lam _ => w} H {w} {idp} {idp} c = pmap H v *> c \elim v
+      | idp => idp
+
+    \func pre {X' X W : Pointed} (s : X' ->* X) (h : X ->* Loop W)
+      : fromHom (h ∘* s) = (Loop-Func (Map*.pre s W)).1 (fromHom h)
+      => pmap fromHom (inv (pmap (\lam c => ((\lam x => h.1 (s.1 x), c) : X' ->* Loop W))
+                              (toHom-witness (pmap (`∘* s) (fromHom h)) *> happly-base_pre s (fromHom h)
+                               *> pmap (preCoh s.2 h.1) (inv (toHom-witness (fromHom h))) *> preCoh-loop s.2 h.1 h.2)))
+         *> inv (idp_*> _)
+
+    \func happly-base_post {X W W' : Pointed} (g : W ->* W') {f f' : X ->* W} (a : f = f')
+      : ->*.happly-base (pmap (g ∘*) a)
+        = inv (*>-assoc _ _ _) *> pmap (`*> g.2) (inv (pmap_*>-comm g.1 _ _) *> pmap (pmap g.1) (->*.happly-base a)) \elim a
+      | idp => lem g.1 f.2 g.2
+      \where
+        \func lem {A B : \Type} (G : A -> B) {a w : A} (f2 : a = w) {e : B} (g2 : G w = e)
+          : idp_*> (pmap G f2 *> g2)
+            = inv (*>-assoc idp (pmap G f2) g2) *> pmap (`*> g2) (inv (pmap_*>-comm G idp f2) *> pmap (pmap G) (idp_*> f2)) \elim f2, g2
+          | idp, idp => idp
+
+    \func post {X W W' : Pointed} (g : W ->* W') (h : X ->* Loop W)
+      : fromHom (Loop-Func g ∘* h) = (Loop-Func (Map*.post X g)).1 (fromHom h)
+      => aux g.1 g.2 h
+      \where {
+        \func aux {X W : Pointed} {E : \Type} (g : W -> E) {e : E} (g0 : g base = e) (h : X ->* Loop W)
+          : fromHom (Loop-Func {W} {Pointed.make e} (g, g0) ∘* h) = (Loop-Func (Map*.post X {W} {Pointed.make e} (g, g0))).1 (fromHom h) \elim g0
+          | idp => pmap fromHom (->*.ext {X} {Loop (Pointed.make (g base))} {Loop-Func {W} {Pointed.make (g base)} (g, idp) ∘* h}
+                                         {toHom (pmap ((g, idp) ∘*) (fromHom h))} (\lam x => idp_*> (pmap g (h.1 x)))
+                                         (pmap (_ *>) (toHom-witness (pmap ((g, idp) ∘*) (fromHom h)) *> happly-base_post (g, idp) (fromHom h)
+                                                       *> pmap (\lam c => idp *> idp *> pmap (pmap g) c) (inv (toHom-witness (fromHom h))))
+                                          *> lem g h.2))
+                   *> inv (idp_*> _)
+
+        \func lem {A B : \Type} (g : A -> B) {a : A} {p : a = a} (c : p = idp)
+          : idp_*> (pmap g p) *> idp *> idp *> pmap (pmap g) c = pmap (\lam z => idp *> pmap g z) c \elim c
+          | idp => idp
+      }
+  }

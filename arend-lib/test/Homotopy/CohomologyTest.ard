@@ -1,0 +1,57 @@
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Monoid
+\import Algebra.Pointed (zro)
+\import Homotopy.Cohomology.Coefficients
+\import Homotopy.Cohomology.Definition
+\import Homotopy.Cohomology.Functor
+\import Homotopy.Cohomology.Group
+\import Homotopy.EilenbergMacLane.Functor
+\import Homotopy.Pointed (->*, Pointed)
+\import Logic.Unique (isSet)
+\import Paths
+
+\open ->* (∘*)
+
+-- Classes commute with the operations, pullbacks and coefficient maps definitionally.
+
+\func classOf-zero.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}}
+  : CohomologyNat.classOf (Cocycle.zero {n} {X} {A}) = zro {CohomologyNat n X A}
+  => idp
+
+\func classOf-add.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f g : Cocycle n X A)
+  : CohomologyNat.classOf (Cocycle.add f g) = (AddMonoid.+ {CohomologyNat n X A}) (CohomologyNat.classOf f) (CohomologyNat.classOf g)
+  => idp
+
+\func classOf-neg.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A)
+  : CohomologyNat.classOf (Cocycle.neg f) = (AddGroup.negative {CohomologyNat n X A}) (CohomologyNat.classOf f)
+  => idp
+
+\func reduced-classOf-add.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f g : ReducedCocycle n X A)
+  : ReducedCohomologyNat.classOf (ReducedCocycle.add f g)
+    = (AddMonoid.+ {ReducedCohomologyNat n X A}) (ReducedCohomologyNat.classOf f) (ReducedCohomologyNat.classOf g)
+  => idp
+
+\func pullback-classOf.{u} {n : Nat} {X Y : \Type u} {A : AbGroup.{u}} (s : X -> Y) (g : Cocycle n Y A)
+  : pullback n s (CohomologyNat.classOf g) = CohomologyNat.classOf (\lam x => g (s x))
+  => idp
+
+\func reducedPullback-classOf.{u} {n : Nat} {X Y : Pointed.{u}} {A : AbGroup.{u}} (s : X ->* Y) (g : ReducedCocycle n Y A)
+  : reducedPullback n s (ReducedCohomologyNat.classOf g) = ReducedCohomologyNat.classOf (g ∘* s)
+  => idp
+
+\func mapCoefficients-classOf.{u} {n : Nat} {X : \Type u} {A B : AbGroup.{u}} (f : AddGroupHom A B) (g : Cocycle n X A)
+  : mapCoefficients n X f (CohomologyNat.classOf g) = CohomologyNat.classOf (\lam x => (KMap n (AddGroupHom.toGroupHom f)).1 (g x))
+  => idp
+
+\func reducedMapCoefficients-classOf.{u} {n : Nat} {X : Pointed.{u}} {A B : AbGroup.{u}} (f : AddGroupHom A B) (g : ReducedCocycle n X A)
+  : reducedMapCoefficients n X f (ReducedCohomologyNat.classOf g) = ReducedCohomologyNat.classOf (KMap n (AddGroupHom.toGroupHom f) ∘* g)
+  => idp
+
+-- The recursor eliminates into sets of any universe, and the groups accept inputs of a lower universe.
+
+\func rec-large {n : Nat} {X : \Type0} {A : AbGroup.{0}} {B : \Type1} (p : isSet B) (f : Cocycle n X A -> B) (c : CohomologyNat n X A) : B
+  => CohomologyNat.rec p f c
+
+\func mixed-levels (n : Nat) (X : \Type0) (A : AbGroup.{1}) : AbGroup.{1}
+  => CohomologyNat n X A

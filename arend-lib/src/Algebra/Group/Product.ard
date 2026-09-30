@@ -1,6 +1,9 @@
 \import Algebra.Group
+\import Algebra.Monoid
 \import Algebra.Monoid.Product
+\import Algebra.Pointed
 \import Paths
+\import Paths.Meta
 
 \instance ProductGroup (G H : Group) : Group
   | Monoid => ProductMonoid G H
@@ -21,3 +24,22 @@
 \instance ProductAbGroup (A B : AbGroup) : AbGroup
   | AddGroup => ProductAddGroup A B
   | AbMonoid => ProductAbMonoid A B
+
+\instance TrivialAbGroup : AbGroup (\Sigma)
+  | zro => ()
+  | + _ _ => ()
+  | zro-left => idp
+  | +-assoc => idp
+  | negative _ => ()
+  | negative-left => idp
+  | +-comm => idp
+
+-- | Functions into an abelian group, with pointwise operations.
+\instance FuncAbGroup (J : \Type) (A : AbGroup) : AbGroup (J -> A)
+  | zro _ => zro
+  | + f g j => f j + g j
+  | zro-left => ext \lam _ => zro-left
+  | +-assoc => ext \lam _ => +-assoc
+  | negative f j => negative (f j)
+  | negative-left => ext \lam _ => negative-left
+  | +-comm => ext \lam _ => +-comm

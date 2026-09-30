@@ -1,0 +1,98 @@
+{- | Cocycles for cohomology with coefficients in an abelian group.
+
+ Degrees are conventional: `K A n` has its only nontrivial homotopy group, `A`, in degree `n`. Coefficients are
+ `AbGroup`s, passed to `K` and `KMap` through `AbGroup.toCGroup`. A cocycle of degree `n` is a map into `K A n`,
+ a reduced cocycle a pointed map; both are added pointwise by `K-add`. The equivalences `toLoop` and
+ `toDoubleLoop` identify cocycles with loops in the mapping space into `K A (n + 1)` and with double loops in the
+ mapping space into `K A (n + 2)`, carrying the pointwise operations to concatenation and inversion of loops.
+ -}
+
+\import Algebra.Group
+\import Homotopy.EilenbergMacLane.Algebra
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Paths
+
+\open PointedEquiv (∘~)
+
+\func Cocycle.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : \Type u
+  => X -> K A n
+  \where {
+    \func zero.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} : Cocycle n X A
+      => \lam _ => base
+
+    \func add.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f g : Cocycle n X A) : Cocycle n X A
+      => \lam x => K-add n (f x) (g x)
+
+    \func neg.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A) : Cocycle n X A
+      => \lam x => K-neg n (f x)
+
+    \func toLoop.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : PointedEquiv (Map X (K A n)) (Loop (Map X (K A (suc n))))
+      => mapLoop X (K A (suc n)) ∘~ Map.postEquiv X (K-loopEquiv n)
+      \where {
+        \func add.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f g : Cocycle n X A)
+          : (toLoop n X A).map.1 (Cocycle.add f g) = (toLoop n X A).map.1 f *> (toLoop n X A).map.1 g
+          => pmap funPath (funPath \lam x => deloopAdd.map (K-loopEquiv n) (f x) (g x)) *> funPath.concat _ _
+
+        \func neg.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A)
+          : (toLoop n X A).map.1 (Cocycle.neg f) = inv ((toLoop n X A).map.1 f)
+          => pmap funPath (funPath \lam x => deloopNeg.map (K-loopEquiv n) (f x)) *> funPath.inverse _
+      }
+
+    \func toDoubleLoop.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u})
+      : PointedEquiv (Map X (K A n)) (Loop (Loop (Map X (K A (suc (suc n))))))
+      => loopEquiv (toLoop (suc n) X A) ∘~ toLoop n X A
+      \where {
+        \func add.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f g : Cocycle n X A)
+          : (toDoubleLoop n X A).map.1 (Cocycle.add f g) = (toDoubleLoop n X A).map.1 f *> (toDoubleLoop n X A).map.1 g
+          => pmap (Loop-Func (toLoop (suc n) X A).map).1 (toLoop.add f g) *> Loop-Func_*> (toLoop (suc n) X A).map _ _
+
+        \func neg.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A)
+          : (toDoubleLoop n X A).map.1 (Cocycle.neg f) = inv ((toDoubleLoop n X A).map.1 f)
+          => pmap (Loop-Func (toLoop (suc n) X A).map).1 (toLoop.neg f) *> Loop-Func_inv (toLoop (suc n) X A).map _
+      }
+  }
+
+\func ReducedCocycle.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : \Type u
+  => X ->* K A n
+  \where {
+    \func zero.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} : ReducedCocycle n X A
+      => ->*.zero X (K A n)
+
+    \func add.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f g : ReducedCocycle n X A) : ReducedCocycle n X A
+      => deloopAdd* (K-loopEquiv n) f g
+
+    \func neg.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : ReducedCocycle n X A) : ReducedCocycle n X A
+      => deloopNeg* (K-loopEquiv n) f
+
+    \func toLoop.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : PointedEquiv (Map* X (K A n)) (Loop (Map* X (K A (suc n))))
+      => mapLoop* X (K A (suc n)) ∘~ Map*.postEquiv X (K-loopEquiv n)
+      \where {
+        \func add.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f g : ReducedCocycle n X A)
+          : (toLoop n X A).map.1 (ReducedCocycle.add f g) = (toLoop n X A).map.1 f *> (toLoop n X A).map.1 g
+          => pmap mapLoop*.fromHom (deloopAdd*.post (K-loopEquiv n) f g)
+             *> mapLoop*.fromHom-concat {X} {K A (suc n)} (->*.compose {X} {K A n} {Loop (K A (suc n))} (K-loopUnit n) f)
+                                        (->*.compose {X} {K A n} {Loop (K A (suc n))} (K-loopUnit n) g)
+
+        \func neg.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : ReducedCocycle n X A)
+          : (toLoop n X A).map.1 (ReducedCocycle.neg f) = inv ((toLoop n X A).map.1 f)
+          => pmap mapLoop*.fromHom (deloopNeg*.post (K-loopEquiv n) f)
+             *> mapLoop*.fromHom-inv {X} {K A (suc n)} (->*.compose {X} {K A n} {Loop (K A (suc n))} (K-loopUnit n) f)
+      }
+
+    \func toDoubleLoop.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u})
+      : PointedEquiv (Map* X (K A n)) (Loop (Loop (Map* X (K A (suc (suc n))))))
+      => loopEquiv (toLoop (suc n) X A) ∘~ toLoop n X A
+      \where {
+        \func add.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f g : ReducedCocycle n X A)
+          : (toDoubleLoop n X A).map.1 (ReducedCocycle.add f g) = (toDoubleLoop n X A).map.1 f *> (toDoubleLoop n X A).map.1 g
+          => pmap (Loop-Func (toLoop (suc n) X A).map).1 (toLoop.add f g) *> Loop-Func_*> (toLoop (suc n) X A).map _ _
+
+        \func neg.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : ReducedCocycle n X A)
+          : (toDoubleLoop n X A).map.1 (ReducedCocycle.neg f) = inv ((toDoubleLoop n X A).map.1 f)
+          => pmap (Loop-Func (toLoop (suc n) X A).map).1 (toLoop.neg f) *> Loop-Func_inv (toLoop (suc n) X A).map _
+      }
+  }

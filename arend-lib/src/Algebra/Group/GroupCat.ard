@@ -131,4 +131,12 @@
       | Func f => f
       | Func-id => idp
       | Func-o => idp
+
+    \func isoOfEquiv.{u} {A B : AbGroup.{u}} (f : AddGroupHom A B) (e : QEquiv f) : Iso {AbGroupCat.{u}} f \cowith
+      | hinv => \new AddGroupHom {
+        | func => e.ret
+        | func-+ => e.isInj (e.f_ret _ *> inv (f.func-+ *> pmap2 (+) (e.f_ret _) (e.f_ret _)))
+      }
+      | hinv_f => exts e.ret_f
+      | f_hinv => exts e.f_ret
   }
