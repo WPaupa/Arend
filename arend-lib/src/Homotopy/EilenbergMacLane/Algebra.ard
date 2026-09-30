@@ -1,0 +1,158 @@
+{- | The group operations of Eilenberg-MacLane spaces.
+
+ A pointed equivalence `e : Z = Loop W` transports concatenation and inversion of loops to operations
+ `deloopAdd e` and `deloopNeg e` on `Z`, with unit `base`. For `K G n` we use `e = K-loopEquiv n`; the second
+ delooping `K-loopEquiv (suc n)` makes the addition commutative by Eckmann-Hilton, and in degree zero the
+ operations are those of `G`. The pointed versions `deloopAdd*` and `deloopNeg*` act on pointed maps into `Z`.
+ -}
+
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Monoid
+\import Equiv
+\import Homotopy.EckmannHilton
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Functor
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.K1 (K1)
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Paths
+
+\open ->* (∘*)
+
+\func deloopAdd {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x y : Z) : Z
+  => (PointedEquiv.inverse e).map.1 (e.map.1 x *> e.map.1 y)
+  \where {
+    \func map {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x y : Z) : e.map.1 (deloopAdd e x y) = e.map.1 x *> e.map.1 y
+      => Retraction.f_sec {PointedEquiv.toHAEquiv e} _
+
+    \func assoc {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x y z : Z)
+      : deloopAdd e (deloopAdd e x y) z = deloopAdd e x (deloopAdd e y z)
+      => QEquiv.isInj {PointedEquiv.toHAEquiv e}
+          (map e _ z *> pmap (`*> _) (map e x y) *> *>-assoc _ _ _ *> inv (map e x _ *> pmap (_ *>) (map e y z)))
+
+    \func zro-left {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x : Z) : deloopAdd e base x = x
+      => QEquiv.isInj {PointedEquiv.toHAEquiv e} (map e base x *> pmap (`*> _) e.map.2 *> idp_*> _)
+
+    \func zro-right {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x : Z) : deloopAdd e x base = x
+      => QEquiv.isInj {PointedEquiv.toHAEquiv e} (map e x base *> pmap (_ *>) e.map.2)
+
+    \func negative-left {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x : Z) : deloopAdd e (deloopNeg e x) x = base
+      => QEquiv.isInj {PointedEquiv.toHAEquiv e} (map e _ x *> pmap (`*> _) (deloopNeg.map e x) *> inv_*> _ *> inv e.map.2)
+
+    \func negative-right {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x : Z) : deloopAdd e x (deloopNeg e x) = base
+      => QEquiv.isInj {PointedEquiv.toHAEquiv e} (map e x _ *> pmap (_ *>) (deloopNeg.map e x) *> *>_inv _ *> inv e.map.2)
+
+    \func comm {Z W W' : Pointed} (e : PointedEquiv Z (Loop W)) (e' : PointedEquiv W (Loop W')) (x y : Z)
+      : deloopAdd e x y = deloopAdd e y x
+      => QEquiv.isInj {PointedEquiv.toHAEquiv e} (map e x y *> loop-comm e' _ _ *> inv (map e y x))
+
+    -- | Loops in a loop space commute.
+    \func loop-comm {W W' : Pointed} (e : PointedEquiv W (Loop W')) (p q : Loop W) : p *> q = q *> p
+      => IsEquiv.isInj (Loop-Func.isEquiv e.map e.map-isEquiv)
+          (Loop-Func_*> e.map p q *> Omega^2-Commutative.Commutative {\new Omega^2-Commutative W'} _ _ *> inv (Loop-Func_*> e.map q p))
+
+    \func base-path {Z W : Pointed} (e : PointedEquiv Z (Loop W)) : deloopAdd e base base = base
+      => pmap (PointedEquiv.inverse e).map.1 (pmap2 (*>) e.map.2 e.map.2) *> (PointedEquiv.inverse e).map.2
+
+    {- | The composite of the section and the retraction of `e` is pointed-homotopic to the identity; the
+     equation below is the basepoint coherence of that homotopy, for every loop contracted to `idp`. -}
+    \func section-coh {Z W : Pointed} (e : PointedEquiv Z (Loop W)) {w : Loop W} (c : w = idp)
+      : Retraction.f_sec {PointedEquiv.toHAEquiv e} w *> c
+        = pmap e.map.1 (idp *> pmap (PointedEquiv.inverse e).map.1 c *> (PointedEquiv.inverse e).map.2) *> e.map.2 \elim c
+      | idp => ->*.happly-base (PointedEquiv.inverse-sec e)
+               *> pmap (\lam t => pmap e.map.1 t *> e.map.2) (inv (idp_*> _ *> idp_*> _))
+  }
+
+\func deloopNeg {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x : Z) : Z
+  => (PointedEquiv.inverse e).map.1 (inv (e.map.1 x))
+  \where {
+    \func map {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x : Z) : e.map.1 (deloopNeg e x) = inv (e.map.1 x)
+      => Retraction.f_sec {PointedEquiv.toHAEquiv e} _
+
+    \func base-path {Z W : Pointed} (e : PointedEquiv Z (Loop W)) : deloopNeg e base = base
+      => pmap (PointedEquiv.inverse e).map.1 (pmap inv e.map.2) *> (PointedEquiv.inverse e).map.2
+  }
+
+-- | Pointwise addition of pointed maps.
+\func deloopAdd* {X Z W : Pointed} (e : PointedEquiv Z (Loop W)) (f g : X ->* Z) : X ->* Z
+  => (\lam x => deloopAdd e (f.1 x) (g.1 x), pmap2 (deloopAdd e) f.2 g.2 *> deloopAdd.base-path e)
+  \where {
+    \func post {X Z W : Pointed} (e : PointedEquiv Z (Loop W)) (f g : X ->* Z)
+      : e.map ∘* deloopAdd* e f g = pointwiseConcat (e.map ∘* f) (e.map ∘* g)
+      => ->*.ext (\lam x => deloopAdd.map e (f.1 x) (g.1 x)) (coh e f.2 g.2)
+
+    \func coh {Z W : Pointed} (e : PointedEquiv Z (Loop W)) {x y : Z} (f2 : x = base) (g2 : y = base)
+      : deloopAdd.map e x y *> pmap (e.map.1 x *>) (pmap e.map.1 g2 *> e.map.2) *> pmap e.map.1 f2 *> e.map.2
+        = pmap e.map.1 (pmap2 (deloopAdd e) f2 g2 *> deloopAdd.base-path e) *> e.map.2 \elim f2, g2
+      | idp, idp => pmap (_ *>) (lem e.map.2 e.map.2) *> deloopAdd.section-coh e (pmap2 (*>) e.map.2 e.map.2)
+      \where
+        \func lem {A : \Type} {a : A} {u v : a = a} (p : u = idp) (q : v = idp) : pmap (u *>) (idp *> q) *> idp *> p = pmap2 (*>) p q \elim p, q
+          | idp, idp => idp
+  }
+
+-- | Pointwise negation of pointed maps.
+\func deloopNeg* {X Z W : Pointed} (e : PointedEquiv Z (Loop W)) (f : X ->* Z) : X ->* Z
+  => (\lam x => deloopNeg e (f.1 x), pmap (deloopNeg e) f.2 *> deloopNeg.base-path e)
+  \where {
+    \func post {X Z W : Pointed} (e : PointedEquiv Z (Loop W)) (f : X ->* Z)
+      : e.map ∘* deloopNeg* e f = pointwiseInv (e.map ∘* f)
+      => ->*.ext (\lam x => deloopNeg.map e (f.1 x)) (coh e f.2)
+
+    \func coh {Z W : Pointed} (e : PointedEquiv Z (Loop W)) {x : Z} (f2 : x = base)
+      : deloopNeg.map e x *> pmap inv (pmap e.map.1 f2 *> e.map.2)
+        = pmap e.map.1 (pmap (deloopNeg e) f2 *> deloopNeg.base-path e) *> e.map.2 \elim f2
+      | idp => pmap (_ *>) (pmap (pmap inv) (idp_*> e.map.2)) *> deloopAdd.section-coh e (pmap inv e.map.2)
+  }
+
+\func K-add.{u} {G : CGroup.{u}} (n : Nat) (x y : K G n) : K G n
+  => deloopAdd (K-loopEquiv n) x y
+  \where {
+    \func comm.{u} {G : CGroup.{u}} (n : Nat) (x y : K G n) : K-add n x y = K-add n y x
+      => deloopAdd.comm {K G n} {K G (suc n)} {K G (suc (suc n))} (K-loopEquiv n) (K-loopEquiv (suc n)) x y
+
+    -- | In degree zero the addition is the multiplication of `G`.
+    \func degree-zero.{u} {G : CGroup.{u}} (x y : G) : K-add 0 x y = x * y
+      => QEquiv.isInj {PointedEquiv.toHAEquiv (K-loopEquiv {G} 0)}
+          (deloopAdd.map {K G 0} {K G 1} (K-loopEquiv 0) x y *> K1.loop-comp x y)
+
+    \func double.{u} {G : CGroup.{u}} (n : Nat) (x y : K G n)
+      : (K-double n).1 (K-add n x y) = (K-double n).1 x *> (K-double n).1 y
+      => pmap (Loop-Func {K G (suc n)} {Loop (K G (suc (suc n)))} (K-loopUnit (suc n))).1 (deloopAdd.map {K G n} {K G (suc n)} (K-loopEquiv n) x y)
+         *> Loop-Func_*> {K G (suc n)} {Loop (K G (suc (suc n)))} (K-loopUnit (suc n)) _ _
+
+    \func natural.{u} {G H : CGroup.{u}} (n : Nat) (phi : GroupHom G H) (x y : K G n)
+      : (KMap n phi).1 (K-add n x y) = K-add n ((KMap n phi).1 x) ((KMap n phi).1 y)
+      => \let sq (z : K G n) => ->*.happly (KMap_loopUnit n phi) z
+         \in QEquiv.isInj {PointedEquiv.toHAEquiv (K-loopEquiv {H} n)}
+               (inv (sq _) *> pmap (Loop-Func (KMap (suc n) phi)).1 (deloopAdd.map {K G n} {K G (suc n)} (K-loopEquiv n) x y)
+                *> Loop-Func_*> {K G (suc n)} {K H (suc n)} (KMap (suc n) phi) _ _ *> pmap2 (*>) (sq x) (sq y)
+                *> inv (deloopAdd.map {K H n} {K H (suc n)} (K-loopEquiv n) _ _))
+  }
+
+\func K-neg.{u} {G : CGroup.{u}} (n : Nat) (x : K G n) : K G n
+  => deloopNeg (K-loopEquiv n) x
+  \where {
+    -- | In degree zero the negation is the inverse of `G`.
+    \func degree-zero.{u} {G : CGroup.{u}} (x : G) : K-neg 0 x = inverse x
+      => Group.cancel_*-right x (inv (K-add.degree-zero _ x) *> deloopAdd.negative-left {K G 0} {K G 1} (K-loopEquiv 0) x
+                                 *> inv inverse-left)
+
+    \func natural.{u} {G H : CGroup.{u}} (n : Nat) (phi : GroupHom G H) (x : K G n)
+      : (KMap n phi).1 (K-neg n x) = K-neg n ((KMap n phi).1 x)
+      => \let sq (z : K G n) => ->*.happly (KMap_loopUnit n phi) z
+         \in QEquiv.isInj {PointedEquiv.toHAEquiv (K-loopEquiv {H} n)}
+               (inv (sq _) *> pmap (Loop-Func (KMap (suc n) phi)).1 (deloopNeg.map {K G n} {K G (suc n)} (K-loopEquiv n) x)
+                *> Loop-Func_inv {K G (suc n)} {K H (suc n)} (KMap (suc n) phi) _ *> pmap inv (sq x)
+                *> inv (deloopNeg.map {K H n} {K H (suc n)} (K-loopEquiv n) _))
+  }
+
+-- | The double delooping `K G n = Loop (Loop (K G (n + 2)))`.
+\func K-double.{u} {G : CGroup.{u}} (n : Nat) : K G n ->* Loop (Loop (K G (suc (suc n))))
+  => ->*.compose {K G n} {Loop (K G (suc n))} {Loop (Loop (K G (suc (suc n))))}
+                 (Loop-Func {K G (suc n)} {Loop (K G (suc (suc n)))} (K-loopUnit (suc n))) (K-loopUnit n)
+  \where
+    \lemma isEquiv.{u} {G : CGroup.{u}} (n : Nat) : IsEquiv (K-double {G} n).1
+      => IsEquiv.trans (K-loopUnit-isEquiv n) (Loop-Func.isEquiv {K G (suc n)} {Loop (K G (suc (suc n)))} (K-loopUnit (suc n)) (K-loopUnit-isEquiv (suc n)))

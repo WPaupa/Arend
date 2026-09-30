@@ -186,8 +186,18 @@
     \lemma rec-eval {A B : \Type} {p : isSet B} {a : A} {f : A -> B} : rec p (in0 a) f = f a \level p _ _
       => \peval rec p (in0 a) f
 
+    \sfunc elim {A : \Type} {B : Trunc0 A -> \Type} (p : \Pi (t : Trunc0 A) -> isSet (B t)) (t : Trunc0 A) (f : \Pi (a : A) -> B (in0 a)) : B t \level p t \elim t
+      | in0 a => f a
+
+    \lemma elim-eval {A : \Type} {B : Trunc0 A -> \Type} {p : \Pi (t : Trunc0 A) -> isSet (B t)} {a : A} {f : \Pi (a : A) -> B (in0 a)}
+      : elim p (in0 a) f = f a \level p (in0 a) _ _
+      => \peval elim p (in0 a) f
+
     \func map {A B : \Type} (t : Trunc0 A) (f : A -> B) : Trunc0 B \elim t
       | in0 a => in0 (f a)
+
+    \func map2 {A B C : \Type} (t : Trunc0 A) (s : Trunc0 B) (f : A -> B -> C) : Trunc0 C \elim t, s
+      | in0 a, in0 b => in0 (f a b)
 
     \lemma map-id {A : \Type} (t : Trunc0 A) : map t (\lam a => a) = t \elim t
       | in0 a => idp
