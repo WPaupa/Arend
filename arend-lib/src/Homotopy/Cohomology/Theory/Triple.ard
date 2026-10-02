@@ -1,0 +1,124 @@
+\import Algebra.Group
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupHom
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Pointed (AddPointed, zro)
+\import Arith.Int
+\import Homotopy.Cofiber
+\import Homotopy.Cohomology.Theory
+\import Homotopy.Cohomology.Theory.LongExact
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Logic
+\import Logic.Meta
+\import Logic.Unique
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue, homotopy)
+\open AbExactAt (zero, lift)
+
+\func tripleAlpha.{u} {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k) : Cof.pointed i ->* Cof.pointed k
+  => Cof.map* ->*.id j (->*.happly H)
+
+\func tripleBeta.{u} {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k) : Cof.pointed k ->* Cof.pointed j
+  => Cof.map* i ->*.id (\lam x => inv (->*.happly H x))
+
+\func tripleDelta.{u} (T : CohomologyTheory.{u}) (n : Int) {A B X : Pointed.{u}} (i : A ->* B) (j : B ->* X)
+  : AddGroupHom (T.E n (Cof.pointed i)) (T.E (isuc n) (Cof.pointed j))
+  => delta T n j AddGroupHom.∘ T.pull n (Cof.inc i)
+
+\lemma triple-exact-left.{u} (T : CohomologyTheory.{u}) (n : Int) {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k)
+  : AbExactAt (T.pull (isuc n) (tripleBeta H)) (T.pull (isuc n) (tripleAlpha H))
+  => \lam y => (\lam p => \case lift (T.exact (isuc n) j) (inv (R2 T H y) *> pmap (T.pull (isuc n) (Cof.inc i)) p *> AddGroupHom.func-zro) \with {
+    | inP (t, jt) => \case lift {_} {_} {_} {delta T n k} (delta-exact-cof T n k) {y - T.pull (isuc n) (tripleBeta H) t}
+                                (AddGroupHom.func-minus *> pmap (_ -) (R1 T H t *> jt) *> AddGroup.toZero idp) \with {
+      | inP (s, ds) => \case lift {_} {_} {_} {_} {delta T n i} (delta-exact T n i) {s}
+                                  (inv (R4 T H s) *> pmap (T.pull (isuc n) (tripleAlpha H)) ds *> AddGroupHom.func-minus
+                                   *> pmap2 (-) p (complex T H t) *> AddGroup.toZero idp) \with {
+        | inP (b, ib) => inP (t + delta T n j b, AddGroupHom.func-+ {T.pull (isuc n) (tripleBeta H)} *> pmap (_ +) (R5 T H b *> pmap (delta T n k) ib *> ds) *> add-sub _ _)
+      }
+    }
+  }, \lam (inP (t, q)) => inv (pmap (T.pull (isuc n) (tripleAlpha H)) q) *> complex T H t)
+  \where {
+    \lemma add-sub {G : AbGroup} (b y : G) : b + (y - b) = y
+      => equation.abGroup
+
+    \lemma sub-zero {G : AbGroup} (w : G) : w - 0 = w
+      => equation.abGroup
+
+    \lemma complex.{u} (T : CohomologyTheory.{u}) {m : Int} {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k)
+                       (t : T.E m (Cof.pointed j)) : T.pull m (tripleAlpha H) (T.pull m (tripleBeta H) t) = 0
+      => inv (pmap (\lam (g : AddGroupHom _ _) => g t) (T.pull-comp m (tripleAlpha H) (tripleBeta H)))
+         *> pmap (\lam g => T.pull m g t) (factor H)
+         *> pmap (\lam (g : AddGroupHom _ _) => g t) (T.pull-comp m (factorIn i) (factorOut j))
+         *> pmap (T.pull m (factorIn i)) (T.contr-zero m (cone-contr B) _)
+         *> AddGroupHom.func-zro
+
+    \func factorIn.{u} {A B : Pointed.{u}} (i : A ->* B) : Cof.pointed i ->* Cof.pointed (->*.id {B})
+      => Cof.map* {A} {B} {B} {B} {i} { ->*.id} i ->*.id (\lam _ => idp)
+
+    \func factorOut.{u} {B X : Pointed.{u}} (j : B ->* X) : Cof.pointed (->*.id {B}) ->* Cof.pointed j
+      => Cof.map* {B} {B} {B} {X} { ->*.id} {j} ->*.id j (\lam _ => idp)
+
+    \func factor.{u} {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k)
+      : tripleBeta H ∘* tripleAlpha H = factorOut j ∘* factorIn i
+      => ->*.ext {Cof.pointed i} {Cof.pointed j}
+                 (homotopy {_} {_} {_} {_} {_} {_} {(tripleBeta H ∘* tripleAlpha H).1} {(factorOut j ∘* factorIn i).1}
+                           (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _ *> pmap_*>-comm (factorOut j).1 idp _ *> idp_*> _ *> idp_*> _
+                                         *> inv (pmap_*>-comm (tripleBeta H).1 _ _ *> pmap (_ *>) (pmap (`*> _) (pmap_inv-comm pinl _))
+                                                 *> inv (*>-assoc _ _ _) *> pmap (`*> _) (*>_inv _) *> idp_*> _)))
+                 (idp_*> _ *> idp_*> _)
+
+    \func cone-contr.{u} (B : Pointed.{u}) : Contr (Cof.pointed (->*.id {B}))
+      => Contr.make (pinr ()) (homotopy {_} {_} {_} {_} {_} {_} {\lam _ => pinr ()} {\lam w => w}
+                                        (\lam b => inv (ppglue b)) (\lam _ => idp) (\lam b => inv_*> (ppglue b)))
+  }
+
+\lemma triple-exact-middle.{u} (T : CohomologyTheory.{u}) (n : Int) {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k)
+  : AbExactAt (T.pull (isuc n) (tripleAlpha H)) (tripleDelta T (isuc n) i j)
+  => \lam z => (\lam p => \case lift {_} {_} {_} {_} {delta T (isuc n) j} (delta-exact T (isuc n) j) p \with {
+    | inP (x, jx) => \case lift (T.exact (isuc n) k) {x} (inv (R3 T H x) *> pmap (T.pull (isuc n) i) jx *> zero (T.exact (isuc n) i) z) \with {
+      | inP (y, ky) => \case lift {_} {_} {_} {delta T n i} (delta-exact-cof T n i) {z - T.pull (isuc n) (tripleAlpha H) y}
+                                  (AddGroupHom.func-minus *> pmap2 (-) (inv jx) (R2 T H y *> pmap (T.pull (isuc n) j) ky) *> AddGroup.toZero idp) \with {
+        | inP (s, ds) => inP (y + delta T n k s, AddGroupHom.func-+ {T.pull (isuc n) (tripleAlpha H)} *> pmap (_ +) (R4 T H s *> ds) *> triple-exact-left.add-sub _ _)
+      }
+    }
+  }, \lam (inP (y, q)) => inv (pmap (tripleDelta T (isuc n) i j) q)
+                          *> pmap (delta T (isuc n) j) (R2 T H y) *> zero {_} {_} {_} {_} {delta T (isuc n) j} (delta-exact T (isuc n) j) _)
+
+\lemma triple-exact-right.{u} (T : CohomologyTheory.{u}) (n : Int) {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k)
+  : AbExactAt (tripleDelta T n i j) (T.pull (isuc n) (tripleBeta H))
+  => \lam w => (\lam p => \case lift {_} {_} {_} {delta T n j} (delta-exact-cof T n j) {w} (inv (R1 T H w) *> pmap (T.pull (isuc n) (Cof.inc k)) p *> AddGroupHom.func-zro) \with {
+    | inP (b, bw) => \case lift {_} {_} {_} {_} {delta T n k} (delta-exact T n k) {T.pull n i b} (inv (R5 T H b) *> pmap (T.pull (isuc n) (tripleBeta H)) bw *> p) \with {
+      | inP (x, kx) => \case lift (T.exact n i) {b - T.pull n j x}
+                                  (AddGroupHom.func-minus *> pmap2 (-) idp (R3 T H x *> kx) *> AddGroup.toZero idp) \with {
+        | inP (z, iz) => inP (z, pmap (delta T n j) iz *> AddGroupHom.func-minus
+                                 *> pmap2 (-) bw (zero {_} {_} {_} {_} {delta T n j} (delta-exact T n j) x) *> triple-exact-left.sub-zero w)
+      }
+    }
+  }, \lam (inP (z, q)) => inv (pmap (T.pull (isuc n) (tripleBeta H)) q) *> R5 T H _ *> pmap (delta T n k) (zero (T.exact n i) z) *> AddGroupHom.func-zro)
+
+\private \lemma R1.{u} (T : CohomologyTheory.{u}) {m : Int} {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k)
+              (t : T.E m (Cof.pointed j)) : T.pull m (Cof.inc k) (T.pull m (tripleBeta H) t) = T.pull m (Cof.inc j) t
+  => inv (pmap (\lam (g : AddGroupHom _ _) => g t) (T.pull-comp m (Cof.inc k) (tripleBeta H)))
+     *> pmap (\lam g => T.pull m g t) (Cof.map*.inc-natural {A} {X} {B} {X} {k} {j} i ->*.id (\lam x => inv (->*.happly H x)))
+
+\private \lemma R2.{u} (T : CohomologyTheory.{u}) {m : Int} {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k)
+              (y : T.E m (Cof.pointed k)) : T.pull m (Cof.inc i) (T.pull m (tripleAlpha H) y) = T.pull m j (T.pull m (Cof.inc k) y)
+  => inv (pmap (\lam (g : AddGroupHom _ _) => g y) (T.pull-comp m (Cof.inc i) (tripleAlpha H)))
+     *> pmap (\lam g => T.pull m g y) (Cof.map*.inc-natural {A} {B} {A} {X} {i} {k} ->*.id j (->*.happly H))
+     *> pmap (\lam (g : AddGroupHom _ _) => g y) (T.pull-comp m j (Cof.inc k))
+
+\private \lemma R3.{u} (T : CohomologyTheory.{u}) {m : Int} {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k)
+              (x : T.E m X) : T.pull m i (T.pull m j x) = T.pull m k x
+  => inv (pmap (\lam (g : AddGroupHom _ _) => g x) (T.pull-comp m i j)) *> pmap (\lam g => T.pull m g x) H
+
+\private \lemma R4.{u} (T : CohomologyTheory.{u}) {n : Int} {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k)
+              (s : T.E n A) : T.pull (isuc n) (tripleAlpha H) (delta T n k s) = delta T n i s
+  => delta-natural T n ->*.id j (->*.happly H) s *> pmap (delta T n i) (pmap (\lam (g : AddGroupHom _ _) => g s) (T.pull-id n A))
+
+\private \lemma R5.{u} (T : CohomologyTheory.{u}) {n : Int} {A B X : Pointed.{u}} {i : A ->* B} {j : B ->* X} {k : A ->* X} (H : j ∘* i = k)
+              (b : T.E n B) : T.pull (isuc n) (tripleBeta H) (delta T n j b) = delta T n k (T.pull n i b)
+  => delta-natural T n {A} {X} {B} {X} {k} {j} i ->*.id (\lam x => inv (->*.happly H x)) b

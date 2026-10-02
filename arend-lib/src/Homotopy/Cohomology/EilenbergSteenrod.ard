@@ -1,12 +1,13 @@
 \import Algebra.Group
 \import Algebra.Group.GroupCat
+\import Algebra.Group.Exact
 \import Algebra.Group.GroupHom
 \import Algebra.Group.Product
 \import Algebra.Pointed (AddPointed, zro)
-\import Algebra.Pointed.Exact
 \import Arith.Int
 \import Arith.Nat
 \import Category (Iso, idIso)
+\import Data.Maybe
 \import Equiv
 \import Homotopy.Cofiber
 \import Homotopy.Cohomology
@@ -30,8 +31,6 @@
 \import Paths
 \import Paths.Meta
 \import Set
-
-\open AddGroupHom (toGroupHom)
 
 \func ordinaryCohomology.{u} (A : AbGroup.{u}) : OrdinaryCohomologyTheory.{u} \cowith
   | E d X => IntRedCoHom d X A
@@ -62,7 +61,7 @@
       }
 
     \lemma intExact.{u} (d : Int) {X Y : Pointed.{u}} (f : X ->* Y) (A : AbGroup.{u})
-      : ExactAt (toGroupHom (IntRedCoHom.pullback d {Y} {Cof.pointed f} {A} (Cof.inc f))) (toGroupHom (IntRedCoHom.pullback d f)) \elim d
+      : AbExactAt (IntRedCoHom.pullback d {Y} {Cof.pointed f} {A} (Cof.inc f)) (IntRedCoHom.pullback d f) \elim d
       | pos n => redExact n f A
       | neg (suc _) => \lam _ => (\lam _ => inP ((), idp), \lam _ => idp)
 
@@ -95,3 +94,25 @@
       | func-+ {c} {d} => \case \elim c, \elim d \with {
         | in0 g, in0 h => K-add.degree-zero (g.1 south) (h.1 south)
       }
+
+\func plusIso.{u} (d : Int) (X : \Type u) (A : AbGroup.{u})
+  : Iso {AbGroupCat.{u}} {IntRedCoHom d (Plus X) A} {IntCoHom d X A} \elim d
+  | pos n => AbGroupCat.isoOfEquiv (plusHom n X A) (Trunc0.mapEquiv (unplus (K A n)))
+  | neg (suc _) => idIso
+  \where {
+    \func unplus {X : \Type} (Z : Pointed) : QEquiv {Plus X ->* Z} {X -> Z} \cowith
+      | f g x => g.1 (just x)
+      | ret h => (maybe base h, idp)
+      | ret_f g => ->*.ext {Plus X} {Z} {maybe base (\lam x => g.1 (just x)), idp} {g} (unplus-base g) (inv_*> g.2)
+      | f_sec _ => idp
+
+    \func unplus-base {X : \Type} {Z : Pointed} (g : Plus X ->* Z) (m : Maybe X) : maybe base (\lam x => g.1 (just x)) m = g.1 m \elim m
+      | nothing => inv g.2
+      | just _ => idp
+
+    \func plusHom.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : AddGroupHom (RedCoHom n (Plus X) A) (CoHom n X A) \cowith
+      | func c => Trunc0.map c (unplus (K A n))
+      | func-+ {c} {d} => \case \elim c, \elim d \with {
+        | in0 _, in0 _ => idp
+      }
+  }

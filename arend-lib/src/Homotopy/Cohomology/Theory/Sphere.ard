@@ -1,0 +1,21 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Pointed (AddPointed, zro)
+\import Arith.Int
+\import Category (Iso, idIso, oIso)
+\import Function.Iterate
+\import Homotopy.Cohomology.Theory
+\import Homotopy.Sphere
+\import Logic
+\import Paths
+
+\func sphereIso.{u} (T : CohomologyTheory.{u}) (k : Nat) (n : Int)
+  : Iso {AbGroupCat.{u}} {T.E n (Sphere.pointed 0)} {T.E (iterr isuc k n) (Sphere.pointed k)}
+  => iterr-index-ind {Int} {\lam k d => Iso {AbGroupCat.{u}} {T.E n (Sphere.pointed 0)} {T.E d (Sphere.pointed k)}}
+                     idIso (\lam {k} {d} e => oIso e (T.susp d (Sphere.pointed k))) k
+
+\lemma sphere-zero.{u} (T : OrdinaryCohomologyTheory.{u}) (k : Nat) {n : Int} (n/=0 : n /= 0)
+                       (x : T.E (iterr isuc k n) (Sphere.pointed k)) : x = 0
+  => inv (pmap (\lam (h : AddGroupHom _ _) => h x) (Iso.f_hinv {sphereIso T k n}))
+     *> pmap (Iso.f {sphereIso T k n}) (T.dimension n n/=0 _) *> AddGroupHom.func-zro

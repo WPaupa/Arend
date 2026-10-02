@@ -1,4 +1,5 @@
 \import Algebra.Pointed.PointedHom
+\import Data.Maybe
 \import Equiv
 \import Equiv.HalfAdjoint
 \import Homotopy.Space
@@ -17,6 +18,19 @@
 
 \instance UnitPointed : Pointed (\Sigma)
   | base => ()
+
+\func Plus (X : \Type) => \new Pointed (Maybe X) nothing
+  \where {
+    \func map {X Y : \Type} (f : X -> Y) : Plus X ->* Plus Y => (Maybe.map f, idp)
+
+    \func map-comp {X Y Z : \Type} (f : X -> Y) (g : Y -> Z) : map g ->*.∘* map f = map (\lam x => g (f x))
+      => ->*.ext (comp-point f g) idp
+
+    \func comp-point {X Y Z : \Type} (f : X -> Y) (g : Y -> Z) (m : Maybe X)
+      : Maybe.map g (Maybe.map f m) = Maybe.map (\lam x => g (f x)) m \elim m
+      | nothing => idp
+      | just _ => idp
+  }
 
 \func PointedProduct (X Y : Pointed) : Pointed \cowith
   | E => \Sigma X Y

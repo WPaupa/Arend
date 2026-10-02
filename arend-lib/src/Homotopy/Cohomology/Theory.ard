@@ -1,9 +1,9 @@
 \import Algebra.Group
 \import Algebra.Group.GroupCat
+\import Algebra.Group.Exact
 \import Algebra.Group.GroupHom
 \import Algebra.Group.Product
 \import Algebra.Pointed (AddPointed, zro)
-\import Algebra.Pointed.Exact
 \import Arith.Int
 \import Category (Iso)
 \import Equiv
@@ -21,7 +21,6 @@
 \import Set.Fin
 
 \open ->* (∘*)
-\open AddGroupHom (toGroupHom)
 
 \record CohomologyTheory.{u} {
   | E : Int -> Pointed.{u} -> AbGroup.{u}
@@ -31,7 +30,7 @@
   | susp (n : Int) (X : Pointed.{u}) : Iso {AbGroupCat.{u}} {E n X} {E (isuc n) (Susp.pointed X)}
   | susp-natural (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
     : Iso.f {susp n X} AddGroupHom.∘ pull n f = pull (isuc n) (Susp-Func f) AddGroupHom.∘ Iso.f {susp n Y}
-  | exact (n : Int) {X Y : Pointed.{u}} (f : X ->* Y) : ExactAt (toGroupHom (pull n (Cof.inc f))) (toGroupHom (pull n f))
+  | exact (n : Int) {X Y : Pointed.{u}} (f : X ->* Y) : AbExactAt (pull n (Cof.inc f)) (pull n f)
   | wedge (n : Int) {J : \Type u} (X : J -> Pointed.{u}) (c : AC0.{u} J)
     : IsEquiv {E n (BigWedge X)} {\Pi (j : J) -> E n (X j)} (\lam a j => pull n (BigWedge.inc X j) a)
 
@@ -39,6 +38,17 @@
     | hinv => pull n (PointedEquiv.inverse e).map
     | hinv_f => inv (pull-comp n _ _) *> pmap (pull n) (PointedEquiv.inverse-sec e) *> pull-id n Y
     | f_hinv => inv (pull-comp n _ _) *> pmap (pull n) (PointedEquiv.inverse-ret e) *> pull-id n X
+
+  \lemma pull-square (n : Int) {X Y Y' Z : Pointed.{u}} {a : X ->* Y} {b : Y ->* Z} {a' : X ->* Y'} {b' : Y' ->* Z}
+                     (s : b ∘* a = b' ∘* a') (z : E n Z) : pull n a (pull n b z) = pull n a' (pull n b' z)
+    => inv (pmap (\lam (h : AddGroupHom _ _) => h z) (pull-comp n a b)) *> pmap (\lam h => pull n h z) s
+       *> pmap (\lam (h : AddGroupHom _ _) => h z) (pull-comp n a' b')
+
+  \func Relative (n : Int) {A X : \Type u} (i : A -> X) : AbGroup.{u}
+    => E n (Cof.pointed (Plus.map i))
+
+  \func excision (n : Int) {J A B : \Type u} (u : J -> A) (v : J -> B) : Iso {AbGroupCat.{u}} (pull n (Cof.excision u v).map)
+    => pullIso n (Cof.excision u v)
 
   \func wedgeIso (n : Int) {J : \Type u} (X : J -> Pointed.{u}) (c : AC0.{u} J)
     : Iso {AbGroupCat.{u}} (PiAbGroup.tuple (\lam j => pull n (BigWedge.inc X j)))

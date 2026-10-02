@@ -1,0 +1,159 @@
+\import Algebra.Group
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Pointed (AddPointed, zro)
+\import Arith.Int
+\import Category (Iso)
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Cohomology.Theory
+\import Homotopy.Cohomology.Theory.LongExact
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Paths.Meta
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+\open AbExactAt (zero, lift)
+
+\func mvInl.{u} {C U V : \Type u} (f : C -> U) (g : C -> V) : Plus U ->* Plus (PushoutData f g)
+  => Plus.map pinl
+
+\func mvInr.{u} {C U V : \Type u} (f : C -> U) (g : C -> V) : Plus V ->* Plus (PushoutData f g)
+  => Plus.map pinr
+
+\func mvRestrict.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V)
+  : AddGroupHom (T.E q (Plus (PushoutData f g))) (ProductAbGroup (T.E q (Plus U)) (T.E q (Plus V)))
+  => pairHom (T.pull q (mvInl f g)) (T.pull q (mvInr f g))
+
+\func mvDiff.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V)
+  : AddGroupHom (ProductAbGroup (T.E q (Plus U)) (T.E q (Plus V))) (T.E q (Plus C)) \cowith
+  | func p => T.pull q (Plus.map f) p.1 - T.pull q (Plus.map g) p.2
+  | func-+ => pmap2 (-) AddGroupHom.func-+ AddGroupHom.func-+ *> interchange
+  \where
+    \lemma interchange {G : AbGroup} {a b c d : G} : (a + b) - (c + d) = (a - c) + (b - d)
+      => equation.abGroup
+
+\func mvDelta.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V)
+  : AddGroupHom (T.E q (Plus C)) (T.E (isuc q) (Plus (PushoutData f g)))
+  => T.pull (isuc q) (Cof.inc (mvInr f g)) AddGroupHom.∘ Iso.hinv {T.excision (isuc q) f g} AddGroupHom.∘ delta T q (Plus.map f)
+
+\lemma mv-exact-sum.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V)
+  : AbExactAt (mvRestrict T q f g) (mvDiff T q f g)
+  => \lam p => (\lam z => \let fu=gv => AddGroup.fromZero z \in
+      \case lift {_} {_} {_} {_} {delta T q (mvInr f g)} (delta-exact T q (mvInr f g)) {p.2}
+                 (eps-isInj T (isuc q) f g (eps-delta T q f g p.2 *> pmap (delta T q (Plus.map f)) (inv fu=gv)
+                                             *> zero {_} {_} {_} {_} {delta T q (Plus.map f)} (delta-exact T q (Plus.map f)) p.1
+                                             *> inv AddGroupHom.func-zro)) \with {
+        | inP (d0, d0v) => \case lift (T.exact q (Plus.map f)) {p.1 - T.pull q (mvInl f g) d0}
+                                      (AddGroupHom.func-minus *> pmap (_ -) (glue T q f g d0 *> pmap (T.pull q (Plus.map g)) d0v) *> AddGroup.toZero fu=gv) \with {
+          | inP (t, tu) => inP (d0 + T.pull q (Cof.inc (mvInr f g)) (Iso.hinv {T.excision q f g} t),
+                                pmap2 (__,__) (AddGroupHom.func-+ *> pmap (_ +) (eps-inc T q f g _ *> pmap (T.pull q (Cof.inc (Plus.map f))) (eps-sec T q f g t) *> tu)
+                                                *> add-sub _ _)
+                                              (AddGroupHom.func-+ *> pmap2 (+) d0v (zero (T.exact q (mvInr f g)) _) *> zro-right))
+        }
+      }, \lam (inP (d, rd)) => inv (pmap (mvDiff T q f g) rd) *> AddGroup.toZero (glue T q f g d))
+  \where {
+    \lemma add-sub {G : AbGroup} (b y : G) : b + (y - b) = y
+      => equation.abGroup
+
+    \lemma sub-neg {G : AbGroup} (a b : G) : (a - b) - negative b = a
+      => equation.abGroup
+
+    \lemma zero-sub {G : AbGroup} (a : G) : 0 - a = negative a
+      => equation.abGroup
+  }
+
+\lemma mv-exact-intersection.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V)
+  : AbExactAt (mvDiff T q f g) (mvDelta T q f g)
+  => \lam c => (\lam z =>
+      \case lift {_} {_} {_} {delta T q (mvInr f g)} (delta-exact-cof T q (mvInr f g)) {Iso.hinv {T.excision (isuc q) f g} (delta T q (Plus.map f) c)} z \with {
+        | inP (v, vc) => \case lift {_} {_} {_} {_} {delta T q (Plus.map f)} (delta-exact T q (Plus.map f)) {c - T.pull q (Plus.map g) v}
+                                    (AddGroupHom.func-minus *> pmap (_ -) (inv (eps-delta T q f g v) *> pmap (Iso.f {T.excision (isuc q) f g}) vc *> eps-sec T (isuc q) f g _)
+                                     *> AddGroup.toZero idp) \with {
+          | inP (u, uc) => inP ((u, negative v), pmap2 (-) uc AddGroupHom.func-negative *> mv-exact-sum.sub-neg _ _)
+        }
+      }, \lam (inP (p, pc)) => inv (pmap (mvDelta T q f g) pc)
+          *> pmap (\lam x => T.pull (isuc q) (Cof.inc (mvInr f g)) (Iso.hinv {T.excision (isuc q) f g} x))
+                  (AddGroupHom.func-minus *> pmap2 (-) (zero {_} {_} {_} {_} {delta T q (Plus.map f)} (delta-exact T q (Plus.map f)) p.1) (inv (eps-delta T q f g p.2))
+                   *> mv-exact-sum.zero-sub _ *> inv AddGroupHom.func-negative *> inv (pmap (Iso.f {T.excision (isuc q) f g}) AddGroupHom.func-negative))
+          *> pmap (T.pull (isuc q) (Cof.inc (mvInr f g))) (eps-ret T (isuc q) f g _)
+          *> zero {_} {_} {_} {delta T q (mvInr f g)} (delta-exact-cof T q (mvInr f g)) _)
+
+\lemma mv-exact-pushout.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V)
+  : AbExactAt (mvDelta T q f g) (mvRestrict T (isuc q) f g)
+  => \lam d => (\lam z =>
+      \case lift (T.exact (isuc q) (mvInr f g)) {d} (pmap __.2 z) \with {
+        | inP (t, td) => \case lift {_} {_} {_} {delta T q (Plus.map f)} (delta-exact-cof T q (Plus.map f)) {Iso.f {T.excision (isuc q) f g} t}
+                                    (inv (eps-inc T (isuc q) f g t) *> pmap (T.pull (isuc q) (mvInl f g)) td *> pmap __.1 z) \with {
+          | inP (c, ct) => inP (c, pmap (\lam x => T.pull (isuc q) (Cof.inc (mvInr f g)) (Iso.hinv {T.excision (isuc q) f g} x)) ct
+                                   *> pmap (T.pull (isuc q) (Cof.inc (mvInr f g))) (eps-ret T (isuc q) f g t) *> td)
+        }
+      }, \lam (inP (c, cd)) => inv (pmap (mvRestrict T (isuc q) f g) cd)
+          *> pmap2 (__,__) (eps-inc T (isuc q) f g _ *> pmap (T.pull (isuc q) (Cof.inc (Plus.map f))) (eps-sec T (isuc q) f g _)
+                            *> zero {_} {_} {_} {delta T q (Plus.map f)} (delta-exact-cof T q (Plus.map f)) c)
+                           (zero (T.exact (isuc q) (mvInr f g)) _))
+
+\lemma eps-delta.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V) (v : T.E q (Plus V))
+  : Iso.f {T.excision (isuc q) f g} (delta T q (mvInr f g) v) = delta T q (Plus.map f) (T.pull q (Plus.map g) v)
+  => delta-natural T q {_} {_} {_} {_} {Plus.map f} {mvInr f g} (Plus.map g) (mvInl f g) (Cof.excision.square f g) v
+
+\lemma eps-inc.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V)
+                   (t : T.E q (Cof.pointed (mvInr f g)))
+  : T.pull q (mvInl f g) (T.pull q (Cof.inc (mvInr f g)) t) = T.pull q (Cof.inc (Plus.map f)) (Iso.f {T.excision q f g} t)
+  => T.pull-square q (inv (Cof.map*.inc-natural {_} {_} {_} {_} {Plus.map f} {mvInr f g} (Plus.map g) (mvInl f g) (Cof.excision.square f g))) t
+
+\lemma glue.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V) (d : T.E q (Plus (PushoutData f g)))
+  : T.pull q (Plus.map f) (T.pull q (mvInl f g) d) = T.pull q (Plus.map g) (T.pull q (mvInr f g) d)
+  => T.pull-square q (Plus.map-comp f (pinl {C} {U} {V} {f} {g}) *> pmap (\lam h => Plus.map h) (ext ppglue) *> inv (Plus.map-comp g (pinr {C} {U} {V} {f} {g}))) d
+
+\lemma eps-isInj.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V)
+  {a a' : T.Relative q (pinr {C} {U} {V} {f} {g})} (p : Iso.f {T.excision q f g} a = Iso.f {T.excision q f g} a') : a = a'
+  => (AbGroupCat.equivOfIso (T.excision q f g)).isInj p
+
+\func eps-sec.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V) (t : T.Relative q f)
+  : Iso.f {T.excision q f g} (Iso.hinv {T.excision q f g} t) = t
+  => (AbGroupCat.equivOfIso (T.excision q f g)).f_sec t
+
+\func eps-ret.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V : \Type u} (f : C -> U) (g : C -> V) (t : T.Relative q (pinr {C} {U} {V} {f} {g}))
+  : Iso.hinv {T.excision q f g} (Iso.f {T.excision q f g} t) = t
+  => (AbGroupCat.equivOfIso (T.excision q f g)).ret_f t
+
+\lemma mv-restrict-natural.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V C' U' V' : \Type u} {f : C -> U} {g : C -> V} {f' : C' -> U'} {g' : C' -> V'}
+                               (c : C -> C') (u : U -> U') (v : V -> V') (hf : \Pi (x : C) -> f' (c x) = u (f x)) (hg : \Pi (x : C) -> g' (c x) = v (g x))
+                               (x : T.E q (Plus (PushoutData f' g')))
+  : mvRestrict T q f g (T.pull q (Plus.map (PushoutData.congr f g f' g' c u v hf hg)) x)
+    = (T.pull q (Plus.map u) (T.pull q (mvInl f' g') x), T.pull q (Plus.map v) (T.pull q (mvInr f' g') x))
+  => pmap2 (__,__) (T.pull-square q (Plus.map-comp pinl (PushoutData.congr f g f' g' c u v hf hg) *> inv (Plus.map-comp u (pinl {C'} {U'} {V'} {f'} {g'}))) x)
+                   (T.pull-square q (Plus.map-comp pinr (PushoutData.congr f g f' g' c u v hf hg) *> inv (Plus.map-comp v (pinr {C'} {U'} {V'} {f'} {g'}))) x)
+
+\lemma mv-diff-natural.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V C' U' V' : \Type u} {f : C -> U} {g : C -> V} {f' : C' -> U'} {g' : C' -> V'}
+                           (c : C -> C') (u : U -> U') (v : V -> V') (hf : \Pi (x : C) -> f' (c x) = u (f x)) (hg : \Pi (x : C) -> g' (c x) = v (g x))
+                           (p : ProductAbGroup (T.E q (Plus U')) (T.E q (Plus V')))
+  : mvDiff T q f g (T.pull q (Plus.map u) p.1, T.pull q (Plus.map v) p.2) = T.pull q (Plus.map c) (mvDiff T q f' g' p)
+  => pmap2 (-) (T.pull-square q (Plus.map-comp f u *> pmap (\lam h => Plus.map h) (ext \lam x => inv (hf x)) *> inv (Plus.map-comp c f')) p.1)
+               (T.pull-square q (Plus.map-comp g v *> pmap (\lam h => Plus.map h) (ext \lam x => inv (hg x)) *> inv (Plus.map-comp c g')) p.2)
+     *> inv AddGroupHom.func-minus
+
+\lemma mv-delta-natural.{u} (T : CohomologyTheory.{u}) (q : Int) {C U V C' U' V' : \Type u} {f : C -> U} {g : C -> V} {f' : C' -> U'} {g' : C' -> V'}
+                            (c : C -> C') (u : U -> U') (v : V -> V') (hf : \Pi (x : C) -> f' (c x) = u (f x)) (hg : \Pi (x : C) -> g' (c x) = v (g x))
+                            (x : T.E q (Plus C'))
+  : T.pull (isuc q) (Plus.map (PushoutData.congr f g f' g' c u v hf hg)) (mvDelta T q f' g' x) = mvDelta T q f g (T.pull q (Plus.map c) x)
+  => T.pull-square (isuc q) {_} {_} {_} {_} {Plus.map (PushoutData.congr f g f' g' c u v hf hg)} {Cof.inc (mvInr f' g')} {Cof.inc (mvInr f g)}
+                   {Cof.excision-natural.right-map f g c u v hf hg}
+                   (inv (Cof.map*.inc-natural {_} {_} {_} {_} {mvInr f g} {mvInr f' g'} (Plus.map v) (Plus.map (PushoutData.congr f g f' g' c u v hf hg))
+                                              (Cof.excision-natural.right-square f g c u v hf hg))) _
+     *> pmap (T.pull (isuc q) (Cof.inc (mvInr f g)))
+             (inv (eps-ret T (isuc q) f g _)
+              *> pmap (Iso.hinv {T.excision (isuc q) f g})
+                      (T.pull-square (isuc q) {_} {_} {_} {_} {(Cof.excision f g).map} {Cof.excision-natural.right-map f g c u v hf hg}
+                                     {Cof.excision-natural.left-map f c u hf} {(Cof.excision f' g').map} (inv (Cof.excision-natural c u v hf hg)) _
+                       *> pmap (T.pull (isuc q) (Cof.excision-natural.left-map f c u hf)) (eps-sec T (isuc q) f' g' _)
+                       *> delta-natural T q {_} {_} {_} {_} {Plus.map f} {Plus.map f'} (Plus.map c) (Plus.map u) (Cof.excision-natural.left-square hf) x))

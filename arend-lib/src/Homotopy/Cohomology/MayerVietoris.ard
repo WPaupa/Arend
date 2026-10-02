@@ -1,0 +1,51 @@
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Arith.Int
+\import Category (Iso)
+\import Data.Maybe
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Coefficients
+\import Homotopy.Cohomology.EilenbergSteenrod
+\import Homotopy.Cohomology.Theory.MayerVietoris
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Functor
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Paths
+\import Paths.Meta
+\import Set
+
+\open ->* (∘*)
+
+\func deltaRaw.{u} {n : Nat} {C U V : \Type u} (f : C -> U) (g : C -> V) {A : AbGroup.{u}} (c : Cocycle n C A)
+  : Cocycle (suc n) (PushoutData f g) A
+  => PushoutData.rec (\lam _ => base) (\lam _ => base) (\lam z => (K-loopUnit n).1 (c z))
+
+\lemma mvDelta-raw.{u} (n : Nat) {C U V : \Type u} (f : C -> U) (g : C -> V) {A : AbGroup.{u}} (c : Cocycle n C A)
+  : Iso.f {plusIso (pos (suc n)) (PushoutData f g) A} (mvDelta (ordinaryCohomology A) (pos n) f g (Iso.hinv {plusIso (pos n) C A} (in0 c)))
+    = in0 (deltaRaw f g c)
+  => pmap in0 (ext \lam x => pmap (\lam w => (SuspLoopEquiv.toSusp (K-loopUnit n ∘* QEquiv.ret {plusIso.unplus {C} (K A n)} c)).1 ((Cof.quotient (Plus.map f)).1 w))
+                                  (Cof.excision.inverse-back f g (pinl (just x)))
+                             *> raw-point n f g c x)
+  \where
+    \func raw-point.{u} (n : Nat) {C U V : \Type u} (f : C -> U) (g : C -> V) {A : AbGroup.{u}} (c : Cocycle n C A) (x : PushoutData f g)
+      : (SuspLoopEquiv.toSusp (K-loopUnit n ∘* QEquiv.ret {plusIso.unplus {C} (K A n)} c)).1 ((Cof.quotient (Plus.map f)).1 (Cof.excision.back f g (pinl (just x))))
+        = deltaRaw f g c x
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+           {\lam y => (SuspLoopEquiv.toSusp (K-loopUnit n ∘* QEquiv.ret {plusIso.unplus {C} (K A n)} c)).1 ((Cof.quotient (Plus.map f)).1 (Cof.excision.back f g (pinl (just y))))}
+           {deltaRaw f g c} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _) x
+
+\lemma deltaRaw-coef.{u} (n : Nat) {C U V : \Type u} (f : C -> U) (g : C -> V) {A B : AbGroup.{u}} (phi : AddGroupHom A B) (c : Cocycle n C A)
+  : mapCoef (suc n) (PushoutData f g) phi (in0 (deltaRaw f g c)) = in0 (deltaRaw f g (\lam z => (KMap n (AddGroupHom.toGroupHom phi)).1 (c z)))
+  => pmap in0 (ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+                     {\lam x => (KMap (suc n) (AddGroupHom.toGroupHom phi)).1 (deltaRaw f g c x)}
+                     {deltaRaw f g (\lam z => (KMap n (AddGroupHom.toGroupHom phi)).1 (c z))}
+                     (\lam _ => (KMap (suc n) (AddGroupHom.toGroupHom phi)).2) (\lam _ => (KMap (suc n) (AddGroupHom.toGroupHom phi)).2)
+                     (\lam z => conj (->*.happly (KMap_loopUnit n (AddGroupHom.toGroupHom phi)) (c z)))))
+  \where
+    \func conj {T : \Type} {a b : T} {p : a = b} {L : a = a} {R : b = b} (h : inv p *> L *> p = R) : p *> R = L *> p \elim p
+      | idp => pmap (idp *>) (inv h) *> idp_*> _ *> idp_*> _

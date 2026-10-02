@@ -51,6 +51,10 @@
       | f_hinv => idp
   }
 
+\func pairHom {A B C : AbGroup} (f : AddGroupHom A B) (g : AddGroupHom A C) : AddGroupHom A (ProductAbGroup B C) \cowith
+  | func a => (f a, g a)
+  | func-+ => pmap2 (__,__) f.func-+ g.func-+
+
 \func copairHom {A B C : AbGroup} (f : AddGroupHom A C) (g : AddGroupHom B C) : AddGroupHom (ProductAbGroup A B) C \cowith
   | func p => f p.1 + g p.2
   | func-+ => pmap2 (+) f.func-+ g.func-+ *> interchange

@@ -1,7 +1,7 @@
 \import Algebra.Group
+\import Algebra.Group.Exact
 \import Algebra.Group.GroupHom
 \import Algebra.Pointed (AddPointed, zro)
-\import Algebra.Pointed.Exact
 \import Homotopy.Cofiber
 \import Homotopy.Cohomology
 \import Homotopy.Cohomology.Functor
@@ -13,10 +13,9 @@
 \import Set
 
 \open ->* (∘*)
-\open AddGroupHom (toGroupHom)
 
 \lemma redExact.{u} (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (A : AbGroup.{u})
-  : ExactAt (toGroupHom (redPullback n {Y} {Cof.pointed f} {A} (Cof.inc f))) (toGroupHom (redPullback n f))
+  : AbExactAt (redPullback n {Y} {Cof.pointed f} {A} (Cof.inc f)) (redPullback n f)
   => \lam c => (kernel f c, image f c)
   \where {
     \lemma kernel.{u} {n : Nat} {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y) (c : RedCoHom n Y A) (p : redPullback n f c = zro {RedCoHom n X A})
