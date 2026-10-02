@@ -1,0 +1,199 @@
+-- | After ``Cubical/Homotopy/EilenbergMacLane/CupProductTensor.agda`` in the Cubical library.
+
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Pairing
+\import Algebra.Monoid
+\import Arith.Nat
+\import Equiv
+\import Homotopy.EilenbergMacLane.Algebra
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Functor
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.EilenbergMacLane.Mapping
+\import Homotopy.HLevel
+\import Homotopy.K1.Basic
+\import Homotopy.Localization.Truncation
+\import Homotopy.Localization.Universe
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Suspension
+\import Homotopy.Truncation
+\import Homotopy.Wedge
+\import Logic
+\import Paths
+\import Paths.Meta
+
+\open ->* (∘*)
+
+\func K-cup.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) : K A p ->* Map* (K B q) (K C (p Nat.+ q)) \elim p
+  | 0 => (\lam a => KMap q (AddGroupHom.toGroupHom (Pairing.left m a)), KMap_zro q _ (\lam _ => Pairing.zro-left m))
+  | 1 => (K1-gpdRec {AbGroup.toCGroup A} (K-map-level 1 q) (->*.zero (K B q) (K C (suc q)))
+                    (\lam a => (K-mapLoop.{u} q (K.{u} B q) C).map.1 (KMap q (AddGroupHom.toGroupHom (Pairing.left m a))))
+                    (\lam a a' => zero-add.{u} m q a a'), idp)
+  | suc (suc p) => (Trunc_-1+.elim (\lam _ => \new Truncated_-1+ (suc (suc (suc p))) (Map* (K B q) (K C (suc (suc (p Nat.+ q))))) (K-map-level (suc (suc p)) q))
+                                   (Susp.rec (->*.zero (K B q) (K C (suc (suc (p Nat.+ q))))) (->*.zero (K B q) (K C (suc (suc (p Nat.+ q)))))
+                                             (\lam a => (K-mapLoop.{u} (suc (p Nat.+ q)) (K.{u} B q) C).map.1 ((K-cup m (suc p) q).1 a))), idp)
+  \where {
+    \func zero-add.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (q : Nat) (a a' : A)
+      : (K-mapLoop.{u} q (K.{u} B q) C).map.1 (KMap q (AddGroupHom.toGroupHom (Pairing.left m a)))
+        *> (K-mapLoop.{u} q (K.{u} B q) C).map.1 (KMap q (AddGroupHom.toGroupHom (Pairing.left m a')))
+        = (K-mapLoop.{u} q (K.{u} B q) C).map.1 (KMap q (AddGroupHom.toGroupHom (Pairing.left m (a + a'))))
+      => inv (pmap (K-mapLoop.{u} q (K.{u} B q) C).map.1
+                   (KMap_+.{u} q (AddGroupHom.toGroupHom (Pairing.left m (a + a'))) (AddGroupHom.toGroupHom (Pairing.left m a))
+                           (AddGroupHom.toGroupHom (Pairing.left m a')) (\lam _ => m.rdistr))
+              *> K-mapLoop.add _ _)
+
+    \func loop.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (x : K A p)
+      : (Loop-Func (K-cup m (suc p) q)).1 ((K-loopUnit p).1 x) = (K-mapLoop.{u} (p Nat.+ q) (K.{u} B q) C).map.1 ((K-cup m p q).1 x) \elim p
+      | 0 => idp_*> _
+      | suc p => idp_*> _ *> pmap (pmap (K-cup m (suc (suc p)) q).1) (idp_*> _)
+                 *> pmap_*>-comm (\lam s => (K-cup m (suc (suc p)) q).1 (inT s)) (pmerid x) (inv (pmerid base))
+                 *> pmap (_ *>) (pmap_inv-comm (\lam s => (K-cup m (suc (suc p)) q).1 (inT s)) (pmerid base)
+                                 *> pmap inv (pmap (K-mapLoop.{u} (suc (p Nat.+ q)) (K.{u} B q) C).map.1 (K-cup m (suc p) q).2
+                                              *> (K-mapLoop.{u} (suc (p Nat.+ q)) (K.{u} B q) C).map.2))
+
+    \func flip.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (y : K B q) : K A p ->* K C (p Nat.+ q)
+      => Map*.eval y ∘* K-cup m p q
+
+    \func loop-flip.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (y : K B q) (x : K A p)
+      : (Loop-Func (flip m (suc p) q y)).1 ((K-loopUnit p).1 x) = (K-loopUnit (p Nat.+ q)).1 ((flip m p q y).1 x)
+      => ->*.happly (Loop-Func-comp (Map*.eval y) (K-cup m (suc p) q)) _ *> pmap (Loop-Func (Map*.eval y)).1 (loop m p q x) *> idp_*> _
+
+    \func rdistr.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (x x' : K A p)
+      : (K-cup m p q).1 (K-add p x x') = deloopAdd* (K-loopEquiv (p Nat.+ q)) ((K-cup m p q).1 x) ((K-cup m p q).1 x')
+      => IsEquiv.isInj (K-mapLoop.{u} (p Nat.+ q) (K.{u} B q) C).map-isEquiv
+           (inv (loop m p q (K-add p x x'))
+            *> pmap (Loop-Func (K-cup m (suc p) q)).1 (deloopAdd.map (K-loopEquiv p) x x')
+            *> Loop-Func_*> (K-cup m (suc p) q) _ _
+            *> pmap2 (\lam (s t : Loop (Map* (K B q) (K C (suc (p Nat.+ q))))) => s *> t) (loop m p q x) (loop m p q x')
+            *> inv (K-mapLoop.add _ _))
+
+    \func natural.{u} {A B C A' B' C' : AbGroup.{u}} (m : Pairing A B C) (m' : Pairing A' B' C')
+                      (f : AddGroupHom A A') (g : AddGroupHom B B') (h : AddGroupHom C C')
+                      (e : \Pi (a : A) (b : B) -> h (m a b) = m' (f a) (g b)) (p q : Nat)
+      : Map*.post (K B q) {K C (p Nat.+ q)} {K C' (p Nat.+ q)} (KMap (p Nat.+ q) (AddGroupHom.toGroupHom h)) ∘* K-cup m p q
+        = Map*.pre {K B q} {K B' q} (KMap q (AddGroupHom.toGroupHom g)) (K C' (p Nat.+ q)) ∘* K-cup m' p q ∘* KMap p (AddGroupHom.toGroupHom f) \elim p
+      | 0 => ->*.ext {K A 0} {Map* (K B q) (K C' q)}
+                     (\lam a => inv (KMap.comp q _ _) *> pmap (KMap q) (exts (e a)) *> KMap.comp q _ _)
+                     (ToProp.fromProp (K-map-level {B} {C'} 0 q _ _) _ _)
+      | suc p => K-ext.{u} p (K-map-level (suc p) q)
+                   (Map*.post (K B q) {K C (suc (p Nat.+ q))} {K C' (suc (p Nat.+ q))} (KMap (suc (p Nat.+ q)) (AddGroupHom.toGroupHom h)) ∘* K-cup m (suc p) q)
+                   (Map*.pre {K B q} {K B' q} (KMap q (AddGroupHom.toGroupHom g)) (K C' (suc (p Nat.+ q))) ∘* K-cup m' (suc p) q
+                     ∘* KMap {AbGroup.toCGroup A} {AbGroup.toCGroup A'} (suc p) (AddGroupHom.toGroupHom f)) \lam z =>
+          ->*.happly (Loop-Func-comp (Map*.post (K B q) {K C (suc (p Nat.+ q))} {K C' (suc (p Nat.+ q))} (KMap (suc (p Nat.+ q)) (AddGroupHom.toGroupHom h)))
+                                     (K-cup m (suc p) q)) _
+          *> pmap (Loop-Func (Map*.post (K B q) {K C (suc (p Nat.+ q))} {K C' (suc (p Nat.+ q))} (KMap (suc (p Nat.+ q)) (AddGroupHom.toGroupHom h)))).1
+                  (loop m p q z)
+          *> inv (K-mapLoop.post (AddGroupHom.toGroupHom h) _)
+          *> pmap (K-mapLoop.{u} (p Nat.+ q) (K.{u} B q) C').map.1 (->*.happly (natural m m' f g h e p q) z)
+          *> K-mapLoop.pre (KMap q (AddGroupHom.toGroupHom g)) _
+          *> inv (pmap (Loop-Func (Map*.pre {K B q} {K B' q} (KMap q (AddGroupHom.toGroupHom g)) (K C' (suc (p Nat.+ q))))).1
+                       (pmap (Loop-Func (K-cup m' (suc p) q)).1 (->*.happly (KMap_loopUnit p (AddGroupHom.toGroupHom f)) z)
+                        *> loop m' p q _))
+          *> inv (->*.happly (Loop-Func-comp (Map*.pre {K B q} {K B' q} (KMap q (AddGroupHom.toGroupHom g)) (K C' (suc (p Nat.+ q))))
+                                             (K-cup m' (suc p) q)) _)
+          *> inv (->*.happly (Loop-Func-comp (Map*.pre {K B q} {K B' q} (KMap q (AddGroupHom.toGroupHom g)) (K C' (suc (p Nat.+ q))) ∘* K-cup m' (suc p) q)
+                                             (KMap (suc p) (AddGroupHom.toGroupHom f))) _)
+
+    \func assoc.{u} {A B C D E F : AbGroup.{u}} (m1 : Pairing A B D) (m2 : Pairing D C E) (n1 : Pairing B C F) (n2 : Pairing A F E)
+                    (e : \Pi (a : A) (b : B) (c : C) -> m2 (m1 a b) c = n2 a (n1 b c)) (p q r : Nat)
+      : Map*.post (K B q) (K-cup m2 (p Nat.+ q) r) ∘* K-cup m1 p q = assocRight n1 n2 p q r \elim p
+      | 0 => ->*.ext {K A 0} {Map* (K B q) (Map* (K C r) (K E (q Nat.+ r)))}
+          (\lam a => K-homogenExt.map {K B q} {K C r} {E} (q Nat.+ r) \lam y => K-homogenExt {K C r} {E} (q Nat.+ r) \lam z =>
+            inv (pmap ((K-cup m2 q r).1 ((KMap q (AddGroupHom.toGroupHom (Pairing.left m1 a))).1 y)).1 (->*.happly (KMap.id r) z))
+            *> inv (->*.happly (->*.happly (natural n1 m2 (Pairing.left m1 a) AddGroupHom.id (Pairing.left n2 a) (\lam b c => inv (e a b c)) q r) y) z))
+          (ToProp.fromProp (K-map-level2 {B} {C} {E} 0 q r _ _) _ _)
+      | suc p => K-ext.{u} p (K-map-level2 (suc p) q r) (Map*.post (K B q) (K-cup m2 (suc p Nat.+ q) r) ∘* K-cup m1 (suc p) q) (assocRight n1 n2 (suc p) q r)
+          \lam w => mapLoop*.ext2 \lam y z =>
+            \let | ev => Map*.eval {K C r} {K E (suc (p Nat.+ q Nat.+ r))} z ∘* Map*.eval {K B q} {Map* (K C r) (K E (suc (p Nat.+ q Nat.+ r)))} y
+                 | yz => ((K-cup n1 q r).1 y).1 z
+            \in inv (idp_*> _)
+              *> inv (->*.happly (Loop-Func-comp ev (Map*.post (K B q) (K-cup m2 (suc p Nat.+ q) r) ∘* K-cup m1 (suc p) q)) _)
+              *> pmap (\lam k => (Loop-Func k).1 ((K-loopUnit p).1 w))
+                      (K-homogenExt {K A (suc p)} {E} (suc (p Nat.+ q Nat.+ r)) {ev ∘* (Map*.post (K B q) (K-cup m2 (suc p Nat.+ q) r) ∘* K-cup m1 (suc p) q)}
+                                    {flip m2 (suc (p Nat.+ q)) r z ∘* flip m1 (suc p) q y} (\lam _ => idp))
+              *> ->*.happly (Loop-Func-comp (flip m2 (suc (p Nat.+ q)) r z) (flip m1 (suc p) q y)) _
+              *> pmap (Loop-Func (flip m2 (suc (p Nat.+ q)) r z)).1 (loop-flip m1 p q y w)
+              *> loop-flip m2 (p Nat.+ q) r z _
+              *> pmap (K-loopUnit (p Nat.+ q Nat.+ r)).1 (->*.happly (->*.happly (->*.happly (assoc m1 m2 n1 n2 e p q r) w) y) z)
+              *> inv (K-cast.loop (assocNat p q r) _)
+              *> inv (pmap (Loop-Func (K-cast {E} (pmap suc (assocNat p q r)))).1 (loop-flip n2 p (q Nat.+ r) yz w))
+              *> inv (->*.happly (Loop-Func-comp (K-cast {E} (pmap suc (assocNat p q r))) (flip n2 (suc p) (q Nat.+ r) yz)) _)
+              *> pmap (\lam k => (Loop-Func k).1 ((K-loopUnit p).1 w))
+                      (K-homogenExt {K A (suc p)} {E} (suc (p Nat.+ q Nat.+ r)) {K-cast {E} (pmap suc (assocNat p q r)) ∘* flip n2 (suc p) (q Nat.+ r) yz}
+                                    {ev ∘* assocRight n1 n2 (suc p) q r} (\lam _ => idp))
+              *> ->*.happly (Loop-Func-comp ev (assocRight n1 n2 (suc p) q r)) _
+              *> idp_*> _
+      \where {
+        \func assocNat (p q r : Nat) : p Nat.+ (q Nat.+ r) = p Nat.+ q Nat.+ r \elim p
+          | 0 => idp
+          | suc p => pmap suc (assocNat p q r)
+
+        \func assocRight.{u} {A B C E F : AbGroup.{u}} (n1 : Pairing B C F) (n2 : Pairing A F E) (p q r : Nat)
+          : K A p ->* Map* (K B q) (Map* (K C r) (K E (p Nat.+ q Nat.+ r)))
+          => (\lam x => Map*.post (K C r) (K-cast (assocNat p q r) ∘* (K-cup n2 p (q Nat.+ r)).1 x) ∘* K-cup n1 q r,
+              pmap (\lam k => Map*.post (K C r) (K-cast (assocNat p q r) ∘* k) ∘* K-cup n1 q r) (K-cup n2 p (q Nat.+ r)).2
+              *> pmap (\lam k => Map*.post (K C r) k ∘* K-cup n1 q r) (->*.compose-zero (K-cast (assocNat p q r))))
+      }
+
+    \func ide-left.{u} {A B : AbGroup.{u}} (m : Pairing A B B) (a : A) (e : \Pi (b : B) -> m a b = b) (q : Nat)
+      : (K-cup m 0 q).1 a = ->*.id
+      => pmap (KMap q) (exts e) *> KMap.id q
+
+    \func ide-right.{u} {A B : AbGroup.{u}} (m : Pairing A B A) (b : B) (e : \Pi (a : A) -> m a b = a) (p : Nat)
+      : flip m p 0 b = ->*.id \elim p
+      | 0 => K-homogenExt {K A 0} {AbGroup.toCGroup A} 0 e
+      | suc p => K-ext p (K-level (suc p)) (flip m (suc p) 0 b) ->*.id
+                   \lam z => loop-flip m p 0 b z *> pmap (K-loopUnit p).1 (->*.happly (ide-right m b e p) z) *> inv (idp_*> _)
+
+    \func ldistr.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (y y' : K B q)
+      : flip m p q (K-add q y y') = deloopAdd* {K A p} {K C (p Nat.+ q)} {K C (suc (p Nat.+ q))} (K-loopEquiv (p Nat.+ q)) (flip m p q y) (flip m p q y') \elim q
+      | 0 => ldistr0 m p y y'
+      | suc q => wedge-extension.extend.{u} q q (K B (suc q)) (K B (suc q)) (K-connected {B} q) (K-connected {B} q)
+          (\lam t => \new Local {truncUniverse (suc (q Nat.+ q))}
+                       (flip m p (suc q) (K-add {B} (suc q) t.1 t.2)
+                         = deloopAdd* {K A p} {K C (suc (p Nat.+ q))} {K C (suc (suc (p Nat.+ q)))} (K-loopEquiv (suc (p Nat.+ q))) (flip m p (suc q) t.1) (flip m p (suc q) t.2))
+                       (HLevel_-1_+ {_} {suc q} q (transport (\lam n => Map* (K A p) (K C n) ofHLevel_-1+ suc (suc q)) (NatSemiring.+-comm {suc q} {p}) (K-map-level {A} {C} (suc q) p) _ _)))
+          (\lam y => K-homogenExt {K A p} {C} (suc (p Nat.+ q)) (unit-right.{u} m p q y),
+           \lam y' => K-homogenExt {K A p} {C} (suc (p Nat.+ q)) (unit-left.{u} m p q y'),
+           pmap (\lam h => K-homogenExt {K A p} {C} (suc (p Nat.+ q)) {flip m p (suc q) (K-add {B} (suc q) base base)}
+                             {deloopAdd* {K A p} {K C (suc (p Nat.+ q))} {K C (suc (suc (p Nat.+ q)))} (K-loopEquiv (suc (p Nat.+ q)))
+                                         (flip m p (suc q) base) (flip m p (suc q) base)} h) (path (\lam i x => unit-coh.{u} m p q x @ i)))
+          (y, y')
+      \where {
+        \func unit-right.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (y : K B (suc q)) (x : K A p)
+          : ((K-cup m p (suc q)).1 x).1 (K-add {B} (suc q) y base)
+            = K-add {C} (suc (p Nat.+ q)) (((K-cup m p (suc q)).1 x).1 y) (((K-cup m p (suc q)).1 x).1 base)
+          => pmap ((K-cup m p (suc q)).1 x).1 (deloopAdd.zro-right {K B (suc q)} {K B (suc (suc q))} (K-loopEquiv {B} (suc q)) y)
+             *> inv (pmap (K-add {C} (suc (p Nat.+ q)) (((K-cup m p (suc q)).1 x).1 y)) ((K-cup m p (suc q)).1 x).2
+                     *> deloopAdd.zro-right {K C (suc (p Nat.+ q))} {K C (suc (suc (p Nat.+ q)))} (K-loopEquiv {C} (suc (p Nat.+ q))) _)
+
+        \func unit-left.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (y' : K B (suc q)) (x : K A p)
+          : ((K-cup m p (suc q)).1 x).1 (K-add {B} (suc q) base y')
+            = K-add {C} (suc (p Nat.+ q)) (((K-cup m p (suc q)).1 x).1 base) (((K-cup m p (suc q)).1 x).1 y')
+          => pmap ((K-cup m p (suc q)).1 x).1 (deloopAdd.zro-left {K B (suc q)} {K B (suc (suc q))} (K-loopEquiv {B} (suc q)) y')
+             *> inv (pmap (K-add {C} (suc (p Nat.+ q)) __ (((K-cup m p (suc q)).1 x).1 y')) ((K-cup m p (suc q)).1 x).2
+                     *> deloopAdd.zro-left {K C (suc (p Nat.+ q))} {K C (suc (suc (p Nat.+ q)))} (K-loopEquiv {C} (suc (p Nat.+ q))) _)
+
+        \func unit-coh.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (x : K A p)
+          : unit-right m p q base x = unit-left m p q base x
+          => pmap2 (\lam s t => pmap ((K-cup m p (suc q)).1 x).1 s *> inv t) (inv (deloopAdd.zro-coh {K B (suc q)} {K B (suc (suc q))} (K-loopEquiv {B} (suc q))))
+                   (unit-swap {K C (suc (p Nat.+ q))} {K C (suc (suc (p Nat.+ q)))} (K-loopEquiv {C} (suc (p Nat.+ q))) ((K-cup m p (suc q)).1 x).2)
+
+        \func ldistr0.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p : Nat) (y y' : K B 0)
+          : flip m p 0 (K-add {B} 0 y y') = deloopAdd* {K A p} {K C p} {K C (suc p)} (K-loopEquiv p) (flip m p 0 y) (flip m p 0 y') \elim p
+          | 0 => K-homogenExt {K A 0} 0 (\lam a => K-add.natural 0 (AddGroupHom.toGroupHom (Pairing.left m a)) y y')
+          | suc p => K-ext p (K-level (suc p)) (flip m (suc p) 0 (K-add {B} 0 y y'))
+                       (deloopAdd* {K A (suc p)} {K C (suc p)} {K C (suc (suc p))} (K-loopEquiv (suc p)) (flip m (suc p) 0 y) (flip m (suc p) 0 y'))
+              \lam z => loop-flip m p 0 (K-add {B} 0 y y') z *> pmap (K-loopUnit p).1 (->*.happly (ldistr0 m p y y') z)
+                        *> deloopAdd.map (K-loopEquiv p) _ _
+                        *> pmap2 (\lam (s t : Loop (K C (suc p))) => s *> t) (inv (loop-flip m p 0 y z)) (inv (loop-flip m p 0 y' z))
+                        *> inv (deloopAdd*.loop {K A (suc p)} {K C (suc p)} {K C (suc (suc p))} (K-loopEquiv (suc p)) (flip m (suc p) 0 y) (flip m (suc p) 0 y') _)
+
+        \func unit-swap {Z W : Pointed} (e : PointedEquiv Z (Loop W)) {z : Z} (r : z = base)
+          : pmap (deloopAdd e z) r *> deloopAdd.zro-right e z = pmap (deloopAdd e __ z) r *> deloopAdd.zro-left e z \elim r
+          | idp => pmap (idp *>) (inv (deloopAdd.zro-coh e))
+      }
+  }

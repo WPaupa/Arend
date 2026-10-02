@@ -31,6 +31,31 @@
   | loop g i => l g @ i
   | relation g g' i j => Cube2.map (l g) (l (g * g')) idp (l g') (movePath1 (l-comp g g')) @ j @ i
 
+\func K1-gpdRec {G : Group} {B : \Type} (lv : B ofHLevel_-1+ 2) (b : B) (l : G -> b = b)
+                (l-comp : \Pi (g g' : G) -> l g *> l g' = l (g * g')) (x : K1 G) : B
+  => Lift.val {K1-rec {G} {Lift B lv} (lift lv b) (\lam g => pmap (lift lv) (l g))
+                      (\lam g g' => inv (pmap_*>-comm (lift lv) (l g) (l g')) *> pmap (pmap (lift lv)) (l-comp g g')) x}
+  \where {
+    \record Lift (B : \Type) (lv : B ofHLevel_-1+ 2) (val : B)
+      \where
+        \use \level level (B : \Type) (a a' : Lift B) (p q : a = a') (s t : p = q) : s = t
+          => ToProp.fromProp (HLevel-retracts (\new Section {Lift B} {B} (\lam w => w.val) (\lam v => \new Lift B a.lv v) (\lam _ => idp)) {2} a.lv a a' p q) s t
+
+    \func lift {B : \Type} (lv : B ofHLevel_-1+ 2) (b : B) : Lift B lv
+      => \new Lift B lv b
+  }
+
+\func K1-gpdExt {G : Group} {B : \Type} (lv : B ofHLevel_-1+ 2) (f g : K1 G -> B) (e : f base = g base)
+                (l : \Pi (h : G) -> e *> pmap g (path (loop h)) = pmap f (path (loop h)) *> e) (x : K1 G) : f x = g x
+  => pmap (\lam (w : K1-gpdRec.Lift B lv) => w.val) (aux lv f g e l x)
+  \where
+    \func aux {G : Group} {B : \Type} (lv : B ofHLevel_-1+ 2) (f g : K1 G -> B) (e : f base = g base)
+              (l : \Pi (h : G) -> e *> pmap g (path (loop h)) = pmap f (path (loop h)) *> e) (x : K1 G)
+      : K1-gpdRec.lift lv (f x) = K1-gpdRec.lift lv (g x) \elim x
+      | base => pmap (K1-gpdRec.lift lv) e
+      | loop h i => pathOver (transport_path_pmap (\lam x => K1-gpdRec.lift lv (f x)) (\lam x => K1-gpdRec.lift lv (g x)) (path (loop h)) _ _
+                               (inv (pmap_*>-comm (K1-gpdRec.lift lv) _ _) *> pmap (pmap (K1-gpdRec.lift lv)) (l h) *> pmap_*>-comm (K1-gpdRec.lift lv) _ _)) @ i
+
 \instance K1-connected0 {G : Group} : Connected0 (K1 G)
   | isInh => inP base
   | isConn0 => conn

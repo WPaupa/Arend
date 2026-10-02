@@ -1,0 +1,126 @@
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Pairing
+\import Algebra.Module
+\import Algebra.Monoid
+\import Algebra.Pointed (ide)
+\import Algebra.Ring
+\import Arith.Int
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Coefficients
+\import Homotopy.Cohomology.DegreeZero
+\import Homotopy.Cohomology.Functor
+\import Homotopy.Cohomology.Integer
+\import Homotopy.Cohomology.Reduced
+\import Homotopy.EilenbergMacLane.Cup
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Mapping
+\import Homotopy.Pointed (->*, Pointed, base)
+\import Homotopy.Pointed.Mapping
+\import Paths
+\import Set
+
+\func cup.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (X : \Type u)
+  : Pairing (CoHom p X A) (CoHom q X B) (CoHom (p Nat.+ q) X C) \cowith
+  | func a b => Trunc0.map2 a b (\lam f g x => ((K-cup m p q).1 (f x)).1 (g x))
+  | ldistr {a} {b} {b'} => \case \elim a, \elim b, \elim b' \with {
+    | in0 f, in0 g, in0 g' => pmap in0 (funPath \lam x => ->*.happly (K-cup.ldistr m p q (g x) (g' x)) (f x))
+  }
+  | rdistr {a} {a'} {b} => \case \elim a, \elim a', \elim b \with {
+    | in0 f, in0 f', in0 g => pmap in0 (funPath \lam x => ->*.happly (K-cup.rdistr m p q (f x) (f' x)) (g x))
+  }
+  \where {
+    \lemma pullback.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X Y : \Type u} (s : X -> Y) (a : CoHom p Y A) (b : CoHom q Y B)
+      : Homotopy.Cohomology.Functor.pullback (p Nat.+ q) s (cup m p q Y a b)
+        = cup m p q X (Homotopy.Cohomology.Functor.pullback p s a) (Homotopy.Cohomology.Functor.pullback q s b) \elim a, b
+      | in0 _, in0 _ => idp
+
+    \lemma coefficients.{u} {A B C A' B' C' : AbGroup.{u}} (m : Pairing A B C) (m' : Pairing A' B' C')
+                            (f : AddGroupHom A A') (g : AddGroupHom B B') (h : AddGroupHom C C')
+                            (e : \Pi (a : A) (b : B) -> h (m a b) = m' (f a) (g b)) (p q : Nat) {X : \Type u} (a : CoHom p X A) (b : CoHom q X B)
+      : mapCoef (p Nat.+ q) X h (cup m p q X a b) = cup m' p q X (mapCoef p X f a) (mapCoef q X g b) \elim a, b
+      | in0 a, in0 b => pmap in0 (funPath \lam x => ->*.happly (->*.happly (K-cup.natural m m' f g h e p q) (a x)) (b x))
+
+    \lemma degree-zero.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) {X : \Type u} (a : CoHom 0 X A) (b : CoHom 0 X B) (t : Trunc0 X)
+      : degreeZero.toFunctions-map (cup m 0 0 X a b) t = m (degreeZero.toFunctions-map a t) (degreeZero.toFunctions-map b t) \elim a, b, t
+      | in0 _, in0 _, in0 _ => idp
+
+    \lemma assoc.{u} {A B C D E F : AbGroup.{u}} (m1 : Pairing A B D) (m2 : Pairing D C E) (n1 : Pairing B C F) (n2 : Pairing A F E)
+                     (e : \Pi (a : A) (b : B) (c : C) -> m2 (m1 a b) c = n2 a (n1 b c)) (p q r : Nat) {X : \Type u}
+                     (a : CoHom p X A) (b : CoHom q X B) (c : CoHom r X C)
+      : cup m2 (p Nat.+ q) r X (cup m1 p q X a b) c = CoHom.cast (K-cup.assoc.assocNat p q r) (cup n2 p (q Nat.+ r) X a (cup n1 q r X b c)) \elim a, b, c
+      | in0 f, in0 g, in0 h => pmap in0 (funPath \lam x => ->*.happly (->*.happly (->*.happly (K-cup.assoc m1 m2 n1 n2 e p q r) (f x)) (g x)) (h x))
+                               *> inv (CoHom.cast.classOf _ _)
+
+    \lemma ring-assoc.{u} {R : Ring.{u}} (p q r : Nat) {X : \Type u} (a : CoHom p X R) (b : CoHom q X R) (c : CoHom r X R)
+      : cup (Pairing.mul R) (p Nat.+ q) r X (cup (Pairing.mul R) p q X a b) c
+        = CoHom.cast (K-cup.assoc.assocNat p q r) (cup (Pairing.mul R) p (q Nat.+ r) X a (cup (Pairing.mul R) q r X b c))
+      => assoc (Pairing.mul R) (Pairing.mul R) (Pairing.mul R) (Pairing.mul R) (\lam _ _ _ => R.*-assoc) p q r a b c
+
+    \func one.{u} (R : Ring.{u}) (X : \Type u) : CoHom 0 X R
+      => in0 (\lam _ => 1)
+
+    \lemma ide-left.{u} {R : Ring.{u}} (q : Nat) {X : \Type u} (b : CoHom q X R) : cup (Pairing.mul R) 0 q X (one R X) b = b \elim b
+      | in0 g => pmap in0 (funPath \lam x => ->*.happly (K-cup.ide-left (Pairing.mul R) 1 (\lam _ => R.ide-left) q) (g x))
+
+    \lemma ide-right.{u} {R : Ring.{u}} (p : Nat) {X : \Type u} (a : CoHom p X R) : cup (Pairing.mul R) p 0 X a (one R X) = a \elim a
+      | in0 f => pmap in0 (funPath \lam x => ->*.happly (K-cup.ide-right (Pairing.mul R) 1 (\lam _ => R.ide-right) p) (f x))
+  }
+
+\func cross.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (X Y : \Type u)
+  : Pairing (CoHom p X A) (CoHom q Y B) (CoHom (p Nat.+ q) (\Sigma X Y) C) \cowith
+  | func a b => cup m p q (\Sigma X Y) (pullback p (\lam (w : \Sigma X Y) => w.1) a) (pullback q (\lam (w : \Sigma X Y) => w.2) b)
+  | ldistr => pmap (cup m p q (\Sigma X Y) _) (AddGroupHom.func-+ {pullback q (\lam (w : \Sigma X Y) => w.2)}) *> Pairing.ldistr {cup m p q (\Sigma X Y)}
+  | rdistr => pmap (cup m p q (\Sigma X Y) __ _) (AddGroupHom.func-+ {pullback p (\lam (w : \Sigma X Y) => w.1)}) *> Pairing.rdistr {cup m p q (\Sigma X Y)}
+  \where {
+    \lemma diagonal.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X : \Type u} (a : CoHom p X A) (b : CoHom q X B)
+      : pullback (p Nat.+ q) (\lam x => (x, x)) (cross m p q X X a b) = cup m p q X a b \elim a, b
+      | in0 _, in0 _ => idp
+
+    \lemma natural.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X X' Y Y' : \Type u} (s : X' -> X) (t : Y' -> Y)
+                       (a : CoHom p X A) (b : CoHom q Y B)
+      : pullback (p Nat.+ q) (\lam (w : \Sigma X' Y') => (s w.1, t w.2)) (cross m p q X Y a b) = cross m p q X' Y' (pullback p s a) (pullback q t b) \elim a, b
+      | in0 _, in0 _ => idp
+  }
+
+\lemma action-assoc.{u} {R : Ring.{u}} {M : LModule.{u} R} (p q r : Nat) {X : \Type u} (a : CoHom p X R) (b : CoHom q X R) (c : CoHom r X M)
+  : cup (Pairing.action M) (p Nat.+ q) r X (cup (Pairing.mul R) p q X a b) c
+    = CoHom.cast (K-cup.assoc.assocNat p q r) (cup (Pairing.action M) p (q Nat.+ r) X a (cup (Pairing.action M) q r X b c))
+  => cup.assoc (Pairing.mul R) (Pairing.action M) (Pairing.action M) (Pairing.action M) (\lam _ _ _ => M.*c-assoc) p q r a b c
+
+\lemma action-ide.{u} {R : Ring.{u}} {M : LModule.{u} R} (q : Nat) {X : \Type u} (c : CoHom q X M)
+  : cup (Pairing.action M) 0 q X (cup.one R X) c = c \elim c
+  | in0 g => pmap in0 (funPath \lam x => ->*.happly (K-cup.ide-left (Pairing.action M) 1 (\lam _ => M.ide_*c) q) (g x))
+
+\lemma action-constant.{u} {R : Ring.{u}} {M : LModule.{u} R} (r : R) (q : Nat) {X : \Type u} (c : CoHom q X M)
+  : cup (Pairing.action M) 0 q X (in0 (\lam _ => r)) c = mapCoef q X (Pairing.left (Pairing.action M) r) c \elim c
+  | in0 _ => idp
+
+\func intCup.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (d e : Int) (X : \Type u)
+  : Pairing (IntCoHom d X A) (IntCoHom e X B) (IntCoHom (d IntRing.+ e) X C) \elim d, e
+  | pos p, pos q => cup m p q X
+  | pos _, neg (suc _) => Pairing.zero
+  | neg (suc _), _ => Pairing.zero
+
+\func redCup.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (X : Pointed.{u})
+  : Pairing (RedCoHom p X A) (RedCoHom q X B) (RedCoHom (p Nat.+ q) X C) \cowith
+  | func a b => Trunc0.map2 a b (raw m p q)
+  | ldistr {a} {b} {b'} => \case \elim a, \elim b, \elim b' \with {
+    | in0 f, in0 g, in0 g' => pmap in0 (K-homogenExt.{u} (p Nat.+ q) {raw m p q f (RedCocycle.add g g')} {RedCocycle.add (raw m p q f g) (raw m p q f g')}
+                                          \lam x => ->*.happly (K-cup.ldistr m p q (g.1 x) (g'.1 x)) (f.1 x))
+  }
+  | rdistr {a} {a'} {b} => \case \elim a, \elim a', \elim b \with {
+    | in0 f, in0 f', in0 g => pmap in0 (K-homogenExt.{u} (p Nat.+ q) {raw m p q (RedCocycle.add f f') g} {RedCocycle.add (raw m p q f g) (raw m p q f' g)}
+                                          \lam x => ->*.happly (K-cup.rdistr m p q (f.1 x) (f'.1 x)) (g.1 x))
+  }
+  \where {
+    \func raw.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X : Pointed.{u}} (f : RedCocycle p X A) (g : RedCocycle q X B)
+      : RedCocycle (p Nat.+ q) X C
+      => (\lam x => ((K-cup m p q).1 (f.1 x)).1 (g.1 x),
+          pmap (\lam a => ((K-cup m p q).1 a).1 (g.1 base)) f.2 *> pmap (\lam (k : K B q ->* K C (p Nat.+ q)) => k.1 (g.1 base)) (K-cup m p q).2)
+
+    \lemma forget.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X : Pointed.{u}} (a : RedCoHom p X A) (b : RedCoHom q X B)
+      : Homotopy.Cohomology.Reduced.forget (p Nat.+ q) X C (redCup m p q X a b)
+        = cup m p q X (Homotopy.Cohomology.Reduced.forget p X A a) (Homotopy.Cohomology.Reduced.forget q X B b) \elim a, b
+      | in0 _, in0 _ => idp
+  }

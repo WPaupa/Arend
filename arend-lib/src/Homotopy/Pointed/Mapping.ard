@@ -57,6 +57,9 @@
 \func Map* (X Z : Pointed) : Pointed
   => Pointed.make {X ->* Z} (->*.zero X Z)
   \where {
+    \func eval {X Z : Pointed} (x : X) : Map* X Z ->* Z
+      => (\lam f => f.1 x, idp)
+
     \func pre {X' X : Pointed} (s : X' ->* X) (Z : Pointed) : Map* X Z ->* Map* X' Z
       => (\lam f => f ∘* s, idp)
 
@@ -95,6 +98,20 @@
 \func pointwiseInv {X W : Pointed} (h : X ->* Loop W) : X ->* Loop W
   => (\lam x => inv (h.1 x), pmap inv h.2)
 
+\func loopExt {X W : Pointed} {f g : X ->* Loop W} (h : \Pi (x : X) -> f.1 x = g.1 x) : f = g
+  => ->*.ext (\lam x => h x *> pmap (g.1 x *>) (inv g.2 *> (inv (h base) *> f.2 *> inv g.2) *> g.2)) (coh g.2 (h base) f.2)
+  \where {
+    \func coh {A : \Type} {a : A} {u : a = a} (r : u = idp) {v : a = a} (hb : v = u) (f2 : v = idp)
+      : (hb *> pmap (u *>) (inv r *> (inv hb *> f2 *> inv r) *> r)) *> r = f2 \elim u, r, v, hb
+      | _, idp, _, idp => idp_*> _ *> pmap (pmap (idp *>)) (idp_*> _ *> idp_*> f2) *> whisker f2
+
+    \func whisker {A : \Type} {a : A} (w : idp {A} {a} = idp) : pmap (idp *>) w = w
+      => gen w *> idp_*> w
+      \where
+        \func gen {A : \Type} {a b : A} {u v : a = b} (w : u = v) : pmap (idp *>) w = idp_*> u *> w *> inv (idp_*> v) \elim w
+          | idp => inv (*>_inv (idp_*> u)) *> pmap (idp_*> u *>) (inv (idp_*> _))
+  }
+
 \func mapLoop* (X W : Pointed) : PointedEquiv (Map* X (Loop W)) (Loop (Map* X W)) \cowith
   | map => (fromHom, idp)
   | map-isEquiv => inP \new QEquiv {
@@ -108,6 +125,11 @@
 
     \func toHom {X W : Pointed} (a : Loop (Map* X W)) : X ->* Loop W
       => (->*.happly a, path (\lam j => path (\lam i => (a @ i).2 @ j)))
+
+    \func ext2 {X Y Z : Pointed} {a a' : Loop (Map* X (Map* Y Z))}
+               (h : \Pi (x : X) (y : Y) -> pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a = pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a')
+      : a = a'
+      => pmap fromHom (loopExt {X} {Map* Y Z} {toHom a} {toHom a'} \lam x => pmap fromHom (loopExt {Y} {Z} {toHom (->*.happly a x)} {toHom (->*.happly a' x)} (h x)))
 
     \func squareToPath {A : \Type} {a0 a1 b0 b1 : A} (p : a0 = a1) (q : b0 = b1) {t : a0 = b0} {b : a1 = b1}
                        (s : Path (\lam j => p @ j = q @ j) t b) : t *> q = p *> b \elim p, q
