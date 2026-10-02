@@ -1,6 +1,8 @@
 {- | The HoTT book, Lemma 8.4.7, for groups that need not be abelian. -}
 
 \import Algebra.Group
+\import Algebra.Meta
+\import Algebra.Monoid
 \import Algebra.Pointed
 \import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
@@ -9,6 +11,7 @@
 \import Equiv
 \import Function
 \import Logic
+\import Logic.Meta
 \import Logic.Unique
 \import Paths
 
@@ -22,3 +25,32 @@
                            (e1 : ExactAt u f) (e2 : ExactAt f v) (Kc : Contr K) (Qc : Contr Q)
   : Iso {GroupCat.{l}} f
   => GroupCat.isoOfEquiv f (QEquiv.fromInjSurj (exact-middle-injective e1 Kc) (exact-middle-surjective e2 Qc))
+
+\func AbExactAt {U V W : AbGroup} (f : AddGroupHom U V) (g : AddGroupHom V W) : \Prop
+  => ExactAt (AddGroupHom.toGroupHom f) (AddGroupHom.toGroupHom g)
+  \where {
+    \lemma zero {U V W : AbGroup} {f : AddGroupHom U V} {g : AddGroupHom V W} (e : AbExactAt f g) (u : U) : g (f u) = 0
+      => (e (f u)).2 (inP (u, idp))
+
+    \lemma lift {U V W : AbGroup} {f : AddGroupHom U V} {g : AddGroupHom V W} (e : AbExactAt f g) {v : V} (p : g v = 0)
+      : ∃ (u : U) (f u = v)
+      => (e v).1 p
+  }
+
+\func short-five.{l} {A B C A' B' C' : AbGroup.{l}} {i : AddGroupHom A B} {p : AddGroupHom B C} {i' : AddGroupHom A' B'} {p' : AddGroupHom B' C'}
+                     (e : AbExactAt i p) (ps : IsSurj p) (e' : AbExactAt i' p') (i'i : IsInj i')
+                     {a : AddGroupHom A A'} (ai : Iso {AbGroupCat.{l}} a) {b : AddGroupHom B B'} {c : AddGroupHom C C'} (ci : Iso {AbGroupCat.{l}} c)
+                     (sq1 : \Pi (x : A) -> b (i x) = i' (a x)) (sq2 : \Pi (y : B) -> c (p y) = p' (b y))
+  : Iso {AbGroupCat.{l}} b
+  => AbGroupCat.isoOfEquiv b (QEquiv.fromInjSurj
+      (b.injective \lam {y} by=0 => \case AbExactAt.lift e ((AbGroupCat.equivOfIso ci).isInj (sq2 y *> pmap p' by=0 *> p'.func-zro *> inv c.func-zro)) \with {
+        | inP (x, ix) => inv ix *> pmap i ((AbGroupCat.equivOfIso ai).isInj (i'i (inv (sq1 x) *> pmap b ix *> by=0 *> inv i'.func-zro) *> inv a.func-zro)) *> i.func-zro
+      })
+      \lam y' => \case ps (Iso.hinv {ci} (p' y')) \with {
+        | inP (z, pz) => \case AbExactAt.lift e' {y' - b z} (p'.func-minus *> pmap (_ -) (inv (sq2 z) *> pmap c pz *> (AbGroupCat.equivOfIso ci).f_sec _) *> AddGroup.toZero idp) \with {
+          | inP (x', ix') => inP (z + i (Iso.hinv {ai} x'), b.func-+ *> pmap (_ +) (sq1 _ *> pmap i' ((AbGroupCat.equivOfIso ai).f_sec x') *> ix') *> add-sub)
+        }
+      })
+  \where
+    \lemma add-sub {G : AbGroup} {b y : G} : b + (y - b) = y
+      => equation.abGroup

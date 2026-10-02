@@ -1,0 +1,90 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupHom
+\import Algebra.Pointed.Exact
+\import Algebra.Pointed.PointedHom
+\import Arith.Int
+\import Category (Iso, oIso)
+\import Equiv
+\import Function
+\import Homotopy.Cofiber
+\import Homotopy.Cohomology.Theory
+\import Homotopy.Pointed
+\import Homotopy.Suspension
+\import Logic
+\import Paths
+
+\open ->* (∘*)
+\open AddGroupHom (toGroupHom)
+
+\func delta.{u} (T : CohomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+  : AddGroupHom (T.E n X) (T.E (isuc n) (Cof.pointed f))
+  => T.pull (isuc n) (Cof.quotient f) AddGroupHom.∘ Iso.f {T.susp n X}
+
+\lemma delta-exact-cof.{u} (T : CohomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+  : AbExactAt (delta T n f) (T.pull (isuc n) (Cof.inc f))
+  => ExactAt-transport {_} {_} {_} {_} {_} {_} {toGroupHom (T.pull (isuc n) (Cof.inc (Cof.inc f)))} {toGroupHom (T.pull (isuc n) (Cof.inc f))}
+       (toGroupHom (delta T n f)) (toGroupHom (T.pull (isuc n) (Cof.inc f)))
+       (toGroupHom (Iso.f {rotateIso T n f})) (AbGroupCat.equivOfIso (rotateIso T n f)).isSurj
+       PointedHom.id (\lam b => inP (b, idp)) (\lam p => p) PointedHom.id (\lam p => p)
+       (delta-rotate T n f) (\lam _ => idp) (T.exact (isuc n) (Cof.inc f))
+  \where {
+    \func rotateIso.{u} (T : CohomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+      : Iso {AbGroupCat.{u}} {T.E n X} {T.E (isuc n) (Cof.pointed (Cof.inc f))}
+      => oIso (T.susp n X) (T.pullIso (isuc n) (Cof.rotate f))
+
+    \lemma delta-rotate.{u} (T : CohomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y) (a : T.E n X)
+      : delta T n f a = T.pull (isuc n) (Cof.inc (Cof.inc f)) (Iso.f {rotateIso T n f} a)
+      => pmap (\lam (h : AddGroupHom _ _) => h (Iso.f {T.susp n X} a)) (T.pull-comp (isuc n) (Cof.inc (Cof.inc f)) (Cof.rotate f).map)
+  }
+
+\lemma delta-exact.{u} (T : CohomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+  : AbExactAt (T.pull n f) (delta T n f)
+  => ExactAt-transport {_} {_} {_} {_} {_} {_} {toGroupHom (T.pull (isuc n) (Cof.inc (Cof.inc (Cof.inc f))))} {toGroupHom (T.pull (isuc n) (Cof.inc (Cof.inc f)))}
+       (toGroupHom (T.pull n f)) (toGroupHom (delta T n f))
+       (toGroupHom (Iso.f {flipIso T n f})) (AbGroupCat.equivOfIso (flipIso T n f)).isSurj
+       (toGroupHom (Iso.hinv {delta-exact-cof.rotateIso T n f})) (AbGroupCat.equivOfIso (Iso.reverse {delta-exact-cof.rotateIso T n f})).isSurj
+       (AbGroupCat.equivOfIso (Iso.reverse {delta-exact-cof.rotateIso T n f})).isInj
+       PointedHom.id (\lam p => p)
+       (\lam y => inv ((AbGroupCat.equivOfIso (delta-exact-cof.rotateIso T n f)).ret_f _)
+                  *> pmap (Iso.hinv {delta-exact-cof.rotateIso T n f}) (inv (square T n f y)))
+       (\lam b => delta-exact-cof.delta-rotate T n f _
+                  *> pmap (T.pull (isuc n) (Cof.inc (Cof.inc f))) ((AbGroupCat.equivOfIso (delta-exact-cof.rotateIso T n f)).f_sec b))
+       (T.exact (isuc n) (Cof.inc (Cof.inc f)))
+  \where {
+    \func flipEquiv (Y : Pointed) : PointedEquiv (Susp.pointed Y) (Susp.pointed Y) \cowith
+      | map => Susp.flip Y
+      | map-isEquiv => inP \new QEquiv {
+        | ret => (Susp.flip Y).1
+        | ret_f => ->*.happly (Susp.flip-flip Y)
+        | f_sec => ->*.happly (Susp.flip-flip Y)
+      }
+
+    \func flipIso.{u} (T : CohomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+      : Iso {AbGroupCat.{u}} {T.E n Y} {T.E (isuc n) (Cof.pointed (Cof.inc (Cof.inc f)))}
+      => oIso (T.susp n Y) (T.pullIso (isuc n) (flipEquiv Y PointedEquiv.∘~ Cof.rotate (Cof.inc f)))
+
+    \func rotate-square {X Y : Pointed} (f : X ->* Y)
+      : (flipEquiv Y PointedEquiv.∘~ Cof.rotate (Cof.inc f)).map ∘* Cof.inc (Cof.inc (Cof.inc f)) = Susp-Func f ∘* (Cof.rotate f).map
+      => inv (->*.compose-assoc (Susp.flip Y) (Cof.rotate (Cof.inc f)).map (Cof.inc (Cof.inc (Cof.inc f))))
+         *> pmap (Susp.flip Y ∘*) (Cof.rotate-inc f)
+         *> ->*.compose-assoc (Susp.flip Y) (Susp.flip Y ∘* Susp-Func f) (Cof.rotate f).map
+         *> pmap (`∘* (Cof.rotate f).map) (->*.compose-assoc (Susp.flip Y) (Susp.flip Y) (Susp-Func f))
+         *> pmap (\lam h => h ∘* Susp-Func f ∘* (Cof.rotate f).map) (Susp.flip-flip Y)
+
+    \lemma square.{u} (T : CohomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y) (y : T.E n Y)
+      : T.pull (isuc n) (Cof.inc (Cof.inc (Cof.inc f))) (Iso.f {flipIso T n f} y) = Iso.f {delta-exact-cof.rotateIso T n f} (T.pull n f y)
+      => pmap (\lam (h : AddGroupHom _ _) => h (Iso.f {T.susp n Y} y))
+              (inv (T.pull-comp (isuc n) _ _) *> pmap (T.pull (isuc n)) (rotate-square f) *> T.pull-comp (isuc n) _ _)
+         *> pmap (T.pull (isuc n) (Cof.rotate f).map) (pmap (\lam (h : AddGroupHom _ _) => h y) (inv (T.susp-natural n f)))
+  }
+
+\lemma delta-natural.{u} (T : CohomologyTheory.{u}) (n : Int) {X Y X' Y' : Pointed.{u}} {f : X ->* Y} {f' : X' ->* Y'}
+                         (a : X ->* X') (b : Y ->* Y') (h : \Pi (x : X) -> b.1 (f.1 x) = f'.1 (a.1 x)) (x : T.E n X')
+  : T.pull (isuc n) (Cof.map* a b h) (delta T n f' x) = delta T n f (T.pull n a x)
+  => \let s => Iso.f {T.susp n X'} x
+     \in inv (pmap (\lam (g : AddGroupHom _ _) => g s) (T.pull-comp (isuc n) (Cof.map* a b h) (Cof.quotient f')))
+         *> pmap (\lam g => T.pull (isuc n) g s) (Cof.map*.quotient-natural a b h)
+         *> pmap (\lam (g : AddGroupHom _ _) => g s) (T.pull-comp (isuc n) (Cof.quotient f) (Susp-Func a))
+         *> pmap (T.pull (isuc n) (Cof.quotient f)) (inv (pmap (\lam (g : AddGroupHom _ _) => g x) (T.susp-natural n a)))

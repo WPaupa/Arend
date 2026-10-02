@@ -1,3 +1,4 @@
+\import Data.Maybe
 \import Equiv
 \import Homotopy.Pointed
 \import Homotopy.Pushout \hiding (PushoutPointed)
@@ -27,6 +28,24 @@
       : extend g h ∘* inc f = g
       => ->*.ext (\lam _ => idp) idp
 
+    \func map {A B A' B' : \Type} {f : A -> B} {f' : A' -> B'} (a : A -> A') (b : B -> B') (h : \Pi (x : A) -> b (f x) = f' (a x))
+                (c : Cof f) : Cof f'
+      => rec (\lam y => pinl (b y)) (\lam _ => pinr ()) (\lam x => pmap pinl (h x) *> ppglue (a x)) c
+
+    \func map* {X Y X' Y' : Pointed} {f : X ->* Y} {f' : X' ->* Y'} (a : X ->* X') (b : Y ->* Y')
+                 (h : \Pi (x : X) -> b.1 (f.1 x) = f'.1 (a.1 x)) : pointed f ->* pointed f'
+      => (map a.1 b.1 h, pmap pinl b.2)
+      \where {
+        \func inc-natural {X Y X' Y' : Pointed} {f : X ->* Y} {f' : X' ->* Y'} (a : X ->* X') (b : Y ->* Y')
+                          (h : \Pi (x : X) -> b.1 (f.1 x) = f'.1 (a.1 x)) : map* a b h ∘* inc f = inc f' ∘* b
+          => ->*.ext (\lam _ => idp) idp
+
+        \func quotient-natural {X Y X' Y' : Pointed} {f : X ->* Y} {f' : X' ->* Y'} (a : X ->* X') (b : Y ->* Y')
+                               (h : \Pi (x : X) -> b.1 (f.1 x) = f'.1 (a.1 x)) : quotient f' ∘* map* a b h = Susp-Func a ∘* quotient f
+          => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(quotient f' ∘* map* a b h).1} {(Susp-Func a ∘* quotient f).1}
+                               (\lam _ => idp) (\lam _ => idp) (\lam _ => inv (pmap_*>-comm (quotient f').1 _ _))) idp
+      }
+
     \func quotient {X Y : Pointed} (f : X ->* Y) : pointed f ->* Susp.pointed X
       => (rec (\lam _ => north) (\lam _ => south) pmerid, idp)
 
@@ -55,4 +74,115 @@
                                      (\lam y => pmerid y) (\lam _ => idp) (\lam x => *>_inv (pmerid (f.1 x))))
                            (\lam _ => idp) (\lam _ => idp))
                  (pmap (pmerid (base {Y}) *>) (idp_*> _ *> idp_*> _) *> *>_inv (pmerid (base {Y})))
+
+    \func excision {J A B : \Type} (u : J -> A) (v : J -> B)
+      : PointedEquiv (pointed (Plus.map u)) (pointed (Plus.map (pinr {J} {A} {B} {u} {v}))) \cowith
+      | map => (fwd u v, idp)
+      | map-isEquiv => inP (equiv u v)
+      \where {
+        \func equiv {J A B : \Type} (u : J -> A) (v : J -> B) : QEquiv (fwd u v) \cowith
+          | ret => back u v
+          | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam c => back u v (fwd u v c)} {\lam c => c}
+                              (back-left u v) (\lam _ => idp) (back-glue u v)
+          | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam c => fwd u v (back u v c)} {\lam c => c}
+                              (map-left u v) (\lam _ => idp) (map-glue u v)
+
+        \func inverse-back {J A B : \Type} (u : J -> A) (v : J -> B) (c : Cof (Maybe.map (pinr {J} {A} {B} {u} {v})))
+          : (PointedEquiv.inverse (excision u v)).map.1 c = back u v c
+          => pmap (PointedEquiv.inverse (excision u v)).map.1 (inv (QEquiv.f_sec {equiv u v} c))
+             *> Section.ret_f {PointedEquiv.toHAEquiv (excision u v)} (back u v c)
+
+        \func square {J A B : \Type} (u : J -> A) (v : J -> B) (m : Maybe J)
+          : Maybe.map pinl (Maybe.map u m) = Maybe.map (pinr {J} {A} {B} {u} {v}) (Maybe.map v m) \elim m
+          | nothing => idp
+          | just x => pmap just (ppglue x)
+
+        \func fwd {J A B : \Type} (u : J -> A) (v : J -> B) (c : Cof (Maybe.map u)) : Cof (Maybe.map (pinr {J} {A} {B} {u} {v}))
+          => Cof.map {_} {_} {_} {_} {Maybe.map u} {Maybe.map pinr} (Maybe.map v) (Maybe.map pinl) (square u v) c
+
+        \func collapse {J A B : \Type} (u : J -> A) (v : J -> B) (d : PushoutData u v) : Cof (Maybe.map u)
+          => rec (\lam a => pinl (just a)) (\lam _ => pinr ()) (\lam x => ppglue (just x)) d
+
+        \func back {J A B : \Type} (u : J -> A) (v : J -> B) (c : Cof (Maybe.map (pinr {J} {A} {B} {u} {v}))) : Cof (Maybe.map u)
+          => rec (maybe (pinl nothing) (collapse u v)) (\lam _ => pinr ()) (back-cone u v) c
+
+        \func back-cone {J A B : \Type} (u : J -> A) (v : J -> B) (m : Maybe B)
+          : maybe (pinl nothing) (collapse u v) (Maybe.map pinr m) = pinr () \elim m
+          | nothing => ppglue nothing
+          | just _ => idp
+
+        \func back-left {J A B : \Type} (u : J -> A) (v : J -> B) (m : Maybe A)
+          : back u v (fwd u v (pinl m)) = pinl m \elim m
+          | nothing => idp
+          | just _ => idp
+
+        \func back-glue {J A B : \Type} (u : J -> A) (v : J -> B) (m : Maybe J)
+          : back-left u v (Maybe.map u m) *> ppglue m
+            = pmap (\lam c => back u v (fwd u v c)) (ppglue m) *> idp \elim m
+          | nothing => inv (pmap_*>-comm (back u v) idp (ppglue nothing))
+          | just x => idp_*> _ *> inv (pmap_*>-comm (back u v) _ _)
+
+        \func map-left {J A B : \Type} (u : J -> A) (v : J -> B) (m : Maybe (PushoutData u v))
+          : fwd u v (back u v (pinl m)) = pinl m \elim m
+          | nothing => idp
+          | just d => homotopy {_} {_} {_} {_} {_} {_} {\lam d => fwd u v (collapse u v d)} {\lam d => pinl (just d)}
+                               (\lam _ => idp) (\lam b => inv (ppglue (just b)))
+                               (\lam x => idp_*> _ *> inv (*>-assoc _ _ _ *> pmap (_ *>) (*>_inv (ppglue (just (v x)))))) d
+
+        \func map-glue {J A B : \Type} (u : J -> A) (v : J -> B) (m : Maybe B)
+          : map-left u v (Maybe.map pinr m) *> ppglue m
+            = pmap (\lam c => fwd u v (back u v c)) (ppglue m) *> idp \elim m
+          | nothing => idp
+          | just b => inv_*> (ppglue (just b))
+      }
+
+    \func excision-natural {C U V C' U' V' : \Type} {f : C -> U} {g : C -> V} {f' : C' -> U'} {g' : C' -> V'}
+                           (c : C -> C') (u : U -> U') (v : V -> V') (hf : \Pi (x : C) -> f' (c x) = u (f x)) (hg : \Pi (x : C) -> g' (c x) = v (g x))
+      : (excision f' g').map ∘* left-map f c u hf = right-map f g c u v hf hg ∘* (excision f g).map
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {\lam w => (excision f' g').map.1 ((left-map f c u hf).1 w)}
+                           {\lam w => (right-map f g c u v hf hg).1 ((excision f g).map.1 w)}
+                           (natural-left f g c u v hf hg) (\lam _ => idp) (natural-glue f g c u v hf hg)) idp
+      \where {
+        \func left-map {C U C' U' : \Type} (f : C -> U) {f' : C' -> U'} (c : C -> C') (u : U -> U') (hf : \Pi (x : C) -> f' (c x) = u (f x))
+          : pointed (Plus.map f) ->* pointed (Plus.map f')
+          => map* {Plus C} {Plus U} {Plus C'} {Plus U'} {Plus.map f} {Plus.map f'} (Plus.map c) (Plus.map u) (left-square hf)
+
+        \func right-map {C U V C' U' V' : \Type} (f : C -> U) (g : C -> V) {f' : C' -> U'} {g' : C' -> V'}
+                        (c : C -> C') (u : U -> U') (v : V -> V') (hf : \Pi (x : C) -> f' (c x) = u (f x)) (hg : \Pi (x : C) -> g' (c x) = v (g x))
+          : pointed (Plus.map (pinr {C} {U} {V} {f} {g})) ->* pointed (Plus.map (pinr {C'} {U'} {V'} {f'} {g'}))
+          => map* {Plus V} {Plus (PushoutData f g)} {Plus V'} {Plus (PushoutData f' g')} {Plus.map pinr} {Plus.map pinr}
+                  (Plus.map v) (Plus.map (PushoutData.congr f g f' g' c u v hf hg)) (right-square f g c u v hf hg)
+
+        \func glue-square {S T B : \Type} (P : S -> T) (r : B -> S) {w : T} (Q : \Pi (y : B) -> P (r y) = w)
+                          {x0 x1 : S} {y0 y : B} (a : x0 = x1) (e : x1 = r y0) (h : y0 = y)
+          : pmap P ((a *> e) *> pmap r h) *> (idp *> Q y) = pmap P a *> (pmap P e *> Q y0) \elim h
+          | idp => pmap (pmap P (a *> e) *>) (idp_*> (Q y0)) *> pmap (`*> Q y0) (pmap_*>-comm P a e) *> *>-assoc _ _ _
+
+        \func left-square {C U C' U' : \Type} {f : C -> U} {f' : C' -> U'} {c : C -> C'} {u : U -> U'} (hf : \Pi (x : C) -> f' (c x) = u (f x)) (m : Maybe C)
+          : Maybe.map u (Maybe.map f m) = Maybe.map f' (Maybe.map c m) \elim m
+          | nothing => idp
+          | just x => pmap just (inv (hf x))
+
+        \func right-square {C U V C' U' V' : \Type} (f : C -> U) (g : C -> V) {f' : C' -> U'} {g' : C' -> V'}
+                           (c : C -> C') (u : U -> U') (v : V -> V') (hf : \Pi (x : C) -> f' (c x) = u (f x)) (hg : \Pi (x : C) -> g' (c x) = v (g x)) (m : Maybe V)
+          : Maybe.map (PushoutData.congr f g f' g' c u v hf hg) (Maybe.map pinr m) = Maybe.map pinr (Maybe.map v m) \elim m
+          | nothing => idp
+          | just _ => idp
+
+        \func natural-left {C U V C' U' V' : \Type} (f : C -> U) (g : C -> V) {f' : C' -> U'} {g' : C' -> V'}
+                           (c : C -> C') (u : U -> U') (v : V -> V') (hf : \Pi (x : C) -> f' (c x) = u (f x)) (hg : \Pi (x : C) -> g' (c x) = v (g x)) (m : Maybe U)
+          : (excision f' g').map.1 ((left-map f c u hf).1 (pinl m)) = (right-map f g c u v hf hg).1 ((excision f g).map.1 (pinl m)) \elim m
+          | nothing => idp
+          | just _ => idp
+
+        \func natural-glue {C U V C' U' V' : \Type} (f : C -> U) (g : C -> V) {f' : C' -> U'} {g' : C' -> V'}
+                           (c : C -> C') (u : U -> U') (v : V -> V') (hf : \Pi (x : C) -> f' (c x) = u (f x)) (hg : \Pi (x : C) -> g' (c x) = v (g x)) (m : Maybe C)
+          : natural-left f g c u v hf hg (Maybe.map f m)
+            *> pmap (\lam w => (right-map f g c u v hf hg).1 ((excision f g).map.1 w)) (ppglue m)
+            = pmap (\lam w => (excision f' g').map.1 ((left-map f c u hf).1 w)) (ppglue m) *> idp \elim m
+          | nothing => idp_*> _ *> pmap_*>-comm (right-map f g c u v hf hg).1 idp _ *> inv (pmap_*>-comm (excision f' g').map.1 idp _)
+          | just x => idp_*> _ *> pmap_*>-comm (right-map f g c u v hf hg).1 _ _
+                      *> glue-square (\lam d => pinl (just d)) pinr (\lam y => ppglue (just y)) _ _ (hg x)
+                      *> inv (pmap_*>-comm (excision f' g').map.1 _ _)
+      }
   }

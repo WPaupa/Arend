@@ -139,4 +139,9 @@
       }
       | hinv_f => exts e.ret_f
       | f_hinv => exts e.f_ret
+
+    \func equivOfIso.{u} {A B : AbGroup.{u}} (e : Iso {AbGroupCat.{u}} {A} {B}) : QEquiv (Iso.f {e}) \cowith
+      | ret => Iso.hinv {e}
+      | ret_f a => path (\lam i => (Iso.hinv_f {e} @ i) a)
+      | f_sec b => path (\lam i => (Iso.f_hinv {e} @ i) b)
   }
