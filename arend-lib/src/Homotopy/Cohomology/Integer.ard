@@ -1,0 +1,136 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Category (Iso, idIso)
+\import Equiv
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Coefficients
+\import Homotopy.Cohomology.Functor
+\import Homotopy.Cohomology.Reduced
+\import Homotopy.Pointed (->*, Pointed, PointedEquiv, base)
+\import Paths
+
+\open ->* (∘*)
+
+\func IntCoHom.{u} (d : Int) (X : \Type u) (A : AbGroup.{u}) : AbGroup.{u} \elim d
+  | pos n => CoHom n X A
+  | neg (suc _) => TrivialAbGroup
+  \where {
+    \func pullback.{u} (d : Int) {X Y : \Type u} {A : AbGroup.{u}} (f : X -> Y) : AddGroupHom (IntCoHom d Y A) (IntCoHom d X A) \elim d
+      | pos n => Homotopy.Cohomology.Functor.pullback n f
+      | neg (suc _) => AddGroupHom.id
+      \where {
+        \lemma id.{u} (d : Int) {X : \Type u} {A : AbGroup.{u}} : pullback d {X} {X} {A} (\lam x => x) = AddGroupHom.id \elim d
+          | pos n => Homotopy.Cohomology.Functor.pullback.id n
+          | neg (suc _) => idp
+
+        \lemma comp.{u} (d : Int) {X Y Z : \Type u} {A : AbGroup.{u}} (f : X -> Y) (g : Y -> Z)
+          : pullback d {X} {Z} {A} (\lam x => g (f x)) = pullback d f AddGroupHom.∘ pullback d g \elim d
+          | pos n => Homotopy.Cohomology.Functor.pullback.comp n f g
+          | neg (suc _) => idp
+
+        \lemma homotopy.{u} (d : Int) {X Y : \Type u} {A : AbGroup.{u}} {f f' : X -> Y} (h : \Pi (x : X) -> f x = f' x)
+          : pullback d {X} {Y} {A} f = pullback d f' \elim d
+          | pos n => Homotopy.Cohomology.Functor.pullback.homotopy n h
+          | neg (suc _) => idp
+      }
+
+    \func pullbackIso.{u} (d : Int) {X Y : \Type u} {A : AbGroup.{u}} (e : QEquiv {X} {Y}) : Iso {AbGroupCat} (pullback d {X} {Y} {A} e) \elim d
+      | pos n => Homotopy.Cohomology.Functor.pullbackIso n e
+      | neg (suc _) => idIso
+
+    \func mapCoef.{u} (d : Int) (X : \Type u) {A B : AbGroup.{u}} (f : AddGroupHom A B) : AddGroupHom (IntCoHom d X A) (IntCoHom d X B) \elim d
+      | pos n => Homotopy.Cohomology.Coefficients.mapCoef n X f
+      | neg (suc _) => AddGroupHom.id
+      \where {
+        \lemma id.{u} (d : Int) (X : \Type u) {A : AbGroup.{u}} : mapCoef d X (AddGroupHom.id {A}) = AddGroupHom.id \elim d
+          | pos n => Homotopy.Cohomology.Coefficients.mapCoef.id n X
+          | neg (suc _) => idp
+
+        \lemma comp.{u} (d : Int) (X : \Type u) {A B C : AbGroup.{u}} (g : AddGroupHom B C) (f : AddGroupHom A B)
+          : mapCoef d X (g AddGroupHom.∘ f) = mapCoef d X g AddGroupHom.∘ mapCoef d X f \elim d
+          | pos n => Homotopy.Cohomology.Coefficients.mapCoef.comp n X g f
+          | neg (suc _) => idp
+
+        \lemma pullback.{u} (d : Int) {X Y : \Type u} {A B : AbGroup.{u}} (s : X -> Y) (f : AddGroupHom A B)
+          : mapCoef d X f AddGroupHom.∘ IntCoHom.pullback d s = IntCoHom.pullback d s AddGroupHom.∘ mapCoef d Y f \elim d
+          | pos n => Homotopy.Cohomology.Coefficients.mapCoef.pullback n s f
+          | neg (suc _) => idp
+      }
+
+    \func coefIso.{u} (d : Int) (X : \Type u) {A B : AbGroup.{u}} {f : AddGroupHom A B} (e : Iso {AbGroupCat} f)
+      : Iso {AbGroupCat} (mapCoef d X f) \elim d
+      | pos n => Homotopy.Cohomology.Coefficients.coefIso n X e
+      | neg (suc _) => idIso
+
+    \func splitIso.{u} (d : Int) (X : Pointed.{u}) (A : AbGroup.{u})
+      : Iso {AbGroupCat} {ProductAbGroup (IntRedCoHom d X A) (IntCoHom d (\Sigma) A)} {IntCoHom d X A} (join d X A) \elim d
+      | pos n => Homotopy.Cohomology.Reduced.splitIso n X A
+      | neg (suc _) => TrivialAbGroup.trivialIso _ (\lam _ => idp)
+      \where
+        \func join.{u} (d : Int) (X : Pointed.{u}) (A : AbGroup.{u})
+          : AddGroupHom (ProductAbGroup (IntRedCoHom d X A) (IntCoHom d (\Sigma) A)) (IntCoHom d X A) \elim d
+          | pos n => Homotopy.Cohomology.Reduced.splitIso.join n X A
+          | neg (suc _) => TrivialAbGroup.toTrivial _
+  }
+
+\func IntRedCoHom.{u} (d : Int) (X : Pointed.{u}) (A : AbGroup.{u}) : AbGroup.{u} \elim d
+  | pos n => RedCoHom n X A
+  | neg (suc _) => TrivialAbGroup
+  \where {
+    \func pullback.{u} (d : Int) {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y)
+      : AddGroupHom (IntRedCoHom d Y A) (IntRedCoHom d X A) \elim d
+      | pos n => redPullback n f
+      | neg (suc _) => AddGroupHom.id
+      \where {
+        \lemma id.{u} (d : Int) {X : Pointed.{u}} {A : AbGroup.{u}} : pullback d {X} {X} {A} ->*.id = AddGroupHom.id \elim d
+          | pos n => redPullback.id n
+          | neg (suc _) => idp
+
+        \lemma comp.{u} (d : Int) {X Y Z : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y) (g : Y ->* Z)
+          : pullback d {X} {Z} {A} (g ∘* f) = pullback d f AddGroupHom.∘ pullback d g \elim d
+          | pos n => redPullback.comp n f g
+          | neg (suc _) => idp
+
+        \lemma homotopy.{u} (d : Int) {X Y : Pointed.{u}} {A : AbGroup.{u}} {f f' : X ->* Y}
+                            (h : \Pi (x : X) -> f.1 x = f'.1 x) (q : h base *> f'.2 = f.2)
+          : pullback d {X} {Y} {A} f = pullback d f' \elim d
+          | pos n => redPullback.homotopy n h q
+          | neg (suc _) => idp
+      }
+
+    \func pullbackIso.{u} (d : Int) {X Y : Pointed.{u}} {A : AbGroup.{u}} (e : PointedEquiv X Y)
+      : Iso {AbGroupCat} (pullback d {X} {Y} {A} e.map) \elim d
+      | pos n => redPullbackIso n e
+      | neg (suc _) => idIso
+
+    \func mapCoef.{u} (d : Int) (X : Pointed.{u}) {A B : AbGroup.{u}} (f : AddGroupHom A B)
+      : AddGroupHom (IntRedCoHom d X A) (IntRedCoHom d X B) \elim d
+      | pos n => redMapCoef n X f
+      | neg (suc _) => AddGroupHom.id
+      \where {
+        \lemma id.{u} (d : Int) (X : Pointed.{u}) {A : AbGroup.{u}} : mapCoef d X (AddGroupHom.id {A}) = AddGroupHom.id \elim d
+          | pos n => redMapCoef.id n X
+          | neg (suc _) => idp
+
+        \lemma comp.{u} (d : Int) (X : Pointed.{u}) {A B C : AbGroup.{u}} (g : AddGroupHom B C) (f : AddGroupHom A B)
+          : mapCoef d X (g AddGroupHom.∘ f) = mapCoef d X g AddGroupHom.∘ mapCoef d X f \elim d
+          | pos n => redMapCoef.comp n X g f
+          | neg (suc _) => idp
+
+        \lemma pullback.{u} (d : Int) {X Y : Pointed.{u}} {A B : AbGroup.{u}} (s : X ->* Y) (f : AddGroupHom A B)
+          : mapCoef d X f AddGroupHom.∘ IntRedCoHom.pullback d s = IntRedCoHom.pullback d s AddGroupHom.∘ mapCoef d Y f \elim d
+          | pos n => redMapCoef.pullback n s f
+          | neg (suc _) => idp
+      }
+
+    \func coefIso.{u} (d : Int) (X : Pointed.{u}) {A B : AbGroup.{u}} {f : AddGroupHom A B} (e : Iso {AbGroupCat} f)
+      : Iso {AbGroupCat} (mapCoef d X f) \elim d
+      | pos n => redCoefIso n X e
+      | neg (suc _) => idIso
+
+    \func forget.{u} (d : Int) (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom (IntRedCoHom d X A) (IntCoHom d X A) \elim d
+      | pos n => Homotopy.Cohomology.Reduced.forget n X A
+      | neg (suc _) => AddGroupHom.id
+  }

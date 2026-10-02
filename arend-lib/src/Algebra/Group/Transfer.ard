@@ -1,5 +1,3 @@
--- | Group structures and homomorphisms detected by injective homomorphisms.
-
 \import Algebra.Group
 \import Algebra.Group.GroupHom
 \import Algebra.Monoid
@@ -7,7 +5,6 @@
 \import Function (IsInj)
 \import Paths
 
--- | The abelian group on `E` with the given operations, when an injective map carries them to those of `B`.
 \func injectiveAbGroup {E : \Set} (B : AbGroup) (f : E -> B) (f-inj : IsInj f)
                        (z : E) (add : E -> E -> E) (neg : E -> E)
                        (f-zro : f z = 0) (f-+ : \Pi (x y : E) -> f (add x y) = f x + f y)
@@ -21,7 +18,6 @@
   | negative-left {x} => f-inj (f-+ _ x *> pmap (\lam t => t + f x) (f-negative x) *> B.negative-left *> inv f-zro)
   | +-comm {x} {y} => f-inj (f-+ x y *> B.+-comm *> inv (f-+ y x))
 
--- | A map is additive if injective homomorphisms carry it to a homomorphism.
 \func squareHom {A B C D : AddGroup} (fA : AddGroupHom A C) (fB : AddGroupHom B D) (fB-inj : IsInj fB)
                 (F : A -> B) (G : AddGroupHom C D) (sq : \Pi (a : A) -> fB (F a) = G (fA a)) : AddGroupHom A B \cowith
   | func => F

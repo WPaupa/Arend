@@ -1,11 +1,3 @@
-{- | Pointed mapping spaces and their loop spaces.
-
- `Map X Z` is the type of functions `X -> Z` pointed by the constant map, and `Map* X Z` the type of pointed
- maps pointed by `->*.zero`. Loops in either are computed pointwise: `mapLoop` and `mapLoop*` are pointed
- equivalences `Map X (Loop Z) = Loop (Map X Z)` and `Map* X (Loop Z) = Loop (Map* X Z)`, whose inverses are
- definitional. Concatenation of loops corresponds to `funPath.concat` and `pointwiseConcat`.
- -}
-
 \import Equiv
 \import Homotopy.Loop
 \import Homotopy.Pointed
@@ -14,7 +6,6 @@
 
 \open ->* (∘*)
 
--- | Function extensionality as a named map.
 \func funPath {X Y : \Type} {f g : X -> Y} (h : \Pi (x : X) -> f x = g x) : f = g
   => path (\lam i x => h x @ i)
   \where {
@@ -87,7 +78,6 @@
 \func pointwiseConcat {X W : Pointed} (h k : X ->* Loop W) : X ->* Loop W
   => (\lam x => h.1 x *> k.1 x, pmap (h.1 base *>) k.2 *> h.2)
   \where {
-    -- | On loops, the pointwise concatenation of two maps induces the concatenation of their images.
     \func loop {X W : Pointed} (h k : X ->* Loop W) (l : Loop X)
       : (Loop-Func (pointwiseConcat h k)).1 l = (Loop-Func h).1 l *> (Loop-Func k).1 l
       => lem h.2 k.2 (pmap h.1 l) (pmap k.1 l)
@@ -126,7 +116,6 @@
     \func squareToPath-idp {A : \Type} {a0 a1 : A} (p : a0 = a1) : squareToPath p p (path (\lam j => idp {A} {p @ j})) = idp_*> p \elim p
       | idp => idp
 
-    -- | The witness of `toHom` is the basepoint coherence `->*.happly-base`, read as a square.
     \func toHom-witness {X W : Pointed} {f g : X ->* W} (a : f = g)
       : squareToPath f.2 g.2 (path (\lam j => path (\lam i => (a @ i).2 @ j))) = ->*.happly-base a \elim a
       | idp => squareToPath-idp f.2
