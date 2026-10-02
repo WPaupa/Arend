@@ -9,10 +9,12 @@
 \import Homotopy.EilenbergMacLane.Algebra
 \import Homotopy.EilenbergMacLane.Definition
 \import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.EilenbergMacLane.Mapping
 \import Homotopy.HomotopyGroup
 \import Homotopy.Loop
 \import Homotopy.Pointed
 \import Homotopy.Pointed.Mapping
+\import Logic (prop-pi)
 \import Logic.Unique (isSet)
 \import Paths
 \import Set
@@ -70,18 +72,15 @@
       => deloopNeg* (K-loopEquiv n) f
 
     \func toLoop.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : PointedEquiv (Map* X (K A n)) (Loop (Map* X (K A (suc n))))
-      => mapLoop* X (K A (suc n)) ∘~ Map*.postEquiv X (K-loopEquiv n)
+      => K-mapLoop n X A
       \where {
         \func add.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f g : RedCocycle n X A)
           : (toLoop n X A).map.1 (RedCocycle.add f g) = (toLoop n X A).map.1 f *> (toLoop n X A).map.1 g
-          => pmap mapLoop*.fromHom (deloopAdd*.post (K-loopEquiv n) f g)
-             *> mapLoop*.fromHom-concat {X} {K A (suc n)} (->*.compose {X} {K A n} {Loop (K A (suc n))} (K-loopUnit n) f)
-                                        (->*.compose {X} {K A n} {Loop (K A (suc n))} (K-loopUnit n) g)
+          => K-mapLoop.add f g
 
         \func neg.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : RedCocycle n X A)
           : (toLoop n X A).map.1 (RedCocycle.neg f) = inv ((toLoop n X A).map.1 f)
-          => pmap mapLoop*.fromHom (deloopNeg*.post (K-loopEquiv n) f)
-             *> mapLoop*.fromHom-inv {X} {K A (suc n)} (->*.compose {X} {K A n} {Loop (K A (suc n))} (K-loopUnit n) f)
+          => K-mapLoop.neg f
       }
 
     \func toDoubleLoop.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u})
@@ -145,6 +144,21 @@
 
     \func pi2Iso.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : Iso {AbGroupCat} (toPi2 n X A)
       => AbGroupCat.isoOfEquiv (toPi2 n X A) (Trunc0.mapEquiv (IsEquiv.toQEquiv (Cocycle.toDoubleLoop n X A).map-isEquiv))
+
+    \func cast.{u} {n m : Nat} {X : \Type u} {A : AbGroup.{u}} (e : n = m) : AddGroupHom (CoHom n X A) (CoHom m X A) \elim m, e
+      | _, idp => AddGroupHom.id
+      \where {
+        \lemma classOf.{u} {n m : Nat} {X : \Type u} {A : AbGroup.{u}} (e : n = m) (f : Cocycle n X A)
+          : cast e (CoHom.classOf f) = CoHom.classOf (\lam x => (K-cast e).1 (f x)) \elim m, e
+          | _, idp => idp
+
+        \lemma comp.{u} {n m k : Nat} {X : \Type u} {A : AbGroup.{u}} (e : n = m) (e' : m = k) (c : CoHom n X A)
+          : cast e' (cast e c) = cast (e *> e') c \elim k, e'
+          | _, idp => idp
+
+        \lemma unique.{u} {n m : Nat} {X : \Type u} {A : AbGroup.{u}} (e e' : n = m) : cast {n} {m} {X} {A} e = cast e'
+          => pmap (cast {n} {m} {X} {A}) prop-pi
+      }
   }
 
 \func RedCoHom.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AbGroup.{u}

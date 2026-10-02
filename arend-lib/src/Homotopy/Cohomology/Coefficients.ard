@@ -9,6 +9,7 @@
 \import Homotopy.EilenbergMacLane.Definition
 \import Homotopy.EilenbergMacLane.Functor
 \import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.EilenbergMacLane.Mapping
 \import Homotopy.HomotopyGroup
 \import Homotopy.Loop
 \import Homotopy.Pointed (->*, Pointed)
@@ -58,11 +59,7 @@
     \lemma square.{u} (n : Nat) (X : Pointed.{u}) {A B : AbGroup.{u}} (f : AddGroupHom A B) (c : RedCoHom n X A)
       : RedCoHom.toPi1 n X B (Trunc0.map c (KMap n (AddGroupHom.toGroupHom f) ∘*))
         = piMap 1 (Map*.post X (KMap (suc n) (AddGroupHom.toGroupHom f))) (RedCoHom.toPi1 n X A c) \elim c
-      | in0 g => \let phi => AddGroupHom.toGroupHom f
-                 \in pmap in0 (pmap mapLoop*.fromHom (->*.compose-assoc (K-loopUnit n) (KMap n phi) g
-                                                      *> pmap (`∘* g) (inv (KMap_loopUnit n phi))
-                                                      *> inv (->*.compose-assoc (Loop-Func (KMap (suc n) phi)) (K-loopUnit n) g))
-                               *> mapLoop*.post (KMap (suc n) phi) (K-loopUnit n ∘* g))
+      | in0 g => pmap in0 (K-mapLoop.post (AddGroupHom.toGroupHom f) g)
 
     \lemma id.{u} (n : Nat) (X : Pointed.{u}) {A : AbGroup.{u}} : redMapCoef n X (AddGroupHom.id {A}) = AddGroupHom.id
       => exts \lam c => pmap (Trunc0.map c) (funPath \lam g => pmap (`∘* g) (KMap.id n)) *> Trunc0.map-id c

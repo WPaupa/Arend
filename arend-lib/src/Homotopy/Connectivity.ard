@@ -101,6 +101,11 @@
 \lemma loop-nconnected.{u} {n : Nat} (X : Pointed.{u}) (c : isNConnectedType (suc n) X) : isNConnectedType n (Loop X)
   => nconnected-path c base base
 
+\lemma nconnected-pointed-contr.{u} {n : Nat} {X Y : Pointed.{u}} (c : isNConnectedType n X) (lv : Y ofHLevel_-1+ n) : Contr (X ->* Y)
+  => Contr.Contr_QEquiv (sigma-left {Y} {X -> Y} {\lam f => f base = base}
+                                    (IsEquiv.toQEquiv (propExt.dir (nullTypeUniverse.localDesc X Y) (c (\new Local {truncUniverse n} Y lv)))))
+                        (rsigma base)
+
 \lemma nconnected-map-comp-left.{u} (n : Nat) {A B C : \Type u} {f : A -> B} (g : QEquiv {B} {C})
                                     (c : isNConnectedMap n f) : isNConnectedMap n (\lam a => g (f a))
   => \lam z => nconnected-equiv n (fibEquiv g f z) (c (g.ret z))

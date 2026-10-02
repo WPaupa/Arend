@@ -31,6 +31,12 @@
     \func zro-right {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x : Z) : deloopAdd e x base = x
       => QEquiv.isInj {PointedEquiv.toHAEquiv e} (map e x base *> pmap (_ *>) e.map.2)
 
+    \func zro-coh {Z W : Pointed} (e : PointedEquiv Z (Loop W)) : zro-left e base = zro-right e base
+      => pmap (\lam t => QEquiv.isInj {PointedEquiv.toHAEquiv e} (map e base base *> t)) (unit-coh e.map.2)
+      \where
+        \func unit-coh {A : \Type} {a : A} {u : a = a} (r : u = idp) : pmap (`*> u) r *> idp_*> u = pmap (u *>) r \elim u, r
+          | _, idp => idp
+
     \func negative-left {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x : Z) : deloopAdd e (deloopNeg e x) x = base
       => QEquiv.isInj {PointedEquiv.toHAEquiv e} (map e _ x *> pmap (`*> _) (deloopNeg.map e x) *> inv_*> _ *> inv e.map.2)
 

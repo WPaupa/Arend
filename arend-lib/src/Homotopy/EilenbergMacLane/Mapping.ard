@@ -1,0 +1,143 @@
+-- | After ``Cubical/Homotopy/EilenbergMacLane/Properties.agda`` in the Cubical library.
+
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Monoid
+\import Algebra.Pointed (ide)
+\import Arith.Nat
+\import Equiv
+\import Homotopy.Connectivity
+\import Homotopy.EilenbergMacLane.Algebra
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Functor
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.HLevel
+\import Homotopy.K1.Basic
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout
+\import Homotopy.Suspension
+\import Homotopy.Truncation
+\import Logic
+\import Logic.Unique
+\import Paths
+
+\open ->* (∘*)
+\open PointedEquiv (∘~)
+
+\func K-mapLoop.{u} (n : Nat) (X : Pointed.{u}) (G : CGroup.{u}) : PointedEquiv (Map* X (K G n)) (Loop (Map* X (K G (suc n))))
+  => mapLoop* X (K G (suc n)) ∘~ Map*.postEquiv X (K-loopEquiv n)
+  \where {
+    \func add.{u} {n : Nat} {X : Pointed.{u}} {G : CGroup.{u}} (f g : X ->* K G n)
+      : (K-mapLoop n X G).map.1 (deloopAdd* (K-loopEquiv n) f g) = (K-mapLoop n X G).map.1 f *> (K-mapLoop n X G).map.1 g
+      => pmap mapLoop*.fromHom (deloopAdd*.post (K-loopEquiv n) f g)
+         *> mapLoop*.fromHom-concat {X} {K G (suc n)} (K-loopUnit n ∘* f) (K-loopUnit n ∘* g)
+
+    \func neg.{u} {n : Nat} {X : Pointed.{u}} {G : CGroup.{u}} (f : X ->* K G n)
+      : (K-mapLoop n X G).map.1 (deloopNeg* (K-loopEquiv n) f) = inv ((K-mapLoop n X G).map.1 f)
+      => pmap mapLoop*.fromHom (deloopNeg*.post (K-loopEquiv n) f) *> mapLoop*.fromHom-inv {X} {K G (suc n)} (K-loopUnit n ∘* f)
+
+    \func pre.{u} {n : Nat} {X' X : Pointed.{u}} {G : CGroup.{u}} (s : X' ->* X) (f : X ->* K G n)
+      : (K-mapLoop n X' G).map.1 (f ∘* s) = (Loop-Func (Map*.pre s (K G (suc n)))).1 ((K-mapLoop n X G).map.1 f)
+      => pmap mapLoop*.fromHom (->*.compose-assoc (K-loopUnit n) f s) *> mapLoop*.pre s (K-loopUnit n ∘* f)
+
+    \func post.{u} {n : Nat} {X : Pointed.{u}} {G H : CGroup.{u}} (phi : GroupHom G H) (f : X ->* K G n)
+      : (K-mapLoop n X H).map.1 (KMap n phi ∘* f) = (Loop-Func (Map*.post X (KMap (suc n) phi))).1 ((K-mapLoop n X G).map.1 f)
+      => pmap mapLoop*.fromHom (->*.compose-assoc (K-loopUnit n) (KMap n phi) f *> pmap (`∘* f) (inv (KMap_loopUnit n phi))
+                                *> inv (->*.compose-assoc (Loop-Func (KMap (suc n) phi)) (K-loopUnit n) f))
+         *> mapLoop*.post (KMap (suc n) phi) (K-loopUnit n ∘* f)
+  }
+
+\func K-homogenExt.{u} {X : Pointed.{u}} {G : CGroup.{u}} (n : Nat) {f g : X ->* K G n} (h : \Pi (x : X) -> f.1 x = g.1 x) : f = g
+  => IsEquiv.isInj (Map*.postEquiv X (K-loopEquiv {G} n)).map-isEquiv (loopExt (\lam x => pmap (K-loopUnit n).1 (h x)))
+  \where
+    \func map.{u} {X Y : Pointed.{u}} {G : CGroup.{u}} (n : Nat) {f g : X ->* Map* Y (K G n)} (h : \Pi (x : X) -> f.1 x = g.1 x) : f = g
+      => IsEquiv.isInj (Map*.postEquiv X (K-mapLoop n Y G)).map-isEquiv (loopExt (\lam x => pmap (K-mapLoop n Y G).map.1 (h x)))
+
+\func K-mapLoop2.{u} (n : Nat) (X Y : Pointed.{u}) (G : CGroup.{u})
+  : PointedEquiv (Map* X (Map* Y (K G n))) (Loop (Map* X (Map* Y (K G (suc n)))))
+  => mapLoop* X (Map* Y (K G (suc n))) ∘~ Map*.postEquiv X (K-mapLoop n Y G)
+
+\func K-cast.{u} {G : CGroup.{u}} {n m : Nat} (e : n = m) : K G n ->* K G m \elim m, e
+  | _, idp => ->*.id
+  \where
+    \func loop.{u} {G : CGroup.{u}} {n m : Nat} (e : n = m) (x : K G n)
+      : (Loop-Func (K-cast {G} (pmap suc e))).1 ((K-loopUnit n).1 x) = (K-loopUnit m).1 ((K-cast e).1 x) \elim m, e
+      | _, idp => idp_*> _
+
+\lemma K-map-level2.{u} {G H L : CGroup.{u}} (p q r : Nat) : Map* (K G q) (Map* (K H r) (K L (p Nat.+ q Nat.+ r))) ofHLevel_-1+ suc p \elim p, q
+  | 0, 0 => K-map-level.pointed {K G 0} {Map* (K H r) (K L r)} {0} (K-map-level 0 r)
+  | 0, suc q => K-map-level.fromLoop (K-mapLoop2 (suc (q Nat.+ r)) (K G (suc q)) (K H r) L) 0
+                  (K-map-level.fromDouble (K-mapLoop2 (q Nat.+ r) (K G (suc q)) (K H r) L) (K-mapLoop2 (suc (q Nat.+ r)) (K G (suc q)) (K H r) L) {0}
+                    (toProp (isContr=>isProp (nconnected-pointed-contr {suc q} {K G (suc q)} {Map* (K H r) (K L (q Nat.+ r))} (K-connected {G} q) (K-map-level q r)))))
+  | suc p, q => K-map-level.fromLoop (K-mapLoop2 (suc (p Nat.+ q Nat.+ r)) (K G q) (K H r) L) (suc p)
+                  (K-map-level.fromDouble (K-mapLoop2 (p Nat.+ q Nat.+ r) (K G q) (K H r) L) (K-mapLoop2 (suc (p Nat.+ q Nat.+ r)) (K G q) (K H r) L) {suc p}
+                    (K-map-level2 {G} {H} {L} p q r))
+
+\func KMap_zro.{u} {G H : CGroup.{u}} (q : Nat) (phi : GroupHom G H) (e : \Pi (g : G) -> phi g = ide)
+  : KMap q phi = ->*.zero (K G q) (K H q) \elim q
+  | 0 => ->*.ext {K G 0} {K H 0} e prop-pi
+  | suc n => K-ext n (K-level (suc n)) _ _ \lam x => ->*.happly (KMap_loopUnit n phi) x
+                                                     *> pmap (K-loopUnit n).1 (->*.happly (KMap_zro n phi e) x) *> (K-loopUnit n).2
+
+\func KMap_+.{u} {G H : CGroup.{u}} (q : Nat) (chi phi psi : GroupHom G H) (e : \Pi (g : G) -> chi g = phi g * psi g)
+  : KMap q chi = deloopAdd* (K-loopEquiv q) (KMap q phi) (KMap q psi) \elim q
+  | 0 => ->*.ext {K G 0} {K H 0} (\lam g => e g *> inv (K-add.degree-zero _ _)) prop-pi
+  | suc n => K-ext n (K-level (suc n)) (KMap (suc n) chi) (deloopAdd* {K G (suc n)} {K H (suc n)} {K H (suc (suc n))} (K-loopEquiv (suc n)) (KMap (suc n) phi) (KMap (suc n) psi)) \lam x =>
+      ->*.happly (KMap_loopUnit n chi) x *> pmap (K-loopUnit n).1 (->*.happly (KMap_+ n chi phi psi e) x)
+      *> deloopAdd.map (K-loopEquiv n) _ _
+      *> pmap2 (\lam (u v : Loop (K H (suc n))) => u *> v) (inv (->*.happly (KMap_loopUnit n phi) x)) (inv (->*.happly (KMap_loopUnit n psi) x))
+      *> inv (deloopAdd*.loop {K G (suc n)} {K H (suc n)} {K H (suc (suc n))} (K-loopEquiv (suc n)) (KMap (suc n) phi) (KMap (suc n) psi) ((K-loopUnit n).1 x))
+
+\lemma K-map-level.{u} {G H : CGroup.{u}} (p q : Nat) : Map* (K G q) (K H (p Nat.+ q)) ofHLevel_-1+ suc p \elim p, q
+  | 0, 0 => pointed {K G 0} {K H 0} {0} (K-level 0)
+  | 0, suc q => fromLoop (K-mapLoop (suc q) (K G (suc q)) H) 0
+                         (fromDouble (K-mapLoop q (K G (suc q)) H) (K-mapLoop (suc q) (K G (suc q)) H) {0}
+                                     (toProp (isContr=>isProp (nconnected-pointed-contr {suc q} {K G (suc q)} {K H q} (K-connected {G} q) (K-level {H} q)))))
+  | suc p, q => fromLoop (K-mapLoop (suc (p Nat.+ q)) (K G q) H) (suc p)
+                         (fromDouble (K-mapLoop (p Nat.+ q) (K G q) H) (K-mapLoop (suc (p Nat.+ q)) (K G q) H) {suc p} (K-map-level {G} {H} p q))
+  \where {
+    \lemma pointed {X W : Pointed} {n : Nat} (lv : W ofHLevel_-1+ suc n) : Map* X W ofHLevel_-1+ suc n
+      => HLevels-sigma {X -> W} (\lam f => f base = base) {suc n} (HLevels-pi {X} (\lam _ => W) {suc n} (\lam _ => lv))
+                       (\lam f => HLevel_-1_suc {_} {n} (lv (f base) base))
+
+    \lemma fromLoop {Y M : Pointed} (e : PointedEquiv Y (Loop M)) (n : Nat) (h : (idp {M} {base} = idp) ofHLevel_-1+ n)
+      : Y ofHLevel_-1+ suc n
+      => HLevel-retracts (PointedEquiv.toHAEquiv e) {suc n} (loop-level.loops n h)
+
+    \lemma fromDouble {Z Y M : Pointed} (d : PointedEquiv Z (Loop Y)) (e : PointedEquiv Y (Loop M)) {n : Nat} (h : Z ofHLevel_-1+ n)
+      : (idp {M} {base} = idp) ofHLevel_-1+ n
+      => HLevel-retracts (symQEquiv (PointedEquiv.toHAEquiv (loopEquiv e ∘~ d))) h
+  }
+
+\func K-ext.{u} {G : CGroup.{u}} (q : Nat) {Y : Pointed.{u}} (lv : Y ofHLevel_-1+ suc (suc q)) (F F' : K G (suc q) ->* Y)
+            (h : \Pi (x : K G q) -> (Loop-Func F).1 ((K-loopUnit q).1 x) = (Loop-Func F').1 ((K-loopUnit q).1 x)) : F = F' \elim q
+  | 0 => ->*.ext {K G 1} {Y} (K1-gpdExt lv F.1 F'.1 (F.2 *> inv F'.2) (\lam g => conj F.2 F'.2 (h g))) (base-coh F.2 F'.2)
+  | suc n => ->*.ext {K G (suc (suc n))} {Y}
+                     (\lam x => Trunc_-1+.elim (\lam x => \new Truncated_-1+ (suc (suc (suc n))) (F.1 x = F'.1 x) (HLevel_-1_suc {_} {suc (suc n)} (lv (F.1 x) (F'.1 x))))
+                                               (onSusp F F' h) x)
+                     (base-coh F.2 F'.2)
+  \where {
+    \func conj {A : \Type} {y1 y0 : A} (e : y1 = y0) {y1' : A} (e' : y1' = y0) {u : y1 = y1} {u' : y1' = y1'}
+               (h : inv e *> u *> e = inv e' *> u' *> e') : (e *> inv e') *> u' = u *> (e *> inv e') \elim y0, e, y1', e'
+      | _, idp, _, idp => inv h *> idp_*> _
+
+    \func base-coh {A : \Type} {y1 y1' y0 : A} (e : y1 = y0) (e' : y1' = y0) : (e *> inv e') *> e' = e
+      => *>-assoc e (inv e') e' *> pmap (e *>) (inv_*> e')
+
+    \func merid-coh {S A : \Type} (f f' : S -> A) {n s : S} (ma mb : n = s) {y0 : A} (e : f n = y0) (e' : f' n = y0)
+                    (h : inv e *> pmap f (ma *> inv mb) *> e = inv e' *> pmap f' (ma *> inv mb) *> e')
+      : (e *> inv e') *> pmap f' ma = pmap f ma *> (inv (pmap f mb) *> (e *> inv e') *> pmap f' mb) \elim s, mb
+      | _, idp => conj e e' h *> pmap (pmap f ma *>) (inv (idp_*> _))
+
+    \func onSusp.{u} {G : CGroup.{u}} {n : Nat} {Y : Pointed.{u}} (F F' : K G (suc (suc n)) ->* Y)
+                     (h : \Pi (x : K G (suc n)) -> (Loop-Func {K G (suc (suc n))} {Y} F).1 ((K-loopUnit (suc n)).1 x)
+                                                   = (Loop-Func {K G (suc (suc n))} {Y} F').1 ((K-loopUnit (suc n)).1 x))
+                     (s : Susp (K G (suc n))) : F.1 (inT s) = F'.1 (inT s) \elim s
+      | north => F.2 *> inv F'.2
+      | south => inv (pmap F.1 (pmap inT (pmerid base))) *> (F.2 *> inv F'.2) *> pmap F'.1 (pmap inT (pmerid base))
+      | pglue a i => pathOver (transport_path_pmap (\lam s => F.1 (inT s)) (\lam s => F'.1 (inT s)) (pmerid a) _ _
+          (merid-coh (\lam s => F.1 (inT s)) (\lam s => F'.1 (inT s)) (pmerid a) (pmerid base) F.2 F'.2
+            (pmap (loopMap F.1 F.2) (inv (idp_*> _)) *> h a *> pmap (loopMap F'.1 F'.2) (idp_*> _)))) @ i
+  }

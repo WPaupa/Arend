@@ -7,6 +7,7 @@
 \import Homotopy.Cohomology
 \import Homotopy.EilenbergMacLane.Definition
 \import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.EilenbergMacLane.Mapping
 \import Homotopy.HomotopyGroup
 \import Homotopy.Pointed (->*, Pointed, PointedEquiv, base)
 \import Homotopy.Pointed.Mapping
@@ -49,7 +50,7 @@
     \lemma square.{u} (n : Nat) {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y) (c : RedCoHom n Y A)
       : RedCoHom.toPi1 n X A (Trunc0.map c (`∘* f))
         = piMap 1 (Map*.pre f (K A (suc n))) (RedCoHom.toPi1 n Y A c) \elim c
-      | in0 g => pmap in0 (pmap mapLoop*.fromHom (->*.compose-assoc (K-loopUnit n) g f) *> mapLoop*.pre f (K-loopUnit n ∘* g))
+      | in0 g => pmap in0 (K-mapLoop.pre f g)
 
     \lemma id.{u} (n : Nat) {X : Pointed.{u}} {A : AbGroup.{u}} : redPullback n {X} {X} {A} ->*.id = AddGroupHom.id
       => exts \lam c => pmap (Trunc0.map c) (funPath ->*.compose-id) *> Trunc0.map-id c

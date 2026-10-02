@@ -1,0 +1,42 @@
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Module
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Algebra.Semiring
+\import Paths
+
+\record Pairing (A B C : AbGroup) (\coerce func : A -> B -> C)
+  | ldistr {a : A} {b b' : B} : func a (b + b') = func a b + func a b'
+  | rdistr {a a' : A} {b : B} : func (a + a') b = func a b + func a' b
+  \where {
+    \func left {A B C : AbGroup} (m : Pairing A B C) (a : A) : AddGroupHom B C \cowith
+      | func b => m a b
+      | func-+ => m.ldistr
+
+    \func right {A B C : AbGroup} (m : Pairing A B C) (b : B) : AddGroupHom A C \cowith
+      | func a => m a b
+      | func-+ => m.rdistr
+
+    \lemma zro-left {A B C : AbGroup} (m : Pairing A B C) {b : B} : m 0 b = 0
+      => AddGroupHom.func-zro {right m b}
+
+    \lemma zro-right {A B C : AbGroup} (m : Pairing A B C) {a : A} : m a 0 = 0
+      => AddGroupHom.func-zro {left m a}
+
+    \func zero {A B C : AbGroup} : Pairing A B C \cowith
+      | func _ _ => 0
+      | ldistr => inv AddMonoid.zro-left
+      | rdistr => inv AddMonoid.zro-left
+
+    \func mul (R : Ring) : Pairing R R R \cowith
+      | func => R.*
+      | ldistr => R.ldistr
+      | rdistr => R.rdistr
+
+    \func action {R : Ring} (M : LModule R) : Pairing R M M \cowith
+      | func => M.*c
+      | ldistr => M.*c-ldistr
+      | rdistr => M.*c-rdistr
+  }
