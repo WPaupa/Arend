@@ -1,0 +1,81 @@
+{- | Cohomology of the circle in low degrees.
+
+ A pointed map from the circle is determined by the loop it sends `loop` to (`circleMapEquiv`), and by
+ `deloopAdd*.loop` the sum of two maps sends `loop` to the concatenation of their loops. Through `K-loopInv 0`
+ this identifies `ReducedCohomologyNat 1 Circle A` with `A` as groups. The circle is connected, so its degree-zero
+ cohomology is `A` and its reduced degree-zero cohomology vanishes.
+ -}
+
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Category (Iso)
+\import Equiv
+\import Homotopy.Cohomology.DegreeZero
+\import Homotopy.Cohomology.Group
+\import Homotopy.Connectivity
+\import Homotopy.EilenbergMacLane.Algebra
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.Loop
+\import Homotopy.Pointed (->*, Pointed, base)
+\import Homotopy.Sphere.Circle
+\import Paths
+\import Set
+
+\func Circle : Pointed
+  => Pointed.make base1
+  \where
+    \lemma connected.{u} : isNConnectedType.{u} 1 Circle
+      => nconnected-equiv 1 (symQEquiv Sphere1-equiv) (sphere-nconnected 1)
+
+\func circleRec {Z : Pointed} (p : Loop Z) (x : Sphere1) : Z \elim x
+  | base1 => base
+  | loop i => p @ i
+
+\func loopOf {Z : Pointed} (f : Circle ->* Z) : Loop Z
+  => (Loop-Func f).1 Sphere1.ploop
+
+\func circleMapEquiv (Z : Pointed) : QEquiv {Circle ->* Z} {Loop Z} \cowith
+  | f => loopOf
+  | ret p => (circleRec p, idp)
+  | ret_f f => ->*.ext (homotopy f) (inv_*> f.2)
+  | f_sec p => idp_*> p
+  \where {
+    \func homotopy {Z : Pointed} (f : Circle ->* Z) (x : Sphere1) : circleRec (loopOf f) x = f.1 x \elim x
+      | base1 => inv f.2
+      | loop i => pathOver (transport_path_pmap (circleRec (loopOf f)) f.1 Sphere1.ploop (inv f.2) (inv f.2)
+                                                (lem f.2 (pmap f.1 Sphere1.ploop))) @ i
+
+    \func lem {A : \Type} {a b : A} (f2 : a = b) (p : a = a) : inv f2 *> p = (inv f2 *> p *> f2) *> inv f2 \elim f2
+      | idp => idp
+  }
+
+\func cohomologyZero-circle.{u} (A : AbGroup.{u}) : Iso {AbGroupCat} (cohomologyZero-connected.constant Circle A)
+  => cohomologyZero-connected Circle Circle.connected A
+
+\func reducedCohomologyZero-circle.{u} (A : AbGroup.{u}) : Iso {AbGroupCat} (TrivialAbGroup.toTrivial (ReducedCohomologyNat 0 Circle A))
+  => reducedCohomologyZero-connected Circle Circle.connected A
+
+\func reducedCohomologyOne-circle.{u} (A : AbGroup.{u}) : Iso {AbGroupCat} (toGroup A)
+  => AbGroupCat.isoOfEquiv (toGroup A) (\new QEquiv {
+    | ret a => in0 ((circleMapEquiv (K A 1)).ret ((K-loopUnit 0).1 a))
+    | ret_f c => \case \elim c \with {
+      | in0 f => pmap (\lam p => in0 ((circleMapEquiv (K A 1)).ret p)) (K-loopInv.right 0 (loopOf {K A 1} f))
+                 *> pmap in0 ((circleMapEquiv (K A 1)).ret_f f)
+    }
+    | f_sec a => pmap (K-loopInv 0).1 ((circleMapEquiv (K A 1)).f_sec _) *> K-loopInv.left 0 a
+  })
+  \where {
+    \func toGroup-map.{u} {A : AbGroup.{u}} (c : ReducedCohomologyNat 1 Circle A) : A \elim c
+      | in0 f => (K-loopInv {AbGroup.toCGroup A} 0).1 (loopOf {K A 1} f)
+
+    \func toGroup.{u} (A : AbGroup.{u}) : AddGroupHom (ReducedCohomologyNat 1 Circle A) A \cowith
+      | func => toGroup-map
+      | func-+ {c} {d} => \case \elim c, \elim d \with {
+        | in0 f, in0 g => pmap (K-loopInv 0).1 (deloopAdd*.loop {Circle} {K A 1} {K A 2} (K-loopEquiv 1) f g Sphere1.ploop
+                                                *> pmap2 (*>) (inv (K-loopInv.right 0 _)) (inv (K-loopInv.right 0 _)))
+                          *> K-add.degree-zero _ _
+      }
+  }
