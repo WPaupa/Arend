@@ -83,6 +83,14 @@
           | f_sec _ => idp
       }
 
+    \func homotopy {J A B T : \Type} {u : J -> A} {v : J -> B} {F G : PushoutData u v -> T}
+                   (hl : \Pi (a : A) -> F (pinl a) = G (pinl a)) (hr : \Pi (b : B) -> F (pinr b) = G (pinr b))
+                   (hg : \Pi (c : J) -> hl (u c) *> pmap G (ppglue c) = pmap F (ppglue c) *> hr (v c))
+                   (x : PushoutData u v) : F x = G x \elim x
+      | pinl a => hl a
+      | pinr b => hr b
+      | pglue c i => pathOver (transport_path_pmap F G (ppglue c) (hl (u c)) (hr (v c)) (hg c)) @ i
+
     -- | Congruence of pushouts along an equivalence of spans.
     \func congr {J A B J' A' B' : \Type} (u : J -> A) (v : J -> B) (u' : J' -> A') (v' : J' -> B')
                     (eJ : J -> J') (eA : A -> A') (eB : B -> B')

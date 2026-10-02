@@ -1,0 +1,97 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Pointed (AddPointed, zro)
+\import Algebra.Pointed.Exact
+\import Arith.Int
+\import Arith.Nat
+\import Category (Iso, idIso)
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.DegreeZero
+\import Homotopy.Cohomology.Exact
+\import Homotopy.Cohomology.Functor
+\import Homotopy.Cohomology.Integer
+\import Homotopy.Cohomology.Suspension
+\import Homotopy.Cohomology.Theory
+\import Homotopy.Cohomology.Wedge
+\import Homotopy.Connectivity
+\import Homotopy.Loop
+\import Homotopy.EilenbergMacLane.Algebra
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
+\import Homotopy.Suspension
+\import Homotopy.Wedge
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Set
+
+\open AddGroupHom (toGroupHom)
+
+\func ordinaryCohomology.{u} (A : AbGroup.{u}) : OrdinaryCohomologyTheory.{u} \cowith
+  | E d X => IntRedCoHom d X A
+  | pull d f => IntRedCoHom.pullback d f
+  | pull-id d _ => IntRedCoHom.pullback.id d
+  | pull-comp d f g => IntRedCoHom.pullback.comp d f g
+  | susp d X => intSusp d X A
+  | susp-natural d f => intSusp.natural d f
+  | exact d f => intExact d f A
+  | wedge d X c => intWedge d X A c
+  | dimension d d/=0 x => intDimension A d d/=0 x
+  \where {
+    \func intSusp.{u} (d : Int) (X : Pointed.{u}) (A : AbGroup.{u})
+      : Iso {AbGroupCat.{u}} {IntRedCoHom d X A} {IntRedCoHom (isuc d) (Susp.pointed X) A} \elim d
+      | pos n => redSuspIso n X A
+      | neg 1 => Iso.reverse {TrivialAbGroup.trivialIso (RedCoHom 0 (Susp.pointed X) A) (connected X A)}
+      | neg (suc (suc _)) => idIso
+      \where {
+        \lemma connected.{u} (X : Pointed.{u}) (A : AbGroup.{u}) (c : RedCoHom 0 (Susp.pointed X) A) : c = zro {RedCoHom 0 (Susp.pointed X) A}
+          => redDegreeZero-connected (Susp.pointed X) (susp-nconnected {0} (inhabited=>nconnected0 (base {X}))) A c
+
+        \lemma natural.{u} (d : Int) {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y)
+          : Iso.f {intSusp d X A} AddGroupHom.∘ IntRedCoHom.pullback d f
+            = IntRedCoHom.pullback (isuc d) (Susp-Func f) AddGroupHom.∘ Iso.f {intSusp d Y A} \elim d
+          | pos n => redSusp.natural n f
+          | neg 1 => exts \lam _ => connected X A _ *> inv (connected X A _)
+          | neg (suc (suc _)) => idp
+      }
+
+    \lemma intExact.{u} (d : Int) {X Y : Pointed.{u}} (f : X ->* Y) (A : AbGroup.{u})
+      : ExactAt (toGroupHom (IntRedCoHom.pullback d {Y} {Cof.pointed f} {A} (Cof.inc f))) (toGroupHom (IntRedCoHom.pullback d f)) \elim d
+      | pos n => redExact n f A
+      | neg (suc _) => \lam _ => (\lam _ => inP ((), idp), \lam _ => idp)
+
+    \lemma intWedge.{u} (d : Int) {J : \Type u} (X : J -> Pointed.{u}) (A : AbGroup.{u}) (c : AC0.{u} J)
+      : IsEquiv {IntRedCoHom d (BigWedge X) A} {\Pi (j : J) -> IntRedCoHom d (X j) A} (\lam a j => IntRedCoHom.pullback d (BigWedge.inc X j) a) \elim d
+      | pos n => redWedge n X A c
+      | neg (suc _) => inP \new QEquiv {
+        | ret _ => ()
+        | ret_f _ => idp
+        | f_sec _ => idp
+      }
+
+    \lemma intDimension.{u} (A : AbGroup.{u}) (d : Int) (d/=0 : d /= 0) (x : IntRedCoHom d (Sphere.pointed 0) A)
+      : x = zro {IntRedCoHom d (Sphere.pointed 0) A} \elim d, x
+      | pos 0, _ => absurd (d/=0 idp)
+      | pos (suc n), x => positive n A x
+      | neg (suc _), _ => idp
+      \where
+        \lemma positive.{u} (n : Nat) (A : AbGroup.{u}) (x : RedCoHom (suc n) (Sphere.pointed 0) A) : x = zro {RedCoHom (suc n) (Sphere.pointed 0) A}
+          => \let | e => Trunc0.mapEquiv (SphereLoopEquiv.zero (K A (suc n)))
+                  | p => pointCoHom (suc n) A
+             \in e.isInj (inv (p.f_sec _) *> pmap p.f (pointCoHom-positive n A _ *> inv (pointCoHom-positive n A _)) *> p.f_sec _)
+  }
+
+\func coefficients.{u} (A : AbGroup.{u}) : Iso {AbGroupCat.{u}} (evalSouth A)
+  => AbGroupCat.isoOfEquiv (evalSouth A) (transQEquiv (Trunc0.mapEquiv (SphereLoopEquiv.zero (K A 0))) Trunc0.setEquiv)
+  \where
+    \func evalSouth.{u} (A : AbGroup.{u}) : AddGroupHom (RedCoHom 0 (Sphere.pointed 0) A) A \cowith
+      | func c => Trunc0.remove' (Trunc0.map c (SphereLoopEquiv.zero (K A 0)))
+      | func-+ {c} {d} => \case \elim c, \elim d \with {
+        | in0 g, in0 h => K-add.degree-zero (g.1 south) (h.1 south)
+      }

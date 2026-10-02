@@ -58,7 +58,7 @@
     \lemma interchange {C : AbGroup} {a b c d : C} : (a + b) + (c + d) = (a + c) + (b + d)
       => +-assoc *> pmap (a +) (inv +-assoc *> pmap (`+ d) +-comm *> +-assoc) *> inv +-assoc
 
-\instance FuncAbGroup (J : \Type) (A : AbGroup) : AbGroup (J -> A)
+\instance PiAbGroup {J : \Type} (A : J -> AbGroup) : AbGroup (\Pi (j : J) -> A j)
   | zro _ => zro
   | + f g j => f j + g j
   | zro-left => ext \lam _ => zro-left
@@ -66,6 +66,13 @@
   | negative f j => negative (f j)
   | negative-left => ext \lam _ => negative-left
   | +-comm => ext \lam _ => +-comm
+  \where
+    \func tuple {J : \Type} {B : AbGroup} {A : J -> AbGroup} (f : \Pi (j : J) -> AddGroupHom B (A j)) : AddGroupHom B (PiAbGroup A) \cowith
+      | func b j => f j b
+      | func-+ => ext \lam j => (f j).func-+
+
+\instance FuncAbGroup (J : \Type) (A : AbGroup) : AbGroup (J -> A)
+  => PiAbGroup (\lam _ => A)
   \where {
     \func precomp {J' J : \Type} (A : AbGroup) (s : J' -> J) : AddGroupHom (FuncAbGroup J A) (FuncAbGroup J' A) \cowith
       | func h j => h (s j)

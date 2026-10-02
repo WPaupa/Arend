@@ -1,15 +1,13 @@
 \import Equiv
 \import Equiv.Path
-\import Equiv.Sigma
 \import Function.Iterate
 \import Homotopy.HLevel
 \import Homotopy.Space
 \import Logic
 \import Logic.Unique
 \import Homotopy.Pointed
-\import Homotopy.Pushout
+\import Homotopy.Pushout \hiding (PushoutPointed)
 \import Homotopy.Sphere
-\import Homotopy.Square
 \import Homotopy.Suspension
 \import Meta
 \import Paths
@@ -96,24 +94,9 @@
 \lemma loop-contr (X : Pointed) (c : Contr X) : Contr (Loop X)
   => isProp=>PathContr X (isContr=>isProp c) base base
 
-\func SuspLoopEquiv.{u} (A B : Pointed.{u}) : (Susp.pointed A ->* B) = (A ->* Loop B) =>
-  \let S => Square { | Y => B | U => A | V => \Sigma | X => \Sigma | uv _ => () | ux _ => () } \in
-  (\Sigma (f : Susp A -> B) (f north = base))                                              ==< sigma-left.path-func (QEquiv_= (IsEquiv.toQEquiv (Susp.pushout A).pushout-univ)) >==
-  (\Sigma (s : S) (Square.vy {s} () = base))                                               ==< path (iso {\Sigma (s : S) (Square.vy {s} () = base)}
-                                                                                                         {\Sigma (p : \Sigma (b1 : B) (b1 = base)) (\Sigma (b2 : B) (A -> p.1 = b2))}
-                                                                                                         (\lam p => \let s : Square => p.1 \in ((s.vy (), p.2), (s.xy (), s.sqcomm)))
-                                                                                                         (\lam q => (\new Square { | vy _ => q.1.1 | xy _ => q.2.1 | sqcomm => q.2.2 }, q.1.2))
-                                                                                                         idpe idpe) >==
-  (\Sigma (p : \Sigma (b1 : B) (b1 = base)) (\Sigma (b2 : B) (A -> p.1 = b2)))             ==< QEquiv_= (contr-left (rsigma base)) >==
-  (\Sigma (b2 : B) (A -> base = b2))                                                       ==< inv (QEquiv_= (contr-right (\lam (p : \Sigma (b2 : B) (A -> base = b2)) => lsigma (p.2 base)))) >==
-  (\Sigma (p : \Sigma (b2 : B) (A -> base = b2)) (\Sigma (q : base = p.1) (p.2 base = q))) ==< path (iso {\Sigma (p : \Sigma (b2 : B) (A -> base = b2)) (\Sigma (q : base = p.1) (p.2 base = q))}
-                                                                                                         {\Sigma (p : \Sigma (b2 : B) (base = b2)) (\Sigma (g : A -> base = p.1) (g base = p.2))}
-                                                                                                         (\lam p => ((p.1.1,p.2.1),(p.1.2,p.2.2)))
-                                                                                                         (\lam q => ((q.1.1,q.2.1),(q.1.2,q.2.2)))
-                                                                                                         idpe idpe) >==
-  (\Sigma (p : \Sigma (b2 : B) (base = b2)) (\Sigma (g : A -> base = p.1) (g base = p.2))) ==< QEquiv_= (contr-left (lsigma base)) >==
-  (\Sigma (g : A -> Loop B) (g base = base))                                               `qed
-  \where
+\func SuspLoopEquiv.{u} (A B : Pointed.{u}) : (Susp.pointed A ->* B) = (A ->* Loop B)
+  => QEquiv_= (adjoint A B)
+  \where {
     -- | The unit of the adjunction, the HoTT book, Section 8.6.
     \func unit (X : Pointed) : X ->* Loop (Susp.pointed X)
       => (\lam x => pmerid x *> inv (pmerid base), *>_inv (pmerid base))
@@ -143,19 +126,47 @@
           | _, idp => idp
       }
 
+    \func adjoint (X Z : Pointed) : QEquiv {Susp.pointed X ->* Z} {X ->* Loop Z} \cowith
+      | f => fromSusp
+      | ret => toSusp
+      | ret_f k => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(toSusp (fromSusp k)).1} {k.1}
+                                    (\lam _ => inv k.2) (\lam _ => inv k.2 *> pmap k.1 (pmerid base)) (\lam _ => square k.2 _ _))
+                          (inv_*> k.2)
+      | f_sec h => ->*.ext (\lam x => idp_*> _ *> pmap (h.1 x *>) (pmap inv h.2)) (coh h.2)
+      \where {
+        \func coh {T : \Type} {t : T} {u : t = t} (w : u = idp)
+          : (idp_*> (u *> inv u) *> pmap (u *>) (pmap inv w)) *> w = idp_*> (u *> inv u) *> *>_inv u \elim w
+          | idp => idp
+
+        \func square {T : \Type} {a b c : T} (k2 : a = c) (e1 e2 : a = b)
+          : inv k2 *> e1 = (inv k2 *> e1 *> inv e2 *> k2) *> inv k2 *> e2 \elim k2, e2
+          | idp, idp => idp
+      }
+
+    \func toSusp {X Z : Pointed} (h : X ->* Loop Z) : Susp.pointed X ->* Z
+      => (Susp.rec base base h.1, idp)
+      \where
+        \func pre {X Y Z : Pointed} (h : Y ->* Loop Z) (f : X ->* Y) : toSusp (h ->*.∘* f) = toSusp h ->*.∘* Susp-Func f
+          => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(toSusp (h ->*.∘* f)).1} {(toSusp h ->*.∘* Susp-Func f).1}
+                                          (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _)) idp
+
+    \func fromSusp {X Z : Pointed} (k : Susp.pointed X ->* Z) : X ->* Loop Z
+      => (\lam x => inv k.2 *> pmap k.1 (pmerid x) *> inv (pmap k.1 (pmerid base)) *> k.2, cancel k.2 (pmap k.1 (pmerid base)))
+      \where
+        \func cancel {T : \Type} {a b c : T} (k2 : a = c) (e : a = b) : inv k2 *> e *> inv e *> k2 = idp \elim k2
+          | idp => idp_*> _ *> *>_inv e
+  }
+
 \func SphereLoopEquiv.{u} (n : Nat) (B : Pointed.{u}) : (Sphere.pointed n ->* B) = iterl {Pointed.{u}} (Loop __) n B \elim n
-  | 0 => \let smap (b : B) (s : Sphere 0) : B => \case s \with { | pinl _ => base | pinr _ => b | pglue () _ }
-         \in path (iso {Sphere.pointed 0 ->* B} {B}
-                       (__.1 south)
-                       (\lam b => (smap b, idp))
-                       (\lam p => ->*.ext {Sphere.pointed 0} (\lam s =>
-                           \case \elim s \return smap (p.1 south) s = p.1 s \with {
-                             | pinl _ => inv p.2
-                             | pinr _ => idp
-                             | pglue () _
-                           }) (inv_*> p.2))
-                       (\lam b => idp))
+  | 0 => QEquiv_= (zero B)
   | suc n => SuspLoopEquiv (Sphere.pointed n) B *> SphereLoopEquiv n (Loop B)
+  \where
+    \func zero (B : Pointed) : QEquiv {Sphere.pointed 0 ->* B} {B} \cowith
+      | f p => p.1 south
+      | ret b => (Susp.rec base b absurd, idp)
+      | ret_f p => ->*.ext {Sphere.pointed 0} {B} {Susp.rec base (p.1 south) absurd, idp} {p}
+                           (PushoutData.homotopy (\lam _ => inv p.2) (\lam _ => idp) (\lam e => absurd e)) (inv_*> p.2)
+      | f_sec _ => idp
 
 \func Loop-Func-id {X : Pointed} : Loop-Func (->*.id {X}) = ->*.id
   => ->*.ext (\lam z => idp_*> z) idp

@@ -1,0 +1,60 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Category (Iso)
+\import Equiv
+\import Function
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Functor
+\import Homotopy.Cohomology.Reduced
+\import Homotopy.EilenbergMacLane.Algebra
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Suspension
+\import Paths
+\import Paths.Meta
+\import Set
+
+\open ->* (∘*)
+\open PushoutData (homotopy)
+\open SuspLoopEquiv (adjoint, toSusp)
+
+\func redSuspIso.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : Iso {AbGroupCat.{u}} (redSusp n X A)
+  => AbGroupCat.isoOfEquiv (redSusp n X A) (Trunc0.mapEquiv (transQEquiv (PointedEquiv.toHAEquiv (Map*.postEquiv X (K-loopEquiv n))) (symQEquiv (adjoint X (K A (suc n))))))
+
+\func redSusp.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u})
+  : AddGroupHom (RedCoHom n X A) (RedCoHom (suc n) (Susp.pointed X) A) \cowith
+  | func c => Trunc0.map c (\lam a => toSusp (K-loopUnit n ∘* a))
+  | func-+ {c} {d} => \case \elim c, \elim d \with {
+    | in0 a, in0 b => IsInj.fromSplit (\lam e => Iso.hinv {forgetIso n (Susp.pointed X) A} e)
+                        (\lam e => pmap (\lam (g : AddGroupHom (RedCoHom (suc n) (Susp.pointed X) A) (RedCoHom (suc n) (Susp.pointed X) A)) => g e)
+                                        (Iso.hinv_f {forgetIso n (Susp.pointed X) A}))
+                        (pmap in0 (ext (homotopy {_} {_} {_} {_} {_} {_} {(toSusp (K-loopUnit n ∘* RedCocycle.add a b)).1}
+                                                 {\lam s => K-add (suc n) ((toSusp (K-loopUnit n ∘* a)).1 s) ((toSusp (K-loopUnit n ∘* b)).1 s)}
+                                                 (\lam _ => inv (sumBase n A)) (\lam _ => inv (sumBase n A))
+                                                 (\lam x => sumSquare n A (a.1 x) (b.1 x)))))
+  }
+  \where {
+    \lemma natural.{u} (n : Nat) {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y)
+      : redSusp n X A AddGroupHom.∘ redPullback n f = redPullback (suc n) (Susp-Func f) AddGroupHom.∘ redSusp n Y A
+      => exts \lam c => \case \elim c \with {
+        | in0 a => pmap in0 (toSusp.pre (K-loopUnit n ∘* a) f)
+      }
+
+    \func sumBase.{u} (n : Nat) (A : AbGroup.{u}) : K-add (suc n) base base = {K A (suc n)} base
+      => (deloopAdd* {PointedProduct (K A (suc n)) (K A (suc n))} {K A (suc n)} {K A (suc (suc n))} (K-loopEquiv (suc n)) PointedProduct.proj1 PointedProduct.proj2).2
+
+    \func sumSquare.{u} (n : Nat) (A : AbGroup.{u}) (x y : K A n)
+      : inv (sumBase n A) *> pmap2 (K-add (suc n)) ((K-loopUnit n).1 x) ((K-loopUnit n).1 y)
+        = (K-loopUnit n).1 (K-add n x y) *> inv (sumBase n A)
+      => rotate (sumBase n A) (deloopAdd*.loop {PointedProduct (K A (suc n)) (K A (suc n))} {K A (suc n)} {K A (suc (suc n))} (K-loopEquiv (suc n)) PointedProduct.proj1 PointedProduct.proj2
+                                 (path (\lam i => ((K-loopUnit n).1 x @ i, (K-loopUnit n).1 y @ i))))
+         *> pmap (`*> _) (pmap2 (*>) (idp_*> _) (idp_*> _) *> inv (deloopAdd.map {K A n} {K A (suc n)} (K-loopEquiv n) x y))
+
+    \func rotate {T : \Type} {s t : T} (c : s = t) {M : s = s} {N : t = t} (h : inv c *> M *> c = N) : inv c *> M = N *> inv c \elim c
+      | idp => h
+  }

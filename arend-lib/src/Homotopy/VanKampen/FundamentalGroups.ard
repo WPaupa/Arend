@@ -15,6 +15,7 @@
 \import Category
 \import Data.Or
 \import Equiv
+\import Homotopy.Cofiber
 \import Homotopy.Connected
 \import Homotopy.HomotopyGroup
 \import Homotopy.HomotopyGroup.FundamentalGroupoid
@@ -38,16 +39,14 @@
     = {Group.{u}} PiGroup 0 (Pointed.make (pinl {\Sigma} {B} {C} {\lam _ => base} {\lam _ => base} base))
   => PiGroup_Pushout {UnitConnected0} (\lam _ => base) (\lam _ => base) ()
 
-\func Cofiber {A B : \Type} (f : A -> B) => PushoutData f (\lam (_ : A) => ())
-
-\func PiGroup_Cofiber.{u} {A : Connected0.{u}} {B : \Type u} (f : A -> B) (a0 : A)
-  : PiGroup 0 (Pointed.make {Cofiber f} (pinl (f a0))) = {Group.{u}} Aut (f a0) // imageClosure (map0Hom f a0)
+\func PiGroup_Cof.{u} {A : Connected0.{u}} {B : \Type u} (f : A -> B) (a0 : A)
+  : PiGroup 0 (Pointed.make {Cof f} (pinl (f a0))) = {Group.{u}} Aut (f a0) // imageClosure (map0Hom f a0)
   => inv (Cat.isotoid iso)
   \where {
     \lemma unit-loop (t : () =0 ()) : t = idp0 \elim t
       | in0 p => pmap in0 (isProp.=>isSet {\Sigma} (\lam _ _ => idp) _ _ p idp)
 
-    \func hom : GroupHom (Aut (f a0) // imageClosure (map0Hom f a0)) (PiGroup 0 (Pointed.make {Cofiber f} (pinl (f a0))))
+    \func hom : GroupHom (Aut (f a0) // imageClosure (map0Hom f a0)) (PiGroup 0 (Pointed.make {Cof f} (pinl (f a0))))
       => PiGroup_Pushout.hom {A} {B} {\Sigma} {f} {\lam _ => ()} {a0} GroupHom.∘ GroupPushout_trivial.from {_} {_} {_} {map0Hom f a0} {map0Hom (\lam _ => ()) a0} {unit-loop}
 
     \lemma hom-in (h : f a0 =0 f a0) : hom (in~ h) = map0 pinl h

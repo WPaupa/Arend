@@ -271,3 +271,9 @@
           | in0 a, in0 b => idp
       }
   }
+
+\func AC0.{u} (J : \Type) : \Prop
+  => \Pi (Y : J -> \Type u) -> IsEquiv (map Y)
+  \where
+    \func map {J : \Type} (Y : J -> \Type) (t : Trunc0 (\Pi (j : J) -> Y j)) (j : J) : Trunc0 (Y j)
+      => Trunc0.map t (__ j)

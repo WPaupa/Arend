@@ -1,5 +1,5 @@
 \import Homotopy.Pointed
-\import Homotopy.Pushout
+\import Homotopy.Pushout \hiding (PushoutPointed)
 \import Paths
 
 \func Susp (A : \Type) => PushoutData {A} (\lam _ => ()) (\lam _ => ())
@@ -13,6 +13,15 @@
       => rec north south (\lam a => pmerid (f a))
 
     \func pointed (A : \Type) => \new Pointed (Susp A) north
+
+    \func flip (X : Pointed) : pointed X ->* pointed X
+      => (rec south north (\lam x => inv (pmerid x)), inv (pmerid base))
+
+    \func flip-flip (X : Pointed) : flip X ->*.∘* flip X = ->*.id
+      => ->*.ext {pointed X} {pointed X}
+                 (PushoutData.homotopy {_} {_} {_} {_} {_} {_} (\lam _ => idp) (\lam _ => idp)
+                   (\lam x => idp_*> _ *> inv (pmap_inv-comm (flip X).1 (pmerid x) *> inv_inv (pmerid x))))
+                 (inv (pmap (`*> _) (pmap_inv-comm (flip X).1 (pmerid (base {X})) *> inv_inv (pmerid (base {X}))) *> *>_inv (pmerid (base {X}))))
 
     \func pushout.{u} (A : \Type u) => pushoutData {A} (\lam _ => ()) (\lam _ => ())
   }
