@@ -1,14 +1,3 @@
-{- | The comparison between reduced and unreduced cohomology.
-
- For pointed `X`, `cohomologySplit` is an isomorphism `ReducedCohomologyNat n X A * CohomologyNat n (\Sigma) A = CohomologyNat n X A`
- whose forward map `join` sends `([g], [a])` to the class of `x => K-add n (g x) (a ())`, that is, forgetting the
- basepoint plus a constant class. Its inverse sends `[f]` to the class of the normalization `x => f x - f base`
- together with the evaluation of `f` at the basepoint. The normalization is conjugated by `K-loopEquiv n` from
- `x => e (f x) *> inv (e (f base))`, whose basepoint witness comes from `*>_inv`; the inverse laws are proved on
- cocycles, including the witness. In positive degrees the second factor vanishes, and `forgetIso` shows that
- forgetting the basepoint is an isomorphism; in degree zero the second factor is `A`.
- -}
-
 \import Algebra.Group
 \import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
@@ -17,11 +6,10 @@
 \import Algebra.Pointed (zro)
 \import Category (Iso)
 \import Equiv
+\import Homotopy.Cohomology
 \import Homotopy.Cohomology.Coefficients
-\import Homotopy.Cohomology.Definition
 \import Homotopy.Cohomology.DegreeZero
 \import Homotopy.Cohomology.Functor
-\import Homotopy.Cohomology.Group
 \import Homotopy.EilenbergMacLane.Algebra
 \import Homotopy.EilenbergMacLane.Definition
 \import Homotopy.EilenbergMacLane.Loop
@@ -34,22 +22,18 @@
 
 \open ->* (∘*)
 
--- | Forgetting the basepoint.
-\func forget.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom (ReducedCohomologyNat n X A) (CohomologyNat n X A) \cowith
+\func forget.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom (RedCoHom n X A) (CoHom n X A) \cowith
   | func c => Trunc0.map c (\lam f => f.1)
   | func-+ {c} {d} => \case \elim c, \elim d \with {
-    | in0 f, in0 g => idp
+    | in0 _, in0 _ => idp
   }
 
--- | Evaluation at the basepoint.
-\func evaluate.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom (CohomologyNat n X A) (CohomologyNat n (\Sigma) A)
+\func evaluate.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom (CoHom n X A) (CoHom n (\Sigma) A)
   => pullback n (\lam _ => base)
 
--- | Constant classes.
-\func constant.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom (CohomologyNat n (\Sigma) A) (CohomologyNat n X A)
+\func constant.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom (CoHom n (\Sigma) A) (CoHom n X A)
   => pullback n (\lam _ => ())
 
--- | The normalization `x => e (f x) *> inv (e (f base))` of a map into a loop space.
 \func loopNormalize {X W : Pointed} (k : X -> Loop W) : X ->* Loop W
   => (\lam x => k x *> inv (k base), *>_inv (k base))
   \where {
@@ -67,16 +51,14 @@
       | idp => idp
   }
 
--- | The normalization `x => f x - f base` of a cocycle.
-\func normalize.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : Cocycle n X A) : ReducedCocycle n X A
+\func normalize.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : Cocycle n X A) : RedCocycle n X A
   => (PointedEquiv.inverse (K-loopEquiv n)).map ∘* loopNormalize (\lam x => (K-loopUnit n).1 (f x))
   \where {
     \func formula.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : Cocycle n X A) (x : X)
       : (normalize f).1 x = K-add n (f x) (K-neg n (f base))
       => pmap (K-loopInv n).1 (pmap (_ *>) (inv (deloopNeg.map (K-loopEquiv n) (f base))))
 
-    -- | Normalizing a translate of a reduced cocycle recovers it.
-    \func translate.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (g : ReducedCocycle n X A) (a : K A n)
+    \func translate.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (g : RedCocycle n X A) (a : K A n)
       : normalize (\lam x => K-add n (g.1 x) a) = g
       => IsEquiv.isInj (Map*.postEquiv X (K-loopEquiv {AbGroup.toCGroup A} n)).map-isEquiv
           (->*.compose-assoc (K-loopUnit n) (K-loopInv n) (loopNormalize (\lam x => (K-loopUnit n).1 (K-add n (g.1 x) a)))
@@ -91,7 +73,7 @@
            *> pmap (`*> _) (K-loopInv.right n _) *> *>-assoc _ _ _ *> pmap (_ *>) (inv_*> _))
   }
 
-\func cohomologySplit.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : Iso {AbGroupCat} (join n X A)
+\func splitIso.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : Iso {AbGroupCat} (join n X A)
   => AbGroupCat.isoOfEquiv (join n X A) (\new QEquiv {
     | ret => split-map
     | ret_f p => split-join p.1 p.2
@@ -99,51 +81,50 @@
   })
   \where {
     \func join.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u})
-      : AddGroupHom (ProductAbGroup (ReducedCohomologyNat n X A) (CohomologyNat n (\Sigma) A)) (CohomologyNat n X A)
+      : AddGroupHom (ProductAbGroup (RedCoHom n X A) (CoHom n (\Sigma) A)) (CoHom n X A)
       => copairHom (forget n X A) (constant n X A)
 
-    \func split-map.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (c : CohomologyNat n X A)
-      : \Sigma (ReducedCohomologyNat n X A) (CohomologyNat n (\Sigma) A)
+    \func split-map.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (c : CoHom n X A)
+      : \Sigma (RedCoHom n X A) (CoHom n (\Sigma) A)
       => (Trunc0.map c normalize, evaluate n X A c)
 
     \func split.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u})
-      : AddGroupHom (CohomologyNat n X A) (ProductAbGroup (ReducedCohomologyNat n X A) (CohomologyNat n (\Sigma) A))
-      => Iso.hinv {cohomologySplit n X A}
+      : AddGroupHom (CoHom n X A) (ProductAbGroup (RedCoHom n X A) (CoHom n (\Sigma) A))
+      => Iso.hinv {splitIso n X A}
 
-    \lemma split-join.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (c : ReducedCohomologyNat n X A) (d : CohomologyNat n (\Sigma) A)
+    \lemma split-join.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (c : RedCoHom n X A) (d : CoHom n (\Sigma) A)
       : split-map (join n X A (c, d)) = (c, d) \elim c, d
       | in0 g, in0 a => ext (pmap in0 (normalize.translate g (a ())),
                              pmap in0 (ext \lam u => pmap (K-add n __ (a u)) g.2 *> deloopAdd.zro-left (K-loopEquiv n) (a u)))
 
-    \lemma join-split.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (c : CohomologyNat n X A)
+    \lemma join-split.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (c : CoHom n X A)
       : join n X A (split-map c) = c \elim c
       | in0 f => pmap in0 (ext (normalize.add-base f))
 
-    \lemma join-zero.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (c : ReducedCohomologyNat n X A)
-      : join n X A (c, zro {CohomologyNat n (\Sigma) A}) = forget n X A c
-      => pmap2 (AddMonoid.+ {CohomologyNat n X A}) idp (AddGroupHom.func-zro {constant n X A}) *> AddMonoid.zro-right {CohomologyNat n X A}
+    \lemma join-zero.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (c : RedCoHom n X A)
+      : join n X A (c, zro {CoHom n (\Sigma) A}) = forget n X A c
+      => pmap2 (AddMonoid.+ {CoHom n X A}) idp (AddGroupHom.func-zro {constant n X A}) *> AddMonoid.zro-right {CoHom n X A}
 
-    \lemma split-forget.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (c : ReducedCohomologyNat n X A)
+    \lemma split-forget.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (c : RedCoHom n X A)
       : (split-map (forget n X A c)).1 = c
-      => pmap (\lam e => (split-map e).1) (inv (join-zero c)) *> pmap __.1 (split-join c (zro {CohomologyNat n (\Sigma) A}))
+      => pmap (\lam e => (split-map e).1) (inv (join-zero c)) *> pmap __.1 (split-join c (zro {CoHom n (\Sigma) A}))
 
     \lemma join-pullback.{u} {n : Nat} {X Y : Pointed.{u}} {A : AbGroup.{u}} (s : X ->* Y)
-                              (c : ReducedCohomologyNat n Y A) (d : CohomologyNat n (\Sigma) A)
-      : pullback n s.1 (join n Y A (c, d)) = join n X A (reducedPullback n s c, d) \elim c, d
-      | in0 g, in0 a => idp
+                              (c : RedCoHom n Y A) (d : CoHom n (\Sigma) A)
+      : pullback n s.1 (join n Y A (c, d)) = join n X A (redPullback n s c, d) \elim c, d
+      | in0 _, in0 _ => idp
 
     \lemma join-coefficients.{u} {n : Nat} {X : Pointed.{u}} {A B : AbGroup.{u}} (f : AddGroupHom A B)
-                                  (c : ReducedCohomologyNat n X A) (d : CohomologyNat n (\Sigma) A)
-      : mapCoefficients n X f (join n X A (c, d)) = join n X B (reducedMapCoefficients n X f c, mapCoefficients n (\Sigma) f d) \elim c, d
+                                  (c : RedCoHom n X A) (d : CoHom n (\Sigma) A)
+      : mapCoef n X f (join n X A (c, d)) = join n X B (redMapCoef n X f c, mapCoef n (\Sigma) f d) \elim c, d
       | in0 g, in0 a => pmap in0 (ext \lam x => K-add.natural n (AddGroupHom.toGroupHom f) (g.1 x) (a ()))
   }
 
--- | In positive degrees, forgetting the basepoint is an isomorphism.
 \func forgetIso.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : Iso {AbGroupCat} (forget (suc n) X A)
   => AbGroupCat.isoOfEquiv (forget (suc n) X A) (\new QEquiv {
-    | ret e => (cohomologySplit.split-map e).1
-    | ret_f => cohomologySplit.split-forget
-    | f_sec e => inv (cohomologySplit.join-zero _)
-                 *> pmap (\lam d => cohomologySplit.join (suc n) X A (_, d)) (inv (pointCohomology-positive-zero n A _))
-                 *> cohomologySplit.join-split e
+    | ret e => (splitIso.split-map e).1
+    | ret_f => splitIso.split-forget
+    | f_sec e => inv (splitIso.join-zero _)
+                 *> pmap (\lam d => splitIso.join (suc n) X A (_, d)) (inv (pointCoHom-positive n A _))
+                 *> splitIso.join-split e
   })

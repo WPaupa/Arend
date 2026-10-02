@@ -1,19 +1,9 @@
-{- | Cohomology of the circle in low degrees.
-
- A pointed map from the circle is determined by the loop it sends `loop` to (`circleMapEquiv`), and by
- `deloopAdd*.loop` the sum of two maps sends `loop` to the concatenation of their loops. Through `K-loopInv 0`
- this identifies `ReducedCohomologyNat 1 Circle A` with `A` as groups. The circle is connected, so its degree-zero
- cohomology is `A` and its reduced degree-zero cohomology vanishes.
- -}
-
 \import Algebra.Group
 \import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
-\import Algebra.Group.Product
 \import Category (Iso)
 \import Equiv
-\import Homotopy.Cohomology.DegreeZero
-\import Homotopy.Cohomology.Group
+\import Homotopy.Cohomology
 \import Homotopy.Connectivity
 \import Homotopy.EilenbergMacLane.Algebra
 \import Homotopy.EilenbergMacLane.Definition
@@ -52,13 +42,7 @@
       | idp => idp
   }
 
-\func cohomologyZero-circle.{u} (A : AbGroup.{u}) : Iso {AbGroupCat} (cohomologyZero-connected.constant Circle A)
-  => cohomologyZero-connected Circle Circle.connected A
-
-\func reducedCohomologyZero-circle.{u} (A : AbGroup.{u}) : Iso {AbGroupCat} (TrivialAbGroup.toTrivial (ReducedCohomologyNat 0 Circle A))
-  => reducedCohomologyZero-connected Circle Circle.connected A
-
-\func reducedCohomologyOne-circle.{u} (A : AbGroup.{u}) : Iso {AbGroupCat} (toGroup A)
+\func circle-degreeOne.{u} (A : AbGroup.{u}) : Iso {AbGroupCat} (toGroup A)
   => AbGroupCat.isoOfEquiv (toGroup A) (\new QEquiv {
     | ret a => in0 ((circleMapEquiv (K A 1)).ret ((K-loopUnit 0).1 a))
     | ret_f c => \case \elim c \with {
@@ -68,10 +52,10 @@
     | f_sec a => pmap (K-loopInv 0).1 ((circleMapEquiv (K A 1)).f_sec _) *> K-loopInv.left 0 a
   })
   \where {
-    \func toGroup-map.{u} {A : AbGroup.{u}} (c : ReducedCohomologyNat 1 Circle A) : A \elim c
+    \func toGroup-map.{u} {A : AbGroup.{u}} (c : RedCoHom 1 Circle A) : A \elim c
       | in0 f => (K-loopInv {AbGroup.toCGroup A} 0).1 (loopOf {K A 1} f)
 
-    \func toGroup.{u} (A : AbGroup.{u}) : AddGroupHom (ReducedCohomologyNat 1 Circle A) A \cowith
+    \func toGroup.{u} (A : AbGroup.{u}) : AddGroupHom (RedCoHom 1 Circle A) A \cowith
       | func => toGroup-map
       | func-+ {c} {d} => \case \elim c, \elim d \with {
         | in0 f, in0 g => pmap (K-loopInv 0).1 (deloopAdd*.loop {Circle} {K A 1} {K A 2} (K-loopEquiv 1) f g Sphere1.ploop

@@ -42,7 +42,6 @@
       | func _ => ()
       | func-+ => idp
 
-    -- | A group all of whose elements are zero is trivial.
     \func trivialIso.{u} (G : AbGroup.{u}) (h : \Pi (x : G) -> x = 0) : Iso {AbGroupCat.{u}} (toTrivial G) \cowith
       | hinv => \new AddGroupHom {
         | func _ => 0
@@ -52,7 +51,6 @@
       | f_hinv => idp
   }
 
--- | The map `(a, b) => f a + g b` out of a product.
 \func copairHom {A B C : AbGroup} (f : AddGroupHom A C) (g : AddGroupHom B C) : AddGroupHom (ProductAbGroup A B) C \cowith
   | func p => f p.1 + g p.2
   | func-+ => pmap2 (+) f.func-+ g.func-+ *> interchange
@@ -60,7 +58,6 @@
     \lemma interchange {C : AbGroup} {a b c d : C} : (a + b) + (c + d) = (a + c) + (b + d)
       => +-assoc *> pmap (a +) (inv +-assoc *> pmap (`+ d) +-comm *> +-assoc) *> inv +-assoc
 
--- | Functions into an abelian group, with pointwise operations.
 \instance FuncAbGroup (J : \Type) (A : AbGroup) : AbGroup (J -> A)
   | zro _ => zro
   | + f g j => f j + g j

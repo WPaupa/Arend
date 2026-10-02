@@ -1,18 +1,10 @@
-{- | Functoriality of cohomology in the space.
-
- `pullback n f` and `reducedPullback n f` precompose representatives, so on classes they compute
- definitionally: `pullback n f (classOf g)` is `classOf (\lam x => g (f x))`. Additivity of the reduced pullback
- is detected by `ReducedCohomologyNat.toPi1`, where it becomes the map induced on fundamental groups of mapping
- spaces. Equivalences of spaces induce isomorphisms whose inverses are pullbacks along the inverse maps.
- -}
-
 \import Algebra.Group
 \import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
 \import Algebra.Group.Transfer
 \import Category (Iso)
 \import Equiv
-\import Homotopy.Cohomology.Group
+\import Homotopy.Cohomology
 \import Homotopy.EilenbergMacLane.Definition
 \import Homotopy.EilenbergMacLane.Loop
 \import Homotopy.HomotopyGroup
@@ -25,10 +17,10 @@
 \open ->* (∘*)
 
 \func pullback.{u} (n : Nat) {X Y : \Type u} {A : AbGroup.{u}} (f : X -> Y)
-  : AddGroupHom (CohomologyNat n Y A) (CohomologyNat n X A) \cowith
+  : AddGroupHom (CoHom n Y A) (CoHom n X A) \cowith
   | func c => Trunc0.map c (\lam g x => g (f x))
   | func-+ {c} {d} => \case \elim c, \elim d \with {
-    | in0 g, in0 h => idp
+    | in0 _, in0 _ => idp
   }
   \where {
     \lemma id.{u} (n : Nat) {X : \Type u} {A : AbGroup.{u}} : pullback n {X} {X} {A} (\lam x => x) = AddGroupHom.id
@@ -43,39 +35,39 @@
       => pmap (pullback n) (funPath h)
   }
 
-\func cohomologyEquiv.{u} (n : Nat) {X Y : \Type u} {A : AbGroup.{u}} (e : QEquiv {X} {Y})
+\func pullbackIso.{u} (n : Nat) {X Y : \Type u} {A : AbGroup.{u}} (e : QEquiv {X} {Y})
   : Iso {AbGroupCat} (pullback n {X} {Y} {A} e) \cowith
   | hinv => pullback n e.ret
   | hinv_f => inv (pullback.comp n e.ret e) *> pullback.homotopy n e.f_sec *> pullback.id n
   | f_hinv => inv (pullback.comp n e e.ret) *> pullback.homotopy n e.ret_f *> pullback.id n
 
-\func reducedPullback.{u} (n : Nat) {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y)
-  : AddGroupHom (ReducedCohomologyNat n Y A) (ReducedCohomologyNat n X A)
-  => squareHom (ReducedCohomologyNat.toPi1 n Y A) (ReducedCohomologyNat.toPi1 n X A) (ReducedCohomologyNat.toPi1-inj n X A)
+\func redPullback.{u} (n : Nat) {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y)
+  : AddGroupHom (RedCoHom n Y A) (RedCoHom n X A)
+  => squareHom (RedCoHom.toPi1 n Y A) (RedCoHom.toPi1 n X A) (RedCoHom.toPi1-inj n X A)
                (\lam c => Trunc0.map c (`∘* f)) (AddGroupHom.fromGroupHom (piGroupMap 0 (Map*.pre f (K A (suc n))))) (square n f)
   \where {
-    \lemma square.{u} (n : Nat) {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y) (c : ReducedCohomologyNat n Y A)
-      : ReducedCohomologyNat.toPi1 n X A (Trunc0.map c (`∘* f))
-        = piMap 1 (Map*.pre f (K A (suc n))) (ReducedCohomologyNat.toPi1 n Y A c) \elim c
+    \lemma square.{u} (n : Nat) {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y) (c : RedCoHom n Y A)
+      : RedCoHom.toPi1 n X A (Trunc0.map c (`∘* f))
+        = piMap 1 (Map*.pre f (K A (suc n))) (RedCoHom.toPi1 n Y A c) \elim c
       | in0 g => pmap in0 (pmap mapLoop*.fromHom (->*.compose-assoc (K-loopUnit n) g f) *> mapLoop*.pre f (K-loopUnit n ∘* g))
 
-    \lemma id.{u} (n : Nat) {X : Pointed.{u}} {A : AbGroup.{u}} : reducedPullback n {X} {X} {A} ->*.id = AddGroupHom.id
+    \lemma id.{u} (n : Nat) {X : Pointed.{u}} {A : AbGroup.{u}} : redPullback n {X} {X} {A} ->*.id = AddGroupHom.id
       => exts \lam c => pmap (Trunc0.map c) (funPath ->*.compose-id) *> Trunc0.map-id c
 
     \lemma comp.{u} (n : Nat) {X Y Z : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y) (g : Y ->* Z)
-      : reducedPullback n {X} {Z} {A} (g ∘* f) = reducedPullback n f AddGroupHom.∘ reducedPullback n g
+      : redPullback n {X} {Z} {A} (g ∘* f) = redPullback n f AddGroupHom.∘ redPullback n g
       => exts \lam c => pmap (Trunc0.map c) (funPath \lam h => ->*.compose-assoc h g f) *> inv (Trunc0.map-comp c _ _)
 
     \lemma homotopy.{u} (n : Nat) {X Y : Pointed.{u}} {A : AbGroup.{u}} {f f' : X ->* Y}
                         (h : \Pi (x : X) -> f.1 x = f'.1 x) (q : h base *> f'.2 = f.2)
-      : reducedPullback n {X} {Y} {A} f = reducedPullback n f'
-      => pmap (reducedPullback n) (->*.ext h q)
+      : redPullback n {X} {Y} {A} f = redPullback n f'
+      => pmap (redPullback n) (->*.ext h q)
   }
 
-\func reducedCohomologyEquiv.{u} (n : Nat) {X Y : Pointed.{u}} {A : AbGroup.{u}} (e : PointedEquiv X Y)
-  : Iso {AbGroupCat} (reducedPullback n {X} {Y} {A} e.map) \cowith
-  | hinv => reducedPullback n (PointedEquiv.inverse e).map
-  | hinv_f => inv (reducedPullback.comp n (PointedEquiv.inverse e).map e.map)
-              *> pmap (reducedPullback n) (PointedEquiv.inverse-sec e) *> reducedPullback.id n
-  | f_hinv => inv (reducedPullback.comp n e.map (PointedEquiv.inverse e).map)
-              *> pmap (reducedPullback n) (PointedEquiv.inverse-ret e) *> reducedPullback.id n
+\func redPullbackIso.{u} (n : Nat) {X Y : Pointed.{u}} {A : AbGroup.{u}} (e : PointedEquiv X Y)
+  : Iso {AbGroupCat} (redPullback n {X} {Y} {A} e.map) \cowith
+  | hinv => redPullback n (PointedEquiv.inverse e).map
+  | hinv_f => inv (redPullback.comp n (PointedEquiv.inverse e).map e.map)
+              *> pmap (redPullback n) (PointedEquiv.inverse-sec e) *> redPullback.id n
+  | f_hinv => inv (redPullback.comp n e.map (PointedEquiv.inverse e).map)
+              *> pmap (redPullback n) (PointedEquiv.inverse-ret e) *> redPullback.id n

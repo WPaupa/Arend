@@ -1,164 +1,207 @@
-{- | Cohomology with coefficients in an abelian group, in integer degrees.
-
- `Cohomology d X A` and `ReducedCohomology d X A` are `CohomologyNat n X A` and `ReducedCohomologyNat n X A` for
- `d = pos n`, definitionally, and the trivial group for `d = neg (suc k)`; `neg 0` reduces to `pos 0`, so degree
- zero is never negative. Cocycles stay indexed by `Nat`: a class of degree `pos n` is `CohomologyNat.classOf f`
- for `f : Cocycle n X A`. Functoriality in the space and the coefficients, invariance under equivalences, and the
- reduced-unreduced splitting are lifted by cases on the degree.
-
- The layer consists of `Homotopy.Cohomology.Definition` (cocycles and their loop comparisons),
- `Homotopy.Cohomology.Group` (the groups, `classOf`, recursors and the comparison with the second homotopy group),
- `Homotopy.Cohomology.Functor` and `Homotopy.Cohomology.Coefficients` (functoriality),
- `Homotopy.Cohomology.DegreeZero` (degree zero and the point) and `Homotopy.Cohomology.Reduced` (the splitting).
- -}
-
 \import Algebra.Group
 \import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
-\import Algebra.Group.Product
-\import Category (Iso, idIso)
+\import Algebra.Group.Transfer
+\import Algebra.Monoid
+\import Category (Iso)
 \import Equiv
-\import Homotopy.Cohomology.Coefficients
-\import Homotopy.Cohomology.Functor
-\import Homotopy.Cohomology.Group
-\import Homotopy.Cohomology.Reduced
-\import Homotopy.Pointed (->*, Pointed, PointedEquiv, base)
+\import Function (IsInj)
+\import Homotopy.EilenbergMacLane.Algebra
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.HomotopyGroup
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Logic.Unique (isSet)
 \import Paths
+\import Set
 
-\open ->* (∘*)
+\open PointedEquiv (∘~)
 
-\func Cohomology.{u} (d : Int) (X : \Type u) (A : AbGroup.{u}) : AbGroup.{u} \elim d
-  | pos n => CohomologyNat n X A
-  | neg (suc k) => TrivialAbGroup
+\func Cocycle.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : \Type u
+  => X -> K A n
   \where {
-    \func negative.{u} (k : Nat) (X : \Type u) (A : AbGroup.{u})
-      : Iso {AbGroupCat} (TrivialAbGroup.toTrivial (Cohomology (neg (suc k)) X A))
-      => TrivialAbGroup.trivialIso _ (\lam _ => idp)
+    \func zero.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} : Cocycle n X A
+      => \lam _ => base
 
-    \func pullback.{u} (d : Int) {X Y : \Type u} {A : AbGroup.{u}} (f : X -> Y) : AddGroupHom (Cohomology d Y A) (Cohomology d X A) \elim d
-      | pos n => Homotopy.Cohomology.Functor.pullback n f
-      | neg (suc k) => AddGroupHom.id
+    \func add.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f g : Cocycle n X A) : Cocycle n X A
+      => \lam x => K-add n (f x) (g x)
+
+    \func neg.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A) : Cocycle n X A
+      => \lam x => K-neg n (f x)
+
+    \func toLoop.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : PointedEquiv (Map X (K A n)) (Loop (Map X (K A (suc n))))
+      => mapLoop X (K A (suc n)) ∘~ Map.postEquiv X (K-loopEquiv n)
       \where {
-        \lemma id.{u} (d : Int) {X : \Type u} {A : AbGroup.{u}} : pullback d {X} {X} {A} (\lam x => x) = AddGroupHom.id \elim d
-          | pos n => Homotopy.Cohomology.Functor.pullback.id n
-          | neg (suc k) => idp
+        \func add.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f g : Cocycle n X A)
+          : (toLoop n X A).map.1 (Cocycle.add f g) = (toLoop n X A).map.1 f *> (toLoop n X A).map.1 g
+          => pmap funPath (funPath \lam x => deloopAdd.map (K-loopEquiv n) (f x) (g x)) *> funPath.concat _ _
 
-        \lemma comp.{u} (d : Int) {X Y Z : \Type u} {A : AbGroup.{u}} (f : X -> Y) (g : Y -> Z)
-          : pullback d {X} {Z} {A} (\lam x => g (f x)) = pullback d f AddGroupHom.∘ pullback d g \elim d
-          | pos n => Homotopy.Cohomology.Functor.pullback.comp n f g
-          | neg (suc k) => idp
-
-        \lemma homotopy.{u} (d : Int) {X Y : \Type u} {A : AbGroup.{u}} {f f' : X -> Y} (h : \Pi (x : X) -> f x = f' x)
-          : pullback d {X} {Y} {A} f = pullback d f' \elim d
-          | pos n => Homotopy.Cohomology.Functor.pullback.homotopy n h
-          | neg (suc k) => idp
+        \func neg.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A)
+          : (toLoop n X A).map.1 (Cocycle.neg f) = inv ((toLoop n X A).map.1 f)
+          => pmap funPath (funPath \lam x => deloopNeg.map (K-loopEquiv n) (f x)) *> funPath.inverse _
       }
 
-    \func equiv.{u} (d : Int) {X Y : \Type u} {A : AbGroup.{u}} (e : QEquiv {X} {Y}) : Iso {AbGroupCat} (pullback d {X} {Y} {A} e) \elim d
-      | pos n => cohomologyEquiv n e
-      | neg (suc k) => idIso
-
-    \func mapCoefficients.{u} (d : Int) (X : \Type u) {A B : AbGroup.{u}} (f : AddGroupHom A B)
-      : AddGroupHom (Cohomology d X A) (Cohomology d X B) \elim d
-      | pos n => Homotopy.Cohomology.Coefficients.mapCoefficients n X f
-      | neg (suc k) => AddGroupHom.id
+    \func toDoubleLoop.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u})
+      : PointedEquiv (Map X (K A n)) (Loop (Loop (Map X (K A (suc (suc n))))))
+      => loopEquiv (toLoop (suc n) X A) ∘~ toLoop n X A
       \where {
-        \lemma id.{u} (d : Int) (X : \Type u) {A : AbGroup.{u}} : mapCoefficients d X (AddGroupHom.id {A}) = AddGroupHom.id \elim d
-          | pos n => Homotopy.Cohomology.Coefficients.mapCoefficients.id n X
-          | neg (suc k) => idp
+        \func add.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f g : Cocycle n X A)
+          : (toDoubleLoop n X A).map.1 (Cocycle.add f g) = (toDoubleLoop n X A).map.1 f *> (toDoubleLoop n X A).map.1 g
+          => pmap (Loop-Func (toLoop (suc n) X A).map).1 (toLoop.add f g) *> Loop-Func_*> (toLoop (suc n) X A).map _ _
 
-        \lemma comp.{u} (d : Int) (X : \Type u) {A B C : AbGroup.{u}} (g : AddGroupHom B C) (f : AddGroupHom A B)
-          : mapCoefficients d X (g AddGroupHom.∘ f) = mapCoefficients d X g AddGroupHom.∘ mapCoefficients d X f \elim d
-          | pos n => Homotopy.Cohomology.Coefficients.mapCoefficients.comp n X g f
-          | neg (suc k) => idp
-
-        \lemma pullback.{u} (d : Int) {X Y : \Type u} {A B : AbGroup.{u}} (s : X -> Y) (f : AddGroupHom A B)
-          : mapCoefficients d X f AddGroupHom.∘ Cohomology.pullback d s = Cohomology.pullback d s AddGroupHom.∘ mapCoefficients d Y f \elim d
-          | pos n => Homotopy.Cohomology.Coefficients.mapCoefficients.pullback n s f
-          | neg (suc k) => idp
+        \func neg.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A)
+          : (toDoubleLoop n X A).map.1 (Cocycle.neg f) = inv ((toDoubleLoop n X A).map.1 f)
+          => pmap (Loop-Func (toLoop (suc n) X A).map).1 (toLoop.neg f) *> Loop-Func_inv (toLoop (suc n) X A).map _
       }
-
-    \func coefficientIso.{u} (d : Int) (X : \Type u) {A B : AbGroup.{u}} {f : AddGroupHom A B} (e : Iso {AbGroupCat} f)
-      : Iso {AbGroupCat} (mapCoefficients d X f) \elim d
-      | pos n => Homotopy.Cohomology.Coefficients.coefficientIso n X e
-      | neg (suc k) => idIso
   }
 
-\func ReducedCohomology.{u} (d : Int) (X : Pointed.{u}) (A : AbGroup.{u}) : AbGroup.{u} \elim d
-  | pos n => ReducedCohomologyNat n X A
-  | neg (suc k) => TrivialAbGroup
+\func RedCocycle.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : \Type u
+  => X ->* K A n
   \where {
-    \func negative.{u} (k : Nat) (X : Pointed.{u}) (A : AbGroup.{u})
-      : Iso {AbGroupCat} (TrivialAbGroup.toTrivial (ReducedCohomology (neg (suc k)) X A))
-      => TrivialAbGroup.trivialIso _ (\lam _ => idp)
+    \func zero.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} : RedCocycle n X A
+      => ->*.zero X (K A n)
 
-    \func pullback.{u} (d : Int) {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y)
-      : AddGroupHom (ReducedCohomology d Y A) (ReducedCohomology d X A) \elim d
-      | pos n => reducedPullback n f
-      | neg (suc k) => AddGroupHom.id
+    \func add.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f g : RedCocycle n X A) : RedCocycle n X A
+      => deloopAdd* (K-loopEquiv n) f g
+
+    \func neg.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : RedCocycle n X A) : RedCocycle n X A
+      => deloopNeg* (K-loopEquiv n) f
+
+    \func toLoop.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : PointedEquiv (Map* X (K A n)) (Loop (Map* X (K A (suc n))))
+      => mapLoop* X (K A (suc n)) ∘~ Map*.postEquiv X (K-loopEquiv n)
       \where {
-        \lemma id.{u} (d : Int) {X : Pointed.{u}} {A : AbGroup.{u}} : pullback d {X} {X} {A} ->*.id = AddGroupHom.id \elim d
-          | pos n => reducedPullback.id n
-          | neg (suc k) => idp
+        \func add.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f g : RedCocycle n X A)
+          : (toLoop n X A).map.1 (RedCocycle.add f g) = (toLoop n X A).map.1 f *> (toLoop n X A).map.1 g
+          => pmap mapLoop*.fromHom (deloopAdd*.post (K-loopEquiv n) f g)
+             *> mapLoop*.fromHom-concat {X} {K A (suc n)} (->*.compose {X} {K A n} {Loop (K A (suc n))} (K-loopUnit n) f)
+                                        (->*.compose {X} {K A n} {Loop (K A (suc n))} (K-loopUnit n) g)
 
-        \lemma comp.{u} (d : Int) {X Y Z : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y) (g : Y ->* Z)
-          : pullback d {X} {Z} {A} (g ∘* f) = pullback d f AddGroupHom.∘ pullback d g \elim d
-          | pos n => reducedPullback.comp n f g
-          | neg (suc k) => idp
-
-        \lemma homotopy.{u} (d : Int) {X Y : Pointed.{u}} {A : AbGroup.{u}} {f f' : X ->* Y}
-                            (h : \Pi (x : X) -> f.1 x = f'.1 x) (q : h base *> f'.2 = f.2)
-          : pullback d {X} {Y} {A} f = pullback d f' \elim d
-          | pos n => reducedPullback.homotopy n h q
-          | neg (suc k) => idp
+        \func neg.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : RedCocycle n X A)
+          : (toLoop n X A).map.1 (RedCocycle.neg f) = inv ((toLoop n X A).map.1 f)
+          => pmap mapLoop*.fromHom (deloopNeg*.post (K-loopEquiv n) f)
+             *> mapLoop*.fromHom-inv {X} {K A (suc n)} (->*.compose {X} {K A n} {Loop (K A (suc n))} (K-loopUnit n) f)
       }
 
-    \func equiv.{u} (d : Int) {X Y : Pointed.{u}} {A : AbGroup.{u}} (e : PointedEquiv X Y)
-      : Iso {AbGroupCat} (pullback d {X} {Y} {A} e.map) \elim d
-      | pos n => reducedCohomologyEquiv n e
-      | neg (suc k) => idIso
-
-    \func mapCoefficients.{u} (d : Int) (X : Pointed.{u}) {A B : AbGroup.{u}} (f : AddGroupHom A B)
-      : AddGroupHom (ReducedCohomology d X A) (ReducedCohomology d X B) \elim d
-      | pos n => reducedMapCoefficients n X f
-      | neg (suc k) => AddGroupHom.id
+    \func toDoubleLoop.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u})
+      : PointedEquiv (Map* X (K A n)) (Loop (Loop (Map* X (K A (suc (suc n))))))
+      => loopEquiv (toLoop (suc n) X A) ∘~ toLoop n X A
       \where {
-        \lemma id.{u} (d : Int) (X : Pointed.{u}) {A : AbGroup.{u}} : mapCoefficients d X (AddGroupHom.id {A}) = AddGroupHom.id \elim d
-          | pos n => reducedMapCoefficients.id n X
-          | neg (suc k) => idp
+        \func add.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f g : RedCocycle n X A)
+          : (toDoubleLoop n X A).map.1 (RedCocycle.add f g) = (toDoubleLoop n X A).map.1 f *> (toDoubleLoop n X A).map.1 g
+          => pmap (Loop-Func (toLoop (suc n) X A).map).1 (toLoop.add f g) *> Loop-Func_*> (toLoop (suc n) X A).map _ _
 
-        \lemma comp.{u} (d : Int) (X : Pointed.{u}) {A B C : AbGroup.{u}} (g : AddGroupHom B C) (f : AddGroupHom A B)
-          : mapCoefficients d X (g AddGroupHom.∘ f) = mapCoefficients d X g AddGroupHom.∘ mapCoefficients d X f \elim d
-          | pos n => reducedMapCoefficients.comp n X g f
-          | neg (suc k) => idp
-
-        \lemma pullback.{u} (d : Int) {X Y : Pointed.{u}} {A B : AbGroup.{u}} (s : X ->* Y) (f : AddGroupHom A B)
-          : mapCoefficients d X f AddGroupHom.∘ ReducedCohomology.pullback d s
-            = ReducedCohomology.pullback d s AddGroupHom.∘ mapCoefficients d Y f \elim d
-          | pos n => reducedMapCoefficients.pullback n s f
-          | neg (suc k) => idp
+        \func neg.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : RedCocycle n X A)
+          : (toDoubleLoop n X A).map.1 (RedCocycle.neg f) = inv ((toDoubleLoop n X A).map.1 f)
+          => pmap (Loop-Func (toLoop (suc n) X A).map).1 (toLoop.neg f) *> Loop-Func_inv (toLoop (suc n) X A).map _
       }
-
-    \func coefficientIso.{u} (d : Int) (X : Pointed.{u}) {A B : AbGroup.{u}} {f : AddGroupHom A B} (e : Iso {AbGroupCat} f)
-      : Iso {AbGroupCat} (mapCoefficients d X f) \elim d
-      | pos n => reducedCoefficientIso n X e
-      | neg (suc k) => idIso
-
-    \func forget.{u} (d : Int) (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom (ReducedCohomology d X A) (Cohomology d X A) \elim d
-      | pos n => Homotopy.Cohomology.Reduced.forget n X A
-      | neg (suc k) => AddGroupHom.id
-
-    -- | In positive degrees, forgetting the basepoint is an isomorphism.
-    \func forgetIso.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : Iso {AbGroupCat} (forget (pos (suc n)) X A)
-      => Homotopy.Cohomology.Reduced.forgetIso n X A
   }
 
-\func cohomologySplit.{u} (d : Int) (X : Pointed.{u}) (A : AbGroup.{u})
-  : Iso {AbGroupCat} {ProductAbGroup (ReducedCohomology d X A) (Cohomology d (\Sigma) A)} {Cohomology d X A} (join d X A) \elim d
-  | pos n => Homotopy.Cohomology.Reduced.cohomologySplit n X A
-  | neg (suc k) => TrivialAbGroup.trivialIso _ (\lam _ => idp)
-  \where
-    \func join.{u} (d : Int) (X : Pointed.{u}) (A : AbGroup.{u})
-      : AddGroupHom (ProductAbGroup (ReducedCohomology d X A) (Cohomology d (\Sigma) A)) (Cohomology d X A) \elim d
-      | pos n => Homotopy.Cohomology.Reduced.cohomologySplit.join n X A
-      | neg (suc k) => TrivialAbGroup.toTrivial _
+\func CoHom.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : AbGroup.{u}
+  => injectiveAbGroup (pi2Target n X A) (toPi2-map n X A) (toPi2-inj n X A)
+                      (in0 Cocycle.zero) (Trunc0.map2 __ __ Cocycle.add) (Trunc0.map __ Cocycle.neg)
+                      (pmap in0 (Cocycle.toDoubleLoop n X A).map.2) (toPi2-+ n X A) (toPi2-neg n X A)
+  \where {
+    \func pi2Target.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : AbGroup.{u}
+      => AbGroup.fromCGroup (PiCGroup 0 (Map X (K A (suc (suc n)))))
+
+    \func toPi2-map.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) (c : Trunc0 (Cocycle n X A)) : pi2Target n X A
+      => Trunc0.map c (Cocycle.toDoubleLoop n X A).map.1
+
+    \lemma toPi2-inj.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : IsInj (toPi2-map n X A)
+      => IsEquiv.isInj (Trunc0.map-isEquiv (Cocycle.toDoubleLoop n X A).map-isEquiv)
+
+    \lemma toPi2-+.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) (c d : Trunc0 (Cocycle n X A))
+      : toPi2-map n X A (Trunc0.map2 c d Cocycle.add) = (AddMonoid.+ {pi2Target n X A}) (toPi2-map n X A c) (toPi2-map n X A d) \elim c, d
+      | in0 f, in0 g => pmap in0 (Cocycle.toDoubleLoop.add f g)
+
+    \lemma toPi2-neg.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) (c : Trunc0 (Cocycle n X A))
+      : toPi2-map n X A (Trunc0.map c Cocycle.neg) = (AddGroup.negative {pi2Target n X A}) (toPi2-map n X A c) \elim c
+      | in0 f => pmap in0 (Cocycle.toDoubleLoop.neg f)
+
+    \func classOf.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A) : CoHom n X A
+      => in0 f
+
+    \func rec.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} {B : \Type} (p : isSet B) (f : Cocycle n X A -> B) (c : CoHom n X A) : B
+      => Trunc0.rec p c f
+
+    \lemma rec-eval.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} {B : \Type} {p : isSet B} {f : Cocycle n X A -> B} {g : Cocycle n X A}
+      : rec p f (classOf g) = f g \level p _ _
+      => Trunc0.rec-eval
+
+    \func elim.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} {P : CoHom n X A -> \Type}
+                   (p : \Pi (c : CoHom n X A) -> isSet (P c)) (f : \Pi (g : Cocycle n X A) -> P (classOf g)) (c : CoHom n X A) : P c
+      => Trunc0.elim p c f
+
+    \lemma elim-eval.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} {P : CoHom n X A -> \Type}
+                         {p : \Pi (c : CoHom n X A) -> isSet (P c)} {f : \Pi (g : Cocycle n X A) -> P (classOf g)} {g : Cocycle n X A}
+      : elim p f (classOf g) = f g \level p _ _ _
+      => Trunc0.elim-eval
+
+    \func toPi2.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : AddGroupHom (CoHom n X A) (pi2Target n X A) \cowith
+      | func => toPi2-map n X A
+      | func-+ => toPi2-+ n X A _ _
+
+    \func pi2Iso.{u} (n : Nat) (X : \Type u) (A : AbGroup.{u}) : Iso {AbGroupCat} (toPi2 n X A)
+      => AbGroupCat.isoOfEquiv (toPi2 n X A) (Trunc0.mapEquiv (IsEquiv.toQEquiv (Cocycle.toDoubleLoop n X A).map-isEquiv))
+  }
+
+\func RedCoHom.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AbGroup.{u}
+  => injectiveAbGroup (pi2Target n X A) (toPi2-map n X A) (toPi2-inj n X A)
+                      (in0 RedCocycle.zero) (Trunc0.map2 __ __ RedCocycle.add) (Trunc0.map __ RedCocycle.neg)
+                      (pmap in0 (RedCocycle.toDoubleLoop n X A).map.2) (toPi2-+ n X A) (toPi2-neg n X A)
+  \where {
+    \func pi2Target.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AbGroup.{u}
+      => AbGroup.fromCGroup (PiCGroup 0 (Map* X (K A (suc (suc n)))))
+
+    \func toPi2-map.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) (c : Trunc0 (RedCocycle n X A)) : pi2Target n X A
+      => Trunc0.map c (RedCocycle.toDoubleLoop n X A).map.1
+
+    \lemma toPi2-inj.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : IsInj (toPi2-map n X A)
+      => IsEquiv.isInj (Trunc0.map-isEquiv (RedCocycle.toDoubleLoop n X A).map-isEquiv)
+
+    \lemma toPi2-+.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) (c d : Trunc0 (RedCocycle n X A))
+      : toPi2-map n X A (Trunc0.map2 c d RedCocycle.add) = (AddMonoid.+ {pi2Target n X A}) (toPi2-map n X A c) (toPi2-map n X A d) \elim c, d
+      | in0 f, in0 g => pmap in0 (RedCocycle.toDoubleLoop.add f g)
+
+    \lemma toPi2-neg.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) (c : Trunc0 (RedCocycle n X A))
+      : toPi2-map n X A (Trunc0.map c RedCocycle.neg) = (AddGroup.negative {pi2Target n X A}) (toPi2-map n X A c) \elim c
+      | in0 f => pmap in0 (RedCocycle.toDoubleLoop.neg f)
+
+    \func classOf.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : RedCocycle n X A) : RedCoHom n X A
+      => in0 f
+
+    \func rec.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} {B : \Type} (p : isSet B) (f : RedCocycle n X A -> B) (c : RedCoHom n X A) : B
+      => Trunc0.rec p c f
+
+    \lemma rec-eval.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} {B : \Type} {p : isSet B} {f : RedCocycle n X A -> B} {g : RedCocycle n X A}
+      : rec p f (classOf g) = f g \level p _ _
+      => Trunc0.rec-eval
+
+    \func elim.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} {P : RedCoHom n X A -> \Type}
+                   (p : \Pi (c : RedCoHom n X A) -> isSet (P c)) (f : \Pi (g : RedCocycle n X A) -> P (classOf g)) (c : RedCoHom n X A) : P c
+      => Trunc0.elim p c f
+
+    \lemma elim-eval.{u} {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} {P : RedCoHom n X A -> \Type}
+                         {p : \Pi (c : RedCoHom n X A) -> isSet (P c)} {f : \Pi (g : RedCocycle n X A) -> P (classOf g)} {g : RedCocycle n X A}
+      : elim p f (classOf g) = f g \level p _ _ _
+      => Trunc0.elim-eval
+
+    \func toPi2.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom (RedCoHom n X A) (pi2Target n X A) \cowith
+      | func => toPi2-map n X A
+      | func-+ => toPi2-+ n X A _ _
+
+    \func pi2Iso.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : Iso {AbGroupCat} (toPi2 n X A)
+      => AbGroupCat.isoOfEquiv (toPi2 n X A) (Trunc0.mapEquiv (IsEquiv.toQEquiv (RedCocycle.toDoubleLoop n X A).map-isEquiv))
+
+    \func toPi1.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u})
+      : AddGroupHom (RedCoHom n X A) (AddGroup.fromGroup (PiGroup 0 (Map* X (K A (suc n))))) \cowith
+      | func c => Trunc0.map c (RedCocycle.toLoop n X A).map.1
+      | func-+ {c} {d} => \case \elim c, \elim d \with {
+        | in0 f, in0 g => pmap in0 (RedCocycle.toLoop.add f g)
+      }
+
+    \lemma toPi1-inj.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : IsInj (toPi1 n X A)
+      => IsEquiv.isInj (Trunc0.map-isEquiv (RedCocycle.toLoop n X A).map-isEquiv)
+  }

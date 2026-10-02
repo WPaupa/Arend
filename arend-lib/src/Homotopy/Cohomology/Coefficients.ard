@@ -1,19 +1,10 @@
-{- | Functoriality of cohomology in the coefficients.
-
- A homomorphism `f : AddGroupHom A B` acts on cocycles by postcomposition with `KMap n (AddGroupHom.toGroupHom f)`;
- on classes this computes definitionally, and it commutes with pullbacks. Additivity of the unreduced map is
- `K-add.natural` pointwise; that of the reduced map is detected by `ReducedCohomologyNat.toPi1`, using the
- naturality of `K-loopUnit` in the coefficients. Isomorphisms of coefficients induce isomorphisms of cohomology.
- -}
-
 \import Algebra.Group
 \import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
 \import Algebra.Group.Transfer
 \import Category (Iso)
-\import Homotopy.Cohomology.Definition
+\import Homotopy.Cohomology
 \import Homotopy.Cohomology.Functor
-\import Homotopy.Cohomology.Group
 \import Homotopy.EilenbergMacLane.Algebra
 \import Homotopy.EilenbergMacLane.Definition
 \import Homotopy.EilenbergMacLane.Functor
@@ -28,67 +19,67 @@
 
 \open ->* (∘*)
 
-\func mapCoefficients.{u} (n : Nat) (X : \Type u) {A B : AbGroup.{u}} (f : AddGroupHom A B)
-  : AddGroupHom (CohomologyNat n X A) (CohomologyNat n X B) \cowith
+\func mapCoef.{u} (n : Nat) (X : \Type u) {A B : AbGroup.{u}} (f : AddGroupHom A B)
+  : AddGroupHom (CoHom n X A) (CoHom n X B) \cowith
   | func c => Trunc0.map c (\lam g x => (KMap n (AddGroupHom.toGroupHom f)).1 (g x))
   | func-+ {c} {d} => \case \elim c, \elim d \with {
     | in0 g, in0 h => pmap in0 (funPath \lam x => K-add.natural n (AddGroupHom.toGroupHom f) (g x) (h x))
   }
   \where {
-    \lemma id.{u} (n : Nat) (X : \Type u) {A : AbGroup.{u}} : mapCoefficients n X (AddGroupHom.id {A}) = AddGroupHom.id
+    \lemma id.{u} (n : Nat) (X : \Type u) {A : AbGroup.{u}} : mapCoef n X (AddGroupHom.id {A}) = AddGroupHom.id
       => exts \lam c => pmap (Trunc0.map c) (funPath \lam (g : Cocycle n X A) => funPath \lam x => ->*.happly (KMap.id n) (g x))
                         *> Trunc0.map-id c
 
     \lemma comp.{u} (n : Nat) (X : \Type u) {A B C : AbGroup.{u}} (g : AddGroupHom B C) (f : AddGroupHom A B)
-      : mapCoefficients n X (g AddGroupHom.∘ f) = mapCoefficients n X g AddGroupHom.∘ mapCoefficients n X f
+      : mapCoef n X (g AddGroupHom.∘ f) = mapCoef n X g AddGroupHom.∘ mapCoef n X f
       => exts \lam c => pmap (Trunc0.map c) (funPath \lam (k : Cocycle n X A) => funPath \lam x =>
                           ->*.happly (KMap.comp {AbGroup.toCGroup A} {AbGroup.toCGroup B} {AbGroup.toCGroup C} n
                                                 (AddGroupHom.toGroupHom g) (AddGroupHom.toGroupHom f)) (k x))
                         *> inv (Trunc0.map-comp c _ _)
 
     \lemma pullback.{u} (n : Nat) {X Y : \Type u} {A B : AbGroup.{u}} (s : X -> Y) (f : AddGroupHom A B)
-      : mapCoefficients n X f AddGroupHom.∘ Homotopy.Cohomology.Functor.pullback n s
-        = Homotopy.Cohomology.Functor.pullback n s AddGroupHom.∘ mapCoefficients n Y f
+      : mapCoef n X f AddGroupHom.∘ Homotopy.Cohomology.Functor.pullback n s
+        = Homotopy.Cohomology.Functor.pullback n s AddGroupHom.∘ mapCoef n Y f
       => exts \lam c => Trunc0.map-comp c _ _ *> inv (Trunc0.map-comp c _ _)
   }
 
-\func coefficientIso.{u} (n : Nat) (X : \Type u) {A B : AbGroup.{u}} {f : AddGroupHom A B} (e : Iso {AbGroupCat} f)
-  : Iso {AbGroupCat} (mapCoefficients n X f) \cowith
-  | hinv => mapCoefficients n X e.hinv
-  | hinv_f => inv (mapCoefficients.comp n X e.hinv f) *> pmap (mapCoefficients n X) e.hinv_f *> mapCoefficients.id n X
-  | f_hinv => inv (mapCoefficients.comp n X f e.hinv) *> pmap (mapCoefficients n X) e.f_hinv *> mapCoefficients.id n X
+\func coefIso.{u} (n : Nat) (X : \Type u) {A B : AbGroup.{u}} {f : AddGroupHom A B} (e : Iso {AbGroupCat} f)
+  : Iso {AbGroupCat} (mapCoef n X f) \cowith
+  | hinv => mapCoef n X e.hinv
+  | hinv_f => inv (mapCoef.comp n X e.hinv f) *> pmap (mapCoef n X) e.hinv_f *> mapCoef.id n X
+  | f_hinv => inv (mapCoef.comp n X f e.hinv) *> pmap (mapCoef n X) e.f_hinv *> mapCoef.id n X
 
-\func reducedMapCoefficients.{u} (n : Nat) (X : Pointed.{u}) {A B : AbGroup.{u}} (f : AddGroupHom A B)
-  : AddGroupHom (ReducedCohomologyNat n X A) (ReducedCohomologyNat n X B)
-  => squareHom (ReducedCohomologyNat.toPi1 n X A) (ReducedCohomologyNat.toPi1 n X B) (ReducedCohomologyNat.toPi1-inj n X B)
+\func redMapCoef.{u} (n : Nat) (X : Pointed.{u}) {A B : AbGroup.{u}} (f : AddGroupHom A B)
+  : AddGroupHom (RedCoHom n X A) (RedCoHom n X B)
+  => squareHom (RedCoHom.toPi1 n X A) (RedCoHom.toPi1 n X B) (RedCoHom.toPi1-inj n X B)
                (\lam c => Trunc0.map c (KMap n (AddGroupHom.toGroupHom f) ∘*))
                (AddGroupHom.fromGroupHom (piGroupMap 0 (Map*.post X (KMap (suc n) (AddGroupHom.toGroupHom f))))) (square n X f)
   \where {
-    \lemma square.{u} (n : Nat) (X : Pointed.{u}) {A B : AbGroup.{u}} (f : AddGroupHom A B) (c : ReducedCohomologyNat n X A)
-      : ReducedCohomologyNat.toPi1 n X B (Trunc0.map c (KMap n (AddGroupHom.toGroupHom f) ∘*))
-        = piMap 1 (Map*.post X (KMap (suc n) (AddGroupHom.toGroupHom f))) (ReducedCohomologyNat.toPi1 n X A c) \elim c
+    \lemma square.{u} (n : Nat) (X : Pointed.{u}) {A B : AbGroup.{u}} (f : AddGroupHom A B) (c : RedCoHom n X A)
+      : RedCoHom.toPi1 n X B (Trunc0.map c (KMap n (AddGroupHom.toGroupHom f) ∘*))
+        = piMap 1 (Map*.post X (KMap (suc n) (AddGroupHom.toGroupHom f))) (RedCoHom.toPi1 n X A c) \elim c
       | in0 g => \let phi => AddGroupHom.toGroupHom f
                  \in pmap in0 (pmap mapLoop*.fromHom (->*.compose-assoc (K-loopUnit n) (KMap n phi) g
                                                       *> pmap (`∘* g) (inv (KMap_loopUnit n phi))
                                                       *> inv (->*.compose-assoc (Loop-Func (KMap (suc n) phi)) (K-loopUnit n) g))
                                *> mapLoop*.post (KMap (suc n) phi) (K-loopUnit n ∘* g))
 
-    \lemma id.{u} (n : Nat) (X : Pointed.{u}) {A : AbGroup.{u}} : reducedMapCoefficients n X (AddGroupHom.id {A}) = AddGroupHom.id
+    \lemma id.{u} (n : Nat) (X : Pointed.{u}) {A : AbGroup.{u}} : redMapCoef n X (AddGroupHom.id {A}) = AddGroupHom.id
       => exts \lam c => pmap (Trunc0.map c) (funPath \lam g => pmap (`∘* g) (KMap.id n)) *> Trunc0.map-id c
 
     \lemma comp.{u} (n : Nat) (X : Pointed.{u}) {A B C : AbGroup.{u}} (g : AddGroupHom B C) (f : AddGroupHom A B)
-      : reducedMapCoefficients n X (g AddGroupHom.∘ f) = reducedMapCoefficients n X g AddGroupHom.∘ reducedMapCoefficients n X f
+      : redMapCoef n X (g AddGroupHom.∘ f) = redMapCoef n X g AddGroupHom.∘ redMapCoef n X f
       => exts \lam c => pmap (Trunc0.map c) (funPath \lam k =>
                           pmap (`∘* k) (KMap.comp n (AddGroupHom.toGroupHom g) (AddGroupHom.toGroupHom f)) *> inv (->*.compose-assoc _ _ k))
                         *> inv (Trunc0.map-comp c _ _)
 
     \lemma pullback.{u} (n : Nat) {X Y : Pointed.{u}} {A B : AbGroup.{u}} (s : X ->* Y) (f : AddGroupHom A B)
-      : reducedMapCoefficients n X f AddGroupHom.∘ reducedPullback n s = reducedPullback n s AddGroupHom.∘ reducedMapCoefficients n Y f
+      : redMapCoef n X f AddGroupHom.∘ redPullback n s = redPullback n s AddGroupHom.∘ redMapCoef n Y f
       => exts \lam c => Trunc0.map-comp c _ _ *> pmap (Trunc0.map c) (funPath \lam g => ->*.compose-assoc _ g s) *> inv (Trunc0.map-comp c _ _)
   }
 
-\func reducedCoefficientIso.{u} (n : Nat) (X : Pointed.{u}) {A B : AbGroup.{u}} {f : AddGroupHom A B} (e : Iso {AbGroupCat} f)
-  : Iso {AbGroupCat} (reducedMapCoefficients n X f) \cowith
-  | hinv => reducedMapCoefficients n X e.hinv
-  | hinv_f => inv (reducedMapCoefficients.comp n X e.hinv f) *> pmap (reducedMapCoefficients n X) e.hinv_f *> reducedMapCoefficients.id n X
-  | f_hinv => inv (reducedMapCoefficients.comp n X f e.hinv) *> pmap (reducedMapCoefficients n X) e.f_hinv *> reducedMapCoefficients.id n X
+\func redCoefIso.{u} (n : Nat) (X : Pointed.{u}) {A B : AbGroup.{u}} {f : AddGroupHom A B} (e : Iso {AbGroupCat} f)
+  : Iso {AbGroupCat} (redMapCoef n X f) \cowith
+  | hinv => redMapCoef n X e.hinv
+  | hinv_f => inv (redMapCoef.comp n X e.hinv f) *> pmap (redMapCoef n X) e.hinv_f *> redMapCoef.id n X
+  | f_hinv => inv (redMapCoef.comp n X f e.hinv) *> pmap (redMapCoef n X) e.f_hinv *> redMapCoef.id n X
