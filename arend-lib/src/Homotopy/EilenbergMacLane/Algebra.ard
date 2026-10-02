@@ -84,6 +84,16 @@
       : e.map ∘* deloopAdd* e f g = pointwiseConcat (e.map ∘* f) (e.map ∘* g)
       => ->*.ext (\lam x => deloopAdd.map e (f.1 x) (g.1 x)) (coh e f.2 g.2)
 
+    -- | On loops, the sum of two maps induces the concatenation of their images.
+    \func loop {X Z W : Pointed} (e : PointedEquiv Z (Loop W)) (f g : X ->* Z) (l : Loop X)
+      : (Loop-Func (deloopAdd* e f g)).1 l = (Loop-Func f).1 l *> (Loop-Func g).1 l
+      => IsEquiv.isInj (Loop-Func.isEquiv e.map e.map-isEquiv)
+          (inv (->*.happly (Loop-Func-comp e.map (deloopAdd* e f g)) l)
+           *> pmap (\lam h => (Loop-Func h).1 l) (post e f g)
+           *> pointwiseConcat.loop (e.map ∘* f) (e.map ∘* g) l
+           *> pmap2 (*>) (->*.happly (Loop-Func-comp e.map f) l) (->*.happly (Loop-Func-comp e.map g) l)
+           *> inv (Loop-Func_*> e.map _ _))
+
     \func coh {Z W : Pointed} (e : PointedEquiv Z (Loop W)) {x y : Z} (f2 : x = base) (g2 : y = base)
       : deloopAdd.map e x y *> pmap (e.map.1 x *>) (pmap e.map.1 g2 *> e.map.2) *> pmap e.map.1 f2 *> e.map.2
         = pmap e.map.1 (pmap2 (deloopAdd e) f2 g2 *> deloopAdd.base-path e) *> e.map.2 \elim f2, g2

@@ -1,7 +1,11 @@
 \import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
 \import Algebra.Monoid
 \import Algebra.Monoid.Product
 \import Algebra.Pointed
+\import Category (Iso)
+\import Equiv
 \import Paths
 \import Paths.Meta
 
@@ -33,6 +37,28 @@
   | negative _ => ()
   | negative-left => idp
   | +-comm => idp
+  \where {
+    \func toTrivial (G : AbGroup) : AddGroupHom G TrivialAbGroup \cowith
+      | func _ => ()
+      | func-+ => idp
+
+    -- | A group all of whose elements are zero is trivial.
+    \func trivialIso.{u} (G : AbGroup.{u}) (h : \Pi (x : G) -> x = 0) : Iso {AbGroupCat.{u}} (toTrivial G) \cowith
+      | hinv => \new AddGroupHom {
+        | func _ => 0
+        | func-+ => inv zro-left
+      }
+      | hinv_f => exts \lam x => inv (h x)
+      | f_hinv => idp
+  }
+
+-- | The map `(a, b) => f a + g b` out of a product.
+\func copairHom {A B C : AbGroup} (f : AddGroupHom A C) (g : AddGroupHom B C) : AddGroupHom (ProductAbGroup A B) C \cowith
+  | func p => f p.1 + g p.2
+  | func-+ => pmap2 (+) f.func-+ g.func-+ *> interchange
+  \where
+    \lemma interchange {C : AbGroup} {a b c d : C} : (a + b) + (c + d) = (a + c) + (b + d)
+      => +-assoc *> pmap (a +) (inv +-assoc *> pmap (`+ d) +-comm *> +-assoc) *> inv +-assoc
 
 -- | Functions into an abelian group, with pointwise operations.
 \instance FuncAbGroup (J : \Type) (A : AbGroup) : AbGroup (J -> A)
@@ -43,3 +69,13 @@
   | negative f j => negative (f j)
   | negative-left => ext \lam _ => negative-left
   | +-comm => ext \lam _ => +-comm
+  \where {
+    \func precomp {J' J : \Type} (A : AbGroup) (s : J' -> J) : AddGroupHom (FuncAbGroup J A) (FuncAbGroup J' A) \cowith
+      | func h j => h (s j)
+      | func-+ => idp
+
+    \func precompIso.{u} {J' J : \Type u} (A : AbGroup.{u}) (e : QEquiv {J'} {J}) : Iso {AbGroupCat.{u}} (precomp A e) \cowith
+      | hinv => precomp A e.ret
+      | hinv_f => exts \lam h => ext \lam j => pmap h (e.f_sec j)
+      | f_hinv => exts \lam k => ext \lam j => pmap k (e.ret_f j)
+  }

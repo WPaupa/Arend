@@ -86,6 +86,21 @@
 
 \func pointwiseConcat {X W : Pointed} (h k : X ->* Loop W) : X ->* Loop W
   => (\lam x => h.1 x *> k.1 x, pmap (h.1 base *>) k.2 *> h.2)
+  \where {
+    -- | On loops, the pointwise concatenation of two maps induces the concatenation of their images.
+    \func loop {X W : Pointed} (h k : X ->* Loop W) (l : Loop X)
+      : (Loop-Func (pointwiseConcat h k)).1 l = (Loop-Func h).1 l *> (Loop-Func k).1 l
+      => lem h.2 k.2 (pmap h.1 l) (pmap k.1 l)
+
+    \func lem {A : \Type} {a : A} {u v : a = a} (h2 : u = idp) (k2 : v = idp) (p : u = u) (q : v = v)
+      : inv (pmap (u *>) k2 *> h2) *> pmap2 (*>) p q *> pmap (u *>) k2 *> h2 = (inv h2 *> p *> h2) *> (inv k2 *> q *> k2) \elim h2, k2
+      | idp, idp => idp_*> _ *> decompose p q *> pmap (p *>) (homotopy-isNatural (idp *>) (\lam x => x) idp_*> q)
+                    *> inv (pmap (`*> _) (idp_*> p))
+
+    \func decompose {A : \Type} {a b c : A} {x x' : a = b} {y y' : b = c} (p : x = x') (q : y = y')
+      : pmap2 (*>) p q = pmap (`*> y) p *> pmap (x' *>) q \elim q
+      | idp => idp
+  }
 
 \func pointwiseInv {X W : Pointed} (h : X ->* Loop W) : X ->* Loop W
   => (\lam x => inv (h.1 x), pmap inv h.2)

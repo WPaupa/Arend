@@ -1,0 +1,152 @@
+{- | Cohomology in degree zero and cohomology of the point.
+
+ `K A 0` is `A`, so a degree-zero cocycle is a function into `A` and its class a function on the set of
+ components: `cohomologyZero` identifies `CohomologyNat 0 X A` with `FuncAbGroup (Trunc0 X) A`, and
+ `reducedCohomologyZero` identifies the reduced group with the functions vanishing on the basepoint component.
+ For `isNConnectedType 1 X` (supplied for a `Connected0` type by `connected0=>nconnected1`) the constant cocycles
+ give `A`, and the reduced group vanishes. The point has `Trunc0 (K A n)` as its cohomology: `A` in degree zero,
+ zero in positive degrees; the reduced cohomology of the pointed point vanishes in every degree.
+ -}
+
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Group.SubGroup
+\import Algebra.Pointed (zro)
+\import Arith.Nat
+\import Category (Iso, oIso)
+\import Equiv
+\import Equiv.Sigma (unit-func, unit-isContr)
+\import Homotopy.Cohomology.Coefficients
+\import Homotopy.Cohomology.Definition
+\import Homotopy.Cohomology.Group
+\import Homotopy.Connectivity
+\import Homotopy.EilenbergMacLane.Algebra
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.Pointed (->*, Pointed, UnitPointed, base)
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Set
+
+\func cohomologyZero.{u} (X : \Type u) (A : AbGroup.{u}) : Iso {AbGroupCat} (toFunctions X A)
+  => AbGroupCat.isoOfEquiv (toFunctions X A) (\new QEquiv {
+    | ret h => in0 (\lam x => h (in0 x))
+    | ret_f c => \case \elim c \with {
+      | in0 f => idp
+    }
+    | f_sec h => ext \lam t => \case \elim t \with {
+      | in0 x => idp
+    }
+  })
+  \where {
+    \func toFunctions-map.{u} {X : \Type u} {A : AbGroup.{u}} (c : CohomologyNat 0 X A) (t : Trunc0 X) : A \elim c, t
+      | in0 f, in0 x => f x
+
+    \func toFunctions.{u} (X : \Type u) (A : AbGroup.{u}) : AddGroupHom (CohomologyNat 0 X A) (FuncAbGroup (Trunc0 X) A) \cowith
+      | func => toFunctions-map
+      | func-+ {c} {d} => \case \elim c, \elim d \with {
+        | in0 f, in0 g => ext \lam t => \case \elim t \with {
+          | in0 x => K-add.degree-zero (f x) (g x)
+        }
+      }
+
+    \lemma natural.{u} {X : \Type u} {A B : AbGroup.{u}} (f : AddGroupHom A B) (c : CohomologyNat 0 X A)
+      : toFunctions-map (mapCoefficients 0 X f c) = (\lam t => f (toFunctions-map c t)) \elim c
+      | in0 g => ext \lam t => \case \elim t \with {
+        | in0 x => idp
+      }
+  }
+
+-- | Degree-zero cohomology of a type enumerated by `Fin m`, as `m`-tuples.
+\func cohomologyZero-fin.{u} {X : \Type u} {m : Nat} (e : QEquiv {X} {Fin m}) (A : AbGroup.{u})
+  : Iso {AbGroupCat} {CohomologyNat 0 X A} {FuncAbGroup (Fin m) A} _
+  => oIso (cohomologyZero X A) (FuncAbGroup.precompIso A (symQEquiv (transQEquiv (Trunc0.mapEquiv e) Trunc0.setEquiv)))
+
+\func finZero-trivial.{u} (A : AbGroup.{u}) : Iso {AbGroupCat} (TrivialAbGroup.toTrivial (FuncAbGroup (Fin 0) A))
+  => TrivialAbGroup.trivialIso (FuncAbGroup (Fin 0) A) (\lam h => ext \lam j => \case j \with {})
+
+\func reducedCohomologyZero.{u} (X : Pointed.{u}) (A : AbGroup.{u}) : Iso {AbGroupCat} (toFunctions X A)
+  => AbGroupCat.isoOfEquiv (toFunctions X A) (\new QEquiv {
+    | ret h => in0 (\lam x => h.1 (in0 x), h.2)
+    | ret_f c => \case \elim c \with {
+      | in0 f => idp
+    }
+    | f_sec h => ext (ext \lam t => \case \elim t \with {
+      | in0 x => idp
+    })
+  })
+  \where {
+    \func evalBase.{u} (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom (FuncAbGroup (Trunc0 X) A) A \cowith
+      | func h => h (in0 base)
+      | func-+ => idp
+
+    \func toFunctions-map.{u} {X : Pointed.{u}} {A : AbGroup.{u}} (c : ReducedCohomologyNat 0 X A)
+      : IAbGroup (KernelAddGroup (evalBase X A)) \elim c
+      | in0 f => (cohomologyZero.toFunctions-map (in0 f.1), f.2)
+
+    \func toFunctions.{u} (X : Pointed.{u}) (A : AbGroup.{u})
+      : AddGroupHom (ReducedCohomologyNat 0 X A) (IAbGroup (KernelAddGroup (evalBase X A))) \cowith
+      | func => toFunctions-map
+      | func-+ {c} {d} => \case \elim c, \elim d \with {
+        | in0 f, in0 g => ext (ext \lam t => \case \elim t \with {
+          | in0 x => K-add.degree-zero (f.1 x) (g.1 x)
+        })
+      }
+  }
+
+-- | For connected `X`, degree-zero classes are constant.
+\func cohomologyZero-connected.{u} (X : Pointed.{u}) (c : isNConnectedType 1 X) (A : AbGroup.{u})
+  : Iso {AbGroupCat} (constant X A)
+  => AbGroupCat.isoOfEquiv (constant X A) (\new QEquiv {
+    | ret => evaluate
+    | ret_f _ => idp
+    | f_sec d => \case \elim d \with {
+      | in0 f => pmap in0 (ext \lam x => \case nconnected1-path c base x \with {
+        | inP p => pmap f p
+      })
+    }
+  })
+  \where {
+    \func constant.{u} (X : Pointed.{u}) (A : AbGroup.{u}) : AddGroupHom A (CohomologyNat 0 X A) \cowith
+      | func a => in0 (\lam _ => a)
+      | func-+ {a} {b} => pmap in0 (ext \lam _ => inv (K-add.degree-zero a b))
+
+    \func evaluate.{u} {X : Pointed.{u}} {A : AbGroup.{u}} (d : CohomologyNat 0 X A) : A \elim d
+      | in0 f => f base
+  }
+
+\func reducedCohomologyZero-connected.{u} (X : Pointed.{u}) (c : isNConnectedType 1 X) (A : AbGroup.{u})
+  : Iso {AbGroupCat} (TrivialAbGroup.toTrivial (ReducedCohomologyNat 0 X A))
+  => TrivialAbGroup.trivialIso (ReducedCohomologyNat 0 X A) \case \elim __ \with {
+    | in0 f => pmap in0 (->*.ext {X} {K A 0} {f} { ->*.zero X (K A 0)}
+                          (\lam x => \case nconnected1-path c x base \with {
+                            | inP p => pmap f.1 p *> f.2
+                          }) prop-pi)
+  }
+
+-- | The cohomology of the point is the set of components of `K A n`.
+\func pointCohomology.{u} (n : Nat) (A : AbGroup.{u}) : QEquiv {CohomologyNat n (\Sigma) A} {Trunc0 (K A n)}
+  => Trunc0.mapEquiv (unit-func (K A n))
+
+\func pointCohomology-zero.{u} (A : AbGroup.{u}) : Iso {AbGroupCat} (cohomologyZero-connected.constant UnitPointed A)
+  => cohomologyZero-connected UnitPointed (nconnected-contr 1 unit-isContr) A
+
+\lemma pointCohomology-positive-zero.{u} (n : Nat) (A : AbGroup.{u}) (d : CohomologyNat (suc n) (\Sigma) A)
+  : d = zro {CohomologyNat (suc n) (\Sigma) A} \elim d
+  | in0 a => \case nconnected1-path (nconnected-mono (suc<=suc zero<=_) (K-connected n)) (a ()) base \with {
+    | inP p => pmap in0 (ext \lam _ => p)
+  }
+
+\func pointCohomology-positive.{u} (n : Nat) (A : AbGroup.{u})
+  : Iso {AbGroupCat} (TrivialAbGroup.toTrivial (CohomologyNat (suc n) (\Sigma) A))
+  => TrivialAbGroup.trivialIso _ (pointCohomology-positive-zero n A)
+
+\lemma reducedPointCohomology-zero.{u} (n : Nat) (A : AbGroup.{u}) (d : ReducedCohomologyNat n UnitPointed A)
+  : d = zro {ReducedCohomologyNat n UnitPointed A} \elim d
+  | in0 f => pmap in0 (inv (->*.ext {UnitPointed} {K A n} { ->*.zero UnitPointed (K A n)} {f} (\lam _ => inv f.2) (inv_*> f.2)))
+
+\func reducedPointCohomology.{u} (n : Nat) (A : AbGroup.{u})
+  : Iso {AbGroupCat} (TrivialAbGroup.toTrivial (ReducedCohomologyNat n UnitPointed A))
+  => TrivialAbGroup.trivialIso _ (reducedPointCohomology-zero n A)
