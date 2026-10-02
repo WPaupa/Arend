@@ -18,6 +18,7 @@
 \import Data.List
 \import Data.Or
 \import Equiv
+\import Homotopy.Cofiber
 \import Homotopy.Connected
 \import Homotopy.HLevel
 \import Homotopy.HomotopyGroup
@@ -99,7 +100,7 @@
     | inr _ => idp
   }) z
 
-\func PresentationComplex {X R : \Type} (rel : R -> List (\Sigma X Bool)) => Cofiber (attach rel)
+\func PresentationComplex {X R : \Type} (rel : R -> List (\Sigma X Bool)) => Cof (attach rel)
 
 \func Presented {X : \Set} {R : \Type} (rel : R -> List (\Sigma X Bool)) : Group
   => FreeGroup X // normalClosure (Relator rel)
@@ -116,14 +117,14 @@
   => inv (Cat.isotoid iso)
   \where {
     \func hom : GroupHom (Presented rel) (PiGroup 0 (Pointed.make {PresentationComplex rel} (pinl north)))
-      => PiGroup_Cofiber.hom {bouquetConnected R} {Bouquet X} {attach rel} {north} GroupHom.∘ from
+      => PiGroup_Cof.hom {bouquetConnected R} {Bouquet X} {attach rel} {north} GroupHom.∘ from
 
     \lemma hom-gen (x : X) : hom (in~ (FreeGroup.can x)) = in0 (pmap pinl (bouquetLoop x))
-      => PiGroup_Cofiber.hom-in {bouquetConnected R} {Bouquet X} {attach rel} {north} (iota (FreeGroup.can x))
+      => PiGroup_Cof.hom-in {bouquetConnected R} {Bouquet X} {attach rel} {north} (iota (FreeGroup.can x))
            *> pmap (map0 pinl) (ide-right {PiGroup 0 (Susp.pointed (Or X (\Sigma)))} {in0 (bouquetLoop x)})
 
     \func hom-equiv : QEquiv hom
-      => transQEquiv (symQEquiv equiv) (PiGroup_Cofiber.hom-equiv {bouquetConnected R} {Bouquet X} {attach rel} {north})
+      => transQEquiv (symQEquiv equiv) (PiGroup_Cof.hom-equiv {bouquetConnected R} {Bouquet X} {attach rel} {north})
 
     \func iso : Iso {GroupCat} hom
       => GroupCat.isoOfEquiv hom hom-equiv

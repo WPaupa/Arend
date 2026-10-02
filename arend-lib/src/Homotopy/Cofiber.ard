@@ -1,0 +1,58 @@
+\import Equiv
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Suspension
+\import Logic
+\import Paths
+
+\open PushoutData (ppglue, rec, homotopy)
+\open ->* (∘*)
+
+\func Cof {A B : \Type} (f : A -> B) => PushoutData f (\lam _ => ())
+  \where {
+    \func pointed {X Y : Pointed} (f : X ->* Y)
+      => \new Pointed (Cof f.1) (pinl base)
+
+    \func inc {X Y : Pointed} (f : X ->* Y) : Y ->* pointed f
+      => (pinl, idp)
+
+    \func inc-null {X Y : Pointed} (f : X ->* Y) : inc f ∘* f = ->*.zero X (pointed f)
+      => ->*.ext (\lam x => ppglue x *> inv (ppglue (base {X})) *> pmap pinl f.2)
+                 (inv (*>-assoc _ _ _) *> pmap (`*> _) (*>_inv (ppglue (base {X}))) *> idp_*> _)
+
+    \func extend {X Y Z : Pointed} {f : X ->* Y} (g : Y ->* Z) (h : \Pi (x : X) -> g.1 (f.1 x) = base) : pointed f ->* Z
+      => (rec g.1 (\lam _ => base) h, g.2)
+
+    \func extend-inc {X Y Z : Pointed} {f : X ->* Y} (g : Y ->* Z) (h : \Pi (x : X) -> g.1 (f.1 x) = base)
+      : extend g h ∘* inc f = g
+      => ->*.ext (\lam _ => idp) idp
+
+    \func quotient {X Y : Pointed} (f : X ->* Y) : pointed f ->* Susp.pointed X
+      => (rec (\lam _ => north) (\lam _ => south) pmerid, idp)
+
+    \func rotate {X Y : Pointed} (f : X ->* Y) : PointedEquiv (pointed (inc f)) (Susp.pointed X) \cowith
+      | map => (rot f, idp)
+      | map-isEquiv => inP \new QEquiv {
+        | ret => back f
+        | ret_f => homotopy (homotopy (\lam y => inv (ppglue y)) (\lam _ => idp) (\lam _ => idp))
+                            (\lam _ => idp) (\lam y => inv_*> (ppglue y))
+        | f_sec => homotopy (\lam _ => idp) (\lam _ => idp)
+                            (\lam _ => inv (pmap_*>-comm (rot f) _ _ *> pmap (`*> _) (pmap_inv-comm (rot f) _)))
+      }
+      \where {
+        \func rot {X Y : Pointed} (f : X ->* Y) (c : Cof (inc f).1) : Susp X
+          => rec (quotient f).1 (\lam _ => north) (\lam _ => idp) c
+
+        \func back {X Y : Pointed} (f : X ->* Y) (s : Susp X) : Cof (inc f).1
+          => Susp.rec (pinr ()) (pinl (pinr ())) (\lam x => inv (ppglue (f.1 x)) *> pmap pinl (ppglue x)) s
+      }
+
+    \func rotate-inc {X Y : Pointed} (f : X ->* Y)
+      : quotient (inc f) = Susp.flip Y ∘* Susp-Func f ∘* (rotate f).map
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(quotient (inc f)).1} {\lam c => (Susp.flip Y).1 (Susp.map f.1 (rotate.rot f c))}
+                    (homotopy {_} {_} {_} {_} {_} {_} {\lam c => (quotient (inc f)).1 (pinl c)}
+                                     {\lam c => (Susp.flip Y).1 (Susp.map f.1 (rotate.rot f (pinl c)))}
+                                     (\lam y => pmerid y) (\lam _ => idp) (\lam x => *>_inv (pmerid (f.1 x))))
+                           (\lam _ => idp) (\lam _ => idp))
+                 (pmap (pmerid (base {Y}) *>) (idp_*> _ *> idp_*> _) *> *>_inv (pmerid (base {Y})))
+  }

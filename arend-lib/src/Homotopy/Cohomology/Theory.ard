@@ -1,0 +1,66 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Pointed (AddPointed, zro)
+\import Algebra.Pointed.Exact
+\import Arith.Int
+\import Category (Iso)
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
+\import Homotopy.Suspension
+\import Homotopy.Wedge
+\import Logic
+\import Logic.Unique
+\import Paths
+\import Paths.Meta
+\import Set
+\import Set.Fin
+
+\open ->* (∘*)
+\open AddGroupHom (toGroupHom)
+
+\record CohomologyTheory.{u} {
+  | E : Int -> Pointed.{u} -> AbGroup.{u}
+  | pull (n : Int) {X Y : Pointed.{u}} (f : X ->* Y) : AddGroupHom (E n Y) (E n X)
+  | pull-id (n : Int) (X : Pointed.{u}) : pull n (->*.id {X}) = AddGroupHom.id
+  | pull-comp (n : Int) {X Y Z : Pointed.{u}} (f : X ->* Y) (g : Y ->* Z) : pull n (g ∘* f) = pull n f AddGroupHom.∘ pull n g
+  | susp (n : Int) (X : Pointed.{u}) : Iso {AbGroupCat.{u}} {E n X} {E (isuc n) (Susp.pointed X)}
+  | susp-natural (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+    : Iso.f {susp n X} AddGroupHom.∘ pull n f = pull (isuc n) (Susp-Func f) AddGroupHom.∘ Iso.f {susp n Y}
+  | exact (n : Int) {X Y : Pointed.{u}} (f : X ->* Y) : ExactAt (toGroupHom (pull n (Cof.inc f))) (toGroupHom (pull n f))
+  | wedge (n : Int) {J : \Type u} (X : J -> Pointed.{u}) (c : AC0.{u} J)
+    : IsEquiv {E n (BigWedge X)} {\Pi (j : J) -> E n (X j)} (\lam a j => pull n (BigWedge.inc X j) a)
+
+  \func pullIso (n : Int) {X Y : Pointed.{u}} (e : PointedEquiv X Y) : Iso {AbGroupCat.{u}} (pull n e.map) \cowith
+    | hinv => pull n (PointedEquiv.inverse e).map
+    | hinv_f => inv (pull-comp n _ _) *> pmap (pull n) (PointedEquiv.inverse-sec e) *> pull-id n Y
+    | f_hinv => inv (pull-comp n _ _) *> pmap (pull n) (PointedEquiv.inverse-ret e) *> pull-id n X
+
+  \func wedgeIso (n : Int) {J : \Type u} (X : J -> Pointed.{u}) (c : AC0.{u} J)
+    : Iso {AbGroupCat.{u}} (PiAbGroup.tuple (\lam j => pull n (BigWedge.inc X j)))
+    => AbGroupCat.isoOfEquiv (PiAbGroup.tuple (\lam j => pull n (BigWedge.inc X j))) (IsEquiv.toQEquiv (wedge n X c))
+
+  \lemma contr-zero (n : Int) {X : Pointed.{u}} (c : Contr X) (x : E n X) : x = 0
+    => \let e => toWedge c \in
+       \have zero (a : E n (BigWedge {Fin 0} (\lam _ => UnitPointed))) : a = 0
+               => IsEquiv.isInj (wedge n (\lam (_ : Fin 0) => UnitPointed) (FinSet.ac0 {FinFin 0})) {a} {0} (ext \lam ())
+       \in inv (pmap (\lam (g : AddGroupHom (E n X) (E n X)) => g x) (Iso.f_hinv {pullIso n e}))
+           *> pmap (pull n e.map) (zero _) *> AddGroupHom.func-zro
+    \where {
+      \func toWedge.{v} {X : Pointed.{v}} (c : Contr X) : PointedEquiv X (BigWedge {Fin 0} (\lam _ => UnitPointed)) \cowith
+        | map => (\lam _ => pinr (), idp)
+        | map-isEquiv => contr-equiv c (Contr.make (pinr ()) vertex)
+
+      \func vertex (w : BigWedge {Fin 0} (\lam _ => UnitPointed)) : pinr () = w \elim w
+        | pinl ((), _)
+        | pinr () => idp
+        | pglue () _
+    }
+}
+
+\record OrdinaryCohomologyTheory \extends CohomologyTheory
+  | dimension (n : Int) (n/=0 : n /= 0) (x : E n (Sphere.pointed 0)) : x = 0

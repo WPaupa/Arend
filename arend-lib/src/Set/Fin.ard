@@ -62,6 +62,19 @@
 
   \lemma splitSurj {A : \Type} {f : A -> E} (isSur : IsSurj f) : IsSplitSurj f
     => liftSurj isSur id
+
+  \lemma ac0.{u} : AC0.{u} E
+    => \lam Y => IsEquiv.fromInjSurj (\lam {t} {t'} => ac0.inj t t')
+        \lam t => TruncP.map (liftDepSurj {_} {Y} {\lam j => Trunc0 (Y j)} {\lam {j} => in0 {Y j}} (\lam {_} => ac0.in0-surj) t) (\lam h => (in0 h.1, ext h.2))
+    \where {
+      \lemma inj {J : FinSet} {Y : J -> \Type} (t t' : Trunc0 (\Pi (j : J) -> Y j)) (p : AC0.map Y t = AC0.map Y t') : t = t' \elim t, t'
+        | in0 s, in0 s' => \case J.choice (\lam j => transport (\lam (Q : \Prop) => Q) (Trunc0.equality (s j) (s' j)) (pmap (__ j) p)) \with {
+          | inP h => pmap in0 (ext h)
+        }
+
+      \lemma in0-surj {A : \Type} (u : Trunc0 A) : ∃ (a : A) (in0 a = u) \elim u
+        | in0 a => inP (a, idp)
+    }
 } \where {
     \use \level levelProp {A : \Set} (X Y : FinSet A) : X = Y
       => ext (\case X.finEq, Y.finEq \with {

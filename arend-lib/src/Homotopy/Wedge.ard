@@ -145,3 +145,18 @@
       : restrictWedge (\lam x => D x) (extend r s A B ca cb D t) = t
       => IsEquiv.f_ret (wedge-extension r s A B ca cb D)
   }
+
+\func BigWedge.{l} {J : \Type l} (X : J -> Pointed.{l}) : Pointed.{l}
+  => \new Pointed (PushoutData {J} {\Sigma (j : J) (X j)} {\Sigma} (\lam j => (j, base {X j})) (\lam _ => ())) (pinr ())
+  \where {
+    \func inc.{l} {J : \Type l} (X : J -> Pointed.{l}) (j : J) : X j ->* BigWedge X
+      => (\lam x => pinl (j, x), ppglue j)
+
+    \func mapEquiv.{l} {J : \Type l} (X : J -> Pointed.{l}) (Z : Pointed) : QEquiv {BigWedge X ->* Z} {\Pi (j : J) -> X j ->* Z} \cowith
+      | f h j => ->*.compose {X j} {BigWedge X} {Z} h (inc X j)
+      | ret g => (rec (\lam p => (g p.1).1 p.2) (\lam _ => base) (\lam j => (g j).2), idp)
+      | ret_f h => ->*.ext {BigWedge X} {Z} (PushoutData.homotopy (\lam _ => idp) (\lam _ => inv h.2)
+                             (\lam j => idp_*> _ *> inv (*>-assoc _ _ _ *> pmap (_ *>) (*>_inv h.2))))
+                           (inv_*> h.2)
+      | f_sec _ => idp
+  }

@@ -1,0 +1,35 @@
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Pointed (AddPointed, zro)
+\import Algebra.Pointed.Exact
+\import Homotopy.Cofiber
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Functor
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.Pointed
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Set
+
+\open ->* (∘*)
+\open AddGroupHom (toGroupHom)
+
+\lemma redExact.{u} (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (A : AbGroup.{u})
+  : ExactAt (toGroupHom (redPullback n {Y} {Cof.pointed f} {A} (Cof.inc f))) (toGroupHom (redPullback n f))
+  => \lam c => (kernel f c, image f c)
+  \where {
+    \lemma kernel.{u} {n : Nat} {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y) (c : RedCoHom n Y A) (p : redPullback n f c = zro {RedCoHom n X A})
+      : ∃ (d : RedCoHom n (Cof.pointed f) A) (redPullback n (Cof.inc f) d = c) \elim c
+      | in0 g => \case transport (\lam (Q : \Prop) => Q) (Trunc0.equality (g ∘* f) (->*.zero X (K A n))) p \with {
+        | inP q => inP (in0 (Cof.extend g (->*.happly q)), pmap in0 (Cof.extend-inc {X} {Y} {K A n} {f} g (->*.happly q)))
+      }
+
+    \lemma image.{u} {n : Nat} {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y) (c : RedCoHom n Y A)
+                   (h : ∃ (d : RedCoHom n (Cof.pointed f) A) (redPullback n (Cof.inc f) d = c)) : redPullback n f c = zro {RedCoHom n X A} \elim h
+      | inP (d, q) => pmap (redPullback n f) (inv q) *> vanish f d
+
+    \lemma vanish.{u} {n : Nat} {X Y : Pointed.{u}} {A : AbGroup.{u}} (f : X ->* Y) (d : RedCoHom n (Cof.pointed f) A)
+      : redPullback n f (redPullback n (Cof.inc f) d) = zro {RedCoHom n X A} \elim d
+      | in0 h => pmap in0 (inv (->*.compose-assoc h (Cof.inc f) f) *> pmap (h ∘*) (Cof.inc-null f) *> ->*.compose-zero h)
+  }

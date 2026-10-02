@@ -1,0 +1,20 @@
+\import Algebra.Group
+\import Equiv
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Functor
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.Pointed
+\import Homotopy.Wedge
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Set
+
+\lemma redWedge.{u} (n : Nat) {J : \Type u} (X : J -> Pointed.{u}) (A : AbGroup.{u}) (c : AC0.{u} J)
+  : IsEquiv {RedCoHom n (BigWedge X) A} {\Pi (j : J) -> RedCoHom n (X j) A} (\lam a j => redPullback n (BigWedge.inc X j) a)
+  => transport IsEquiv (path (\lam i a => square a @ i)) (IsEquiv.trans (Trunc0.map-isEquiv (inP (BigWedge.mapEquiv X (K A n))))
+                                                   (c (\lam j => RedCocycle n (X j) A)))
+  \where
+    \lemma square.{u} {n : Nat} {J : \Type u} {X : J -> Pointed.{u}} {A : AbGroup.{u}} (a : RedCoHom n (BigWedge X) A)
+      : AC0.map (\lam j => RedCocycle n (X j) A) (Trunc0.map a (BigWedge.mapEquiv X (K A n))) = (\lam j => redPullback n (BigWedge.inc X j) a) \elim a
+      | in0 _ => idp

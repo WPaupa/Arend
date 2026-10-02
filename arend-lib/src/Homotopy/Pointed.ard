@@ -45,6 +45,9 @@
     \func compose-id {X Y : Pointed} (f : X ->* Y) : f ∘* id = f
       => ext (\lam _ => idp) idp
 
+    \func compose-zero {X Y Z : Pointed} (h : Y ->* Z) : h ∘* zero X Y = zero X Z
+      => ext (\lam _ => h.2) (inv (idp_*> h.2))
+
     \func compose-assoc {W X Y Z : Pointed} (h : Y ->* Z) (g : X ->* Y) (f : W ->* X)
       : h ∘* (g ∘* f) = (h ∘* g) ∘* f
       => ext (\lam _ => idp)
