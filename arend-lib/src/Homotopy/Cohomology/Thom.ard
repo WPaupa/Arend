@@ -130,7 +130,7 @@
                           (o : Orientation R B P r eta) (k : Nat) : IsEquiv (thomMul k (suc r) (o.c base)).1
       => \case transport (\lam (Q : \Prop) => Q) (Trunc0.equality _ _) o.normalized \with {
         | inP q => transport (\lam c' => IsEquiv (thomMul k (suc r) c').1) (inv q)
-            (transport IsEquiv (ext \lam x => inv (->*.compose-assoc _ (thomMul.sphereUnit R (suc r)) (suspEquiv r eta).map))
+            (transport IsEquiv (ext \lam _ => inv (->*.compose-assoc _ (thomMul.sphereUnit R (suc r)) (suspEquiv r eta).map))
                        (IsEquiv.trans (thomMul.sphere R k (suc r)) (Map*.preEquiv (suspEquiv r eta) (K R (k Nat.+ suc r))).map-isEquiv))
       }
 

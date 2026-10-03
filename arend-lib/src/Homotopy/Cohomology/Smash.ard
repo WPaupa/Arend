@@ -1,0 +1,160 @@
+\import Algebra.Group
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Pairing
+\import Algebra.Monoid
+\import Algebra.Ring.DirectSum (signed)
+\import Arith.Int
+\import Function
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Cup
+\import Homotopy.Cohomology.EilenbergSteenrod
+\import Homotopy.Cohomology.Functor
+\import Homotopy.Cohomology.Integer
+\import Homotopy.Cohomology.MayerVietoris
+\import Homotopy.Cohomology.Relative
+\import Homotopy.Cohomology.Suspension
+\import Homotopy.Cohomology.Theory.LongExact
+\import Homotopy.EilenbergMacLane.Algebra
+\import Homotopy.EilenbergMacLane.Cup
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.GradedComm
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.EilenbergMacLane.Mapping
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Suspension
+\import Homotopy.Wedge
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Set
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+\open SuspLoopEquiv (toSusp)
+
+\lemma smash-inj.{u} (n : Nat) (X Y : Pointed.{u}) (A : AbGroup.{u}) : IsInj (redPullback n {PointedProduct X Y} {Smash X Y} {A} Smash.proj) \elim n
+  | 0 => inj (neg 1) X Y A
+  | suc n => inj (pos n) X Y A
+  \where {
+    \lemma inj.{u} (d : Int) (X Y : Pointed.{u}) (A : AbGroup.{u})
+      : IsInj (IntRedCoHom.pullback (isuc d) {PointedProduct X Y} {Smash X Y} {A} Smash.proj)
+      => AddGroupHom.injective {IntRedCoHom.pullback (isuc d) {PointedProduct X Y} {Smash X Y} {A} Smash.proj} \lam p =>
+           \case AbExactAt.lift {_} {_} {_} {delta (ordinaryCohomology A) d (Wedge.toProduct X Y)}
+                                {IntRedCoHom.pullback (isuc d) {PointedProduct X Y} {Smash X Y} {A} Smash.proj}
+                                (delta-exact-cof (ordinaryCohomology A) d (Wedge.toProduct X Y)) p \with {
+             | inP (b, q) => \case surj d X Y A b \with {
+               | inP (a, r) => inv q *> pmap (delta (ordinaryCohomology A) d (Wedge.toProduct X Y)) (inv r)
+                               *> AbExactAt.zero {_} {_} {_} {IntRedCoHom.pullback d (Wedge.toProduct X Y)} {delta (ordinaryCohomology A) d (Wedge.toProduct X Y)}
+                                                 (delta-exact (ordinaryCohomology A) d (Wedge.toProduct X Y)) a
+             }
+           }
+
+    \lemma surj.{u} (d : Int) (X Y : Pointed.{u}) (A : AbGroup.{u})
+      : IsSurj (IntRedCoHom.pullback d {Wedge.pointed X Y} {PointedProduct X Y} {A} (Wedge.toProduct X Y)) \elim d
+      | pos n => split n X Y A
+      | neg (suc _) => \lam _ => inP ((), idp)
+
+    \lemma split.{u} (n : Nat) (X Y : Pointed.{u}) (A : AbGroup.{u}) (b : RedCoHom n (Wedge.pointed X Y) A)
+      : ∃ (a : RedCoHom n (PointedProduct X Y) A) (redPullback n (Wedge.toProduct X Y) a = b) \elim b
+      | in0 g => inP (in0 (RedCocycle.add (g ∘* Wedge.left X Y ∘* PointedProduct.proj1 {X} {Y}) (g ∘* Wedge.right X Y ∘* PointedProduct.proj2 {X} {Y})),
+                      pmap in0 (K-homogenExt.{u} n
+                        {RedCocycle.add (g ∘* Wedge.left X Y ∘* PointedProduct.proj1 {X} {Y}) (g ∘* Wedge.right X Y ∘* PointedProduct.proj2 {X} {Y}) ∘* Wedge.toProduct X Y} {g}
+                        (PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+                          {\lam z => K-add n (g.1 (pinl (wedgeToProduct X Y z).1)) (g.1 (pinr (wedgeToProduct X Y z).2))} {g.1}
+                          (\lam x => pmap (K-add n (g.1 (pinl x))) (inv (pmap g.1 (ppglue ())) *> g.2) *> deloopAdd.zro-right (K-loopEquiv {A} n) _)
+                          (\lam y => pmap (K-add n __ (g.1 (pinr y))) g.2 *> deloopAdd.zro-left (K-loopEquiv {A} n) _)
+                          (\lam _ => coh (pmap g.1 (ppglue ())) g.2))))
+
+    \func coh.{u} {n : Nat} {A : AbGroup.{u}} {u v : K A n} (e : u = v) (b : u = base)
+      : (pmap (K-add n u) (inv e *> b) *> deloopAdd.zro-right (K-loopEquiv {A} n) u) *> e
+        = idp *> (pmap (K-add n __ v) b *> deloopAdd.zro-left (K-loopEquiv {A} n) v) \elim v, e
+      | _, idp => coh-base b
+
+    \func coh-base.{u} {n : Nat} {A : AbGroup.{u}} {u : K A n} (b : u = base)
+      : pmap (K-add n u) (idp *> b) *> deloopAdd.zro-right (K-loopEquiv {A} n) u
+        = idp *> (pmap (K-add n __ u) b *> deloopAdd.zro-left (K-loopEquiv {A} n) u) \elim u, b
+      | _, idp => pmap (idp *>) (inv (deloopAdd.zro-coh (K-loopEquiv {A} n)) *> inv (idp_*> _))
+  }
+
+\func smashCup.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (X Y : Pointed.{u})
+  : Pairing (RedCoHom p X A) (RedCoHom q Y B) (RedCoHom (p Nat.+ q) (Smash X Y) C) \cowith
+  | func a b => Trunc0.map2 a b (raw m p q)
+  | ldistr {a} {b} {b'} => smash-inj (p Nat.+ q) X Y C
+      (proj m p q a (b + b')
+       *> pmap (redCup m p q (PointedProduct X Y) (redPullback p (PointedProduct.proj1 {X} {Y}) a)) (AddGroupHom.func-+ {redPullback q (PointedProduct.proj2 {X} {Y})})
+       *> Pairing.ldistr {redCup m p q (PointedProduct X Y)}
+       *> inv (pmap2 (AddMonoid.+ {RedCoHom (p Nat.+ q) (PointedProduct X Y) C}) (proj m p q a b) (proj m p q a b'))
+       *> inv (AddGroupHom.func-+ {redPullback (p Nat.+ q) Smash.proj}))
+  | rdistr {a} {a'} {b} => smash-inj (p Nat.+ q) X Y C
+      (proj m p q _ b
+       *> pmap (redCup m p q (PointedProduct X Y) __ (redPullback q (PointedProduct.proj2 {X} {Y}) b)) (AddGroupHom.func-+ {redPullback p (PointedProduct.proj1 {X} {Y})})
+       *> Pairing.rdistr {redCup m p q (PointedProduct X Y)}
+       *> inv (pmap2 (AddMonoid.+ {RedCoHom (p Nat.+ q) (PointedProduct X Y) C}) (proj m p q a b) (proj m p q a' b))
+       *> inv (AddGroupHom.func-+ {redPullback (p Nat.+ q) Smash.proj}))
+  \where {
+    \func raw.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X Y : Pointed.{u}} (g : RedCocycle p X A) (h : RedCocycle q Y B)
+      : RedCocycle (p Nat.+ q) (Smash X Y) C
+      => Smash.extend (\lam t => ((K-cup m p q).1 (g.1 t.1)).1 (h.1 t.2))
+           (\lam x => pmap ((K-cup m p q).1 (g.1 x)).1 h.2 *> ((K-cup m p q).1 (g.1 x)).2)
+           (\lam y => pmap (\lam u => ((K-cup m p q).1 u).1 (h.1 y)) g.2 *> ->*.happly (K-cup m p q).2 (h.1 y))
+           (inv (relCupRaw.square (\lam u v => ((K-cup m p q).1 u).1 v) (->*.happly (K-cup m p q).2) (\lam u => ((K-cup m p q).1 u).2)
+                                  (->*.happly-base (K-cup m p q).2) g.2 h.2))
+
+    \lemma proj.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X Y : Pointed.{u}} (a : RedCoHom p X A) (b : RedCoHom q Y B)
+      : redPullback (p Nat.+ q) (Smash.proj {X} {Y}) (Trunc0.map2 a b (raw m p q))
+        = redCup m p q (PointedProduct X Y) (redPullback p (PointedProduct.proj1 {X} {Y}) a) (redPullback q (PointedProduct.proj2 {X} {Y}) b) \elim a, b
+      | in0 g, in0 h => pmap in0 (K-homogenExt.{u} (p Nat.+ q) {raw m p q g h ∘* Smash.proj}
+                                    {redCup.raw m p q (g ∘* PointedProduct.proj1 {X} {Y}) (h ∘* PointedProduct.proj2 {X} {Y})} (\lam _ => idp))
+  }
+
+\lemma smashCup-susp-left.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (X Y : Pointed.{u})
+                              (a : RedCoHom p X A) (b : RedCoHom q Y B)
+  : smashCup m (suc p) q (Susp.pointed X) Y (redSusp p X A a) b
+    = redPullback (suc (p Nat.+ q)) (Smash.suspLeft X Y) (redSusp (p Nat.+ q) (Smash X Y) C (smashCup m p q X Y a b)) \elim a, b
+  | in0 g, in0 h => smash-inj (suc (p Nat.+ q)) (Susp.pointed X) Y C (pmap in0 (K-homogenExt.{u} (suc (p Nat.+ q))
+      {smashCup.raw m (suc p) q (toSusp (K-loopUnit p ∘* g)) h ∘* Smash.proj}
+      {toSusp (K-loopUnit (p Nat.+ q) ∘* smashCup.raw m p q g h) ∘* Smash.suspLeft X Y ∘* Smash.proj}
+      (\lam t => point m p q g h t.1 t.2)))
+  \where
+    \func point.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X Y : Pointed.{u}} (g : RedCocycle p X A) (h : RedCocycle q Y B)
+                    (s : Susp X) (y : Y)
+      : ((K-cup m (suc p) q).1 ((toSusp (K-loopUnit p ∘* g)).1 s)).1 (h.1 y)
+        = (toSusp (K-loopUnit (p Nat.+ q) ∘* smashCup.raw m p q g h)).1 (Susp.map (\lam x => Smash.proj.1 (x, y)) s)
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+           {\lam s => ((K-cup m (suc p) q).1 ((toSusp (K-loopUnit p ∘* g)).1 s)).1 (h.1 y)}
+           {\lam s => (toSusp (K-loopUnit (p Nat.+ q) ∘* smashCup.raw m p q g h)).1 (Susp.map (\lam x => Smash.proj.1 (x, y)) s)}
+           (\lam _ => ->*.happly (K-cup m (suc p) q).2 (h.1 y)) (\lam _ => ->*.happly (K-cup m (suc p) q).2 (h.1 y))
+           (\lam x => deltaRaw-coef.conj (K-cup.loop-flip m p q (h.1 y) (g.1 x))) s
+
+\lemma smashCup-susp-right.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (X Y : Pointed.{u})
+                               (a : RedCoHom p X A) (b : RedCoHom q Y B)
+  : smashCup m p (suc q) X (Susp.pointed Y) a (redSusp q Y B b)
+    = signed {RedCoHom (suc (p Nat.+ q)) (Smash X (Susp.pointed Y)) C} p
+        (redPullback (suc (p Nat.+ q)) (Smash.suspRight X Y) (redSusp (p Nat.+ q) (Smash X Y) C (smashCup m p q X Y a b))) \elim a, b
+  | in0 g, in0 h => smash-inj (suc (p Nat.+ q)) X (Susp.pointed Y) C (pmap in0 (K-homogenExt.{u} (suc (p Nat.+ q))
+      {smashCup.raw m p (suc q) g (toSusp (K-loopUnit q ∘* h)) ∘* Smash.proj}
+      {K-sign p (suc (p Nat.+ q)) ∘* (toSusp (K-loopUnit (p Nat.+ q) ∘* smashCup.raw m p q g h) ∘* Smash.suspRight X Y ∘* Smash.proj)}
+      (\lam t => point m p q g h t.1 t.2))
+      *> inv (RedCoHom.signed-classOf p _)
+      *> inv (signed.hom (redPullback (suc (p Nat.+ q)) {PointedProduct X (Susp.pointed Y)} {Smash X (Susp.pointed Y)} {C} Smash.proj) p _))
+  \where {
+    \func point.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X Y : Pointed.{u}} (g : RedCocycle p X A) (h : RedCocycle q Y B)
+                    (x : X) (s : Susp Y)
+      : ((K-cup m p (suc q)).1 (g.1 x)).1 ((toSusp (K-loopUnit q ∘* h)).1 s)
+        = (K-sign p (suc (p Nat.+ q))).1 ((toSusp (K-loopUnit (p Nat.+ q) ∘* smashCup.raw m p q g h)).1 (Susp.map (\lam y => Smash.proj.1 (x, y)) s))
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+           {\lam s => ((K-cup m p (suc q)).1 (g.1 x)).1 ((toSusp (K-loopUnit q ∘* h)).1 s)}
+           {\lam s => (K-sign p (suc (p Nat.+ q))).1 ((toSusp (K-loopUnit (p Nat.+ q) ∘* smashCup.raw m p q g h)).1 (Susp.map (\lam y => Smash.proj.1 (x, y)) s))}
+           (\lam _ => ((K-cup m p (suc q)).1 (g.1 x)).2 *> inv (K-sign p (suc (p Nat.+ q))).2)
+           (\lam _ => ((K-cup m p (suc q)).1 (g.1 x)).2 *> inv (K-sign p (suc (p Nat.+ q))).2)
+           (\lam y => conj ((K-cup m p (suc q)).1 (g.1 x)).2 (K-sign p (suc (p Nat.+ q))).2
+                           (K-cup-loop-right m p q (g.1 x) (h.1 y)) (K-sign.loop p (p Nat.+ q) (((K-cup m p q).1 (g.1 x)).1 (h.1 y)))) s
+
+    \func conj {T : \Type} {a b w : T} (c : a = w) (s : b = w) {L : a = a} {R : b = b} {M : w = w}
+               (h1 : inv c *> L *> c = M) (h2 : inv s *> R *> s = M) : (c *> inv s) *> R = L *> (c *> inv s) \elim b, w, c, s
+      | _, _, idp, idp => h2 *> inv h1 *> idp_*> L
+  }

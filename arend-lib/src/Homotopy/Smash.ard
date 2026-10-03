@@ -1,0 +1,32 @@
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Suspension
+\import Homotopy.Wedge
+\import Paths
+
+\open PushoutData (ppglue)
+
+\func Smash.{l} (X Y : Pointed.{l}) : Pointed.{l}
+  => Cof.pointed (Wedge.toProduct X Y)
+  \where {
+    \func proj.{l} {X Y : Pointed.{l}} : PointedProduct X Y ->* Smash X Y
+      => Cof.inc (Wedge.toProduct X Y)
+
+    \func extend.{l} {X Y Z : Pointed.{l}} (f : \Sigma X Y -> Z) (l : \Pi (x : X) -> f (x, base) = base) (r : \Pi (y : Y) -> f (base, y) = base)
+                     (c : l base = r base) : Smash X Y ->* Z
+      => Cof.extend {Wedge.pointed X Y} {PointedProduct X Y} {Z} {Wedge.toProduct X Y} (f, l base)
+           (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam z => f (wedgeToProduct X Y z)} {\lam _ => base} l r (\lam _ => c *> inv (idp_*> _)))
+
+    \func suspLeft.{l} (X Y : Pointed.{l}) : Smash (Susp.pointed X) Y ->* Susp.pointed (Smash X Y)
+      => extend (\lam t => Susp.map (\lam x => proj.1 (x, t.2)) t.1)
+                (suspNull \lam x => ppglue (pinl x) *> inv (ppglue (pinl base))) (\lam _ => idp) idp
+
+    \func suspRight.{l} (X Y : Pointed.{l}) : Smash X (Susp.pointed Y) ->* Susp.pointed (Smash X Y)
+      => extend (\lam t => Susp.map (\lam y => proj.1 (t.1, y)) t.2) (\lam _ => idp)
+                (suspNull \lam y => ppglue (pinr y) *> inv (ppglue (pinl base))) idp
+
+    \func suspNull {A B : \Type} {k : A -> B} {b : B} (e : \Pi (a : A) -> k a = b) (s : Susp A) : Susp.map k s = north
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Susp.map k} {\lam _ => north} (\lam _ => idp) (\lam _ => inv (pmerid b))
+           (\lam a => inv (pmap (\lam w => pmerid w *> inv (pmerid b)) (e a) *> *>_inv (pmerid b))) s
+  }

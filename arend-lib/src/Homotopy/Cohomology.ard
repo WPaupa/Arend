@@ -230,6 +230,12 @@
     \lemma toPi1-inj.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : IsInj (toPi1 n X A)
       => IsEquiv.isInj (Trunc0.map-isEquiv (RedCocycle.toLoop n X A).map-isEquiv)
 
+    \lemma signed-classOf.{u} (k : Nat) {n : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (f : RedCocycle n X A)
+      : signed {RedCoHom n X A} k (classOf f) = classOf (K-sign k n ->*.∘* f) \elim k
+      | 0 => idp
+      | 1 => pmap in0 (K-homogenExt.{u} {X} {A} n {RedCocycle.neg f} {K-sign 1 n ->*.∘* f} \lam _ => idp)
+      | suc (suc k) => signed-classOf k f
+
     \func cast.{u} {n m : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (e : n = m) : AddGroupHom (RedCoHom n X A) (RedCoHom m X A) \elim m, e
       | _, idp => AddGroupHom.id
       \where {

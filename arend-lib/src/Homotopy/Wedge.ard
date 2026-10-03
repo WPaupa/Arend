@@ -17,6 +17,19 @@
 
 \func Wedge.{l} (A B : Pointed.{l}) : \Type l
   => PushoutData {\Sigma} {A} {B} (\lam _ => base {A}) (\lam _ => base {B})
+  \where {
+    \func pointed.{l} (A B : Pointed.{l}) : Pointed.{l}
+      => \new Pointed (Wedge A B) (pinl base)
+
+    \func left.{l} (A B : Pointed.{l}) : A ->* pointed A B
+      => (pinl, idp)
+
+    \func right.{l} (A B : Pointed.{l}) : B ->* pointed A B
+      => (pinr, inv (ppglue ()))
+
+    \func toProduct.{l} (A B : Pointed.{l}) : pointed A B ->* PointedProduct A B
+      => (wedgeToProduct A B, idp)
+  }
 
 \func wedgeToProduct.{l} (A B : Pointed.{l}) (z : Wedge A B) : \Sigma A B
   => rec (\lam a => (a, base {B})) (\lam b => (base {A}, b)) (\lam _ => idp) z
@@ -156,7 +169,7 @@
       | f h j => ->*.compose {X j} {BigWedge X} {Z} h (inc X j)
       | ret g => (rec (\lam p => (g p.1).1 p.2) (\lam _ => base) (\lam j => (g j).2), idp)
       | ret_f h => ->*.ext {BigWedge X} {Z} (PushoutData.homotopy (\lam _ => idp) (\lam _ => inv h.2)
-                             (\lam j => idp_*> _ *> inv (*>-assoc _ _ _ *> pmap (_ *>) (*>_inv h.2))))
+                             (\lam _ => idp_*> _ *> inv (*>-assoc _ _ _ *> pmap (_ *>) (*>_inv h.2))))
                            (inv_*> h.2)
       | f_sec _ => idp
   }
