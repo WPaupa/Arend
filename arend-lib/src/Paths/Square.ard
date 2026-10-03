@@ -1,0 +1,31 @@
+\import Paths
+
+\func pmap2_*>-split {A : \Type} {a b c : A} {x x' : a = b} {y y' : b = c} (p : x = x') (q : y = y')
+  : pmap2 (*>) p q = pmap (`*> y) p *> pmap (x' *>) q \elim q
+  | idp => idp
+
+\func whisker {A : \Type} {a : A} (w : idp {A} {a} = idp) : pmap (idp *>) w = w
+  => gen w *> idp_*> w
+  \where
+    \func gen {A : \Type} {a b : A} {u v : a = b} (w : u = v) : pmap (idp *>) w = idp_*> u *> w *> inv (idp_*> v) \elim w
+      | idp => inv (*>_inv (idp_*> u)) *> pmap (idp_*> u *>) (inv (idp_*> _))
+
+\func transpose {A : \Type} {a : A} (S : idp {A} {a} = idp) : path (\lam j => path (\lam i => S @ i @ j)) = inv S
+  => gen S
+  \where
+    \func gen {A : \Type} {a : A} {q : a = a} (S : idp = q)
+      : Path (\lam i => Path (\lam j => a = q @ I.squeezeR i j) (path (\lam k => q @ I.squeeze i k)) idp)
+             (path (\lam j => path (\lam i => S @ i @ j))) (inv S) \elim S
+      | idp => idp
+
+-- | Reading a square of loops column-first gives the inverse of reading it row-first.
+\func interchange {A : \Type} {a : A} {g : a = a} (S : g = g) (r : g = idp)
+  : path (\lam i => inv (path (\lam k => r @ k @ i)) *> path (\lam j => S @ j @ i) *> path (\lam k => r @ k @ i)) = inv (inv r *> S *> r) \elim g, r
+  | _, idp => whisker (path (\lam i => path (\lam j => S @ j @ i))) *> transpose {A} {a} S *> pmap inv (inv (idp_*> S))
+
+\func pmap-inv {A : \Type} {a : A} (w : idp {A} {a} = idp) : pmap inv w = inv w
+  => cancel (inv (pmap2_*>-split w (pmap inv w) *> pmap (w *>) (whisker (pmap inv w)))
+             *> homotopy-isNatural (\lam u => u *> inv u) (\lam _ => idp) *>_inv w)
+  \where
+    \func cancel {A : \Type} {a b : A} {u : a = b} {v : b = a} (e : u *> v = idp) : v = inv u \elim b, u
+      | _, idp => inv (idp_*> v) *> e

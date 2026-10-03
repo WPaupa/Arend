@@ -3,6 +3,7 @@
 \import Homotopy.Pointed
 \import Logic
 \import Paths
+\import Paths.Square
 
 \open ->* (∘*)
 
@@ -87,29 +88,28 @@
 
     \func lem {A : \Type} {a : A} {u v : a = a} (h2 : u = idp) (k2 : v = idp) (p : u = u) (q : v = v)
       : inv (pmap (u *>) k2 *> h2) *> pmap2 (*>) p q *> pmap (u *>) k2 *> h2 = (inv h2 *> p *> h2) *> (inv k2 *> q *> k2) \elim h2, k2
-      | idp, idp => idp_*> _ *> decompose p q *> pmap (p *>) (homotopy-isNatural (idp *>) (\lam x => x) idp_*> q)
+      | idp, idp => idp_*> _ *> pmap2_*>-split p q *> pmap (p *>) (homotopy-isNatural (idp *>) (\lam x => x) idp_*> q)
                     *> inv (pmap (`*> _) (idp_*> p))
-
-    \func decompose {A : \Type} {a b c : A} {x x' : a = b} {y y' : b = c} (p : x = x') (q : y = y')
-      : pmap2 (*>) p q = pmap (`*> y) p *> pmap (x' *>) q \elim q
-      | idp => idp
   }
 
 \func pointwiseInv {X W : Pointed} (h : X ->* Loop W) : X ->* Loop W
   => (\lam x => inv (h.1 x), pmap inv h.2)
+  \where {
+    \func loop {X W : Pointed} (h : X ->* Loop W) (l : Loop X)
+      : (Loop-Func (pointwiseInv h)).1 l = inv ((Loop-Func h).1 l)
+      => lem h.2 (pmap h.1 l)
 
-\func loopExt {X W : Pointed} {f g : X ->* Loop W} (h : \Pi (x : X) -> f.1 x = g.1 x) : f = g
+    \func lem {A : \Type} {a : A} {u : a = a} (h2 : u = idp) (t : u = u)
+      : inv (pmap inv h2) *> pmap inv t *> pmap inv h2 = inv (inv h2 *> t *> h2) \elim u, h2
+      | _, idp => idp_*> _ *> pmap-inv t *> pmap inv (inv (idp_*> t))
+  }
+
+\sfunc loopExt {X W : Pointed} {f g : X ->* Loop W} (h : \Pi (x : X) -> f.1 x = g.1 x) : f = g
   => ->*.ext (\lam x => h x *> pmap (g.1 x *>) (inv g.2 *> (inv (h base) *> f.2 *> inv g.2) *> g.2)) (coh g.2 (h base) f.2)
   \where {
     \func coh {A : \Type} {a : A} {u : a = a} (r : u = idp) {v : a = a} (hb : v = u) (f2 : v = idp)
       : (hb *> pmap (u *>) (inv r *> (inv hb *> f2 *> inv r) *> r)) *> r = f2 \elim u, r, v, hb
       | _, idp, _, idp => idp_*> _ *> pmap (pmap (idp *>)) (idp_*> _ *> idp_*> f2) *> whisker f2
-
-    \func whisker {A : \Type} {a : A} (w : idp {A} {a} = idp) : pmap (idp *>) w = w
-      => gen w *> idp_*> w
-      \where
-        \func gen {A : \Type} {a b : A} {u v : a = b} (w : u = v) : pmap (idp *>) w = idp_*> u *> w *> inv (idp_*> v) \elim w
-          | idp => inv (*>_inv (idp_*> u)) *> pmap (idp_*> u *>) (inv (idp_*> _))
   }
 
 \func mapLoop* (X W : Pointed) : PointedEquiv (Map* X (Loop W)) (Loop (Map* X W)) \cowith
@@ -126,7 +126,11 @@
     \func toHom {X W : Pointed} (a : Loop (Map* X W)) : X ->* Loop W
       => (->*.happly a, path (\lam j => path (\lam i => (a @ i).2 @ j)))
 
-    \func ext2 {X Y Z : Pointed} {a a' : Loop (Map* X (Map* Y Z))}
+    \sfunc ext {X W : Pointed} {a a' : Loop (Map* X W)}
+              (h : \Pi (x : X) -> pmap (\lam (f : X ->* W) => f.1 x) a = pmap (\lam (f : X ->* W) => f.1 x) a') : a = a'
+      => pmap fromHom (loopExt {X} {W} {toHom a} {toHom a'} h)
+
+    \sfunc ext2 {X Y Z : Pointed} {a a' : Loop (Map* X (Map* Y Z))}
                (h : \Pi (x : X) (y : Y) -> pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a = pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a')
       : a = a'
       => pmap fromHom (loopExt {X} {Map* Y Z} {toHom a} {toHom a'} \lam x => pmap fromHom (loopExt {Y} {Z} {toHom (->*.happly a x)} {toHom (->*.happly a' x)} (h x)))

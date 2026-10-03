@@ -36,7 +36,7 @@
                                    (Susp.rec (->*.zero (K B q) (K C (suc (suc (p Nat.+ q))))) (->*.zero (K B q) (K C (suc (suc (p Nat.+ q)))))
                                              (\lam a => (K-mapLoop.{u} (suc (p Nat.+ q)) (K.{u} B q) C).map.1 ((K-cup m (suc p) q).1 a))), idp)
   \where {
-    \func zero-add.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (q : Nat) (a a' : A)
+    \sfunc zero-add.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (q : Nat) (a a' : A)
       : (K-mapLoop.{u} q (K.{u} B q) C).map.1 (KMap q (AddGroupHom.toGroupHom (Pairing.left m a)))
         *> (K-mapLoop.{u} q (K.{u} B q) C).map.1 (KMap q (AddGroupHom.toGroupHom (Pairing.left m a')))
         = (K-mapLoop.{u} q (K.{u} B q) C).map.1 (KMap q (AddGroupHom.toGroupHom (Pairing.left m (a + a'))))
@@ -143,10 +143,15 @@
       => pmap (KMap q) (exts e) *> KMap.id q
 
     \func ide-right.{u} {A B : AbGroup.{u}} (m : Pairing A B A) (b : B) (e : \Pi (a : A) -> m a b = a) (p : Nat)
-      : flip m p 0 b = ->*.id \elim p
-      | 0 => K-homogenExt {K A 0} {AbGroup.toCGroup A} 0 e
-      | suc p => K-ext p (K-level (suc p)) (flip m (suc p) 0 b) ->*.id
-                   \lam z => loop-flip m p 0 b z *> pmap (K-loopUnit p).1 (->*.happly (ide-right m b e p) z) *> inv (idp_*> _)
+      : flip m p 0 b = ->*.id
+      => flip-zero m b p *> pmap (KMap p) (exts e) *> KMap.id p
+
+    \func flip-zero.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (b : B) (p : Nat)
+      : flip m p 0 b = KMap p (AddGroupHom.toGroupHom (Pairing.right m b)) \elim p
+      | 0 => K-homogenExt {K A 0} {AbGroup.toCGroup C} 0 (\lam _ => idp)
+      | suc p => K-ext p (K-level (suc p)) (flip m (suc p) 0 b) (KMap (suc p) (AddGroupHom.toGroupHom (Pairing.right m b)))
+                   \lam z => loop-flip m p 0 b z *> pmap (K-loopUnit p).1 (->*.happly (flip-zero m b p) z)
+                             *> inv (->*.happly (KMap_loopUnit p (AddGroupHom.toGroupHom (Pairing.right m b))) z)
 
     \func ldistr.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) (y y' : K B q)
       : flip m p q (K-add q y y') = deloopAdd* {K A p} {K C (p Nat.+ q)} {K C (suc (p Nat.+ q))} (K-loopEquiv (p Nat.+ q)) (flip m p q y) (flip m p q y') \elim q

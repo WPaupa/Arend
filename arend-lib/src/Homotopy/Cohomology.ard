@@ -3,6 +3,7 @@
 \import Algebra.Group.GroupHom
 \import Algebra.Group.Transfer
 \import Algebra.Monoid
+\import Algebra.Ring.DirectSum (signed)
 \import Category (Iso)
 \import Equiv
 \import Function (IsInj)
@@ -158,7 +159,17 @@
 
         \lemma unique.{u} {n m : Nat} {X : \Type u} {A : AbGroup.{u}} (e e' : n = m) : cast {n} {m} {X} {A} e = cast e'
           => pmap (cast {n} {m} {X} {A}) prop-pi
+
+        \lemma transport.{u} {n m : Nat} {X : \Type u} {A : AbGroup.{u}} (e : n = m) (c : CoHom n X A)
+          : cast e c = Paths.transport (\lam k => CoHom k X A) e c \elim m, e
+          | _, idp => idp
       }
+
+    \lemma signed-classOf.{u} (k : Nat) {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A)
+      : signed {CoHom n X A} k (classOf f) = classOf (\lam x => (K-sign k n).1 (f x)) \elim k
+      | 0 => idp
+      | 1 => idp
+      | suc (suc k) => signed-classOf k f
   }
 
 \func RedCoHom.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : AbGroup.{u}

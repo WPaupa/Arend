@@ -69,6 +69,15 @@
 
     \func base-path {Z W : Pointed} (e : PointedEquiv Z (Loop W)) : deloopNeg e base = base
       => pmap (PointedEquiv.inverse e).map.1 (pmap inv e.map.2) *> (PointedEquiv.inverse e).map.2
+
+    \func twice {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (x : Z) : deloopNeg e (deloopNeg e x) = x
+      => QEquiv.isInj {PointedEquiv.toHAEquiv e} (map e _ *> pmap inv (map e x) *> inv_inv _)
+
+    \func loop {Z W : Pointed} (e : PointedEquiv Z (Loop W)) (l : Loop Z) : (Loop-Func (deloopNeg* e ->*.id)).1 l = inv l
+      => IsEquiv.isInj (Loop-Func.isEquiv e.map e.map-isEquiv)
+          (inv (->*.happly (Loop-Func-comp e.map (deloopNeg* e ->*.id)) l)
+           *> pmap (\lam k => (Loop-Func k).1 l) (deloopNeg*.post e ->*.id *> pmap pointwiseInv (->*.compose-id e.map))
+           *> pointwiseInv.loop e.map l *> inv (Loop-Func_inv e.map l))
   }
 
 \func deloopAdd* {X Z W : Pointed} (e : PointedEquiv Z (Loop W)) (f g : X ->* Z) : X ->* Z
