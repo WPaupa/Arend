@@ -25,6 +25,11 @@
     \lemma zro-right {A B C : AbGroup} (m : Pairing A B C) {a : A} : m a 0 = 0
       => AddGroupHom.func-zro {left m a}
 
+    \func flip {A B C : AbGroup} (m : Pairing A B C) : Pairing B A C \cowith
+      | func b a => m a b
+      | ldistr => m.rdistr
+      | rdistr => m.ldistr
+
     \func zero {A B C : AbGroup} : Pairing A B C \cowith
       | func _ _ => 0
       | ldistr => inv AddMonoid.zro-left

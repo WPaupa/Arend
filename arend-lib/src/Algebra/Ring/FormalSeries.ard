@@ -43,12 +43,8 @@
   | ide => coef 1
   | * f g n => R.FinSum {PairsFinSet n} \lam s => f s.1 * g s.2
   | *-assoc {x} {y} {z} => ext \lam n => path (\lam i => R.FinSum (\lam (s : PairsFinSet n) => R.FinSum-rdistr {PairsFinSet s.1} {z s.2} {\lam t => x t.1 * y t.2} i)) *>
-      R.FinSum-double-dep' _ *> R.FinSum_Equiv2 (later \new QEquiv {
-        | f ((i,j,i+j=n),(k,m,k+m=i)) => ((k, m + j, inv +-assoc *> pmap (+ j) k+m=i *> i+j=n), (m, j, idp))
-        | ret ((i,j,i+j=n),(k,m,k+m=j)) => ((i + k, m, +-assoc *> pmap (i +) k+m=j *> i+j=n), (i, k, idp))
-        | ret_f s => PairsFinSet-ext1 s.2.3 idp idp idp
-        | f_sec s => PairsFinSet-ext2 idp s.2.3 idp idp
-      }) (\lam s => *-assoc) *> inv (path (\lam i => R.FinSum (\lam (s : PairsFinSet n) => R.FinSum-ldistr {PairsFinSet s.2} {x s.1} {\lam t => y t.1 * z t.2} i)) *> R.FinSum-double-dep' _)
+      R.FinSum-double-dep' _ *> R.FinSum_Equiv2 {SigmaFin (PairsFinSet n) (\lam s => PairsFinSet s.1)} {SigmaFin (PairsFinSet n) (\lam s => PairsFinSet s.2)}
+                                                (pairs-assoc n) (\lam s => *-assoc) *> inv (path (\lam i => R.FinSum (\lam (s : PairsFinSet n) => R.FinSum-ldistr {PairsFinSet s.2} {x s.1} {\lam t => y t.1 * z t.2} i)) *> R.FinSum-double-dep' _)
   | ldistr => ext \lam n => pmap R.FinSum (ext \lam s => R.ldistr) *> R.FinSum_+
   | rdistr => ext \lam n => pmap R.FinSum (ext \lam s => R.rdistr) *> R.FinSum_+
   | ide-left {x} => ext \lam n => R.FinSum-unique (later (0, n, idp)) (\lam s s/=0 => pmap (* _) (coef_/=0 \lam p => s/=0 $ ext (p, pmap (+ _) (inv p) *> s.3)) *> R.zro_*-left) *> ide-left
@@ -78,6 +74,12 @@
         | ret_f i => fin_nat-inj toFin=id
         | f_sec s => ext (toFin=id, pmap2 (-') (inv s.3 *> +-comm) toFin=id *> -'+)
       }
+
+    \func pairs-assoc (n : Nat) : QEquiv {\Sigma (s : PairsFinSet n) (PairsFinSet s.1)} {\Sigma (s : PairsFinSet n) (PairsFinSet s.2)} \cowith
+      | f ((i,j,i+j=n),(k,m,k+m=i)) => ((k, m + j, inv +-assoc *> pmap (+ j) k+m=i *> i+j=n), (m, j, idp))
+      | ret ((i,j,i+j=n),(k,m,k+m=j)) => ((i + k, m, +-assoc *> pmap (i +) k+m=j *> i+j=n), (i, k, idp))
+      | ret_f s => PairsFinSet-ext1 s.2.3 idp idp idp
+      | f_sec s => PairsFinSet-ext2 idp s.2.3 idp idp
 
     \lemma PairsFinSet-ext1 {n : Nat} {x y : \Sigma (s : PairsFinSet n) (PairsFinSet s.1)} (p1 : x.1.1 = y.1.1) (p2 : x.1.2 = y.1.2) (p3 : x.2.1 = y.2.1) (p4 : x.2.2 = y.2.2) : x = y \elim x, y, p1, p2, p3, p4
       | ((i1,j1,p1),(k1,m1,q1)), ((i2,j2,p2),(k2,m2,q2)), idp, idp, idp, idp => idp

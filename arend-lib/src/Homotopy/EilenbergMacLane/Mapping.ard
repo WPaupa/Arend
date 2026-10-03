@@ -49,10 +49,10 @@
          *> mapLoop*.post (KMap (suc n) phi) (K-loopUnit n ∘* f)
   }
 
-\func K-homogenExt.{u} {X : Pointed.{u}} {G : CGroup.{u}} (n : Nat) {f g : X ->* K G n} (h : \Pi (x : X) -> f.1 x = g.1 x) : f = g
+\sfunc K-homogenExt.{u} {X : Pointed.{u}} {G : CGroup.{u}} (n : Nat) {f g : X ->* K G n} (h : \Pi (x : X) -> f.1 x = g.1 x) : f = g
   => IsEquiv.isInj (Map*.postEquiv X (K-loopEquiv {G} n)).map-isEquiv (loopExt (\lam x => pmap (K-loopUnit n).1 (h x)))
   \where
-    \func map.{u} {X Y : Pointed.{u}} {G : CGroup.{u}} (n : Nat) {f g : X ->* Map* Y (K G n)} (h : \Pi (x : X) -> f.1 x = g.1 x) : f = g
+    \sfunc map.{u} {X Y : Pointed.{u}} {G : CGroup.{u}} (n : Nat) {f g : X ->* Map* Y (K G n)} (h : \Pi (x : X) -> f.1 x = g.1 x) : f = g
       => IsEquiv.isInj (Map*.postEquiv X (K-mapLoop n Y G)).map-isEquiv (loopExt (\lam x => pmap (K-mapLoop n Y G).map.1 (h x)))
 
 \func K-mapLoop2.{u} (n : Nat) (X Y : Pointed.{u}) (G : CGroup.{u})
@@ -66,6 +66,35 @@
       : (Loop-Func (K-cast {G} (pmap suc e))).1 ((K-loopUnit n).1 x) = (K-loopUnit m).1 ((K-cast e).1 x) \elim m, e
       | _, idp => idp_*> _
 
+\func K-sign.{u} {G : CGroup.{u}} (k n : Nat) : K G n ->* K G n \elim k
+  | 0 => ->*.id
+  | 1 => deloopNeg* (K-loopEquiv n) ->*.id
+  | suc (suc k) => K-sign k n
+  \where {
+    \func step.{u} {G : CGroup.{u}} (k n : Nat) (x : K G n) : (K-sign (suc k) n).1 x = K-neg n ((K-sign k n).1 x) \elim k
+      | 0 => idp
+      | 1 => inv (deloopNeg.twice (K-loopEquiv n) x)
+      | suc (suc k) => step k n x
+
+    \func add.{u} {G : CGroup.{u}} (a b n : Nat) (x : K G n) : (K-sign (a Nat.+ b) n).1 x = (K-sign a n).1 ((K-sign b n).1 x) \elim a
+      | 0 => idp
+      | suc a => step (a Nat.+ b) n x *> pmap (K-neg n) (add a b n x) *> inv (step a n _)
+
+    \func double.{u} {G : CGroup.{u}} (k n : Nat) (x : K G n) : (K-sign (k Nat.+ k) n).1 x = x \elim k
+      | 0 => idp
+      | suc k => double k n x
+
+    \func loop.{u} {G : CGroup.{u}} (k n : Nat) (x : K G n)
+      : (Loop-Func (K-sign {G} k (suc n))).1 ((K-loopUnit n).1 x) = (K-loopUnit n).1 ((K-sign k n).1 x) \elim k
+      | 0 => idp_*> _
+      | 1 => deloopNeg.loop {K G (suc n)} {K G (suc (suc n))} (K-loopEquiv (suc n)) _ *> inv (deloopNeg.map (K-loopEquiv n) x)
+      | suc (suc k) => loop k n x
+
+    \func cast.{u} {G : CGroup.{u}} (k : Nat) {n m : Nat} (e : n = m) (x : K G n)
+      : (K-cast e).1 ((K-sign k n).1 x) = (K-sign k m).1 ((K-cast e).1 x) \elim m, e
+      | _, idp => idp
+  }
+
 \lemma K-map-level2.{u} {G H L : CGroup.{u}} (p q r : Nat) : Map* (K G q) (Map* (K H r) (K L (p Nat.+ q Nat.+ r))) ofHLevel_-1+ suc p \elim p, q
   | 0, 0 => K-map-level.pointed {K G 0} {Map* (K H r) (K L r)} {0} (K-map-level 0 r)
   | 0, suc q => K-map-level.fromLoop (K-mapLoop2 (suc (q Nat.+ r)) (K G (suc q)) (K H r) L) 0
@@ -75,13 +104,13 @@
                   (K-map-level.fromDouble (K-mapLoop2 (p Nat.+ q Nat.+ r) (K G q) (K H r) L) (K-mapLoop2 (suc (p Nat.+ q Nat.+ r)) (K G q) (K H r) L) {suc p}
                     (K-map-level2 {G} {H} {L} p q r))
 
-\func KMap_zro.{u} {G H : CGroup.{u}} (q : Nat) (phi : GroupHom G H) (e : \Pi (g : G) -> phi g = ide)
+\sfunc KMap_zro.{u} {G H : CGroup.{u}} (q : Nat) (phi : GroupHom G H) (e : \Pi (g : G) -> phi g = ide)
   : KMap q phi = ->*.zero (K G q) (K H q) \elim q
   | 0 => ->*.ext {K G 0} {K H 0} e prop-pi
   | suc n => K-ext n (K-level (suc n)) _ _ \lam x => ->*.happly (KMap_loopUnit n phi) x
                                                      *> pmap (K-loopUnit n).1 (->*.happly (KMap_zro n phi e) x) *> (K-loopUnit n).2
 
-\func KMap_+.{u} {G H : CGroup.{u}} (q : Nat) (chi phi psi : GroupHom G H) (e : \Pi (g : G) -> chi g = phi g * psi g)
+\sfunc KMap_+.{u} {G H : CGroup.{u}} (q : Nat) (chi phi psi : GroupHom G H) (e : \Pi (g : G) -> chi g = phi g * psi g)
   : KMap q chi = deloopAdd* (K-loopEquiv q) (KMap q phi) (KMap q psi) \elim q
   | 0 => ->*.ext {K G 0} {K H 0} (\lam g => e g *> inv (K-add.degree-zero _ _)) prop-pi
   | suc n => K-ext n (K-level (suc n)) (KMap (suc n) chi) (deloopAdd* {K G (suc n)} {K H (suc n)} {K H (suc (suc n))} (K-loopEquiv (suc n)) (KMap (suc n) phi) (KMap (suc n) psi)) \lam x =>
@@ -111,7 +140,7 @@
       => HLevel-retracts (symQEquiv (PointedEquiv.toHAEquiv (loopEquiv e ∘~ d))) h
   }
 
-\func K-ext.{u} {G : CGroup.{u}} (q : Nat) {Y : Pointed.{u}} (lv : Y ofHLevel_-1+ suc (suc q)) (F F' : K G (suc q) ->* Y)
+\sfunc K-ext.{u} {G : CGroup.{u}} (q : Nat) {Y : Pointed.{u}} (lv : Y ofHLevel_-1+ suc (suc q)) (F F' : K G (suc q) ->* Y)
             (h : \Pi (x : K G q) -> (Loop-Func F).1 ((K-loopUnit q).1 x) = (Loop-Func F').1 ((K-loopUnit q).1 x)) : F = F' \elim q
   | 0 => ->*.ext {K G 1} {Y} (K1-gpdExt lv F.1 F'.1 (F.2 *> inv F'.2) (\lam g => conj F.2 F'.2 (h g))) (base-coh F.2 F'.2)
   | suc n => ->*.ext {K G (suc (suc n))} {Y}

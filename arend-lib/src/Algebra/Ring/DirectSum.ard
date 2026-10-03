@@ -1,0 +1,186 @@
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Pairing
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Algebra.Ring.FormalSeries
+\import Arith.Nat
+\import Data.Or
+\import Equiv
+\import Logic
+\import Logic.Meta
+\import Meta
+\import Order.LinearOrder
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+\import Paths.Meta
+\import Set
+\import Set.Fin.Instances
+
+\open FSeriesRing (PairsFinSet)
+
+\func signed {G : AddGroup} (k : Nat) (a : G) : G \elim k
+  | 0 => a
+  | 1 => negative a
+  | suc (suc k) => signed k a
+
+\record GradedProduct (H : Nat -> AbGroup) {
+  | mul (p q : Nat) : Pairing (H p) (H q) (H (p Nat.+ q))
+  | one : H 0
+  | mul-assoc (p q r : Nat) (a : H p) (b : H q) (c : H r)
+    : mul (p Nat.+ q) r (mul p q a b) c = transport (\lam n => H n) (inv NatSemiring.+-assoc) (mul p (q Nat.+ r) a (mul q r b c))
+  | ide-left (q : Nat) (b : H q) : mul 0 q one b = b
+  | ide-right (p : Nat) (a : H p) : mul p 0 a one = a
+
+  \func cast {n m : Nat} (e : n = m) : AddGroupHom (H n) (H m) \cowith
+    | func => transport (\lam k => H k) e
+    | func-+ => cast-+ e
+
+  \lemma cast-+ {n m : Nat} (e : n = m) {a b : H n} : transport (\lam k => H k) e (a + b) = transport (\lam k => H k) e a + transport (\lam k => H k) e b \elim m, e
+    | _, idp => idp
+
+  \lemma cast-comp {n m k : Nat} (e : n = m) (e' : m = k) (c : H n) : cast e' (cast e c) = cast (e *> e') c \elim k, e'
+    | _, idp => idp
+
+  \lemma cast-unique {n m : Nat} (e e' : n = m) (c : H n) : cast e c = cast e' c
+    => pmap (\lam e'' => cast e'' c) prop-pi
+
+  \lemma cast-left {p p' : Nat} (e : p = p') (q : Nat) (a : H p) (b : H q)
+    : mul p' q (cast e a) b = cast (pmap (Nat.`+ q) e) (mul p q a b) \elim p', e
+    | _, idp => idp
+}
+
+\record GradedCommProduct \extends GradedProduct
+  | koszul (p q : Nat) (a : H p) (b : H q) : mul p q a b = signed (q Nat.* p) (cast NatSemiring.+-comm (mul q p b a))
+
+\func DirectSum (D : GradedProduct) : Ring \cowith
+  | E => \Sigma (x : \Pi (n : Nat) -> D.H n) (∃ (N : Nat) (\Pi (n : Nat) -> N <= n -> x n = 0))
+  | zro => (\lam _ => 0, inP (0, \lam _ _ => idp))
+  | + x y => (\lam n => x.1 n + y.1 n, \case x.2, y.2 \with {
+    | inP (N, f), inP (M, g) => inP (N Nat.+ M, \lam n le => pmap2 (+) (f n (left-le le)) (g n (right-le le)) *> zro-left)
+  })
+  | zro-left => sum-ext \lam n => zro-left
+  | +-assoc => sum-ext \lam n => +-assoc
+  | +-comm => sum-ext \lam n => +-comm
+  | negative x => (\lam n => negative (x.1 n), \case x.2 \with {
+    | inP (N, f) => inP (N, \lam n le => pmap negative (f n le) *> AddGroup.negative_zro)
+  })
+  | negative-left => sum-ext \lam n => negative-left
+  | ide => (unit D, inP (1, \lam n le => unit-suc D (\lam p => absurd linarith)))
+  | * x y => (\lam n => conv D x.1 y.1 n, \case x.2, y.2 \with {
+    | inP (N, f), inP (M, g) => inP (N Nat.+ M, \lam n le => AbMonoid.FinSum_zro {D.H n} {PairsFinSet n} \lam s => \case LinearOrder.dec<_<= s.1 N \with {
+      | inl s1<N => conv-zero-right D x.1 y.1 s (g s.2 (support-le le s.3 s1<N))
+      | inr N<=s1 => conv-zero-left D x.1 y.1 s (f s.1 N<=s1)
+    })
+  })
+  | ide-left {x} => sum-ext \lam n => AbMonoid.FinSum-unique {D.H n} {PairsFinSet n} (0, n, idp)
+      (\lam s s/=0 => conv-zero-left D (unit D) x.1 s (unit-suc D \lam p => s/=0 (ext (p, pmap (Nat.`+ s.2) (inv p) *> s.3)))) *> D.cast-unique _ idp _ *> D.ide-left n (x.1 n)
+  | ide-right {x} => sum-ext \lam n => AbMonoid.FinSum-unique {D.H n} {PairsFinSet n} (n, 0, idp)
+      (\lam s s/=0 => conv-zero-right D x.1 (unit D) s (unit-suc D \lam p => s/=0 (ext (pmap (s.1 Nat.+) (inv p) *> s.3, p)))) *> D.cast-unique _ idp _ *> D.ide-right n (x.1 n)
+  | *-assoc {x} {y} {z} => sum-ext \lam n => conv-assoc D x.1 y.1 z.1 n
+  | ldistr => sum-ext \lam n => AbMonoid.FinSum-ext {D.H n} {PairsFinSet n}
+                                  (\lam s => pmap (D.cast s.3) (Pairing.ldistr {D.mul s.1 s.2}) *> AddGroupHom.func-+ {D.cast s.3})
+                                *> AbMonoid.FinSum_+
+  | rdistr => sum-ext \lam n => AbMonoid.FinSum-ext {D.H n} {PairsFinSet n}
+                                  (\lam s => pmap (D.cast s.3) (Pairing.rdistr {D.mul s.1 s.2}) *> AddGroupHom.func-+ {D.cast s.3})
+                                *> AbMonoid.FinSum_+
+  \where {
+    \func inc (D : GradedProduct) (n : Nat) : AddGroupHom (D.H n) (DirectSum D) \cowith
+      | func a => (\lam k => inc-at D n a k, inP (suc n, \lam k le => inc-at-other D a (\lam p => absurd linarith)))
+      | func-+ {a} {b} => sum-ext \lam k => \case decideEq n k \with {
+        | yes e => inc-at-same D _ e *> D.cast-+ e *> inv (pmap2 (+) (inc-at-same D a e) (inc-at-same D b e))
+        | no ne => inc-at-other D _ ne *> inv (pmap2 (+) (inc-at-other D a ne) (inc-at-other D b ne) *> zro-left)
+      }
+
+    \func proj (D : GradedProduct) (n : Nat) : AddGroupHom (DirectSum D) (D.H n) \cowith
+      | func x => x.1 n
+      | func-+ => idp
+
+    \func inc-at (D : GradedProduct) (n : Nat) (a : D.H n) (k : Nat) : D.H k
+      => \case decideEq n k \with {
+        | yes e => D.cast e a
+        | no _ => 0
+      }
+
+    \lemma inc-at-same (D : GradedProduct) {n k : Nat} (a : D.H n) (e : n = k) : inc-at D n a k = D.cast e a
+      => unfold inc-at (rewrite (decideEq=_reduce e) idp)
+
+    \lemma inc-at-other (D : GradedProduct) {n k : Nat} (a : D.H n) (ne : n /= k) : inc-at D n a k = 0
+      => unfold inc-at (rewrite (decideEq/=_reduce ne) idp)
+
+    \lemma proj-inc (D : GradedProduct) (n : Nat) (a : D.H n) : proj D n (inc D n a) = a
+      => inc-at-same D a idp
+
+    \lemma proj-inc-other (D : GradedProduct) {n k : Nat} (ne : n /= k) (a : D.H n) : proj D k (inc D n a) = 0
+      => inc-at-other D a ne
+
+    \lemma inc-mul (D : GradedProduct) (p q : Nat) (a : D.H p) (b : D.H q)
+      : inc D p a * {DirectSum D} inc D q b = inc D (p Nat.+ q) (D.mul p q a b)
+      => sum-ext \lam k => \case decideEq (p Nat.+ q) k \with {
+        | yes e => AbMonoid.FinSum-unique {D.H k} {PairsFinSet k} (p, q, e) (\lam s s/= => \case decideEq p s.1 \with {
+          | no ne => conv-zero-left D (inc-at D p a) (inc-at D q b) s (inc-at-other D a ne)
+          | yes e1 => conv-zero-right D (inc-at D p a) (inc-at D q b) s (inc-at-other D b \lam e2 => s/= (ext (inv e1, inv e2)))
+        }) *> D.cast-unique _ e _ *> pmap (D.cast e) (pmap2 (\lam a' b' => D.mul p q a' b') (inc-at-same D a idp) (inc-at-same D b idp))
+           *> inv (inc-at-same D _ e)
+        | no ne => AbMonoid.FinSum_zro {D.H k} {PairsFinSet k} (\lam s => \case decideEq p s.1 \with {
+          | no ne1 => conv-zero-left D (inc-at D p a) (inc-at D q b) s (inc-at-other D a ne1)
+          | yes e1 => conv-zero-right D (inc-at D p a) (inc-at D q b) s (inc-at-other D b \lam e2 => ne (pmap2 (Nat.+) e1 e2 *> s.3))
+        }) *> inv (inc-at-other D _ ne)
+      }
+
+    \func sum-ext {D : GradedProduct} {x y : \Sigma (x : \Pi (n : Nat) -> D.H n) (∃ (N : Nat) (\Pi (n : Nat) -> N <= n -> x n = 0))}
+                  (h : \Pi (n : Nat) -> x.1 n = y.1 n) : x = y
+      => ext (ext h)
+
+    \lemma left-le {N M n : Nat} (le : N Nat.+ M <= n) : N <= n
+      => linarith
+
+    \lemma right-le {N M n : Nat} (le : N Nat.+ M <= n) : M <= n
+      => linarith
+
+    \lemma support-le {N M n i j : Nat} (le : N Nat.+ M <= n) (e : i Nat.+ j = n) (i<N : i < N) : M <= j
+      => linarith
+
+    \func unit (D : GradedProduct) (n : Nat) : D.H n \elim n
+      | 0 => D.one
+      | suc _ => 0
+
+    \lemma unit-suc (D : GradedProduct) {n : Nat} (n/=0 : n /= 0) : unit D n = 0 \elim n
+      | 0 => absurd (n/=0 idp)
+      | suc _ => idp
+
+    \func conv (D : GradedProduct) (x y : \Pi (n : Nat) -> D.H n) (n : Nat) : D.H n
+      => AbMonoid.FinSum {D.H n} {PairsFinSet n} \lam s => D.cast s.3 (D.mul s.1 s.2 (x s.1) (y s.2))
+
+    \lemma conv-zero-left (D : GradedProduct) (x y : \Pi (n : Nat) -> D.H n) {n : Nat} (s : PairsFinSet n) (h : x s.1 = 0)
+      : D.cast s.3 (D.mul s.1 s.2 (x s.1) (y s.2)) = 0
+      => pmap (\lam a => D.cast s.3 (D.mul s.1 s.2 a (y s.2))) h *> pmap (D.cast s.3) (Pairing.zro-left (D.mul s.1 s.2)) *> AddGroupHom.func-zro {D.cast s.3}
+
+    \lemma conv-zero-right (D : GradedProduct) (x y : \Pi (n : Nat) -> D.H n) {n : Nat} (s : PairsFinSet n) (h : y s.2 = 0)
+      : D.cast s.3 (D.mul s.1 s.2 (x s.1) (y s.2)) = 0
+      => pmap (\lam b => D.cast s.3 (D.mul s.1 s.2 (x s.1) b)) h *> pmap (D.cast s.3) (Pairing.zro-right (D.mul s.1 s.2)) *> AddGroupHom.func-zro {D.cast s.3}
+
+    \lemma conv-assoc (D : GradedProduct) (x y z : \Pi (n : Nat) -> D.H n) (n : Nat) : conv D (conv D x y) z n = conv D x (conv D y z) n
+      => AbMonoid.FinSum-ext {D.H n} {PairsFinSet n} (\lam s => pmap (D.cast s.3) (AddMonoidHom.func-FinSum (Pairing.right (D.mul s.1 s.2) (z s.2)) {PairsFinSet s.1})
+                                                *> AddMonoidHom.func-FinSum (D.cast s.3))
+         *> AbMonoid.FinSum-double-dep' (\lam (s : PairsFinSet n) => PairsFinSet s.1)
+         *> AbMonoid.FinSum_Equiv2 {D.H n} {SigmaFin (PairsFinSet n) (\lam s => PairsFinSet s.1)} {SigmaFin (PairsFinSet n) (\lam s => PairsFinSet s.2)}
+              (FSeriesRing.pairs-assoc n) (\lam a => \case \elim a \with {
+                | ((i,j,e1),(k,m,e2)) => term D x y z _ _ _ _
+              })
+         *> inv (AbMonoid.FinSum-double-dep' (\lam (s : PairsFinSet n) => PairsFinSet s.2))
+         *> inv (AbMonoid.FinSum-ext {D.H n} {PairsFinSet n} (\lam s => pmap (D.cast s.3) (AddMonoidHom.func-FinSum (Pairing.left (D.mul s.1 s.2) (x s.1)) {PairsFinSet s.2})
+                                                     *> AddMonoidHom.func-FinSum (D.cast s.3)))
+      \where
+        \lemma term (D : GradedProduct) (x y z : \Pi (n : Nat) -> D.H n) {n i j k m : Nat} (e1 : i Nat.+ j = n) (e2 : k Nat.+ m = i)
+                    (e3 : k Nat.+ (m Nat.+ j) = n) (e4 : m Nat.+ j = m Nat.+ j)
+          : D.cast e1 (D.mul i j (D.cast e2 (D.mul k m (x k) (y m))) (z j))
+            = D.cast e3 (D.mul k (m Nat.+ j) (x k) (D.cast e4 (D.mul m j (y m) (z j))))
+          => pmap (D.cast e1) (D.cast-left e2 j _ _) *> D.cast-comp _ _ _
+             *> pmap (D.cast (pmap (Nat.`+ j) e2 *> e1)) (D.mul-assoc k m j _ _ _) *> D.cast-comp _ _ _ *> D.cast-unique _ e3 _
+             *> pmap (\lam c => D.cast e3 (D.mul k (m Nat.+ j) (x k) c)) (D.cast-unique idp e4 _)
+  }

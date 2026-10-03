@@ -1,0 +1,28 @@
+\import Algebra.Group
+\import Algebra.Group.Pairing
+\import Algebra.Ring
+\import Algebra.Ring.DirectSum
+\import Arith.Nat
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Cup
+\import Logic
+\import Paths
+\import Paths.Meta
+
+\func cohomologyProduct.{u} (X : \Type u) (R : Ring.{u}) : GradedProduct (\lam n => CoHom n X R) \cowith
+  | mul p q => cup (Pairing.mul R) p q X
+  | one => cup.one R X
+  | mul-assoc p q r a b c => cup.ring-assoc p q r a b c *> CoHom.cast.transport _ _
+                             *> pmap (\lam e => transport (\lam n => CoHom n X R) e (cup (Pairing.mul R) p (q Nat.+ r) X a (cup (Pairing.mul R) q r X b c))) prop-pi
+  | ide-left q b => cup.ide-left q b
+  | ide-right p a => cup.ide-right p a
+
+\func cohomologyCommProduct.{u} (X : \Type u) (R : CRing.{u}) : GradedCommProduct (\lam n => CoHom n X R) \cowith
+  | GradedProduct => cohomologyProduct X R
+  | koszul p q a b => cup.graded-comm (Pairing.mul R) p q a b
+      *> pmap (signed {CoHom (p Nat.+ q) X R} (q Nat.* p)) (CoHom.cast.transport _ _)
+      *> pmap2 (\lam (m : Pairing R R R) (e : q Nat.+ p = p Nat.+ q) => signed {CoHom (p Nat.+ q) X R} (q Nat.* p) (transport (\lam n => CoHom n X R) e (cup m q p X b a)))
+               (exts \lam _ _ => R.*-comm) prop-pi
+
+\func TotalCoHom.{u} (X : \Type u) (R : Ring.{u}) : Ring.{u}
+  => DirectSum (cohomologyProduct X R)
