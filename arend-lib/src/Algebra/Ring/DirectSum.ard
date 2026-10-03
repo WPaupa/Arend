@@ -69,6 +69,20 @@
       | 0 => idp
       | 1 => f.func-negative
       | suc (suc k) => hom f k a
+
+    \lemma step {G : AddGroup} (k : Nat) (a : G) : signed (suc k) a = negative (signed k a) \elim k
+      | 0 => idp
+      | 1 => inv AddGroup.negative-isInv
+      | suc (suc k) => step k a
+
+    \lemma add {G : AddGroup} (k l : Nat) (a : G) : signed (k Nat.+ l) a = signed k (signed l a) \elim k
+      | 0 => idp
+      | 1 => step l a
+      | suc (suc k) => add k l a
+
+    \lemma double {G : AddGroup} (k : Nat) (a : G) : signed (k Nat.+ k) a = a \elim k
+      | 0 => idp
+      | suc k => double k a
   }
 
 \record GradedProduct (H : Nat -> AbGroup) {

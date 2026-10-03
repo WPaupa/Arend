@@ -1,7 +1,9 @@
 \import Algebra.Group
 \import Algebra.Group.Pairing
+\import Algebra.Ring
 \import Category (Iso)
 \import Data.Maybe
+\import Equiv
 \import Homotopy.Cofiber
 \import Homotopy.Cohomology
 \import Homotopy.Cohomology.Cup
@@ -65,6 +67,11 @@
       : toCof (fromCof g) = g
       => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(toCof (fromCof g)).1} {g.1}
                    (from-left g) (\lam _ => inv g.2 *> pmap g.1 (ppglue nothing)) (from-glue g)) (inv_*> g.2)
+
+    \func toCof-equiv.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} : QEquiv (toCof {n} {S} {X} {i} {A}) \cowith
+      | ret => fromCof
+      | ret_f _ => idp
+      | f_sec => toCof-fromCof
 
     \func from-left.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (g : Cof.pointed (Plus.map i) ->* K A n) (m : Maybe X)
       : unplus-fun (fromCof g).1 m = g.1 (pinl m) \elim m
@@ -378,6 +385,12 @@
                                 (\lam x => (K-cup n1 q r).1 (a' x)) (\lam x => (K-cup n2 p (q Nat.+ r)).1 (a x))
                                 (\lam x u => ->*.happly (->*.happly (->*.happly (K-cup.assoc m1 m2 n1 n2 h p q r) (a x)) (a' x)) u) R)
                      *> inv (RedCoHom.cast.classOf _ _)) d
+
+    \lemma ide-left.{u} {R : Ring.{u}} (q : Nat) {T X : \Type u} (j : T -> X) (d : RedCoHom q (Cof.pointed (Plus.map j)) R)
+      : absAct (Pairing.mul R) 0 q j (cup.one R X) d = d \elim d
+      | in0 g => pmap in0 (RelCocycle.post-ext {_} {_} {_} {_} {_} {_} {_} {\lam _ => (K-cup (Pairing.mul R) 0 q).1 R.ide} {\lam _ => ->*.id}
+                             (\lam _ => ->*.happly (K-cup.ide-left (Pairing.mul R) R.ide (\lam _ => R.ide-left) q)) (RelCocycle.fromCof g)
+                           *> RelCocycle.toCof-fromCof g)
 
     \lemma relAct-assoc.{u} {A B C D E F : AbGroup.{u}} (m1 : Pairing A B D) (m2 : Pairing D C E) (n1 : Pairing B C F) (n2 : Pairing A F E)
                             (h : \Pi (a : A) (b : B) (c : C) -> m2 (m1 a b) c = n2 a (n1 b c)) (p q r : Nat) {T X : \Type u} (j : T -> X)

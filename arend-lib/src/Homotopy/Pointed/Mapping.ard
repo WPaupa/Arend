@@ -64,6 +64,14 @@
     \func pre {X' X : Pointed} (s : X' ->* X) (Z : Pointed) : Map* X Z ->* Map* X' Z
       => (\lam f => f ∘* s, idp)
 
+    \func preEquiv {X' X : Pointed} (s : PointedEquiv X' X) (Z : Pointed) : PointedEquiv (Map* X Z) (Map* X' Z) \cowith
+      | map => pre s.map Z
+      | map-isEquiv => inP \new QEquiv {
+        | ret f => f ∘* (PointedEquiv.inverse s).map
+        | ret_f f => inv (->*.compose-assoc f s.map (PointedEquiv.inverse s).map) *> pmap (f ∘*) (PointedEquiv.inverse-sec s) *> ->*.compose-id f
+        | f_sec f => inv (->*.compose-assoc f (PointedEquiv.inverse s).map s.map) *> pmap (f ∘*) (PointedEquiv.inverse-ret s) *> ->*.compose-id f
+      }
+
     \func post (X : Pointed) {Z Z' : Pointed} (g : Z ->* Z') : Map* X Z ->* Map* X Z'
       => (\lam f => g ∘* f, path (\lam i => (\lam _ => g.2 @ i, idp_*>-over g.2 @ i)))
 

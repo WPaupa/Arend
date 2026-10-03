@@ -115,4 +115,11 @@
       | func-+ {c} {d} => \case \elim c, \elim d \with {
         | in0 _, in0 _ => idp
       }
+
+    \lemma natural.{u} (d : Int) {S X : \Type u} {A : AbGroup.{u}} (i : S -> X) (y : IntRedCoHom d (Plus X) A)
+      : IntCoHom.pullback d i (Iso.f {plusIso d X A} y) = Iso.f {plusIso d S A} (IntRedCoHom.pullback d (Plus.map i) y) \elim d
+      | pos n => \case \elim y \with {
+        | in0 _ => idp
+      }
+      | neg (suc _) => idp
   }

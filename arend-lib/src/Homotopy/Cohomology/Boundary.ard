@@ -1,4 +1,5 @@
 \import Algebra.Group
+\import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
 \import Algebra.Group.Pairing
 \import Algebra.Ring.DirectSum (signed)
@@ -42,6 +43,19 @@
       => pmap in0 (->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_}
            {\lam w => (toSusp (K-loopUnit p ∘* QEquiv.ret {plusIso.unplus {S} (K A p)} a)).1 ((Cof.quotient (Plus.map i)).1 w)}
            {(RelCocycle.toCof (raw i a)).1} (const {suc p} {X} {A}) (\lam _ => idp) (glue p a)) idp)
+
+    \lemma natural.{u} (p : Nat) {S X S' X' : \Type u} {i : S -> X} {i' : S' -> X'} {A : AbGroup.{u}}
+                       (u : S -> S') (w : X -> X') (e : \Pi (s : S) -> w (i s) = i' (u s)) (a : CoHom p S' A)
+      : redPullback (suc p) (relMap u w e) (pairDelta p i' A a) = pairDelta p i A (pullback p u a)
+      => delta-natural (ordinaryCohomology A) (pos p) {_} {_} {_} {_} {Plus.map i} {Plus.map i'} (Plus.map u) (Plus.map w) (relMap.square u w e) (Iso.hinv {plusIso (pos p) S' A} a)
+         *> pmap (delta (ordinaryCohomology A) (pos p) (Plus.map i))
+                 (inv ((AbGroupCat.equivOfIso (plusIso (pos p) S A)).ret_f _)
+                  *> pmap (Iso.hinv {plusIso (pos p) S A}) (inv (plusIso.natural (pos p) u _))
+                  *> pmap (\lam y => Iso.hinv {plusIso (pos p) S A} (pullback p u y)) ((AbGroupCat.equivOfIso (plusIso (pos p) S' A)).f_sec a))
+
+    \lemma cast.{u} {p p' : Nat} (e : p = p') {S X : \Type u} (i : S -> X) {A : AbGroup.{u}} (a : CoHom p S A)
+      : pairDelta p' i A (CoHom.cast e a) = RedCoHom.cast (pmap suc e) (pairDelta p i A a) \elim p', e
+      | _, idp => idp
 
     \func const.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (m : Maybe X) : base = RelCocycle.unplus-fun {n} {X} {A} (\lam _ => base) m \elim m
       | nothing => idp

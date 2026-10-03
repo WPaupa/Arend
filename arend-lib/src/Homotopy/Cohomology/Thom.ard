@@ -1,0 +1,352 @@
+-- | After ``Cubical/Cohomology/EilenbergMacLane/Gysin.agda`` in the Cubical library.
+
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Pairing
+\import Algebra.Group.Product
+\import Algebra.Monoid
+\import Algebra.Pointed (zro)
+\import Algebra.Ring
+\import Arith.Int
+\import Arith.Nat
+\import Category (Iso)
+\import Data.Maybe
+\import Equiv
+\import Equiv.Sigma (pi-right)
+\import Homotopy.Cofiber
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Cup
+\import Homotopy.Cohomology.EilenbergSteenrod
+\import Homotopy.Cohomology.Functor
+\import Homotopy.Cohomology.Integer
+\import Homotopy.Cohomology.Relative
+\import Homotopy.Connectivity
+\import Homotopy.Descent.Set
+\import Homotopy.EilenbergMacLane.Cup
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Functor
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.EilenbergMacLane.Mapping
+\import Homotopy.HLevel
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
+\import Homotopy.Suspension
+\import Homotopy.Whitehead.Path
+\import Logic
+\import Logic.Unique
+\import Order.PartialOrder
+\import Paths
+\import Paths.Meta
+\import Set
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func thomMul.{u} {R : CRing.{u}} {Q : Pointed.{u}} (k d : Nat) (c : Q ->* K R d) : K R k ->* Map* Q (K R (k Nat.+ d))
+  => Map*.pre c (K R (k Nat.+ d)) ∘* K-cup (Pairing.mul R) k d
+  \where {
+    \func sphereUnit.{u} (R : CRing.{u}) (d : Nat) : Sphere.pointed d ->* K R d
+      => K-sphere {R} d 0 R.ide
+
+    \lemma sphere.{u} (R : CRing.{u}) (k d : Nat) : IsEquiv (thomMul k d (sphereUnit R d)).1 \elim k
+      | 0 => transport IsEquiv (ext \lam a => inv (K-sphere.natural d 0 (AddGroupHom.toGroupHom (Pairing.left (Pairing.mul R) a)) R.ide
+                                                   *> pmap (K-sphere {R} d 0) R.ide-right))
+                       (K-sphere.isEquiv {R} d 0)
+      | suc k => whiteheadPointed (thomMul (suc k) d (sphereUnit R d)) (connected k)
+                   (nconnected-equiv 1 (IsEquiv.toQEquiv (K-sphere.isEquiv {R} d (suc k))) (connected k))
+                   (IsEquiv.rightFactor (K-loopUnit-isEquiv k)
+                     (transport IsEquiv (ext \lam x => inv (loop k d (sphereUnit R d) x))
+                                (IsEquiv.trans (sphere R k d) (K-mapLoop (k Nat.+ d) (Sphere.pointed d) R).map-isEquiv)))
+
+    \func loop.{u} {R : CRing.{u}} (k d : Nat) {Q : Pointed.{u}} (c : Q ->* K R d) (x : K R k)
+      : (Loop-Func (thomMul (suc k) d c)).1 ((K-loopUnit k).1 x) = (K-mapLoop (k Nat.+ d) Q R).map.1 ((thomMul k d c).1 x)
+      => ->*.happly (Loop-Func-comp (Map*.pre c (K R (suc k Nat.+ d))) (K-cup (Pairing.mul R) (suc k) d)) _
+         *> pmap (Loop-Func (Map*.pre c (K R (suc k Nat.+ d)))).1 (K-cup.loop (Pairing.mul R) k d x)
+         *> inv (K-mapLoop.pre c ((K-cup (Pairing.mul R) k d).1 x))
+
+    \lemma connected.{u} {R : CRing.{u}} (k : Nat) : isNConnectedType 1 (K R (suc k))
+      => nconnected-mono (suc<=suc zero<=_) (K-connected k)
+  }
+
+\record ThomData.{u} (R : CRing.{u}) {B : \Type u} (P : B -> \Type u) (r : Nat)
+  | fiber (b : B) : Susp.pointed (P b) ->* K R (suc r)
+  | fiber-equiv (k : Nat) (b : B) : IsEquiv (thomMul k (suc r) (fiber b)).1
+  | fiber-connected (b : B) : isNConnectedType r (P b)
+  \where {
+    \lemma fiber-level.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (b : B)
+      : (Susp.pointed (P b) ->* K R (suc r)) ofHLevel_-1+ 1
+      => HLevel-retracts (symQEquiv (IsEquiv.toQEquiv (T.fiber-equiv 0 b))) {1} (K-level {R} 0)
+
+    \func scalar.{u} {R : CRing.{u}} {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} (T T' : ThomData R P r) : R
+      => IsEquiv.ret (T.fiber-equiv 0 base) (T'.fiber base)
+
+    \lemma compare.{u} {R : CRing.{u}} {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} (conn : isNConnectedType 1 B) (T T' : ThomData R P r) (b : B)
+      : T'.fiber b = (thomMul 0 (suc r) (T.fiber b)).1 (scalar T T') \level ToProp.fromProp (fiber-level T' b _ _)
+      => TruncP.remove (ToProp.fromProp (fiber-level T' b _ _))
+           (TruncP.map (nconnected1-path conn base b)
+             \lam q => transport (\lam b => T'.fiber b = (thomMul 0 (suc r) (T.fiber b)).1 (scalar T T')) q
+                                 (inv (IsEquiv.f_ret (T.fiber-equiv 0 base))))
+
+    \lemma scalar-unit.{u} {R : CRing.{u}} {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} (conn : isNConnectedType 1 B) (T T' : ThomData R P r)
+      : scalar T' T * scalar T T' = R.ide
+      => IsEquiv.isInj (T.fiber-equiv 0 base)
+           (inv (scale-comp (T.fiber base) (scalar T T') (scalar T' T))
+            *> pmap (\lam c' => (thomMul 0 (suc r) c').1 (scalar T' T)) (inv (compare conn T T' base))
+            *> inv (compare conn T' T base) *> inv (scale-one (T.fiber base)))
+
+    \func scale-comp.{u} {R : CRing.{u}} {Q : Pointed.{u}} {d : Nat} (c : Q ->* K R d) (l m : R)
+      : (thomMul 0 d ((thomMul 0 d c).1 l)).1 m = (thomMul 0 d c).1 (m * l)
+      => ->*.compose-assoc _ _ c
+         *> pmap (`∘* c) (inv (KMap.comp d (AddGroupHom.toGroupHom (Pairing.left (Pairing.mul R) m)) (AddGroupHom.toGroupHom (Pairing.left (Pairing.mul R) l)))
+                          *> pmap (KMap d) (exts \lam _ => inv R.*-assoc))
+
+    \func scale-one.{u} {R : CRing.{u}} {Q : Pointed.{u}} {d : Nat} (c : Q ->* K R d) : (thomMul 0 d c).1 R.ide = c
+      => pmap (`∘* c) (K-cup.ide-left (Pairing.mul R) R.ide (\lam _ => R.ide-left) d)
+  }
+
+\record Orientation.{u} (R : CRing.{u}) (B : Pointed.{u}) (P : B -> \Type u) (r : Nat) (eta : QEquiv {P base} {Sphere r})
+  | c (b : B) : Susp.pointed (P b) ->* K R (suc r)
+  | normalized : RedCoHom.classOf (c base) = RedCoHom.classOf (thomMul.sphereUnit R (suc r) ∘* (suspEquiv r eta).map)
+  \where {
+    \func suspEquiv {A : \Type} (r : Nat) (eta : QEquiv {A} {Sphere r}) : PointedEquiv (Susp.pointed A) (Sphere.pointed (suc r)) \cowith
+      | map => (Susp.map eta, idp)
+      | map-isEquiv => inP (Susp.mapEquiv eta)
+
+    \func thom.{u} {R : CRing.{u}} {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} {eta : QEquiv {P base} {Sphere r}}
+                   (o : Orientation R B P r eta) (conn : isNConnectedType 1 B) : ThomData R P r \cowith
+      | fiber => o.c
+      | fiber-equiv k b => \case nconnected1-path conn base b \with {
+        | inP q => transport (\lam b => IsEquiv (thomMul k (suc r) (o.c b)).1) q (base-equiv o k)
+      }
+      | fiber-connected b => \case nconnected1-path conn base b \with {
+        | inP q => transport (\lam b => isNConnectedType r (P b)) q (nconnected-equiv r (symQEquiv eta) (sphere-nconnected r))
+      }
+
+    \lemma base-equiv.{u} {R : CRing.{u}} {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} {eta : QEquiv {P base} {Sphere r}}
+                          (o : Orientation R B P r eta) (k : Nat) : IsEquiv (thomMul k (suc r) (o.c base)).1
+      => \case transport (\lam (Q : \Prop) => Q) (Trunc0.equality _ _) o.normalized \with {
+        | inP q => transport (\lam c' => IsEquiv (thomMul k (suc r) c').1) (inv q)
+            (transport IsEquiv (ext \lam x => inv (->*.compose-assoc _ (thomMul.sphereUnit R (suc r)) (suspEquiv r eta).map))
+                       (IsEquiv.trans (thomMul.sphere R k (suc r)) (Map*.preEquiv (suspEquiv r eta) (K R (k Nat.+ suc r))).map-isEquiv))
+      }
+
+    \lemma fiber-level.{u} {R : CRing.{u}} {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} (eta : QEquiv {P base} {Sphere r})
+                           (conn : isNConnectedType 1 B) (b : B) : (Susp.pointed (P b) ->* K R (suc r)) ofHLevel_-1+ 1
+      => \case nconnected1-path conn base b \with {
+        | inP q => transport (\lam b => (Susp.pointed (P b) ->* K R (suc r)) ofHLevel_-1+ 1) q
+                     (HLevel-retracts (symQEquiv (PointedEquiv.toHAEquiv (Map*.preEquiv (suspEquiv r eta) (K R (suc r))))) {1}
+                       (HLevel-retracts (symQEquiv (IsEquiv.toQEquiv (K-sphere.isEquiv {R} (suc r) 0))) {1} (K-level {R} 0)))
+      }
+
+    \lemma normalized-map.{u} {R : CRing.{u}} {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} {eta : QEquiv {P base} {Sphere r}}
+                              (o : Orientation R B P r eta) (conn : isNConnectedType 1 B)
+      : o.c base = thomMul.sphereUnit R (suc r) ∘* (suspEquiv r eta).map \level ToProp.fromProp (fiber-level {R} {B} {P} {r} eta conn base _ _)
+      => TruncP.remove (ToProp.fromProp (fiber-level {R} {B} {P} {r} eta conn base _ _)) (transport (\lam (Q : \Prop) => Q) (Trunc0.equality _ _) o.normalized)
+
+    \lemma unique.{u} {R : CRing.{u}} {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} {eta : QEquiv {P base} {Sphere r}}
+                      (conn : isNConnectedType 1 B) (o o' : Orientation R B P r eta)
+      : o.c = o'.c \level ToProp.fromProp (HLevels-pi _ {1} (fiber-level {R} {B} {P} {r} eta conn) o.c o'.c)
+      => ext \lam b => TruncP.remove (ToProp.fromProp (fiber-level {R} {B} {P} {r} eta conn b _ _))
+                         (TruncP.map (nconnected1-path conn base b)
+                           \lam q => transport (\lam b => o.c b = o'.c b) q (normalized-map o conn *> inv (normalized-map o' conn)))
+
+    \func simplyConnected.{u} {R : CRing.{u}} {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} (eta : QEquiv {P base} {Sphere r})
+                              (conn : isNConnectedType 2 B) : Orientation R B P r eta \cowith
+      | c b => IsEquiv.ret (in0-equiv R eta conn b) ((extend R {B} {P} eta conn).1 b)
+      | normalized => pmap RedCoHom.classOf (pmap (IsEquiv.ret (in0-equiv R eta conn base)) ((extend R {B} {P} eta conn).2 ())
+                                             *> IsEquiv.ret_f (in0-equiv R eta conn base))
+      \where {
+        \lemma in0-equiv.{u} (R : CRing.{u}) {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} (eta : QEquiv {P base} {Sphere r})
+                             (conn : isNConnectedType 2 B) (b : B) : IsEquiv (in0 {Susp.pointed (P b) ->* K R (suc r)})
+          => Trunc0.in0-isEquiv \lam a a' => ToProp.fromProp (fiber-level {R} {B} {P} {r} eta (nconnected-mono {1} {2} id<=suc conn) b a a')
+
+        \func extend.{u} (R : CRing.{u}) {B : Pointed.{u}} {P : B -> \Type u} {r : Nat} (eta : QEquiv {P base} {Sphere r}) (conn : isNConnectedType 2 B)
+          : \Sigma (h : \Pi (b : B) -> Trunc0 (Susp.pointed (P b) ->* K R (suc r)))
+                   (\Pi (s : \Sigma) -> h base = in0 (thomMul.sphereUnit R (suc r) ∘* (suspEquiv r eta).map))
+          => surjDescendSet {\Sigma} {B} (\lam _ => base)
+                            (\lam b => TruncP.map (nconnected1-path (nconnected-mono {1} {2} id<=suc conn) base b) (\lam q => ((), q)))
+                            (\lam b => Trunc0 (Susp.pointed (P b) ->* K R (suc r))) (\lam _ => in0 (thomMul.sphereUnit R (suc r) ∘* (suspEquiv r eta).map))
+                            \lam _ _ p => \case nconnected1-path (loop-nconnected {1} B conn) p idp \with {
+                              | inP h => pmap (\lam q => transport (\lam b => Trunc0 (Susp.pointed (P b) ->* K R (suc r))) q
+                                                                   (in0 (thomMul.sphereUnit R (suc r) ∘* (suspEquiv r eta).map))) h
+                            }
+      }
+  }
+
+\func Thom {B : \Type} (P : B -> \Type) => Cof.pointed (Plus.map (Thom.proj P))
+  \where {
+    \func proj {B : \Type} (P : B -> \Type) (e : \Sigma (b : B) (P b)) : B => e.1
+
+    \func suspPoint {A : \Type} (Z : Pointed) : QEquiv {\Sigma (y : Z) (A -> y = base)} {Susp.pointed A ->* Z} \cowith
+      | f t => (Susp.rec base t.1 (\lam a => inv (t.2 a)), idp)
+      | ret g => (g.1 south, \lam a => inv (pmap g.1 (pmerid a)) *> g.2)
+      | ret_f t => pmap (\lam (h : A -> t.1 = base) => ((t.1, h) : \Sigma (y : Z) (A -> y = base))) (ext \lam a => inv_inv (t.2 a))
+      | f_sec g => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Susp.rec base (g.1 south) (\lam a => inv (inv (pmap g.1 (pmerid a)) *> g.2))} {g.1}
+                                                 (\lam _ => inv g.2) (\lam _ => idp) (\lam a => suspPoint.coh (pmap g.1 (pmerid a)) g.2))
+                           (inv_*> g.2)
+      \where
+        \func coh {T : \Type} {a b c : T} (m : a = c) (q : a = b) : inv q *> m = inv (inv m *> q) \elim q
+          | idp => idp_*> m *> inv (inv_inv m)
+
+    \func fiberInc {B : \Type} (P : B -> \Type) (b : B) : Susp.pointed (P b) ->* Thom P
+      => (Susp.rec (pinl nothing) (pinl (just b)) (\lam z => ppglue nothing *> inv (ppglue (just ((b, z) : \Sigma (b : B) (P b))))), idp)
+
+    \func total {B B' : \Type} {P : B -> \Type} (f : B' -> B) (e : \Sigma (b' : B') (P (f b'))) : \Sigma (b : B) (P b)
+      => (f e.1, e.2)
+
+    \func map {B B' : \Type} {P : B -> \Type} (f : B' -> B) : Thom (\lam b' => P (f b')) ->* Thom P
+      => relMap {_} {_} {_} {_} {proj (\lam b' => P (f b'))} {proj P} (total f) f (\lam _ => idp)
+
+    \func fibers.{u} {B : \Type u} (P : B -> \Type u) (n : Nat) (A : AbGroup.{u})
+      : QEquiv {RelCocycle n (proj P) A} {\Pi (b : B) -> Susp.pointed (P b) ->* K A n}
+      => transQEquiv curry (pi-right \lam b => suspPoint {P b} (K A n))
+      \where
+        \func curry : QEquiv {RelCocycle n (proj P) A} {\Pi (b : B) -> \Sigma (y : K A n) (P b -> y = base)} \cowith
+          | f r b => (r.1 b, \lam z => r.2 (b, z))
+          | ret t => (\lam b => (t b).1, \lam e => (t e.1).2 e.2)
+          | ret_f _ => idp
+          | f_sec _ => idp
+  }
+
+\func thomCocycle.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r)
+  : RelCocycle (suc r) (Thom.proj P) R
+  => (Thom.fibers P (suc r) R).ret T.fiber
+
+\func thomClass.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r)
+  : RedCoHom (suc r) (Thom P) R
+  => RedCoHom.classOf (RelCocycle.toCof (thomCocycle T))
+
+\lemma thomClass-restrict.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (b : B)
+  : redPullback (suc r) (Thom.fiberInc P b) (thomClass T) = RedCoHom.classOf (T.fiber b)
+  => pmap in0 (K-homogenExt (suc r)
+       (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam s => (RelCocycle.toCof (thomCocycle T)).1 ((Thom.fiberInc P b).1 s)} {(T.fiber b).1}
+         (\lam _ => inv (T.fiber b).2) (\lam _ => idp)
+         (\lam z => Thom.suspPoint.coh (pmap (T.fiber b).1 (pmerid z)) (T.fiber b).2 *> inv (idp_*> _)
+                    *> pmap (idp *>) (inv (pmap_inv-comm (RelCocycle.toCof (thomCocycle T)).1 (ppglue (just ((b, z) : \Sigma (b : B) (P b))))))
+                    *> inv (pmap_*>-comm (RelCocycle.toCof (thomCocycle T)).1 (ppglue nothing) (inv (ppglue (just ((b, z) : \Sigma (b : B) (P b)))))))))
+
+\func thomIso.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (k : Nat)
+  : Iso {AbGroupCat.{u}} (Pairing.right (absAct (Pairing.mul R) k (suc r) (Thom.proj P)) (thomClass T))
+  => AbGroupCat.isoOfEquiv (Pairing.right (absAct (Pairing.mul R) k (suc r) (Thom.proj P)) (thomClass T)) (IsEquiv.toQEquiv (transport IsEquiv (ext \lam x => inv (classes T k x)) (Trunc0.map-isEquiv (raw-equiv T k))))
+  \where {
+    \func raw.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (k : Nat) (a : Cocycle k B R)
+      : RelCocycle (k Nat.+ suc r) (Thom.proj P) R
+      => absActRaw (Pairing.mul R) k (suc r) a (thomCocycle T)
+
+    \func raw-split.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (k : Nat) (a : Cocycle k B R)
+      : raw T k a = (Thom.fibers P (k Nat.+ suc r) R).ret (\lam b => (thomMul k (suc r) (T.fiber b)).1 (a b))
+      => path (\lam i => (\lam b => ((K-cup (Pairing.mul R) k (suc r)).1 (a b)).1 ((T.fiber b).1 south),
+                          \lam e => push ((K-cup (Pairing.mul R) k (suc r)).1 (a e.1)).1 (T.fiber e.1).1 (pmerid e.2) (T.fiber e.1).2
+                                         ((K-cup (Pairing.mul R) k (suc r)).1 (a e.1)).2 @ i))
+
+    \func push {X Y Z : \Type} (F : Y -> Z) (C : X -> Y) {x0 x1 : X} {y : Y} {z : Z} (m : x0 = x1) (C2 : C x0 = y) (F2 : F y = z)
+      : pmap F (inv (pmap C m) *> C2) *> F2 = inv (pmap (\lam x => F (C x)) m) *> (pmap F C2 *> F2) \elim x1, y, z, m, C2, F2
+      | _, _, _, idp, idp, idp => idp
+
+    \lemma raw-equiv.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (k : Nat)
+      : IsEquiv (\lam (a : Cocycle k B R) => RelCocycle.toCof (raw T k a))
+      => IsEquiv.trans {_} {_} {_} {raw T k} (transport IsEquiv (ext \lam a => inv (raw-split T k a))
+                                  (IsEquiv.trans (inP (pi-right \lam b => IsEquiv.toQEquiv (T.fiber-equiv k b)))
+                                                 (inP (symQEquiv (Thom.fibers P (k Nat.+ suc r) R)))))
+                       {RelCocycle.toCof} (inP RelCocycle.toCof-equiv)
+
+    \lemma classes.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (k : Nat) (x : CoHom k B R)
+      : absAct (Pairing.mul R) k (suc r) (Thom.proj P) x (thomClass T) = Trunc0.map x (\lam a => RelCocycle.toCof (raw T k a)) \elim x
+      | in0 _ => idp
+  }
+
+\lemma thom-low.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) {n : Nat} (h : n <= r)
+                    (x : RedCoHom n (Thom P) R) : x = zro {RedCoHom n (Thom P) R} \elim x
+  | in0 g => pmap in0 (isContr=>isProp (contr T h) g RedCocycle.zero)
+  \where {
+    \lemma contr.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) {n : Nat} (h : n <= r)
+      : Contr (Thom P ->* K R n)
+      => HLevel_-2-retracts (symQEquiv (RelCocycle.toCof-equiv {n} {\Sigma (b : B) (P b)} {B} {Thom.proj P} {R})) {0}
+           (HLevel_-2-retracts (Thom.fibers P n R) {0}
+             (pi-Contr _ \lam b => nconnected-pointed-contr {suc r} {Susp.pointed (P b)} {K R n} (susp-nconnected (T.fiber-connected b))
+                                                          (HLevel_-1_<= (suc n) (suc r) (suc<=suc h) (K-level {R} n))))
+
+    \lemma int.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (a b : Nat) (h : a <= r)
+                   (x : IntRedCoHom (a Nat.- b) (Thom P) R) : x = zro {IntRedCoHom (a Nat.- b) (Thom P) R} \elim a, b
+      | 0, 0 => thom-low T h x
+      | 0, suc b => idp
+      | suc a, 0 => thom-low T h x
+      | suc a, suc b => int T a b (<=-transitive id<=suc h) x
+  }
+
+\func intThomIso.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (n : Int)
+  : Iso {AbGroupCat.{u}} {IntCoHom n B R} {IntRedCoHom (n IntRing.+ pos (suc r)) (Thom P) R} \elim n
+  | pos k => thomIso T k
+  | neg (suc j) => Iso.reverse {TrivialAbGroup.trivialIso.{u} (IntRedCoHom (r Nat.- j) (Thom P) R) (thom-low.int T r j <=-refl)}
+
+\func euler.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) : CoHom (suc r) B R
+  => Iso.f {plusIso (pos (suc r)) B R} (redPullback (suc r) (Cof.inc (Plus.map (Thom.proj P))) (thomClass T))
+
+\lemma euler-thomIso.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (k : Nat) (x : CoHom k B R)
+  : Iso.f {plusIso (pos (k Nat.+ suc r)) B R} (redPullback (k Nat.+ suc r) (Cof.inc (Plus.map (Thom.proj P))) (Iso.f {thomIso T k} x))
+    = cup (Pairing.mul R) k (suc r) B x (euler T)
+  => absAct.forget (Pairing.mul R) k (suc r) (Thom.proj P) x (thomClass T)
+  \where
+    \lemma int.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (n : Int) (x : IntCoHom n B R)
+      : Iso.f {plusIso (n IntRing.+ pos (suc r)) B R} (IntRedCoHom.pullback (n IntRing.+ pos (suc r)) (Cof.inc (Plus.map (Thom.proj P))) (Iso.f {intThomIso T n} x))
+        = intCup (Pairing.mul R) n (pos (suc r)) B x (euler T) \elim n
+      | pos k => euler-thomIso T k x
+      | neg (suc j) => pmap (\lam y => Iso.f {plusIso (r Nat.- j) B R} (IntRedCoHom.pullback (r Nat.- j) (Cof.inc (Plus.map (Thom.proj P))) y))
+                            (AddGroupHom.func-zro {Iso.f {intThomIso T (neg (suc j))}})
+                       *> pmap (Iso.f {plusIso (r Nat.- j) B R}) AddGroupHom.func-zro *> AddGroupHom.func-zro
+
+\lemma thomClass-unit.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r)
+  : Iso.f {thomIso T 0} (cup.one R B) = thomClass T
+  => absAct.ide-left (suc r) (Thom.proj P) (thomClass T)
+
+\lemma thomIso-cup.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (s k : Nat) (a : CoHom s B R) (x : CoHom k B R)
+  : Iso.f {thomIso T (s Nat.+ k)} (cup (Pairing.mul R) s k B a x)
+    = RedCoHom.cast (K-cup.assoc.assocNat s k (suc r)) (absAct (Pairing.mul R) s (k Nat.+ suc r) (Thom.proj P) a (Iso.f {thomIso T k} x))
+  => absAct.assoc (Pairing.mul R) (Pairing.mul R) (Pairing.mul R) (Pairing.mul R) (\lam _ _ _ => R.*-assoc) s k (suc r) (Thom.proj P) a x (thomClass T)
+
+\lemma thomClass-scale.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T T' : ThomData R P r) (l : R)
+                          (h : \Pi (b : B) -> T'.fiber b = (thomMul 0 (suc r) (T.fiber b)).1 l)
+  : thomClass T' = Iso.f {thomIso T 0} (in0 (\lam _ => l))
+  => pmap (\lam t => RedCoHom.classOf (RelCocycle.toCof ((Thom.fibers P (suc r) R).ret t))) (path \lam i b => h b @ i)
+     *> pmap (\lam x => RedCoHom.classOf (RelCocycle.toCof x)) (inv (thomIso.raw-split T 0 (\lam _ => l)))
+
+\lemma euler-scale.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T T' : ThomData R P r) (l : R)
+                      (h : \Pi (b : B) -> T'.fiber b = (thomMul 0 (suc r) (T.fiber b)).1 l)
+  : euler T' = cup (Pairing.mul R) 0 (suc r) B (in0 (\lam _ => l)) (euler T)
+  => pmap (\lam t => Iso.f {plusIso (pos (suc r)) B R} (redPullback (suc r) (Cof.inc (Plus.map (Thom.proj P))) t)) (thomClass-scale T T' l h)
+     *> euler-thomIso T 0 (in0 (\lam _ => l))
+
+\lemma thomIso-scale.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T T' : ThomData R P r) (l : R)
+                        (h : \Pi (b : B) -> T'.fiber b = (thomMul 0 (suc r) (T.fiber b)).1 l) (k : Nat) (x : CoHom k B R)
+  : Iso.f {thomIso T' k} x = Iso.f {thomIso T k} (cup (Pairing.mul R) k 0 B x (in0 (\lam _ => l)))
+  => pmap (absAct (Pairing.mul R) k (suc r) (Thom.proj P) x) (thomClass-scale T T' l h)
+     *> pmap (\lam (g : AddGroupHom (RedCoHom (k Nat.+ suc r) (Thom P) R) (RedCoHom (k Nat.+ suc r) (Thom P) R)) =>
+                g (absAct (Pairing.mul R) k (suc r) (Thom.proj P) x (Iso.f {thomIso T 0} (in0 (\lam _ => l)))))
+             (RedCoHom.cast.unique {_} {_} {Thom P} {R} idp (K-cup.assoc.assocNat k 0 (suc r)))
+     *> inv (absAct.assoc (Pairing.mul R) (Pairing.mul R) (Pairing.mul R) (Pairing.mul R) (\lam _ _ _ => R.*-assoc) k 0 (suc r) (Thom.proj P)
+                          x (in0 (\lam _ => l)) (thomClass T))
+
+\func thomPull.{u} {R : CRing.{u}} {B B' : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (f : B' -> B)
+  : ThomData R (\lam b' => P (f b')) r \cowith
+  | fiber b' => T.fiber (f b')
+  | fiber-equiv k b' => T.fiber-equiv k (f b')
+  | fiber-connected b' => T.fiber-connected (f b')
+
+\lemma thomClass-natural.{u} {R : CRing.{u}} {B B' : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (f : B' -> B)
+  : redPullback (suc r) (Thom.map f) (thomClass T) = thomClass (thomPull T f)
+  => pmap in0 (RelCocycle.toCof-pull (Thom.total f) f (\lam _ => idp) (thomCocycle T)
+               *> RelCocycle.toCof-ext {_} {_} {_} {_} {_} {RelCocycle.pull (Thom.total f) f (\lam _ => idp) (thomCocycle T)} {thomCocycle (thomPull T f)}
+                                       (\lam _ => idp) (\lam _ => idp))
+
+\lemma thomIso-natural.{u} {R : CRing.{u}} {B B' : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (f : B' -> B) (k : Nat) (x : CoHom k B R)
+  : redPullback (k Nat.+ suc r) (Thom.map f) (Iso.f {thomIso T k} x) = Iso.f {thomIso (thomPull T f) k} (pullback k f x)
+  => absAct.natural (Pairing.mul R) k (suc r) (Thom.total f) f (\lam _ => idp) x (thomClass T)
+     *> pmap (absAct (Pairing.mul R) k (suc r) (Thom.proj (\lam b' => P (f b'))) (pullback k f x)) (thomClass-natural T f)
+
+\lemma euler-natural.{u} {R : CRing.{u}} {B B' : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (f : B' -> B)
+  : pullback (suc r) f (euler T) = euler (thomPull T f)
+  => idp

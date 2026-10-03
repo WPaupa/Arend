@@ -151,10 +151,18 @@
 
     \func toSusp {X Z : Pointed} (h : X ->* Loop Z) : Susp.pointed X ->* Z
       => (Susp.rec base base h.1, idp)
-      \where
+      \where {
         \func pre {X Y Z : Pointed} (h : Y ->* Loop Z) (f : X ->* Y) : toSusp (h ->*.∘* f) = toSusp h ->*.∘* Susp-Func f
           => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(toSusp (h ->*.∘* f)).1} {(toSusp h ->*.∘* Susp-Func f).1}
                                           (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _)) idp
+
+        \func post {X Z W : Pointed} (g : Z ->* W) (h : X ->* Loop Z) : g ->*.∘* toSusp h = toSusp (Loop-Func g ->*.∘* h)
+          => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(g ->*.∘* toSusp h).1} {(toSusp (Loop-Func g ->*.∘* h)).1}
+                                          (\lam _ => g.2) (\lam _ => g.2) (\lam x => conj g.2 (pmap g.1 (h.1 x)))) (inv (idp_*> g.2))
+
+        \func conj {T : \Type} {a b : T} (q : a = b) (t : a = a) : q *> (inv q *> t *> q) = t *> q \elim q
+          | idp => idp_*> _ *> idp_*> t
+      }
 
     \func fromSusp {X Z : Pointed} (k : Susp.pointed X ->* Z) : X ->* Loop Z
       => (\lam x => inv k.2 *> pmap k.1 (pmerid x) *> inv (pmap k.1 (pmerid base)) *> k.2, cancel k.2 (pmap k.1 (pmerid base)))

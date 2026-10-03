@@ -35,6 +35,16 @@
     \lemma lift {U V W : AbGroup} {f : AddGroupHom U V} {g : AddGroupHom V W} (e : AbExactAt f g) {v : V} (p : g v = 0)
       : ∃ (u : U) (f u = v)
       => (e v).1 p
+
+    \lemma transport {U U' V V' W W' : AbGroup} (f : AddGroupHom U V) (g : AddGroupHom V W)
+                     (f' : AddGroupHom U' V') (g' : AddGroupHom V' W')
+                     (a : AddGroupHom U' U) (as : IsSurj a) (b : AddGroupHom V V') (bs : IsSurj b) (bi : IsInj b)
+                     (c : AddGroupHom W W') (ci : IsInj c)
+                     (sq1 : \Pi (u : U') -> f' u = b (f (a u))) (sq2 : \Pi (v : V) -> g' (b v) = c (g v)) (e : AbExactAt f g)
+      : AbExactAt f' g'
+      => ExactAt-transport {_} {_} {_} {_} {_} {_} {AddGroupHom.toGroupHom f} {AddGroupHom.toGroupHom g}
+                           (AddGroupHom.toGroupHom f') (AddGroupHom.toGroupHom g') (AddGroupHom.toGroupHom a) as
+                           (AddGroupHom.toGroupHom b) bs bi (AddGroupHom.toGroupHom c) ci sq1 sq2 e
   }
 
 \func short-five.{l} {A B C A' B' C' : AbGroup.{l}} {i : AddGroupHom A B} {p : AddGroupHom B C} {i' : AddGroupHom A' B'} {p' : AddGroupHom B' C'}

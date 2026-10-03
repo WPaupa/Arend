@@ -17,6 +17,7 @@
 \import Homotopy.Pointed
 \import Homotopy.Pointed.Mapping
 \import Homotopy.Pushout
+\import Homotopy.Sphere
 \import Homotopy.Suspension
 \import Homotopy.Truncation
 \import Logic
@@ -54,6 +55,27 @@
   \where
     \sfunc map.{u} {X Y : Pointed.{u}} {G : CGroup.{u}} (n : Nat) {f g : X ->* Map* Y (K G n)} (h : \Pi (x : X) -> f.1 x = g.1 x) : f = g
       => IsEquiv.isInj (Map*.postEquiv X (K-mapLoop n Y G)).map-isEquiv (loopExt (\lam x => pmap (K-mapLoop n Y G).map.1 (h x)))
+
+\func K-sphere.{u} {G : CGroup.{u}} (n m : Nat) (x : K G m) : Sphere.pointed n ->* K G (m Nat.+ n) \elim n
+  | 0 => QEquiv.ret {SphereLoopEquiv.zero (K G m)} x
+  | suc n => SuspLoopEquiv.toSusp (K-loopUnit (m Nat.+ n) ∘* K-sphere n m x)
+  \where {
+    \lemma isEquiv.{u} {G : CGroup.{u}} (n m : Nat) : IsEquiv (K-sphere {G} n m) \elim n
+      | 0 => inP (symQEquiv (SphereLoopEquiv.zero (K G m)))
+      | suc n => IsEquiv.trans (isEquiv n m)
+                   (IsEquiv.trans (Map*.postEquiv (Sphere.pointed n) (K-loopEquiv {G} (m Nat.+ n))).map-isEquiv
+                                  (inP (symQEquiv (SuspLoopEquiv.adjoint (Sphere.pointed n) (K G (suc (m Nat.+ n)))))))
+
+    \func natural.{u} {G H : CGroup.{u}} (n m : Nat) (phi : GroupHom G H) (x : K G m)
+      : KMap (m Nat.+ n) phi ∘* K-sphere n m x = K-sphere n m ((KMap m phi).1 x) \elim n
+      | 0 => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(KMap m phi ∘* K-sphere 0 m x).1} {(K-sphere 0 m ((KMap m phi).1 x)).1}
+                                          (\lam _ => (KMap m phi).2) (\lam _ => idp) (\lam e => absurd e)) (inv (idp_*> _))
+      | suc n => SuspLoopEquiv.toSusp.post (KMap (suc (m Nat.+ n)) phi) (K-loopUnit (m Nat.+ n) ∘* K-sphere n m x)
+                 *> pmap SuspLoopEquiv.toSusp (->*.compose-assoc (Loop-Func (KMap (suc (m Nat.+ n)) phi)) (K-loopUnit (m Nat.+ n)) (K-sphere n m x)
+                                               *> pmap (`∘* K-sphere n m x) (KMap_loopUnit (m Nat.+ n) phi)
+                                               *> inv (->*.compose-assoc (K-loopUnit (m Nat.+ n)) (KMap (m Nat.+ n) phi) (K-sphere n m x))
+                                               *> pmap (K-loopUnit (m Nat.+ n) ∘*) (natural n m phi x))
+  }
 
 \func K-mapLoop2.{u} (n : Nat) (X Y : Pointed.{u}) (G : CGroup.{u})
   : PointedEquiv (Map* X (Map* Y (K G n))) (Loop (Map* X (Map* Y (K G (suc n)))))

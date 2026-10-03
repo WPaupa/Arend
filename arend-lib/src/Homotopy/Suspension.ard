@@ -1,3 +1,4 @@
+\import Equiv
 \import Homotopy.Pointed
 \import Homotopy.Pushout \hiding (PushoutPointed)
 \import Paths
@@ -11,6 +12,13 @@
 
     \func map {A B : \Type} (f : A -> B) : Susp A -> Susp B
       => rec north south (\lam a => pmerid (f a))
+
+    \func mapEquiv {A B : \Type} (e : QEquiv {A} {B}) : QEquiv (map e) \cowith
+      | ret => map e.ret
+      | ret_f => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam s => map e.ret (map e s)} {\lam s => s}
+                                      (\lam _ => idp) (\lam _ => idp) (\lam a => idp_*> _ *> pmap pmerid (inv (e.ret_f a)))
+      | f_sec => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam s => map e (map e.ret s)} {\lam s => s}
+                                      (\lam _ => idp) (\lam _ => idp) (\lam b => idp_*> _ *> pmap pmerid (inv (e.f_sec b)))
 
     \func pointed (A : \Type) => \new Pointed (Susp A) north
 

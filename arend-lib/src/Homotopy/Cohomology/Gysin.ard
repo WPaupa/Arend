@@ -1,0 +1,211 @@
+-- | After ``Cubical/Cohomology/EilenbergMacLane/Gysin.agda`` in the Cubical library.
+
+\import Algebra.Group
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Pairing
+\import Algebra.Group.Product
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Pointed (zro)
+\import Algebra.Ring
+\import Algebra.Ring.DirectSum (signed)
+\import Arith.Int
+\import Arith.Nat
+\import Category (Iso)
+\import Homotopy.Cofiber
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Boundary
+\import Homotopy.Cohomology.Cup
+\import Homotopy.Cohomology.EilenbergSteenrod
+\import Homotopy.Cohomology.Exact
+\import Homotopy.Cohomology.Functor
+\import Homotopy.Cohomology.Integer
+\import Homotopy.Cohomology.Relative
+\import Homotopy.Cohomology.Theory.LongExact
+\import Homotopy.Cohomology.Thom
+\import Homotopy.EilenbergMacLane.Cup
+\import Homotopy.EilenbergMacLane.GradedComm
+\import Homotopy.Pointed
+\import Logic
+\import Order.PartialOrder
+\import Paths
+\import Set
+
+\open K-cup.assoc (assocNat)
+
+\func integrate.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (m : Nat)
+  : AddGroupHom (CoHom (m Nat.+ r) (\Sigma (b : B) (P b)) R) (CoHom m B R)
+  => Iso.hinv {thomIso T m} AddGroupHom.∘ pairDelta (m Nat.+ r) (Thom.proj P) R
+  \where {
+    \lemma cast.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) {m m' : Nat} (e : m = m')
+                    (z : CoHom (m Nat.+ r) (\Sigma (b : B) (P b)) R)
+      : integrate T m' (CoHom.cast (pmap (\lam k => k Nat.+ r) e) z) = CoHom.cast e (integrate T m z) \elim m', e
+      | _, idp => idp
+
+    \func int.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (n : Int)
+      : AddGroupHom (IntCoHom (n IntRing.+ pos (suc r)) (\Sigma (b : B) (P b)) R) (IntCoHom (isuc n) B R) \elim n
+      | pos n => integrate T (suc n)
+      | neg 1 => integrate T 0
+      | neg (suc (suc _)) => TrivialAbGroup.toTrivial _
+  }
+
+\func eulerMul.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (n : Int)
+  : AddGroupHom (IntCoHom n B R) (IntCoHom (n IntRing.+ pos (suc r)) B R)
+  => Pairing.right (intCup (Pairing.mul R) n (pos (suc r)) B) (euler T)
+
+\lemma gysin-exact-base.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (n : Int)
+  : AbExactAt (eulerMul T n) (IntCoHom.pullback (n IntRing.+ pos (suc r)) (Thom.proj P))
+  => AbExactAt.transport (IntRedCoHom.pullback (n IntRing.+ pos (suc r)) {Plus B} {Thom P} {R} (Cof.inc (Plus.map (Thom.proj P))))
+       (IntRedCoHom.pullback (n IntRing.+ pos (suc r)) (Plus.map (Thom.proj P)))
+       (eulerMul T n) (IntCoHom.pullback (n IntRing.+ pos (suc r)) (Thom.proj P))
+       (Iso.f {intThomIso T n}) (AbGroupCat.equivOfIso (intThomIso T n)).isSurj
+       (Iso.f {plusIso (n IntRing.+ pos (suc r)) B R}) (AbGroupCat.equivOfIso (plusIso (n IntRing.+ pos (suc r)) B R)).isSurj
+       (AbGroupCat.equivOfIso (plusIso (n IntRing.+ pos (suc r)) B R)).isInj
+       (Iso.f {plusIso (n IntRing.+ pos (suc r)) (\Sigma (b : B) (P b)) R}) (AbGroupCat.equivOfIso (plusIso (n IntRing.+ pos (suc r)) (\Sigma (b : B) (P b)) R)).isInj
+       (\lam x => inv (euler-thomIso.int T n x)) (plusIso.natural (n IntRing.+ pos (suc r)) (Thom.proj P))
+       ((ordinaryCohomology R).exact (n IntRing.+ pos (suc r)) (Plus.map (Thom.proj P)))
+
+\lemma gysin-exact-total.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (n : Int)
+  : AbExactAt (IntCoHom.pullback (n IntRing.+ pos (suc r)) (Thom.proj P)) (integrate.int T n) \elim n
+  | pos n => degree T (suc n)
+  | neg 1 => degree T 0
+  | neg (suc (suc j)) => \lam y => (\lam _ =>
+      \case AbExactAt.lift {_} {_} {_} {_} {delta (ordinaryCohomology R) (r Nat.- suc j) (Plus.map (Thom.proj P))}
+                           (delta-exact (ordinaryCohomology R) (r Nat.- suc j) (Plus.map (Thom.proj P)))
+                           {Iso.hinv {plusIso (r Nat.- suc j) (\Sigma (b : B) (P b)) R} y} (low T j _) \with {
+        | inP (z, q) => inP (Iso.f {plusIso (r Nat.- suc j) B R} z,
+                             plusIso.natural (r Nat.- suc j) (Thom.proj P) z *> pmap (Iso.f {plusIso (r Nat.- suc j) (\Sigma (b : B) (P b)) R}) q
+                             *> (AbGroupCat.equivOfIso (plusIso (r Nat.- suc j) (\Sigma (b : B) (P b)) R)).f_sec y)
+      }, \lam _ => idp)
+  \where {
+    \lemma degree.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (m : Nat)
+      : AbExactAt (pullback (m Nat.+ r) (Thom.proj P)) (integrate T m)
+      => AbExactAt.transport (redPullback (m Nat.+ r) (Plus.map (Thom.proj P))) (delta (ordinaryCohomology R) (pos (m Nat.+ r)) (Plus.map (Thom.proj P)))
+           (pullback (m Nat.+ r) (Thom.proj P)) (integrate T m)
+           (Iso.hinv {plusIso (pos (m Nat.+ r)) B R}) (AbGroupCat.equivOfIso (Iso.reverse {plusIso (pos (m Nat.+ r)) B R})).isSurj
+           (Iso.f {plusIso (pos (m Nat.+ r)) (\Sigma (b : B) (P b)) R}) (AbGroupCat.equivOfIso (plusIso (pos (m Nat.+ r)) (\Sigma (b : B) (P b)) R)).isSurj
+           (AbGroupCat.equivOfIso (plusIso (pos (m Nat.+ r)) (\Sigma (b : B) (P b)) R)).isInj
+           (Iso.hinv {thomIso T m}) (AbGroupCat.equivOfIso (Iso.reverse {thomIso T m})).isInj
+           (\lam a => pmap (pullback (m Nat.+ r) (Thom.proj P)) (inv ((AbGroupCat.equivOfIso (plusIso (pos (m Nat.+ r)) B R)).f_sec a))
+                      *> plusIso.natural (pos (m Nat.+ r)) (Thom.proj P) _)
+           (\lam b => pmap (\lam y => Iso.hinv {thomIso T m} (delta (ordinaryCohomology R) (pos (m Nat.+ r)) (Plus.map (Thom.proj P)) y))
+                           ((AbGroupCat.equivOfIso (plusIso (pos (m Nat.+ r)) (\Sigma (b : B) (P b)) R)).ret_f b))
+           (delta-exact (ordinaryCohomology R) (pos (m Nat.+ r)) (Plus.map (Thom.proj P)))
+
+    \lemma low.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (j : Nat)
+                   (x : IntRedCoHom (isuc (r Nat.- suc j)) (Thom P) R) : x = zro {IntRedCoHom (isuc (r Nat.- suc j)) (Thom P) R}
+      => transport (\lam z => \Pi (x : IntRedCoHom z (Thom P) R) -> x = zro {IntRedCoHom z (Thom P) R}) (inv (isuc-minus r j))
+                   (thom-low.int T r j <=-refl) x
+
+    \lemma isuc-minus (a b : Nat) : isuc (a Nat.- suc b) = a Nat.- b \elim a, b
+      | 0, _ => idp
+      | 1, 0 => idp
+      | suc (suc _), 0 => idp
+      | suc a, suc b => isuc-minus a b
+  }
+
+\lemma gysin-exact-integral.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (n : Int)
+  : AbExactAt (integrate.int T n) (eulerMul T (isuc n)) \elim n
+  | pos n => degree T (suc n)
+  | neg 1 => degree T 0
+  | neg (suc (suc _)) => \lam _ => (\lam _ => inP (0, idp), \lam _ => idp)
+  \where
+    \lemma degree.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (m : Nat)
+      : AbExactAt (integrate T m) (eulerMul T (pos m))
+      => AbExactAt.transport (delta (ordinaryCohomology R) (pos (m Nat.+ r)) (Plus.map (Thom.proj P)))
+           (redPullback (m Nat.+ suc r) {Plus B} {Thom P} {R} (Cof.inc (Plus.map (Thom.proj P))))
+           (integrate T m) (eulerMul T (pos m))
+           (Iso.hinv {plusIso (pos (m Nat.+ r)) (\Sigma (b : B) (P b)) R}) (AbGroupCat.equivOfIso (Iso.reverse {plusIso (pos (m Nat.+ r)) (\Sigma (b : B) (P b)) R})).isSurj
+           (Iso.hinv {thomIso T m}) (AbGroupCat.equivOfIso (Iso.reverse {thomIso T m})).isSurj (AbGroupCat.equivOfIso (Iso.reverse {thomIso T m})).isInj
+           (Iso.f {plusIso (pos (m Nat.+ suc r)) B R}) (AbGroupCat.equivOfIso (plusIso (pos (m Nat.+ suc r)) B R)).isInj
+           (\lam _ => idp)
+           (\lam b => inv (euler-thomIso T m _)
+                      *> pmap (\lam t => Iso.f {plusIso (pos (m Nat.+ suc r)) B R} (redPullback (m Nat.+ suc r) (Cof.inc (Plus.map (Thom.proj P))) t))
+                              ((AbGroupCat.equivOfIso (thomIso T m)).f_sec b))
+           (delta-exact-cof (ordinaryCohomology R) (pos (m Nat.+ r)) (Plus.map (Thom.proj P)))
+
+\lemma euler-pullback.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r)
+  : pullback (suc r) (Thom.proj P) (euler T) = zro {CoHom (suc r) (\Sigma (b : B) (P b)) R}
+  => plusIso.natural (pos (suc r)) (Thom.proj P) (redPullback (suc r) (Cof.inc (Plus.map (Thom.proj P))) (thomClass T))
+     *> pmap (Iso.f {plusIso (pos (suc r)) (\Sigma (b : B) (P b)) R}) (redExact.vanish (Plus.map (Thom.proj P)) (thomClass T))
+     *> AddGroupHom.func-zro {Iso.f {plusIso (pos (suc r)) (\Sigma (b : B) (P b)) R}}
+
+\lemma integrate-natural.{u} {R : CRing.{u}} {B B' : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (f : B' -> B) (m : Nat)
+                             (z : CoHom (m Nat.+ r) (\Sigma (b : B) (P b)) R)
+  : pullback m f (integrate T m z) = integrate (thomPull T f) m (pullback (m Nat.+ r) (Thom.total f) z)
+  => (AbGroupCat.equivOfIso (thomIso (thomPull T f) m)).isInj
+       (inv (thomIso-natural T f m _) *> pmap (redPullback (m Nat.+ suc r) (Thom.map f)) ((AbGroupCat.equivOfIso (thomIso T m)).f_sec _)
+        *> pairDelta.natural (m Nat.+ r) (Thom.total f) f (\lam _ => idp) z
+        *> inv ((AbGroupCat.equivOfIso (thomIso (thomPull T f) m)).f_sec _))
+
+\lemma projection-formula-left.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (s m : Nat)
+                                   (a : CoHom s B R) (z : CoHom (m Nat.+ r) (\Sigma (b : B) (P b)) R)
+  : integrate T (s Nat.+ m) (CoHom.cast (assocNat s m r) (cup (Pairing.mul R) s (m Nat.+ r) (\Sigma (b : B) (P b)) (pullback s (Thom.proj P) a) z))
+    = signed s (cup (Pairing.mul R) s m B a (integrate T m z))
+  => (AbGroupCat.equivOfIso (thomIso T (s Nat.+ m))).isInj
+       ((AbGroupCat.equivOfIso (thomIso T (s Nat.+ m))).f_sec _
+        *> pairDelta.cast (assocNat s m r) (Thom.proj P) _
+        *> pmap (RedCoHom.cast (pmap suc (assocNat s m r))) (pairDelta-cup-left (Pairing.mul R) s (m Nat.+ r) (Thom.proj P) a z)
+        *> signed.hom (RedCoHom.cast (pmap suc (assocNat s m r))) s _
+        *> pmap (\lam (h : AddGroupHom _ _) => signed s (h (absAct (Pairing.mul R) s (suc (m Nat.+ r)) (Thom.proj P) a (pairDelta (m Nat.+ r) (Thom.proj P) R z))))
+                (RedCoHom.cast.unique {_} {_} {Thom P} {R} (pmap suc (assocNat s m r)) (assocNat s m (suc r)))
+        *> pmap (\lam y => signed s (RedCoHom.cast (assocNat s m (suc r)) (absAct (Pairing.mul R) s (m Nat.+ suc r) (Thom.proj P) a y)))
+                (inv ((AbGroupCat.equivOfIso (thomIso T m)).f_sec (pairDelta (m Nat.+ r) (Thom.proj P) R z)))
+        *> inv (pmap (signed s) (thomIso-cup T s m a (integrate T m z)))
+        *> inv (signed.hom (Iso.f {thomIso T (s Nat.+ m)}) s _))
+
+\lemma projection-formula-right.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (m s : Nat)
+                                    (z : CoHom (m Nat.+ r) (\Sigma (b : B) (P b)) R) (a : CoHom s B R)
+  : integrate T (m Nat.+ s) (CoHom.cast (swap m r s) (cup (Pairing.mul R) (m Nat.+ r) s (\Sigma (b : B) (P b)) z (pullback s (Thom.proj P) a)))
+    = signed (suc r Nat.* s) (cup (Pairing.mul R) m s B (integrate T m z) a)
+  => \let | E => \Sigma (b : B) (P b)
+          | W => cup (Pairing.mul R) s (m Nat.+ r) E (pullback s (Thom.proj P) a) z
+          | V => cup (Pairing.mul R) m s B (integrate T m z) a
+          | k => (m Nat.+ r) Nat.* s
+     \in pmap (\lam y => integrate T (m Nat.+ s) (CoHom.cast (swap m r s) y)) (cup.ring-graded-comm (m Nat.+ r) s z (pullback s (Thom.proj P) a))
+     *> pmap (integrate T (m Nat.+ s)) (signed.hom (CoHom.cast (swap m r s)) k _)
+     *> signed.hom (integrate T (m Nat.+ s)) k _
+     *> pmap (\lam y => signed k (integrate T (m Nat.+ s) y))
+             (CoHom.cast.comp (K-cup-comm.commNat (m Nat.+ r) s) (swap m r s) W
+              *> pmap (\lam (h : AddGroupHom (CoHom (s Nat.+ (m Nat.+ r)) E R) (CoHom (m Nat.+ s Nat.+ r) E R)) => h W)
+                      (CoHom.cast.unique _ (assocNat s m r *> pmap (\lam k => k Nat.+ r) NatSemiring.+-comm))
+              *> inv (CoHom.cast.comp (assocNat s m r) (pmap (\lam k => k Nat.+ r) NatSemiring.+-comm) W))
+     *> pmap (signed k) (integrate.cast T NatSemiring.+-comm _)
+     *> pmap (\lam y => signed k (CoHom.cast NatSemiring.+-comm y)) (projection-formula-left T s m a z)
+     *> pmap (\lam y => signed k (CoHom.cast NatSemiring.+-comm (signed s y))) (cup.ring-graded-comm s m a (integrate T m z))
+     *> pmap (signed k) (signed.hom (CoHom.cast NatSemiring.+-comm) s _ *> pmap (signed s) (signed.hom (CoHom.cast NatSemiring.+-comm) (s Nat.* m) _))
+     *> pmap (\lam y => signed k (signed s (signed (s Nat.* m) y)))
+             (CoHom.cast.comp (K-cup-comm.commNat s m) NatSemiring.+-comm V
+              *> pmap (\lam (h : AddGroupHom (CoHom (m Nat.+ s) B R) (CoHom (m Nat.+ s) B R)) => h V) (CoHom.cast.unique _ idp))
+     *> inv (signed.add k _ V *> pmap (signed k) (signed.add s (s Nat.* m) V))
+     *> pmap (\lam n => signed n V) (parity m r s)
+     *> signed.add (suc r Nat.* s) _ V *> pmap (signed (suc r Nat.* s)) (signed.double (m Nat.* s) V)
+  \where {
+    \func swap (m r s : Nat) : m Nat.+ r Nat.+ s = m Nat.+ s Nat.+ r
+      => NatSemiring.+-assoc *> pmap (m Nat.+) NatSemiring.+-comm *> inv NatSemiring.+-assoc
+
+    \lemma parity (m r s : Nat) : (m Nat.+ r) Nat.* s Nat.+ (s Nat.+ s Nat.* m) = suc r Nat.* s Nat.+ (m Nat.* s Nat.+ m Nat.* s)
+      => equation.cSemiring
+  }
+
+\lemma integrate-scale.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T T' : ThomData R P r) (l l' : R)
+                          (h : \Pi (b : B) -> T'.fiber b = (thomMul 0 (suc r) (T.fiber b)).1 l) (inverse : l' * l = R.ide)
+                          (m : Nat) (z : CoHom (m Nat.+ r) (\Sigma (b : B) (P b)) R)
+  : integrate T' m z = cup (Pairing.mul R) m 0 B (integrate T m z) (in0 (\lam _ => l'))
+  => (AbGroupCat.equivOfIso (thomIso T' m)).isInj
+       ((AbGroupCat.equivOfIso (thomIso T' m)).f_sec _
+        *> inv (thomIso-scale T T' l h m _
+                *> pmap (Iso.f {thomIso T m})
+                        (cup.ring-assoc m 0 0 (integrate T m z) (in0 (\lam _ => l')) (in0 (\lam _ => l))
+                         *> pmap (\lam (g : AddGroupHom (CoHom m B R) (CoHom m B R)) => g (cup (Pairing.mul R) m 0 B (integrate T m z) (in0 (\lam _ => l' * l))))
+                                 (CoHom.cast.unique (assocNat m 0 0) idp)
+                         *> pmap (\lam t => cup (Pairing.mul R) m 0 B (integrate T m z) (in0 (\lam _ => t))) inverse
+                         *> cup.ide-right m (integrate T m z))
+                *> (AbGroupCat.equivOfIso (thomIso T m)).f_sec _))
+
+\lemma euler-section.{u} {R : CRing.{u}} {B : \Type u} {P : B -> \Type u} {r : Nat} (T : ThomData R P r) (s : \Pi (b : B) -> P b)
+  : euler T = zro {CoHom (suc r) B R}
+  => pmap (pullback (suc r) (\lam b => ((b, s b) : \Sigma (b : B) (P b)))) (euler-pullback T)
+     *> AddGroupHom.func-zro {pullback (suc r) (\lam b => ((b, s b) : \Sigma (b : B) (P b)))}

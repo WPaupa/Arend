@@ -232,8 +232,12 @@
 
     \func cast.{u} {n m : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (e : n = m) : AddGroupHom (RedCoHom n X A) (RedCoHom m X A) \elim m, e
       | _, idp => AddGroupHom.id
-      \where
+      \where {
         \lemma classOf.{u} {n m : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (e : n = m) (f : RedCocycle n X A)
           : cast e (RedCoHom.classOf f) = RedCoHom.classOf (K-cast e ->*.∘* f) \elim m, e
           | _, idp => idp
+
+        \lemma unique.{u} {n m : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (e e' : n = m) : cast {n} {m} {X} {A} e = cast e'
+          => pmap (cast {n} {m} {X} {A}) prop-pi
+      }
   }

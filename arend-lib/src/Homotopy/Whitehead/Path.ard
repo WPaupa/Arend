@@ -1,8 +1,12 @@
 \import Equiv
 \import Equiv.Fiber
 \import Function
+\import Homotopy.Connectivity
+\import Homotopy.Loop
+\import Homotopy.Pointed
 \import Logic
 \import Logic.Meta
+\import Logic.Unique
 \import Paths
 \import Set
 
@@ -35,3 +39,22 @@
     \lemma paths {A B : \Type} (f : A -> B) (loops : \Pi (a : A) -> IsEquiv (pmap f {a} {a})) {x y : A} (p : x = y)
       : IsEquiv (pmap f {x} {y}) \elim p
       | idp => loops x
+
+\lemma whiteheadPointed.{u} {X Y : Pointed.{u}} (f : X ->* Y) (cX : isNConnectedType 1 X) (cY : isNConnectedType 1 Y)
+                            (e : IsEquiv (Loop-Func f).1)
+  : IsEquiv f.1
+  => whiteheadLoops f.1 (contr-equiv (components-contr cX) (components-contr cY))
+       \lam a => \case nconnected1-path cX (base {X}) a \with {
+         | inP q => transport (\lam a => IsEquiv (pmap f.1 {a} {a})) q (base-loops f.1 f.2 e)
+       }
+  \where {
+    \lemma components-contr.{u} {X : Pointed.{u}} (c : isNConnectedType 1 X) : Contr (Trunc0 X)
+      => Contr.make (in0 base) \lam t => \case \elim t \with {
+        | in0 x => \case nconnected1-path c (base {X}) x \with {
+          | inP q => pmap in0 q
+        }
+      }
+
+    \lemma base-loops {A B : \Type} (f : A -> B) {a : A} {b : B} (q : f a = b) (e : IsEquiv (loopMap f q)) : IsEquiv (pmap f {a} {a}) \elim b, q
+      | _, idp => transport IsEquiv (path \lam i z => idp_*> (pmap f z) @ i) e
+  }
