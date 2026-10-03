@@ -43,7 +43,7 @@
       : cup (Pairing.mul R) p q X a b = signed {CoHom (p Nat.+ q) X R} (p Nat.* q) (CoHom.cast (K-cup-comm.commNat p q) (cup (Pairing.mul R) q p X b a))
       => graded-comm (Pairing.mul R) p q a b
          *> pmap2 (\lam k (m' : Pairing R R R) => signed {CoHom (p Nat.+ q) X R} k (CoHom.cast (K-cup-comm.commNat p q) (cup m' q p X b a))) NatSemiring.*-comm
-                  (exts \lam b a => R.*-comm)
+                  (exts \lam _ _ => R.*-comm)
 
     \lemma pullback.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X Y : \Type u} (s : X -> Y) (a : CoHom p Y A) (b : CoHom q Y B)
       : Homotopy.Cohomology.Functor.pullback (p Nat.+ q) s (cup m p q Y a b)
@@ -96,6 +96,11 @@
                        (a : CoHom p X A) (b : CoHom q Y B)
       : pullback (p Nat.+ q) (\lam (w : \Sigma X' Y') => (s w.1, t w.2)) (cross m p q X Y a b) = cross m p q X' Y' (pullback p s a) (pullback q t b) \elim a, b
       | in0 _, in0 _ => idp
+
+    \lemma switch.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {X Y : \Type u} (a : CoHom p X A) (b : CoHom q Y B)
+      : cross m p q X Y a b = signed {CoHom (p Nat.+ q) (\Sigma X Y) C} (q Nat.* p)
+          (CoHom.cast (K-cup-comm.commNat p q) (pullback (q Nat.+ p) (\lam (w : \Sigma X Y) => (w.2, w.1)) (cross (Pairing.flip m) q p Y X b a))) \elim a, b
+      | in0 f, in0 g => cup.graded-comm m p q (in0 \lam w => f w.1) (in0 \lam w => g w.2)
   }
 
 \lemma action-assoc.{u} {R : Ring.{u}} {M : LModule.{u} R} (p q r : Nat) {X : \Type u} (a : CoHom p X R) (b : CoHom q X R) (c : CoHom r X M)

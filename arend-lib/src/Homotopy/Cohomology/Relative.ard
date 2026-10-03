@@ -1,0 +1,435 @@
+\import Algebra.Group
+\import Algebra.Group.Pairing
+\import Category (Iso)
+\import Data.Maybe
+\import Homotopy.Cofiber
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Cup
+\import Homotopy.Cohomology.EilenbergSteenrod
+\import Homotopy.Cohomology.Functor
+\import Homotopy.EilenbergMacLane.Algebra
+\import Homotopy.EilenbergMacLane.Cup
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.EilenbergMacLane.Mapping
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Paths
+\import Paths.Meta
+\import Set
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func RelCocycle.{u} (n : Nat) {S X : \Type u} (i : S -> X) (A : AbGroup.{u}) : \Type u
+  => \Sigma (f : Cocycle n X A) (\Pi (s : S) -> f (i s) = base)
+  \where {
+    \func fromCof.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (g : Cof.pointed (Plus.map i) ->* K A n) : RelCocycle n i A
+      => (\lam x => g.1 (pinl (just x)), \lam s => pmap g.1 (ppglue (just s)) *> inv (pmap g.1 (ppglue nothing)) *> g.2)
+
+    \func toCof.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (r : RelCocycle n i A) : Cof.pointed (Plus.map i) ->* K A n
+      => Cof.extend {Plus S} {Plus X} {K A n} {Plus.map i} (unplus r.1) (unplus-null r)
+
+    \func unplus.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A) : Plus X ->* K A n
+      => (\lam m => unplus-fun f m, idp)
+
+    \func unplus-fun.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (f : Cocycle n X A) (m : Maybe X) : K A n \elim m
+      | nothing => base
+      | just x => f x
+
+    \func unplus-null.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (r : RelCocycle n i A) (m : Maybe S)
+      : unplus-fun r.1 (Maybe.map i m) = base \elim m
+      | nothing => idp
+      | just s => r.2 s
+
+    \lemma ind.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} {P : RedCoHom n (Cof.pointed (Plus.map i)) A -> \Prop}
+                   (h : \Pi (r : RelCocycle n i A) -> P (in0 (toCof r))) (c : RedCoHom n (Cof.pointed (Plus.map i)) A) : P c \elim c
+      | in0 g => transport (\lam g => P (in0 g)) (toCof-fromCof g) (h (fromCof g))
+
+    \func toCof-ext.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} {r r' : RelCocycle n i A}
+                        (h : \Pi (x : X) -> r.1 x = r'.1 x) (c : \Pi (s : S) -> h (i s) *> r'.2 s = r.2 s) : toCof r = toCof r'
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(toCof r).1} {(toCof r').1} (unplus-path h) (\lam _ => idp) (unplus-coh h c)) idp
+
+    \func unplus-path.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} {f f' : Cocycle n X A} (h : \Pi (x : X) -> f x = f' x) (m : Maybe X)
+      : unplus-fun f m = unplus-fun f' m \elim m
+      | nothing => idp
+      | just x => h x
+
+    \func unplus-coh.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} {r r' : RelCocycle n i A}
+                         (h : \Pi (x : X) -> r.1 x = r'.1 x) (c : \Pi (s : S) -> h (i s) *> r'.2 s = r.2 s) (m : Maybe S)
+      : unplus-path h (Maybe.map i m) *> unplus-null r' m = unplus-null r m \elim m
+      | nothing => idp
+      | just s => c s
+
+    \func toCof-fromCof.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (g : Cof.pointed (Plus.map i) ->* K A n)
+      : toCof (fromCof g) = g
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(toCof (fromCof g)).1} {g.1}
+                   (from-left g) (\lam _ => inv g.2 *> pmap g.1 (ppglue nothing)) (from-glue g)) (inv_*> g.2)
+
+    \func from-left.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (g : Cof.pointed (Plus.map i) ->* K A n) (m : Maybe X)
+      : unplus-fun (fromCof g).1 m = g.1 (pinl m) \elim m
+      | nothing => inv g.2
+      | just _ => idp
+
+    \func from-glue.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (g : Cof.pointed (Plus.map i) ->* K A n) (m : Maybe S)
+      : from-left g (Maybe.map i m) *> pmap g.1 (ppglue m) = unplus-null (fromCof g) m *> (inv g.2 *> pmap g.1 (ppglue nothing)) \elim m
+      | nothing => inv (idp_*> _)
+      | just s => cancel (pmap g.1 (ppglue (just s))) (pmap g.1 (ppglue nothing)) g.2
+
+    \func cancel {A : \Type} {a b c d : A} (p : a = b) (q : c = b) (e : c = d) : idp *> p = (p *> inv q *> e) *> (inv e *> q) \elim c, d, q, e
+      | _, _, idp, idp => idp_*> p
+
+    \func add.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (r r' : RelCocycle n i A) : RelCocycle n i A
+      => (\lam x => K-add n (r.1 x) (r'.1 x), \lam s => pmap2 (K-add n) (r.2 s) (r'.2 s) *> deloopAdd.base-path (K-loopEquiv n))
+
+    \func toCof-add.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (r r' : RelCocycle n i A)
+      : RedCocycle.add (toCof r) (toCof r') = toCof (add r r')
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(RedCocycle.add (toCof r) (toCof r')).1} {(toCof (add r r')).1}
+                   (add-left r r') (\lam _ => deloopAdd.base-path (K-loopEquiv n)) (add-glue r r')) (inv (idp_*> _))
+
+    \func add-left.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (r r' : RelCocycle n i A) (m : Maybe X)
+      : K-add n (unplus-fun r.1 m) (unplus-fun r'.1 m) = unplus-fun (add r r').1 m \elim m
+      | nothing => deloopAdd.base-path (K-loopEquiv n)
+      | just _ => idp
+
+    \func add-glue.{u} {n : Nat} {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (r r' : RelCocycle n i A) (m : Maybe S)
+      : add-left r r' (Maybe.map i m) *> unplus-null (add r r') m
+        = pmap2 (K-add n) (unplus-null r m) (unplus-null r' m) *> deloopAdd.base-path (K-loopEquiv n) \elim m
+      | nothing => inv (idp_*> _)
+      | just s => idp_*> _
+
+    \func post.{u} {n k : Nat} {S X : \Type u} {i : S -> X} {A C : AbGroup.{u}} (F : \Pi (x : X) -> K A n ->* K C k) (r : RelCocycle n i A)
+      : RelCocycle k i C
+      => (\lam x => (F x).1 (r.1 x), \lam s => pmap (F (i s)).1 (r.2 s) *> (F (i s)).2)
+
+    \func toCof-post.{u} {n k : Nat} {S X : \Type u} {i : S -> X} {A C : AbGroup.{u}} (F : K A n ->* K C k) (r : RelCocycle n i A)
+      : F ∘* toCof r = toCof (post (\lam _ => F) r)
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(F ∘* toCof r).1} {(toCof (post (\lam _ => F) r)).1}
+                   (post-left F r.1) (\lam _ => F.2) (post-glue F r)) (inv (idp_*> _))
+
+    \func post-left.{u} {n k : Nat} {X : \Type u} {A C : AbGroup.{u}} (F : K A n ->* K C k) (f : Cocycle n X A) (m : Maybe X)
+      : F.1 (unplus-fun f m) = unplus-fun (\lam x => F.1 (f x)) m \elim m
+      | nothing => F.2
+      | just _ => idp
+
+    \func post-glue.{u} {n k : Nat} {S X : \Type u} {i : S -> X} {A C : AbGroup.{u}} (F : K A n ->* K C k) (r : RelCocycle n i A) (m : Maybe S)
+      : post-left F r.1 (Maybe.map i m) *> unplus-null (post (\lam _ => F) r) m = pmap F.1 (unplus-null r m) *> F.2 \elim m
+      | nothing => inv (idp_*> _)
+      | just s => idp_*> _
+
+    \sfunc post-ext.{u} {n k : Nat} {S X : \Type u} {i : S -> X} {A C : AbGroup.{u}} {F G : \Pi (x : X) -> K A n ->* K C k}
+                        (e : \Pi (x : X) (u : K A n) -> (F x).1 u = (G x).1 u) (r : RelCocycle n i A) : toCof (post F r) = toCof (post G r)
+      => toCof-ext {_} {_} {_} {_} {_} {post F r} {post G r} (\lam x => ->*.happly (K-homogenExt.{u} k {F x} {G x} (e x)) (r.1 x))
+                   (\lam s => ext-coh (K-homogenExt.{u} k {F (i s)} {G (i s)} (e (i s))) (r.2 s))
+
+    \func ext-coh {P Q : Pointed} {F G : P ->* Q} (E : F = G) {u : P} (al : u = base)
+      : ->*.happly E u *> (pmap G.1 al *> G.2) = pmap F.1 al *> F.2 \elim u, al
+      | _, idp => pmap (_ *>) (idp_*> G.2) *> ->*.happly-base E *> inv (idp_*> F.2)
+
+    \sfunc post-comp.{u} {n k l : Nat} {S X : \Type u} {i : S -> X} {A B C : AbGroup.{u}}
+                         (F : \Pi (x : X) -> K A n ->* K B k) (G : \Pi (x : X) -> K B k ->* K C l) (r : RelCocycle n i A)
+      : toCof (post G (post F r)) = toCof (post (\lam x => G x ∘* F x) r)
+      => toCof-ext {_} {_} {_} {_} {_} {post G (post F r)} {post (\lam x => G x ∘* F x) r} (\lam _ => idp) (\lam s => comp-coh (F (i s)) (G (i s)) (r.2 s))
+
+    \func comp-coh {P Q R : Pointed} (F : P ->* Q) (G : Q ->* R) {u : P} (al : u = base)
+      : idp *> (pmap (\lam v => G.1 (F.1 v)) al *> (pmap G.1 F.2 *> G.2)) = pmap G.1 (pmap F.1 al *> F.2) *> G.2 \elim u, al
+      | _, idp => idp_*> _ *> idp_*> _ *> pmap (\lam (q : F.1 base = base) => pmap G.1 q *> G.2) (inv (idp_*> F.2))
+
+    \sfunc post-assoc.{u} {n k l k' l' : Nat} {S X : \Type u} {i : S -> X} {A B B' C : AbGroup.{u}} (e : l' = l)
+                          (F : \Pi (x : X) -> K A n ->* K B k) (G : \Pi (x : X) -> K B k ->* K C l)
+                          (F' : \Pi (x : X) -> K A n ->* K B' k') (G' : \Pi (x : X) -> K B' k' ->* K C l')
+                          (h : \Pi (x : X) (u : K A n) -> (G x).1 ((F x).1 u) = (K-cast {C} e).1 ((G' x).1 ((F' x).1 u))) (r : RelCocycle n i A)
+      : toCof (post G (post F r)) = K-cast {C} e ∘* toCof (post G' (post F' r))
+      => post-comp F G r
+         *> post-ext {_} {_} {_} {_} {_} {_} {_} {\lam x => G x ∘* F x} {\lam x => K-cast {C} e ∘* (G' x ∘* F' x)} h r
+         *> inv (post-comp (\lam x => G' x ∘* F' x) (\lam _ => K-cast {C} e) r)
+         *> inv (toCof-post (K-cast {C} e) (post (\lam x => G' x ∘* F' x) r))
+         *> pmap (K-cast {C} e ∘*) (inv (post-comp F' G' r))
+
+    \sfunc post-sum.{u} {n k : Nat} {S X : \Type u} {i : S -> X} {A C : AbGroup.{u}} (F G : \Pi (x : X) -> K A n ->* K C k) (r : RelCocycle n i A)
+      : toCof (post (\lam x => deloopAdd* (K-loopEquiv k) (F x) (G x)) r) = toCof (add (post F r) (post G r))
+      => toCof-ext {_} {_} {_} {_} {_} {post (\lam x => deloopAdd* (K-loopEquiv k) (F x) (G x)) r} {add (post F r) (post G r)} (\lam _ => idp) (\lam s => sum-coh (F (i s)) (G (i s)) (r.2 s))
+
+    \func sum-coh.{u} {k : Nat} {P : Pointed.{u}} {C : AbGroup.{u}} (F G : P ->* K C k) {u : P} (al : u = base)
+      : idp *> (pmap2 (K-add k) (pmap F.1 al *> F.2) (pmap G.1 al *> G.2) *> deloopAdd.base-path (K-loopEquiv k))
+        = pmap (\lam v => K-add k (F.1 v) (G.1 v)) al *> (pmap2 (K-add k) F.2 G.2 *> deloopAdd.base-path (K-loopEquiv k)) \elim u, al
+      | _, idp => idp_*> _
+                  *> pmap2 (\lam (p : F.1 base = base) (q : G.1 base = base) => pmap2 (K-add k) p q *> deloopAdd.base-path (K-loopEquiv k))
+                           (idp_*> F.2) (idp_*> G.2)
+                  *> inv (idp_*> _)
+
+    \sfunc post-add.{u} {n k : Nat} {S X : \Type u} {i : S -> X} {A C : AbGroup.{u}} (F : \Pi (x : X) -> K A n ->* K C k)
+                        (d : \Pi (x : X) (u u' : K A n) -> (F x).1 (K-add n u u') = K-add k ((F x).1 u) ((F x).1 u')) (r r' : RelCocycle n i A)
+      : toCof (post F (add r r')) = toCof (add (post F r) (post F r'))
+      => toCof-ext {_} {_} {_} {_} {_} {post F (add r r')} {add (post F r) (post F r')} (\lam x => ->*.happly (sum-ext (F x) (d x)) (r.1 x, r'.1 x)) (\lam s => add-coh (sum-ext (F (i s)) (d (i s))) (r.2 s) (r'.2 s))
+
+    \sfunc sum-ext.{u} {n k : Nat} {A C : AbGroup.{u}} (F : K A n ->* K C k) (d : \Pi (u u' : K A n) -> F.1 (K-add n u u') = K-add k (F.1 u) (F.1 u'))
+      : sum-left F = sum-right F
+      => K-homogenExt.{u} k {sum-left F} {sum-right F} (\lam w => d w.1 w.2)
+
+    \func sum-left.{u} {n k : Nat} {A C : AbGroup.{u}} (F : K A n ->* K C k) : PointedProduct (K A n) (K A n) ->* K C k
+      => (\lam w => F.1 (K-add n w.1 w.2), pmap F.1 (deloopAdd.base-path (K-loopEquiv n)) *> F.2)
+
+    \func sum-right.{u} {n k : Nat} {A C : AbGroup.{u}} (F : K A n ->* K C k) : PointedProduct (K A n) (K A n) ->* K C k
+      => (\lam w => K-add k (F.1 w.1) (F.1 w.2), pmap2 (K-add k) F.2 F.2 *> deloopAdd.base-path (K-loopEquiv k))
+
+    \func add-coh.{u} {n k : Nat} {A C : AbGroup.{u}} {F : K A n ->* K C k} (E : sum-left F = sum-right F) {u u' : K A n} (al : u = base) (al' : u' = base)
+      : ->*.happly E (u, u') *> (pmap2 (K-add k) (pmap F.1 al *> F.2) (pmap F.1 al' *> F.2) *> deloopAdd.base-path (K-loopEquiv k))
+        = pmap F.1 (pmap2 (K-add n) al al' *> deloopAdd.base-path (K-loopEquiv n)) *> F.2 \elim u, u', al, al'
+      | _, _, idp, idp => pmap (_ *>) (pmap2 (\lam (p q : F.1 base = base) => pmap2 (K-add k) p q *> deloopAdd.base-path (K-loopEquiv k)) (idp_*> F.2) (idp_*> F.2))
+                          *> ->*.happly-base E *> pmap (\lam q => pmap F.1 q *> F.2) (inv (idp_*> _))
+
+    \func pull.{u} {n : Nat} {S X S' X' : \Type u} {i : S -> X} {i' : S' -> X'} {A : AbGroup.{u}} (u : S -> S') (w : X -> X')
+                   (e : \Pi (s : S) -> w (i s) = i' (u s)) (r : RelCocycle n i' A) : RelCocycle n i A
+      => (\lam x => r.1 (w x), \lam s => pmap r.1 (e s) *> r.2 (u s))
+
+    \func toCof-pull.{u} {n : Nat} {S X S' X' : \Type u} {i : S -> X} {i' : S' -> X'} {A : AbGroup.{u}} (u : S -> S') (w : X -> X')
+                         (e : \Pi (s : S) -> w (i s) = i' (u s)) (r : RelCocycle n i' A)
+      : toCof r ∘* relMap u w e = toCof (pull u w e r)
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(toCof r ∘* relMap u w e).1} {(toCof (pull u w e r)).1}
+                   (pull-left r.1 w) (\lam _ => idp) (pull-glue u w e r)) idp
+
+    \func pull-left.{u} {n : Nat} {X X' : \Type u} {A : AbGroup.{u}} (f : Cocycle n X' A) (w : X -> X') (m : Maybe X)
+      : unplus-fun f (Maybe.map w m) = unplus-fun (\lam x => f (w x)) m \elim m
+      | nothing => idp
+      | just _ => idp
+
+    \func pull-glue.{u} {n : Nat} {S X S' X' : \Type u} {i : S -> X} {i' : S' -> X'} {A : AbGroup.{u}} (u : S -> S') (w : X -> X')
+                        (e : \Pi (s : S) -> w (i s) = i' (u s)) (r : RelCocycle n i' A) (m : Maybe S)
+      : pull-left r.1 w (Maybe.map i m) *> unplus-null (pull u w e r) m
+        = pmap (toCof r).1 (pmap pinl (relMap.square u w e m) *> ppglue (Maybe.map u m)) \elim m
+      | nothing => inv (pmap_*>-comm (toCof r).1 idp (ppglue nothing))
+      | just s => idp_*> _ *> inv (pmap_*>-comm (toCof r).1 _ _)
+
+    \sfunc post-pull.{u} {n k : Nat} {S X S' X' : \Type u} {i : S -> X} {i' : S' -> X'} {A C : AbGroup.{u}} (u : S -> S') (w : X -> X')
+                         (e : \Pi (s : S) -> w (i s) = i' (u s)) (F : \Pi (x : X') -> K A n ->* K C k) (r : RelCocycle n i' A)
+      : toCof (pull u w e (post F r)) = toCof (post (\lam x => F (w x)) (pull u w e r))
+      => toCof-ext {_} {_} {_} {_} {_} {pull u w e (post F r)} {post (\lam x => F (w x)) (pull u w e r)} (\lam _ => idp) (\lam s => pull-coh F r.1 (e s) (r.2 (u s)))
+
+    \func pull-coh {X : \Type} {P Q : Pointed} (F : X -> P ->* Q) (f : X -> P) {x0 x1 : X} (e : x0 = x1) (al : f x1 = base)
+      : idp *> (pmap (F x0).1 (pmap f e *> al) *> (F x0).2) = pmap (\lam x => (F x).1 (f x)) e *> (pmap (F x1).1 al *> (F x1).2) \elim x1, e
+      | _, idp => pmap (\lam q => idp *> (pmap (F x0).1 q *> (F x0).2)) (idp_*> al)
+  }
+
+\func relMap {S X S' X' : \Type} {i : S -> X} {i' : S' -> X'} (u : S -> S') (w : X -> X') (e : \Pi (s : S) -> w (i s) = i' (u s))
+  : Cof.pointed (Plus.map i) ->* Cof.pointed (Plus.map i')
+  => Cof.map* {Plus S} {Plus X} {Plus S'} {Plus X'} {Plus.map i} {Plus.map i'} (Plus.map u) (Plus.map w) (square u w e)
+  \where {
+    \func square {S X S' X' : \Type} {i : S -> X} {i' : S' -> X'} (u : S -> S') (w : X -> X') (e : \Pi (s : S) -> w (i s) = i' (u s)) (m : Maybe S)
+      : Maybe.map w (Maybe.map i m) = Maybe.map i' (Maybe.map u m) \elim m
+      | nothing => idp
+      | just s => pmap just (e s)
+
+    \func excision {J A B : \Type} (u : J -> A) (v : J -> B)
+      : (Cof.excision u v).map = relMap {J} {A} {B} {PushoutData u v} {u} {pinr} v pinl (\lam x => ppglue x)
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(Cof.excision u v).map.1} {(relMap {J} {A} {B} {PushoutData u v} {u} {pinr} v pinl (\lam x => ppglue x)).1}
+                   (\lam _ => idp) (\lam _ => idp) (excision-glue u v)) idp
+
+    \func excision-glue {J A B : \Type} (u : J -> A) (v : J -> B) (m : Maybe J)
+      : idp *> pmap (relMap {J} {A} {B} {PushoutData u v} {u} {pinr} v pinl (\lam x => ppglue x)).1 (ppglue m) = pmap (Cof.excision u v).map.1 (ppglue m) *> idp \elim m
+      | nothing => idp_*> _
+      | just _ => idp_*> _
+  }
+
+\func Intersection {S T X : \Type} (i : S -> X) (j : T -> X) => \Sigma (s : S) (t : T) (i s = j t)
+
+\func Union {S T X : \Type} (i : S -> X) (j : T -> X) => PushoutData {Intersection i j} (\lam p => p.1) (\lam p => p.2)
+  \where
+    \func map {S T X : \Type} (i : S -> X) (j : T -> X) (w : Union i j) : X
+      => PushoutData.rec i j (\lam p => p.3) w
+
+\func relCupRaw.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {S T X : \Type u} {i : S -> X} {j : T -> X}
+                    (a : RelCocycle p i A) (b : RelCocycle q j B) : RelCocycle (p Nat.+ q) (Union.map i j) C
+  => (\lam x => ((K-cup m p q).1 (a.1 x)).1 (b.1 x),
+      PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam w => ((K-cup m p q).1 (a.1 (Union.map i j w))).1 (b.1 (Union.map i j w))} {\lam _ => base}
+        (relActRaw m p q a b.1).2 (absActRaw m p q a.1 b).2
+        (\lam e => coh (\lam u v => ((K-cup m p q).1 u).1 v) a.1 b.1 (->*.happly (K-cup m p q).2) (\lam u => ((K-cup m p q).1 u).2)
+                       (->*.happly-base (K-cup m p q).2) e.3 (a.2 e.1) (b.2 e.2)))
+  \where {
+    \func coh {X U V W : \Type} (F : U -> V -> W) (a : X -> U) (b : X -> V) {u1 : U} {v1 : V} {w : W}
+              (L : \Pi (v : V) -> F u1 v = w) (R : \Pi (u : U) -> F u v1 = w) (c : L v1 = R u1)
+              {x0 x1 : X} (e : x0 = x1) (al : a x0 = u1) (be : b x1 = v1)
+      : (pmap (\lam u => F u (b x0)) al *> L (b x0)) *> idp = pmap (\lam x => F (a x) (b x)) e *> (pmap (F (a x1)) be *> R (a x1)) \elim x1, e
+      | _, idp => square F L R c al be *> inv (idp_*> _)
+
+    \func square {U V W : \Type} (F : U -> V -> W) {u0 u1 : U} {v0 v1 : V} {w : W}
+                 (L : \Pi (v : V) -> F u1 v = w) (R : \Pi (u : U) -> F u v1 = w) (c : L v1 = R u1) (al : u0 = u1) (be : v0 = v1)
+      : pmap (\lam u => F u v0) al *> L v0 = pmap (F u0) be *> R u0 \elim u0, v0, al, be
+      | _, _, idp, idp => pmap (idp *>) c
+  }
+
+\func relActRaw.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p r : Nat) {S X : \Type u} {i : S -> X}
+                    (a : RelCocycle p i A) (b : Cocycle r X B) : RelCocycle (p Nat.+ r) i C
+  => RelCocycle.post (\lam x => K-cup.flip m p r (b x)) a
+
+\func absActRaw.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (r q : Nat) {T X : \Type u} {j : T -> X}
+                    (a : Cocycle r X A) (b : RelCocycle q j B) : RelCocycle (r Nat.+ q) j C
+  => RelCocycle.post (\lam x => (K-cup m r q).1 (a x)) b
+
+\func relAct.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p r : Nat) {S X : \Type u} (i : S -> X)
+  : Pairing (RedCoHom p (Cof.pointed (Plus.map i)) A) (CoHom r X B) (RedCoHom (p Nat.+ r) (Cof.pointed (Plus.map i)) C) \cowith
+  | func c d => Trunc0.map2 c d \lam g b => RelCocycle.toCof (relActRaw m p r (RelCocycle.fromCof g) b)
+  | ldistr {c} {b} {b'} => \case \elim c, \elim b, \elim b' \with {
+    | in0 g, in0 b, in0 b' => pmap in0 (
+        RelCocycle.post-ext {_} {_} {_} {_} {_} {_} {_} {\lam x => K-cup.flip m p r (K-add r (b x) (b' x))}
+                            {\lam x => deloopAdd* (K-loopEquiv (p Nat.+ r)) (K-cup.flip m p r (b x)) (K-cup.flip m p r (b' x))}
+                            (\lam x => ->*.happly (K-cup.ldistr m p r (b x) (b' x))) (RelCocycle.fromCof g)
+        *> RelCocycle.post-sum (\lam x => K-cup.flip m p r (b x)) (\lam x => K-cup.flip m p r (b' x)) (RelCocycle.fromCof g)
+        *> inv (RelCocycle.toCof-add (relActRaw m p r (RelCocycle.fromCof g) b) (relActRaw m p r (RelCocycle.fromCof g) b')))
+  }
+  | rdistr {c} {c'} {b} => \case \elim c, \elim c', \elim b \with {
+    | in0 g, in0 g', in0 b => pmap (\lam (G : Cof.pointed (Plus.map i) ->* K A p) => in0 (RelCocycle.toCof (relActRaw m p r (RelCocycle.fromCof G) b)))
+                                   (inv (pmap2 RedCocycle.add (RelCocycle.toCof-fromCof g) (RelCocycle.toCof-fromCof g'))
+                                    *> RelCocycle.toCof-add (RelCocycle.fromCof g) (RelCocycle.fromCof g'))
+        *> pmap in0 (RelCocycle.post-add (\lam x => K-cup.flip m p r (b x)) (\lam x u u' => ->*.happly (K-cup.rdistr m p r u u') (b x))
+                                         (RelCocycle.fromCof g) (RelCocycle.fromCof g')
+                     *> inv (RelCocycle.toCof-add (relActRaw m p r (RelCocycle.fromCof g) b) (relActRaw m p r (RelCocycle.fromCof g') b)))
+  }
+  \where {
+    \lemma forget.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p r : Nat) {S X : \Type u} (i : S -> X)
+                      (c : RedCoHom p (Cof.pointed (Plus.map i)) A) (b : CoHom r X B)
+      : Iso.f {plusIso (pos (p Nat.+ r)) X C} (redPullback (p Nat.+ r) (Cof.inc (Plus.map i)) (relAct m p r i c b))
+        = cup m p r X (Iso.f {plusIso (pos p) X A} (redPullback p (Cof.inc (Plus.map i)) c)) b \elim c, b
+      | in0 _, in0 _ => idp
+
+    \lemma natural.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p r : Nat) {S X S' X' : \Type u} {i : S -> X} {i' : S' -> X'}
+                       (u : S -> S') (w : X -> X') (e : \Pi (s : S) -> w (i s) = i' (u s))
+                       (c : RedCoHom p (Cof.pointed (Plus.map i')) A) (b : CoHom r X' B)
+      : redPullback (p Nat.+ r) (relMap u w e) (relAct m p r i' c b) = relAct m p r i (redPullback p (relMap u w e) c) (pullback r w b) \elim b
+      | in0 b => RelCocycle.ind {_} {_} {_} {_} {_}
+          {\lam (c : RedCoHom p (Cof.pointed (Plus.map i')) A) => redPullback (p Nat.+ r) (relMap u w e) (relAct m p r i' c (in0 b)) = relAct m p r i (redPullback p (relMap u w e) c) (in0 (\lam x => b (w x)))}
+          (\lam R => pmap in0 (RelCocycle.toCof-pull u w e (relActRaw m p r R b) *> RelCocycle.post-pull u w e (\lam x => K-cup.flip m p r (b x)) R)
+                     *> inv (pmap (\lam (G : Cof.pointed (Plus.map i) ->* K A p) => in0 (RelCocycle.toCof (relActRaw m p r (RelCocycle.fromCof G) (\lam x => b (w x)))))
+                                  (RelCocycle.toCof-pull u w e R))) c
+
+    \lemma excision.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p r : Nat) {J U V : \Type u} (f : J -> U) (g : J -> V)
+                        (c : RedCoHom p (Cof.pointed (Plus.map (pinr {J} {U} {V} {f} {g}))) A) (b : CoHom r (PushoutData f g) B)
+      : redPullback (p Nat.+ r) (Cof.excision f g).map (relAct m p r pinr c b)
+        = relAct m p r f (redPullback p (Cof.excision f g).map c) (pullback r pinl b)
+      => rewrite (relMap.excision f g) (natural m p r g pinl (\lam x => ppglue x) c b)
+
+    \lemma assoc.{u} {A B C D E F : AbGroup.{u}} (m1 : Pairing A B D) (m2 : Pairing D C E) (n1 : Pairing B C F) (n2 : Pairing A F E)
+                     (h : \Pi (a : A) (b : B) (c : C) -> m2 (m1 a b) c = n2 a (n1 b c)) (p q r : Nat) {S X : \Type u} (i : S -> X)
+                     (c : RedCoHom p (Cof.pointed (Plus.map i)) A) (b : CoHom q X B) (b' : CoHom r X C)
+      : relAct m2 (p Nat.+ q) r i (relAct m1 p q i c b) b'
+        = RedCoHom.cast (K-cup.assoc.assocNat p q r) (relAct n2 p (q Nat.+ r) i c (cup n1 q r X b b')) \elim b, b'
+      | in0 b, in0 b' => RelCocycle.ind {_} {_} {_} {_} {_}
+          {\lam (c : RedCoHom p (Cof.pointed (Plus.map i)) A) => relAct m2 (p Nat.+ q) r i (relAct m1 p q i c (in0 b)) (in0 b')
+                     = RedCoHom.cast (K-cup.assoc.assocNat p q r) (relAct n2 p (q Nat.+ r) i c (in0 (\lam x => ((K-cup n1 q r).1 (b x)).1 (b' x))))}
+          (\lam R => pmap in0 (RelCocycle.post-assoc (K-cup.assoc.assocNat p q r)
+                                (\lam x => K-cup.flip m1 p q (b x)) (\lam x => K-cup.flip m2 (p Nat.+ q) r (b' x))
+                                (\lam _ => ->*.id) (\lam x => K-cup.flip n2 p (q Nat.+ r) (((K-cup n1 q r).1 (b x)).1 (b' x)))
+                                (\lam x u => ->*.happly (->*.happly (->*.happly (K-cup.assoc m1 m2 n1 n2 h p q r) u) (b x)) (b' x)) R)
+                     *> inv (RedCoHom.cast.classOf _ _)) c
+  }
+
+\func absAct.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (r q : Nat) {T X : \Type u} (j : T -> X)
+  : Pairing (CoHom r X A) (RedCoHom q (Cof.pointed (Plus.map j)) B) (RedCoHom (r Nat.+ q) (Cof.pointed (Plus.map j)) C) \cowith
+  | func c d => Trunc0.map2 c d \lam a h => RelCocycle.toCof (absActRaw m r q a (RelCocycle.fromCof h))
+  | ldistr {a} {d} {d'} => \case \elim a, \elim d, \elim d' \with {
+    | in0 a, in0 h, in0 h' => pmap (\lam (H : Cof.pointed (Plus.map j) ->* K B q) => in0 (RelCocycle.toCof (absActRaw m r q a (RelCocycle.fromCof H))))
+                                   (inv (pmap2 RedCocycle.add (RelCocycle.toCof-fromCof h) (RelCocycle.toCof-fromCof h'))
+                                    *> RelCocycle.toCof-add (RelCocycle.fromCof h) (RelCocycle.fromCof h'))
+        *> pmap in0 (RelCocycle.post-add (\lam x => (K-cup m r q).1 (a x)) (\lam x u u' => ->*.happly (K-cup.ldistr m r q u u') (a x))
+                                         (RelCocycle.fromCof h) (RelCocycle.fromCof h')
+                     *> inv (RelCocycle.toCof-add (absActRaw m r q a (RelCocycle.fromCof h)) (absActRaw m r q a (RelCocycle.fromCof h'))))
+  }
+  | rdistr {a} {a'} {d} => \case \elim a, \elim a', \elim d \with {
+    | in0 a, in0 a', in0 h => pmap in0 (
+        RelCocycle.post-ext {_} {_} {_} {_} {_} {_} {_} {\lam x => (K-cup m r q).1 (K-add r (a x) (a' x))}
+                            {\lam x => deloopAdd* (K-loopEquiv (r Nat.+ q)) ((K-cup m r q).1 (a x)) ((K-cup m r q).1 (a' x))}
+                            (\lam x => ->*.happly (K-cup.rdistr m r q (a x) (a' x))) (RelCocycle.fromCof h)
+        *> RelCocycle.post-sum (\lam x => (K-cup m r q).1 (a x)) (\lam x => (K-cup m r q).1 (a' x)) (RelCocycle.fromCof h)
+        *> inv (RelCocycle.toCof-add (absActRaw m r q a (RelCocycle.fromCof h)) (absActRaw m r q a' (RelCocycle.fromCof h))))
+  }
+  \where {
+    \lemma forget.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (r q : Nat) {T X : \Type u} (j : T -> X)
+                      (a : CoHom r X A) (d : RedCoHom q (Cof.pointed (Plus.map j)) B)
+      : Iso.f {plusIso (pos (r Nat.+ q)) X C} (redPullback (r Nat.+ q) (Cof.inc (Plus.map j)) (absAct m r q j a d))
+        = cup m r q X a (Iso.f {plusIso (pos q) X B} (redPullback q (Cof.inc (Plus.map j)) d)) \elim a, d
+      | in0 _, in0 _ => idp
+
+    \lemma natural.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (r q : Nat) {T X T' X' : \Type u} {j : T -> X} {j' : T' -> X'}
+                       (u : T -> T') (w : X -> X') (e : \Pi (t : T) -> w (j t) = j' (u t))
+                       (a : CoHom r X' A) (d : RedCoHom q (Cof.pointed (Plus.map j')) B)
+      : redPullback (r Nat.+ q) (relMap u w e) (absAct m r q j' a d) = absAct m r q j (pullback r w a) (redPullback q (relMap u w e) d) \elim a
+      | in0 a => RelCocycle.ind {_} {_} {_} {_} {_}
+          {\lam (d : RedCoHom q (Cof.pointed (Plus.map j')) B) => redPullback (r Nat.+ q) (relMap u w e) (absAct m r q j' (in0 a) d) = absAct m r q j (in0 (\lam x => a (w x))) (redPullback q (relMap u w e) d)}
+          (\lam R => pmap in0 (RelCocycle.toCof-pull u w e (absActRaw m r q a R) *> RelCocycle.post-pull u w e (\lam x => (K-cup m r q).1 (a x)) R)
+                     *> inv (pmap (\lam (H : Cof.pointed (Plus.map j) ->* K B q) => in0 (RelCocycle.toCof (absActRaw m r q (\lam x => a (w x)) (RelCocycle.fromCof H))))
+                                  (RelCocycle.toCof-pull u w e R))) d
+
+    \lemma excision.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (r q : Nat) {J U V : \Type u} (f : J -> U) (g : J -> V)
+                        (a : CoHom r (PushoutData f g) A) (d : RedCoHom q (Cof.pointed (Plus.map (pinr {J} {U} {V} {f} {g}))) B)
+      : redPullback (r Nat.+ q) (Cof.excision f g).map (absAct m r q pinr a d)
+        = absAct m r q f (pullback r pinl a) (redPullback q (Cof.excision f g).map d)
+      => rewrite (relMap.excision f g) (natural m r q g pinl (\lam x => ppglue x) a d)
+
+    \lemma assoc.{u} {A B C D E F : AbGroup.{u}} (m1 : Pairing A B D) (m2 : Pairing D C E) (n1 : Pairing B C F) (n2 : Pairing A F E)
+                     (h : \Pi (a : A) (b : B) (c : C) -> m2 (m1 a b) c = n2 a (n1 b c)) (p q r : Nat) {T X : \Type u} (j : T -> X)
+                     (a : CoHom p X A) (a' : CoHom q X B) (d : RedCoHom r (Cof.pointed (Plus.map j)) C)
+      : absAct m2 (p Nat.+ q) r j (cup m1 p q X a a') d
+        = RedCoHom.cast (K-cup.assoc.assocNat p q r) (absAct n2 p (q Nat.+ r) j a (absAct n1 q r j a' d)) \elim a, a'
+      | in0 a, in0 a' => RelCocycle.ind {_} {_} {_} {_} {_}
+          {\lam (d : RedCoHom r (Cof.pointed (Plus.map j)) C) => absAct m2 (p Nat.+ q) r j (in0 (\lam x => ((K-cup m1 p q).1 (a x)).1 (a' x))) d
+                     = RedCoHom.cast (K-cup.assoc.assocNat p q r) (absAct n2 p (q Nat.+ r) j (in0 a) (absAct n1 q r j (in0 a') d))}
+          (\lam R => pmap in0 (RelCocycle.post-assoc (K-cup.assoc.assocNat p q r)
+                                (\lam _ => ->*.id) (\lam x => (K-cup m2 (p Nat.+ q) r).1 (((K-cup m1 p q).1 (a x)).1 (a' x)))
+                                (\lam x => (K-cup n1 q r).1 (a' x)) (\lam x => (K-cup n2 p (q Nat.+ r)).1 (a x))
+                                (\lam x u => ->*.happly (->*.happly (->*.happly (K-cup.assoc m1 m2 n1 n2 h p q r) (a x)) (a' x)) u) R)
+                     *> inv (RedCoHom.cast.classOf _ _)) d
+
+    \lemma relAct-assoc.{u} {A B C D E F : AbGroup.{u}} (m1 : Pairing A B D) (m2 : Pairing D C E) (n1 : Pairing B C F) (n2 : Pairing A F E)
+                            (h : \Pi (a : A) (b : B) (c : C) -> m2 (m1 a b) c = n2 a (n1 b c)) (p q r : Nat) {T X : \Type u} (j : T -> X)
+                            (a : CoHom p X A) (d : RedCoHom q (Cof.pointed (Plus.map j)) B) (b : CoHom r X C)
+      : relAct m2 (p Nat.+ q) r j (absAct m1 p q j a d) b
+        = RedCoHom.cast (K-cup.assoc.assocNat p q r) (absAct n2 p (q Nat.+ r) j a (relAct n1 q r j d b)) \elim a, b
+      | in0 a, in0 b => RelCocycle.ind {_} {_} {_} {_} {_}
+          {\lam (d : RedCoHom q (Cof.pointed (Plus.map j)) B) => relAct m2 (p Nat.+ q) r j (absAct m1 p q j (in0 a) d) (in0 b)
+                     = RedCoHom.cast (K-cup.assoc.assocNat p q r) (absAct n2 p (q Nat.+ r) j (in0 a) (relAct n1 q r j d (in0 b)))}
+          (\lam R => pmap in0 (RelCocycle.post-assoc (K-cup.assoc.assocNat p q r)
+                                (\lam x => (K-cup m1 p q).1 (a x)) (\lam x => K-cup.flip m2 (p Nat.+ q) r (b x))
+                                (\lam x => K-cup.flip n1 q r (b x)) (\lam x => (K-cup n2 p (q Nat.+ r)).1 (a x))
+                                (\lam x u => ->*.happly (->*.happly (->*.happly (K-cup.assoc m1 m2 n1 n2 h p q r) (a x)) u) (b x)) R)
+                     *> inv (RedCoHom.cast.classOf _ _)) d
+  }
+
+\func relCup.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {S T X : \Type u} (i : S -> X) (j : T -> X)
+                 (c : RedCoHom p (Cof.pointed (Plus.map i)) A) (d : RedCoHom q (Cof.pointed (Plus.map j)) B)
+  : RedCoHom (p Nat.+ q) (Cof.pointed (Plus.map (Union.map i j))) C
+  => Trunc0.map2 c d \lam g h => RelCocycle.toCof (relCupRaw m p q (RelCocycle.fromCof g) (RelCocycle.fromCof h))
+  \where {
+    \lemma restrict-left.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {S T X : \Type u} (i : S -> X) (j : T -> X)
+                             (c : RedCoHom p (Cof.pointed (Plus.map i)) A) (d : RedCoHom q (Cof.pointed (Plus.map j)) B)
+      : redPullback (p Nat.+ q) (relMap {S} {X} {Union i j} {X} {i} {Union.map i j} pinl (\lam x => x) (\lam _ => idp)) (relCup m p q i j c d)
+        = relAct m p q i c (Iso.f {plusIso (pos q) X B} (redPullback q (Cof.inc (Plus.map j)) d)) \elim c, d
+      | in0 g, in0 h => pmap in0 (RelCocycle.toCof-pull pinl (\lam x => x) (\lam _ => idp) (relCupRaw m p q (RelCocycle.fromCof g) (RelCocycle.fromCof h))
+                                  *> RelCocycle.toCof-ext {_} {_} {_} {_} {_}
+                                       {RelCocycle.pull pinl (\lam x => x) (\lam _ => idp) (relCupRaw m p q (RelCocycle.fromCof g) (RelCocycle.fromCof h))}
+                                       {relActRaw m p q (RelCocycle.fromCof g) (RelCocycle.fromCof h).1} (\lam _ => idp) (\lam _ => idp))
+
+    \lemma restrict-right.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {S T X : \Type u} (i : S -> X) (j : T -> X)
+                              (c : RedCoHom p (Cof.pointed (Plus.map i)) A) (d : RedCoHom q (Cof.pointed (Plus.map j)) B)
+      : redPullback (p Nat.+ q) (relMap {T} {X} {Union i j} {X} {j} {Union.map i j} pinr (\lam x => x) (\lam _ => idp)) (relCup m p q i j c d)
+        = absAct m p q j (Iso.f {plusIso (pos p) X A} (redPullback p (Cof.inc (Plus.map i)) c)) d \elim c, d
+      | in0 g, in0 h => pmap in0 (RelCocycle.toCof-pull pinr (\lam x => x) (\lam _ => idp) (relCupRaw m p q (RelCocycle.fromCof g) (RelCocycle.fromCof h))
+                                  *> RelCocycle.toCof-ext {_} {_} {_} {_} {_}
+                                       {RelCocycle.pull pinr (\lam x => x) (\lam _ => idp) (relCupRaw m p q (RelCocycle.fromCof g) (RelCocycle.fromCof h))}
+                                       {absActRaw m p q (RelCocycle.fromCof g).1 (RelCocycle.fromCof h)} (\lam _ => idp) (\lam _ => idp))
+
+    \lemma forget.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {S T X : \Type u} (i : S -> X) (j : T -> X)
+                      (c : RedCoHom p (Cof.pointed (Plus.map i)) A) (d : RedCoHom q (Cof.pointed (Plus.map j)) B)
+      : redPullback (p Nat.+ q) (Cof.inc (Plus.map (Union.map i j))) (relCup m p q i j c d)
+        = redCup m p q (Plus X) (redPullback p (Cof.inc (Plus.map i)) c) (redPullback q (Cof.inc (Plus.map j)) d) \elim c, d
+      | in0 g, in0 h => pmap in0 (K-homogenExt.{u} (p Nat.+ q)
+                          {RelCocycle.toCof (relCupRaw m p q (RelCocycle.fromCof g) (RelCocycle.fromCof h)) ∘* Cof.inc (Plus.map (Union.map i j))}
+                          {redCup.raw m p q (g ∘* Cof.inc (Plus.map i)) (h ∘* Cof.inc (Plus.map j))}
+                          (point.{u} m p q i j g h))
+      \where
+        \func point.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p q : Nat) {S T X : \Type u} (i : S -> X) (j : T -> X)
+                        (g : Cof.pointed (Plus.map i) ->* K A p) (h : Cof.pointed (Plus.map j) ->* K B q) (x : Maybe X)
+          : (RelCocycle.toCof (relCupRaw m p q (RelCocycle.fromCof g) (RelCocycle.fromCof h)) ∘* Cof.inc (Plus.map (Union.map i j))).1 x
+            = (redCup.raw m p q (g ∘* Cof.inc (Plus.map i)) (h ∘* Cof.inc (Plus.map j))).1 x \elim x
+          | nothing => inv (redCup.raw m p q (g ∘* Cof.inc (Plus.map i)) (h ∘* Cof.inc (Plus.map j))).2
+          | just x => idp
+  }

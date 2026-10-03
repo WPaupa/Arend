@@ -7,6 +7,7 @@
 \import Algebra.Pointed
 \import Algebra.Ring
 \import Algebra.Ring.FormalSeries
+\import Algebra.Ring.RingHom
 \import Arith.Nat
 \import Data.Or
 \import Equiv
@@ -23,10 +24,52 @@
 
 \open FSeriesRing (PairsFinSet)
 
+\func sum-below {G : AddMonoid} (f : Nat -> G) (N : Nat) : G \elim N
+  | 0 => 0
+  | suc N => sum-below f N + f N
+  \where {
+    \lemma zero {G : AddMonoid} {f : Nat -> G} {N : Nat} (z : \Pi (n : Nat) -> n < N -> f n = 0) : sum-below f N = 0 \elim N
+      | 0 => idp
+      | suc N => pmap2 (+) (zero \lam n n<N => z n (n<N <∘ id<suc)) (z N id<suc) *> zro-left
+
+    \lemma pad {G : AddMonoid} {f : Nat -> G} {N : Nat} (z : \Pi (n : Nat) -> N <= n -> f n = 0) (k : Nat) : sum-below f (N Nat.+ k) = sum-below f N \elim k
+      | 0 => idp
+      | suc k => pmap2 (+) (pad z k) (z (N Nat.+ k) (NatSemiring.<=_+ <=-refl zero<=_)) *> zro-right
+
+    \lemma bounds {G : AddMonoid} {f : Nat -> G} {N M : Nat} (zN : \Pi (n : Nat) -> N <= n -> f n = 0) (zM : \Pi (n : Nat) -> M <= n -> f n = 0)
+      : sum-below f N = sum-below f M
+      => inv (pad zN M) *> pmap (sum-below f) NatSemiring.+-comm *> pad zM N
+
+    \lemma hom {G H : AddMonoid} (h : AddMonoidHom G H) (f : Nat -> G) (N : Nat) : h (sum-below f N) = sum-below (\lam n => h (f n)) N \elim N
+      | 0 => h.func-zro
+      | suc N => h.func-+ *> pmap (`+ _) (hom h f N)
+
+    \lemma add {G : AbMonoid} (f g : Nat -> G) (N : Nat) : sum-below (\lam n => f n + g n) N = sum-below f N + sum-below g N \elim N
+      | 0 => inv zro-left
+      | suc N => pmap (`+ _) (add f g N) *> equation
+
+    \lemma unique {G : AddMonoid} {f : Nat -> G} {N n : Nat} (n<N : n < N) (z : \Pi (k : Nat) -> k /= n -> f k = 0) : sum-below f N = f n \elim N
+      | suc N => \case decideEq n N \with {
+        | yes e => pmap (`+ _) (zero \lam k k<N => z k \lam p => absurd linarith) *> zro-left *> pmap f (inv e)
+        | no ne => pmap2 (+) (unique (LinearOrder.<=_/= (<_suc_<= n<N) ne) z) (z N (\lam p => ne (inv p))) *> zro-right
+      }
+  }
+
 \func signed {G : AddGroup} (k : Nat) (a : G) : G \elim k
   | 0 => a
   | 1 => negative a
   | suc (suc k) => signed k a
+  \where {
+    \lemma twice {G : AddGroup} (k : Nat) (a : G) : signed k (signed k a) = a \elim k
+      | 0 => idp
+      | 1 => AddGroup.negative-isInv
+      | suc (suc k) => twice k a
+
+    \lemma hom {G H : AddGroup} (f : AddGroupHom G H) (k : Nat) (a : G) : f (signed k a) = signed k (f a) \elim k
+      | 0 => idp
+      | 1 => f.func-negative
+      | suc (suc k) => hom f k a
+  }
 
 \record GradedProduct (H : Nat -> AbGroup) {
   | mul (p q : Nat) : Pairing (H p) (H q) (H (p Nat.+ q))
@@ -130,6 +173,92 @@
           | no ne1 => conv-zero-left D (inc-at D p a) (inc-at D q b) s (inc-at-other D a ne1)
           | yes e1 => conv-zero-right D (inc-at D p a) (inc-at D q b) s (inc-at-other D b \lam e2 => ne (pmap2 (Nat.+) e1 e2 *> s.3))
         }) *> inv (inc-at-other D _ ne)
+      }
+
+    \lemma decompose (D : GradedProduct) (x : DirectSum D) : ∃ (N : Nat) (x = sum-below {DirectSum D} (\lam n => inc D n (x.1 n)) N)
+      => \case x.2 \with {
+        | inP (N, z) => inP (N, decompose-at D x z)
+      }
+
+    \lemma decompose-at (D : GradedProduct) (x : DirectSum D) {N : Nat} (z : \Pi (n : Nat) -> N <= n -> x.1 n = 0)
+      : x = sum-below {DirectSum D} (\lam n => inc D n (x.1 n)) N
+      => sum-ext \lam k => inv (sum-below.hom (proj D k) _ N *> component D x.1 z k)
+      \where
+        \lemma component (D : GradedProduct) (x : \Pi (n : Nat) -> D.H n) {N : Nat} (z : \Pi (n : Nat) -> N <= n -> x n = 0) (k : Nat)
+          : sum-below (\lam n => inc-at D n (x n) k) N = x k
+          => \case LinearOrder.dec<_<= k N \with {
+            | inl k<N => sum-below.unique k<N (\lam n ne => inc-at-other D (x n) ne) *> inc-at-same D (x k) idp
+            | inr N<=k => sum-below.zero (\lam n n<N => inc-at-other D (x n) (\lam p => absurd linarith)) *> inv (z k N<=k)
+          }
+
+    \func lift (D : GradedProduct) {G : AbGroup} (fs : \Pi (n : Nat) -> AddGroupHom (D.H n) G) : AddGroupHom (DirectSum D) G \cowith
+      | func x => (lift-value D fs x).1
+      | func-+ {x} {y} => \case x.2, y.2 \with {
+        | inP (N, zx), inP (M, zy) =>
+          (lift-value D fs ((AddMonoid.+ {DirectSum D}) x y)).2 (N Nat.+ M) (\lam n le => pmap2 (+) (zx n (left-le le)) (zy n (right-le le)) *> zro-left)
+          *> pmap (sum-below __ (N Nat.+ M)) (ext \lam n => AddGroupHom.func-+ {fs n})
+          *> sum-below.add _ _ (N Nat.+ M)
+          *> inv (pmap2 (+) ((lift-value D fs x).2 (N Nat.+ M) (\lam n le => zx n (left-le le)))
+                            ((lift-value D fs y).2 (N Nat.+ M) (\lam n le => zy n (right-le le))))
+      }
+      \where {
+        \func Value (D : GradedProduct) {G : AbGroup} (fs : \Pi (n : Nat) -> AddGroupHom (D.H n) G) (x : DirectSum D)
+          => \Sigma (g : G) (\Pi (N : Nat) -> (\Pi (n : Nat) -> N <= n -> x.1 n = 0) -> g = sum-below (\lam n => fs n (x.1 n)) N)
+
+        \sfunc lift-value (D : GradedProduct) {G : AbGroup} (fs : \Pi (n : Nat) -> AddGroupHom (D.H n) G) (x : DirectSum D) : Value D fs x
+          => \scase x.2 \return Value D fs x \level value-prop D fs x \with {
+            | inP (N, z) => (sum-below (\lam n => fs n (x.1 n)) N, \lam M zM => sum-below.bounds (zero-image fs z) (zero-image fs zM))
+          }
+
+        \lemma zero-image {D : GradedProduct} {G : AbGroup} (fs : \Pi (n : Nat) -> AddGroupHom (D.H n) G) {x : \Pi (n : Nat) -> D.H n} {N : Nat}
+                           (z : \Pi (n : Nat) -> N <= n -> x n = 0) (n : Nat) (le : N <= n) : fs n (x n) = 0
+          => pmap (fs n) (z n le) *> AddGroupHom.func-zro {fs n}
+
+        \sfunc value-prop (D : GradedProduct) {G : AbGroup} (fs : \Pi (n : Nat) -> AddGroupHom (D.H n) G) (x : DirectSum D) (a b : Value D fs x) : a = b
+          => \case x.2 \with {
+            | inP (N, z) => ext (a.2 N z *> inv (b.2 N z))
+          }
+      }
+
+    \func universal (D : GradedProduct) (G : AbGroup) : QEquiv {AddGroupHom (DirectSum D) G} {\Pi (n : Nat) -> AddGroupHom (D.H n) G} \cowith
+      | f h n => h AddGroupHom.∘ inc D n
+      | ret => lift D
+      | ret_f h => exts \lam x => \case x.2 \with {
+        | inP (N, z) => (lift.lift-value D (\lam n => h AddGroupHom.∘ inc D n) x).2 N z *> inv (sum-below.hom h _ N) *> pmap h (inv (decompose-at D x z))
+      }
+      | f_sec fs => ext \lam n => exts \lam a =>
+          (lift.lift-value D fs (inc D n a)).2 (suc n) (\lam k le => inc-at-other D a (\lam p => absurd linarith))
+          *> sum-below.unique id<suc (\lam k ne => pmap (fs k) (inc-at-other D a (\lam p => ne (inv p))) *> AddGroupHom.func-zro {fs k})
+          *> pmap (fs n) (inc-at-same D a idp)
+
+    \func ringMap {D D' : GradedProduct} (phi : \Pi (n : Nat) -> AddGroupHom (D.H n) (D'.H n))
+                  (phi-mul : \Pi (p q : Nat) (a : D.H p) (b : D.H q) -> phi (p Nat.+ q) (D.mul p q a b) = D'.mul p q (phi p a) (phi q b))
+                  (phi-one : phi 0 D.one = D'.one) : RingHom (DirectSum D) (DirectSum D') \cowith
+      | func x => (\lam n => phi n (x.1 n), \case x.2 \with {
+        | inP (N, z) => inP (N, \lam n le => pmap (phi n) (z n le) *> AddGroupHom.func-zro {phi n})
+      })
+      | func-+ => sum-ext \lam n => AddGroupHom.func-+ {phi n}
+      | func-ide => sum-ext (unit-map phi phi-one)
+      | func-* {x} {y} => sum-ext \lam n => AddMonoidHom.func-FinSum (phi n) {PairsFinSet n}
+          *> AbMonoid.FinSum-ext {D'.H n} {PairsFinSet n} (\lam s => cast-map phi s.3 _ *> pmap (D'.cast s.3) (phi-mul s.1 s.2 (x.1 s.1) (y.1 s.2)))
+      \where {
+        \lemma unit-map {D D' : GradedProduct} (phi : \Pi (n : Nat) -> AddGroupHom (D.H n) (D'.H n)) (phi-one : phi 0 D.one = D'.one) (n : Nat)
+          : phi n (unit D n) = unit D' n \elim n
+          | 0 => phi-one
+          | suc n => AddGroupHom.func-zro {phi (suc n)}
+
+        \lemma cast-map {D D' : GradedProduct} (phi : \Pi (n : Nat) -> AddGroupHom (D.H n) (D'.H n)) {n m : Nat} (e : n = m) (a : D.H n)
+          : phi m (D.cast e a) = D'.cast e (phi n a) \elim m, e
+          | _, idp => idp
+
+        \lemma inc-map {D D' : GradedProduct} (phi : \Pi (n : Nat) -> AddGroupHom (D.H n) (D'.H n))
+                       (phi-mul : \Pi (p q : Nat) (a : D.H p) (b : D.H q) -> phi (p Nat.+ q) (D.mul p q a b) = D'.mul p q (phi p a) (phi q b))
+                       (phi-one : phi 0 D.one = D'.one) (n : Nat) (a : D.H n)
+          : ringMap phi phi-mul phi-one (inc D n a) = inc D' n (phi n a)
+          => sum-ext {D'} {ringMap phi phi-mul phi-one (inc D n a)} {inc D' n (phi n a)} \lam k => \case decideEq n k \with {
+            | yes e => pmap (phi k) (inc-at-same D a e) *> cast-map phi e a *> inv (inc-at-same D' (phi n a) e)
+            | no ne => pmap (phi k) (inc-at-other D a ne) *> AddGroupHom.func-zro {phi k} *> inv (inc-at-other D' (phi n a) ne)
+          }
       }
 
     \func sum-ext {D : GradedProduct} {x y : \Sigma (x : \Pi (n : Nat) -> D.H n) (∃ (N : Nat) (\Pi (n : Nat) -> N <= n -> x n = 0))}
