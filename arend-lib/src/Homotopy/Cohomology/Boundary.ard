@@ -1,0 +1,136 @@
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Pairing
+\import Algebra.Ring.DirectSum (signed)
+\import Category (Iso)
+\import Data.Maybe
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Cohomology
+\import Homotopy.Cohomology.Cup
+\import Homotopy.Cohomology.EilenbergSteenrod
+\import Homotopy.Cohomology.Functor
+\import Homotopy.Cohomology.MayerVietoris
+\import Homotopy.Cohomology.Relative
+\import Homotopy.Cohomology.Suspension
+\import Homotopy.Cohomology.Theory.LongExact
+\import Homotopy.EilenbergMacLane.Cup
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.GradedComm
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.EilenbergMacLane.Mapping
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Paths
+\import Set
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+\open SuspLoopEquiv (toSusp)
+
+\func pairDelta.{u} (p : Nat) {S X : \Type u} (i : S -> X) (A : AbGroup.{u})
+  : AddGroupHom (CoHom p S A) (RedCoHom (suc p) (Cof.pointed (Plus.map i)) A)
+  => delta (ordinaryCohomology A) (pos p) (Plus.map i) AddGroupHom.∘ Iso.hinv {plusIso (pos p) S A}
+  \where {
+    \func raw.{u} {p : Nat} {S X : \Type u} (i : S -> X) {A : AbGroup.{u}} (a : Cocycle p S A) : RelCocycle (suc p) i A
+      => (\lam _ => base, \lam s => (K-loopUnit p).1 (a s))
+
+    \lemma classOf.{u} (p : Nat) {S X : \Type u} (i : S -> X) {A : AbGroup.{u}} (a : Cocycle p S A)
+      : pairDelta p i A (CoHom.classOf a) = RedCoHom.classOf (RelCocycle.toCof (raw i a))
+      => pmap in0 (->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+           {\lam w => (toSusp (K-loopUnit p ∘* QEquiv.ret {plusIso.unplus {S} (K A p)} a)).1 ((Cof.quotient (Plus.map i)).1 w)}
+           {(RelCocycle.toCof (raw i a)).1} (const {suc p} {X} {A}) (\lam _ => idp) (glue p a)) idp)
+
+    \func const.{u} {n : Nat} {X : \Type u} {A : AbGroup.{u}} (m : Maybe X) : base = RelCocycle.unplus-fun {n} {X} {A} (\lam _ => base) m \elim m
+      | nothing => idp
+      | just _ => idp
+
+    \func glue.{u} (p : Nat) {S X : \Type u} {i : S -> X} {A : AbGroup.{u}} (a : Cocycle p S A) (m : Maybe S)
+      : const (Maybe.map i m) *> RelCocycle.unplus-null (raw i a) m = (K-loopUnit p).1 (maybe base a m) *> idp \elim m
+      | nothing => inv (K-loopUnit p).2
+      | just s => idp_*> _
+  }
+
+\lemma pairDelta-cup.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p r : Nat) {S X : \Type u} (i : S -> X)
+                         (a : CoHom p S A) (b : CoHom r X B)
+  : pairDelta (p Nat.+ r) i C (cup m p r S a (pullback r i b)) = relAct m (suc p) r i (pairDelta p i A a) b \elim a, b
+  | in0 a, in0 b => pairDelta.classOf (p Nat.+ r) i _
+      *> pmap in0 (RelCocycle.toCof-ext.{u} {_} {_} {_} {_} {_}
+           {pairDelta.raw i (\lam s => ((K-cup m p r).1 (a s)).1 (b (i s)))}
+           {relActRaw m (suc p) r (RelCocycle.fromCof (RelCocycle.toCof (pairDelta.raw i a))) b}
+           (\lam x => inv (->*.happly (K-cup m (suc p) r).2 (b x)))
+           (\lam s => K-cup.loop-flip m p r (b (i s)) (a s)))
+      *> inv (pmap (relAct m (suc p) r i __ (in0 b)) (pairDelta.classOf p i a))
+
+\lemma pairDelta-cup-left.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (r p : Nat) {S X : \Type u} (i : S -> X)
+                              (b : CoHom r X A) (a : CoHom p S B)
+  : pairDelta (r Nat.+ p) i C (cup m r p S (pullback r i b) a)
+    = signed {RedCoHom (r Nat.+ suc p) (Cof.pointed (Plus.map i)) C} r (absAct m r (suc p) i b (pairDelta p i B a))
+  => inv (signed.twice r _) *> pmap (signed r) (inv (signed.hom (pairDelta (r Nat.+ p) i C) r _) *> signed-left m r p i b a)
+  \where
+    \lemma signed-left.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (r p : Nat) {S X : \Type u} (i : S -> X)
+                           (b : CoHom r X A) (a : CoHom p S B)
+      : pairDelta (r Nat.+ p) i C (signed {CoHom (r Nat.+ p) S C} r (cup m r p S (pullback r i b) a))
+        = absAct m r (suc p) i b (pairDelta p i B a) \elim b, a
+      | in0 b, in0 a => pmap (pairDelta (r Nat.+ p) i C) (CoHom.signed-classOf r _) *> pairDelta.classOf (r Nat.+ p) i _
+          *> pmap in0 (RelCocycle.toCof-ext.{u} {_} {_} {_} {_} {_}
+               {pairDelta.raw i (\lam s => (K-sign r (r Nat.+ p)).1 (((K-cup m r p).1 (b (i s))).1 (a s)))}
+               {absActRaw m r (suc p) b (RelCocycle.fromCof (RelCocycle.toCof (pairDelta.raw i a)))}
+               (\lam x => inv ((K-cup m r (suc p)).1 (b x)).2)
+               (\lam s => K-cup-loop-right m r p (b (i s)) (a s)))
+          *> inv (pmap (absAct m r (suc p) i (in0 b)) (pairDelta.classOf p i a))
+
+\lemma mvBoundary-cup.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p r : Nat) {Z U V : \Type u} (f : Z -> U) (g : Z -> V)
+                          (a : CoHom p Z A) (z : CoHom r (PushoutData f g) B)
+  : mvBoundary (p Nat.+ r) f g C (cup m p r Z a (pullback r (\lam c => pinl (f c)) z)) = cup m (suc p) r (PushoutData f g) (mvBoundary p f g A a) z \elim a, z
+  | in0 a, in0 z => mvBoundary.classOf (p Nat.+ r) f g _ *> deltaRaw-cup m p r f g a z
+      *> inv (pmap (cup m (suc p) r (PushoutData f g) __ (in0 z)) (mvBoundary.classOf p f g a))
+
+\lemma mvBoundary-cup-left.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (r p : Nat) {Z U V : \Type u} (f : Z -> U) (g : Z -> V)
+                               (z : CoHom r (PushoutData f g) A) (a : CoHom p Z B)
+  : mvBoundary (r Nat.+ p) f g C (cup m r p Z (pullback r (\lam c => pinr (g c)) z) a)
+    = signed {CoHom (r Nat.+ suc p) (PushoutData f g) C} r (cup m r (suc p) (PushoutData f g) z (mvBoundary p f g B a))
+  => inv (signed.twice r _) *> pmap (signed r) (inv (signed.hom (mvBoundary (r Nat.+ p) f g C) r _) *> signed-left m r p f g z a)
+  \where
+    \lemma signed-left.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (r p : Nat) {Z U V : \Type u} (f : Z -> U) (g : Z -> V)
+                           (z : CoHom r (PushoutData f g) A) (a : CoHom p Z B)
+      : mvBoundary (r Nat.+ p) f g C (signed {CoHom (r Nat.+ p) Z C} r (cup m r p Z (pullback r (\lam c => pinr (g c)) z) a))
+        = cup m r (suc p) (PushoutData f g) z (mvBoundary p f g B a) \elim z, a
+      | in0 z, in0 a => pmap (mvBoundary (r Nat.+ p) f g C) (CoHom.signed-classOf r _) *> mvBoundary.classOf (r Nat.+ p) f g _
+          *> deltaRaw-cup-left m r p f g z a *> inv (pmap (cup m r (suc p) (PushoutData f g) (in0 z)) (mvBoundary.classOf p f g a))
+
+\lemma deltaRaw-cup.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (p r : Nat) {Z U V : \Type u} (f : Z -> U) (g : Z -> V)
+                        (a : Cocycle p Z A) (z : Cocycle r (PushoutData f g) B)
+  : CoHom.classOf (deltaRaw f g (\lam c => ((K-cup m p r).1 (a c)).1 (z (pinl (f c)))))
+    = cup m (suc p) r (PushoutData f g) (CoHom.classOf (deltaRaw f g a)) (CoHom.classOf z)
+  => pmap in0 (funPath (PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+       {deltaRaw f g (\lam c => ((K-cup m p r).1 (a c)).1 (z (pinl (f c))))}
+       {\lam x => ((K-cup m (suc p) r).1 (deltaRaw f g a x)).1 (z x)}
+       (\lam u => inv (->*.happly (K-cup m (suc p) r).2 (z (pinl u))))
+       (\lam v => inv (->*.happly (K-cup m (suc p) r).2 (z (pinr v))))
+       (\lam c => square (\lam u v => ((K-cup m (suc p) r).1 u).1 v) (->*.happly (K-cup m (suc p) r).2) ((K-loopUnit p).1 (a c)) (pmap z (ppglue c))
+                         (K-cup.loop-flip m p r (z (pinl (f c))) (a c)))))
+  \where
+    \func square {U V W : \Type} (H : U -> V -> W) {u0 : U} {w : W} (L : \Pi (v : V) -> H u0 v = w) {v0 v1 : V} (al : u0 = u0) (be : v0 = v1)
+                 {S : w = w} (h : inv (L v0) *> pmap (\lam u => H u v0) al *> L v0 = S)
+      : inv (L v0) *> pmap2 H al be = S *> inv (L v1) \elim v1, be
+      | _, idp => redSusp.rotate (L v0) h
+
+\lemma deltaRaw-cup-left.{u} {A B C : AbGroup.{u}} (m : Pairing A B C) (r p : Nat) {Z U V : \Type u} (f : Z -> U) (g : Z -> V)
+                             (z : Cocycle r (PushoutData f g) A) (a : Cocycle p Z B)
+  : CoHom.classOf (deltaRaw f g (\lam c => (K-sign r (r Nat.+ p)).1 (((K-cup m r p).1 (z (pinr (g c)))).1 (a c))))
+    = cup m r (suc p) (PushoutData f g) (CoHom.classOf z) (CoHom.classOf (deltaRaw f g a))
+  => pmap in0 (funPath (PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+       {deltaRaw f g (\lam c => (K-sign r (r Nat.+ p)).1 (((K-cup m r p).1 (z (pinr (g c)))).1 (a c)))}
+       {\lam x => ((K-cup m r (suc p)).1 (z x)).1 (deltaRaw f g a x)}
+       (\lam u => inv ((K-cup m r (suc p)).1 (z (pinl u))).2)
+       (\lam v => inv ((K-cup m r (suc p)).1 (z (pinr v))).2)
+       (\lam c => square (\lam u v => ((K-cup m r (suc p)).1 u).1 v) (\lam u => ((K-cup m r (suc p)).1 u).2) (pmap z (ppglue c)) ((K-loopUnit p).1 (a c))
+                         (K-cup-loop-right m r p (z (pinr (g c))) (a c)))))
+  \where
+    \func square {U V W : \Type} (H : U -> V -> W) {v0 : V} {w : W} (R : \Pi (u : U) -> H u v0 = w) {u0 u1 : U} (be : u0 = u1) (al : v0 = v0)
+                 {S : w = w} (h : inv (R u1) *> pmap (H u1) al *> R u1 = S)
+      : inv (R u0) *> pmap2 H be al = S *> inv (R u1) \elim u0, be
+      | _, idp => redSusp.rotate (R u1) h

@@ -2,12 +2,17 @@
 \import Algebra.Group.Pairing
 \import Algebra.Ring
 \import Algebra.Ring.DirectSum
+\import Algebra.Ring.RingHom
 \import Arith.Nat
 \import Homotopy.Cohomology
+\import Homotopy.Cohomology.Coefficients
 \import Homotopy.Cohomology.Cup
+\import Homotopy.Cohomology.Functor
+\import Homotopy.Pointed.Mapping (funPath)
 \import Logic
 \import Paths
 \import Paths.Meta
+\import Set
 
 \func cohomologyProduct.{u} (X : \Type u) (R : Ring.{u}) : GradedProduct (\lam n => CoHom n X R) \cowith
   | mul p q => cup (Pairing.mul R) p q X
@@ -26,3 +31,13 @@
 
 \func TotalCoHom.{u} (X : \Type u) (R : Ring.{u}) : Ring.{u}
   => DirectSum (cohomologyProduct X R)
+  \where {
+    \func pullback.{u} {X Y : \Type u} (R : Ring.{u}) (s : X -> Y) : RingHom (TotalCoHom Y R) (TotalCoHom X R)
+      => DirectSum.ringMap {cohomologyProduct Y R} {cohomologyProduct X R} (\lam n => Homotopy.Cohomology.Functor.pullback n s)
+           (\lam p q a b => cup.pullback (Pairing.mul R) p q s a b) idp
+
+    \func coefficients.{u} (X : \Type u) {R R' : Ring.{u}} (f : RingHom R R') : RingHom (TotalCoHom X R) (TotalCoHom X R')
+      => DirectSum.ringMap {cohomologyProduct X R} {cohomologyProduct X R'} (\lam n => mapCoef n X f)
+           (\lam p q a b => cup.coefficients (Pairing.mul R) (Pairing.mul R') f f f (\lam _ _ => f.func-*) p q a b)
+           (pmap in0 (funPath \lam _ => f.func-ide))
+  }

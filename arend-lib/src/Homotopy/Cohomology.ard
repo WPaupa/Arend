@@ -229,4 +229,11 @@
 
     \lemma toPi1-inj.{u} (n : Nat) (X : Pointed.{u}) (A : AbGroup.{u}) : IsInj (toPi1 n X A)
       => IsEquiv.isInj (Trunc0.map-isEquiv (RedCocycle.toLoop n X A).map-isEquiv)
+
+    \func cast.{u} {n m : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (e : n = m) : AddGroupHom (RedCoHom n X A) (RedCoHom m X A) \elim m, e
+      | _, idp => AddGroupHom.id
+      \where
+        \lemma classOf.{u} {n m : Nat} {X : Pointed.{u}} {A : AbGroup.{u}} (e : n = m) (f : RedCocycle n X A)
+          : cast e (RedCoHom.classOf f) = RedCoHom.classOf (K-cast e ->*.∘* f) \elim m, e
+          | _, idp => idp
   }
