@@ -1,0 +1,188 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Data.SeqColimit
+\import Equiv
+\import Equiv.Path
+\import Equiv.Sigma
+\import Logic
+\import Order.PartialOrder
+\import Paths
+\import Paths.Meta
+
+\open SeqColimit
+
+\record SeqMap (S T : Seq)
+  | func (n : Nat) : S.A n -> T.A n
+  | natural (n : Nat) (x : S.A n) : T.f (func n x) = func (suc n) (S.f x)
+  \where {
+    \func id (S : Seq) : SeqMap S S \cowith
+      | func _ x => x
+      | natural _ _ => idp
+
+    \func comp {S T U : Seq} (G : SeqMap T U) (F : SeqMap S T) : SeqMap S U \cowith
+      | func n x => G.func n (F.func n x)
+      | natural n x => G.natural n (F.func n x) *> pmap (G.func (suc n)) (F.natural n x)
+
+    \func Homotopy {S T : Seq} (F G : SeqMap S T)
+      => \Sigma (H : \Pi (n : Nat) (x : S.A n) -> F.func n x = G.func n x)
+                (\Pi (n : Nat) (x : S.A n) -> pmap (T.f {n}) (H n x) *> G.natural n x = F.natural n x *> H (suc n) (S.f x))
+      \where {
+        \func refl {S T : Seq} (F : SeqMap S T) : Homotopy F F
+          => (\lam _ _ => idp, \lam _ _ => idp_*> _)
+
+        \func inverse {S T : Seq} {F G : SeqMap S T} (h : Homotopy F G) : Homotopy G F
+          => (\lam n x => inv (h.1 n x), \lam n x => square-inv (T.f {n}) (h.1 n x) (F.natural n x) (G.natural n x) (h.1 (suc n) (S.f x)) (h.2 n x))
+
+        \func concat {S T : Seq} {F G K : SeqMap S T} (h : Homotopy F G) (k : Homotopy G K) : Homotopy F K
+          => (\lam n x => h.1 n x *> k.1 n x,
+              \lam n x => pmap (`*> _) (pmap_*>-comm (T.f {n}) _ _) *> square-concat (h.2 n x) (k.2 n x))
+
+        \func whisker-left {S T U : Seq} (E : SeqMap T U) {F G : SeqMap S T} (h : Homotopy F G) : Homotopy (comp E F) (comp E G)
+          => (\lam n x => pmap (E.func n) (h.1 n x), \lam n x => square-post (E.func n) (E.func (suc n)) {T.f {n}} {U.f {n}} (\lam y => E.natural n y) (h.1 n x) (h.1 (suc n) (S.f x)) (h.2 n x))
+
+        \func id-left {S T : Seq} (F : SeqMap S T) : Homotopy (comp (id T) F) F
+          => (\lam _ _ => idp, \lam _ _ => idp)
+
+        \func id-right {S T : Seq} (F : SeqMap S T) : Homotopy (comp F (id S)) F
+          => (\lam _ _ => idp, \lam _ _ => idp_*> _)
+
+        \func assoc {R S T U : Seq} (H : SeqMap T U) (G : SeqMap S T) (F : SeqMap R S) : Homotopy (comp (comp H G) F) (comp H (comp G F))
+          => (\lam _ _ => idp, \lam n _ => idp_*> _ *> pmap (_ *>) (pmap_*>-comm (H.func (suc n)) _ _) *> inv (*>-assoc _ _ _))
+
+        \func whisker-right {R S T : Seq} {F G : SeqMap S T} (h : Homotopy F G) (K : SeqMap R S) : Homotopy (comp F K) (comp G K)
+          => (\lam n x => h.1 n (K.func n x), \lam n x => square-pre (h.1 (suc n)) (h.2 n (K.func n x)) (K.natural n x))
+
+        \func square-inv {X Y : \Type} (f : X -> Y) {a b : X} (H : a = b) {c d : Y} (p : f a = c) (q : f b = d) (H' : c = d)
+                         (s : pmap f H *> q = p *> H') : pmap f (inv H) *> p = q *> inv H' \elim H, H'
+          | idp, idp => pmap (idp *>) (inv s) *> idp_*> _ *> idp_*> q
+
+        \func square-concat {Y : \Type} {a b e c d g : Y} {H : a = b} {K : b = e} {p : a = c} {q : b = d} {r : e = g} {H' : c = d} {K' : d = g}
+                            (s : H *> q = p *> H') (t : K *> r = q *> K') : (H *> K) *> r = p *> H' *> K' \elim K, K'
+          | idp, idp => pmap (H *>) (inv (idp_*> r) *> t) *> s
+
+        \func square-post {X Y Z W : \Type} (E : X -> Z) (E' : Y -> W) {f : X -> Y} {g : Z -> W} (En : \Pi (x : X) -> g (E x) = E' (f x))
+                          {a b : X} (H : a = b) {c d : Y} {p : f a = c} {q : f b = d} (H' : c = d) (s : pmap f H *> q = p *> H')
+          : pmap g (pmap E H) *> En b *> pmap E' q = (En a *> pmap E' p) *> pmap E' H' \elim H, H'
+          | idp, idp => idp_*> _ *> pmap (En a *>) (pmap (pmap E') (inv (idp_*> q) *> s))
+
+        \func square-pre {A B : \Type} {F' G' : A -> B} (H1 : \Pi (a : A) -> F' a = G' a) {b0 b1 : B} {L : b0 = b1} {y1 : A}
+                         {Fn : b0 = F' y1} {Gn : b1 = G' y1} (P : L *> Gn = Fn *> H1 y1) {y2 : A} (k : y1 = y2)
+          : L *> Gn *> pmap G' k = (Fn *> pmap F' k) *> H1 y2 \elim k
+          | idp => P
+      }
+  }
+
+\func realize {S T : Seq} (F : SeqMap S T) : SeqColimit S -> SeqColimit T
+  => rec (\lam n x => inSC (F.func n x), \lam n x => pquotSC (F.func n x) *> pmap inSC (F.natural n x))
+  \where {
+    \func id-law {S : Seq} (z : SeqColimit S) : realize (SeqMap.id S) z = z
+      => homotopy (\lam _ _ => idp) (\lam _ _ => idp_*> _) z
+
+    \func comp-law {S T U : Seq} (G : SeqMap T U) (F : SeqMap S T) (z : SeqColimit S)
+      : realize (SeqMap.comp G F) z = realize G (realize F z)
+      => homotopy (\lam _ _ => idp) (\lam _ _ => idp_*> _ *> pmap_*>-comm (realize G) _ _ *> *>-assoc _ _ _
+                                                 *> inv (pmap (_ *>) (pmap_*>-comm inSC _ _))) z
+
+    \func homotopy-law {S T : Seq} {F G : SeqMap S T} (h : SeqMap.Homotopy F G) (z : SeqColimit S) : realize F z = realize G z
+      => homotopy (\lam n x => pmap inSC (h.1 n x)) (\lam n x => square (h.1 n x) (F.natural n x) (G.natural n x) (h.1 (suc n) (S.f x)) (h.2 n x)) z
+      \where
+        \func square {T : Seq} {n : Nat} {a b : T.A n} (h : a = b) {c d : T.A (suc n)} (p : T.f a = c) (q : T.f b = d) (h' : c = d)
+                     (s : pmap (T.f {n}) h *> q = p *> h')
+          : pmap inSC h *> pquotSC b *> pmap inSC q = (pquotSC a *> pmap inSC p) *> pmap inSC h' \elim h, q, h'
+          | idp, idp, idp => rewriteI s (idp_*> _)
+
+    \func coconeEquiv {S T : Seq} (F : SeqMap S T) (e : \Pi (n : Nat) -> IsEquiv (F.func n)) (Z : \Type) : QEquiv {Cocone T Z} {Cocone S Z}
+      => transQEquiv (sigma-right (\lam (h : \Pi (n : Nat) -> T.A n -> Z) => pi-right (\lam n =>
+                       transQEquiv (pi-left {_} {_} {\lam y => h n y = h (suc n) (T.f y)} (IsEquiv.toQEquiv (e n)))
+                                               (pi-right (\lam x => pathConcatEquiv-right {_} {h n (F.func n x)} (pmap (h (suc n)) (F.natural n x)))))))
+                     (sigma-left {_} {_} {\lam h => \Pi (n : Nat) (x : S.A n) -> h n x = h (suc n) (S.f x)}
+                                 (pi-right (\lam n => pi-left {_} {_} {\lam _ => Z} (IsEquiv.toQEquiv (e n)))))
+
+    \func precomp {S T : Seq} (F : SeqMap S T) (e : \Pi (n : Nat) -> IsEquiv (F.func n)) (Z : \Type)
+      : QEquiv {SeqColimit T -> Z} {SeqColimit S -> Z}
+      => transQEquiv (rec.equiv Z) (transQEquiv (coconeEquiv F e Z) (symQEquiv (rec.equiv Z)))
+
+    \func precomp-eq {S T : Seq} (F : SeqMap S T) (e : \Pi (n : Nat) -> IsEquiv (F.func n)) (Z : \Type) (g : SeqColimit T -> Z) (z : SeqColimit S)
+      : precomp F e Z g z = g (realize F z)
+      => pmap (\lam q => rec (\lam n x => g (inSC (F.func n x)), q) z) (ext (\lam _ _ => inv (pmap_*>-comm g _ _)))
+         *> inv (rec.map g _ z)
+
+    \lemma isEquiv.{u} {S T : Seq.{u}} (F : SeqMap S T) (e : \Pi (n : Nat) -> IsEquiv (F.func n)) : IsEquiv (realize F)
+      => precomp=>isEquiv (realize F) (\lam Z => transport IsEquiv (ext (precomp-eq F e Z)) (inP (precomp F e Z)))
+  }
+
+\func shift (S : Seq) (k : Nat) : Seq \cowith
+  | A n => S.A (n Nat.+ k)
+  | f {n} => S.f {n Nat.+ k}
+
+\func tail (S : Seq) (k : Nat) : SeqColimit (shift S k) -> SeqColimit S
+  => rec {shift S k} {SeqColimit S} (\lam n x => inSC {S} {n Nat.+ k} x, \lam n x => pquotSC {S} {n Nat.+ k} x)
+  \where {
+    \func step (S : Seq) : QEquiv (tail S 1) \cowith
+      | ret => back
+      | ret_f => homotopy {_} {_} {\lam z => back (tail S 1 z)} {\lam z => z} (\lam n x => inv (pquotSC {shift S 1} {n} x)) (\lam _ _ => inv_*> _ *> inv (*>_inv _))
+      | f_sec => homotopy {_} {_} {\lam z => tail S 1 (back z)} {\lam z => z} (\lam _ x => inv (pquotSC x)) (\lam _ _ => inv_*> _ *> inv (*>_inv _))
+      \where
+        \func back : SeqColimit S -> SeqColimit (shift S 1)
+          => rec (\lam n x => inSC {shift S 1} {n} (S.f x), \lam n x => pquotSC {shift S 1} {n} (S.f x))
+
+    \lemma isEquiv (S : Seq) (k : Nat) : IsEquiv (tail S k) \elim k
+      | 0 => transport IsEquiv (ext (homotopy {_} {_} {\lam z => z} {tail S 0} (\lam _ _ => idp) (\lam _ _ => idp_*> _)))
+                       (inP idEquiv)
+      | suc k => transport IsEquiv (ext (homotopy {_} {_} {\lam z => tail S k (tail (shift S k) 1 z)} {tail S (suc k)}
+                                                   (\lam _ _ => idp) (\lam _ _ => idp_*> _)))
+                           (IsEquiv.trans (inP (step (shift S k))) (isEquiv S k))
+  }
+
+\func next (S : Seq) : SeqMap S (shift S 1) \cowith
+  | func n => S.f {n}
+  | natural _ _ => idp
+  \where {
+    \func tail-realize (S : Seq) (z : SeqColimit S) : tail S 1 (realize (next S) z) = z
+      => homotopy {_} {_} {\lam z => tail S 1 (realize (next S) z)} {\lam z => z}
+                  (\lam _ x => inv (pquotSC x)) (\lam _ _ => inv_*> _ *> inv (*>_inv _)) z
+
+    \func shiftMap {S T : Seq} (E : SeqMap S T) : SeqMap (shift S 1) (shift T 1) \cowith
+      | func n => E.func (suc n)
+      | natural n => E.natural (suc n)
+
+    \func natural {S T : Seq} (E : SeqMap S T) : SeqMap.Homotopy (SeqMap.comp (next T) E) (SeqMap.comp (shiftMap E) (next S))
+      => (E.natural, \lam _ _ => pmap (`*> _) (inv (idp_*> _)))
+  }
+
+\func const (X : \Type) : Seq \cowith
+  | A _ => X
+  | f x => x
+  \where {
+    \func collapse {X : \Type} : SeqColimit (const X) -> X
+      => rec (\lam _ x => x, \lam _ _ => idp)
+
+    \func toZero {X : \Type} (n : Nat) (x : X) : inSC {const X} {0} x = inSC {const X} {n} x \elim n
+      | 0 => idp
+      | suc n => toZero n x *> pquotSC x
+
+    \func equiv (X : \Type) : QEquiv (inSC {const X} {0}) \cowith
+      | ret => collapse
+      | ret_f _ => idp
+      | f_sec => homotopy {_} {_} {\lam z => inSC {const X} {0} (collapse z)} {\lam z => z} toZero (\lam _ _ => inv (idp_*> _))
+  }
+
+\func iter (S : Seq) (N n : Nat) (x : S.A N) : S.A (n Nat.+ N) \elim n
+  | 0 => x
+  | suc n => S.f (iter S N n x)
+  \where {
+    \func path (S : Seq) (N n : Nat) (x : S.A N) : inSC (iter S N n x) = inSC x \elim n
+      | 0 => idp
+      | suc n => inv (pquotSC (iter S N n x)) *> path S N n x
+
+    \lemma isEquiv {S : Seq} {N : Nat} (e : \Pi (n : Nat) -> N <= n -> IsEquiv (S.f {n})) (n : Nat) : IsEquiv (iter S N n) \elim n
+      | 0 => inP idEquiv
+      | suc n => IsEquiv.trans (isEquiv e n) (e (n Nat.+ N) linarith)
+  }
+
+\lemma stable.{u} (S : Seq.{u}) (N : Nat) (e : \Pi (n : Nat) -> N <= n -> IsEquiv (S.f {n})) : IsEquiv (inSC {S} {N})
+  => IsEquiv.trans (IsEquiv.trans (inP (const.equiv (S.A N))) (realize.isEquiv constMap (iter.isEquiv e))) (tail.isEquiv S N)
+  \where
+    \func constMap : SeqMap (const (S.A N)) (shift S N) \cowith
+      | func => iter S N
+      | natural _ _ => idp

@@ -1,0 +1,34 @@
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.Pushout
+\import Logic
+\import Paths
+
+\func strictStage.{u} (C : CW.{u}) (n : Nat) : \Sigma (T : \Type u) (QEquiv {T} {C.stage n}) \elim n
+  | 0 => (Empty, emptyEquiv (\lam x => x) C.empty)
+  | suc n => (PushoutData (\lam a => (strictStage C n).2.ret (C.attach n a)) (\lam a => a.1),
+              IsEquiv.toQEquiv (PushoutData.congr.isEquiv _ _ (C.attach n) (\lam a => a.1) idEquiv (strictStage C n).2 idEquiv
+                                                          (\lam a => inv ((strictStage C n).2.f_ret (C.attach n a))) (\lam _ => idp))
+                `transQEquiv` C.build n)
+
+\func strict.{u} (C : CW.{u}) : CW.{u} \cowith
+  | stage n => (strictStage C n).1
+  | count => C.count
+  | empty x => x
+  | attach n a => (strictStage C n).2.ret (C.attach n a)
+  | build _ => idEquiv
+  \where {
+    \func map.{u} (C : CW.{u}) : SeqMap (strict C).seq C.seq \cowith
+      | func n => (strictStage C n).2
+      | natural _ _ => idp
+
+    \func equiv.{u} (C : CW.{u}) : QEquiv {CW.Space {strict C}} {C.Space}
+      => IsEquiv.toQEquiv (realize.isEquiv (map C) (\lam n => inP (strictStage C n).2))
+
+    \func structure.{u} {X : \Type u} (s : HasCWStructure X) : HasCWStructure X
+      => (strict s.1, s.2 `transQEquiv` symQEquiv (equiv s.1))
+
+    \func bound.{u} {C : CW.{u}} {d : Nat} (b : C.Bound d) : CW.Bound {strict C} d
+      => b
+  }

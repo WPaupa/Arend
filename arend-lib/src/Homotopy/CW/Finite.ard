@@ -1,0 +1,52 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.Pushout
+\import Logic
+\import Paths
+
+\func discrete (N : Nat) : CW \cowith
+  | stage => discrete.stage N
+  | count => discrete.count N
+  | empty x => x
+  | attach => discrete.attach N
+  | build => discrete.build N
+  \where {
+    \func stage (N n : Nat) : \Type0 \elim n
+      | 0 => Empty
+      | suc _ => Fin N
+
+    \func count (N n : Nat) : Nat \elim n
+      | 0 => N
+      | suc _ => 0
+
+    \func attach (N n : Nat) (a : \Sigma (Fin (count N n)) (boundary n)) : stage N n \elim n
+      | 0 => a.2
+      | suc n => \case a.1 \with {}
+
+    \func build (N n : Nat) : QEquiv {PushoutData (attach N n) (\lam a => a.1)} {stage N (suc n)} \elim n
+      | 0 => symQEquiv (PushoutData.pinr-equiv (\lam x => x))
+      | suc n => symQEquiv (PushoutData.pinl-equiv (\lam (c : Fin 0) => \case c \with {}))
+
+    \lemma bound (N : Nat) : CW.Bound {discrete N} 0
+      => \lam k p => \case \elim k, p \with {
+        | 0, p => absurd linarith
+        | suc _, _ => idp
+      }
+  }
+
+\lemma zero-dim.{u} {X : \Type u} : IsFinCWUpTo 0 X <-> TruncP (\Sigma (N : Nat) (QEquiv {X} {Fin N}))
+  => (\lam c => TruncP.map c (\lam s => (s.1.1.count 0, s.2 `transQEquiv` symQEquiv (CW.stableRealization s.1.2) `transQEquiv` symQEquiv s.1.1.vertices)),
+      \lam t => TruncP.map t (\lam s => ((discrete s.1, discrete.bound s.1), s.2 `transQEquiv` CW.stableRealization (discrete.bound s.1))))
+
+\lemma empty-isFinCW : IsFinCWUpTo 0 Empty
+  => zero-dim.2 (inP (0, emptyEquiv (\lam x => x) (\lam (c : Fin 0) => \case c \with {})))
+
+\lemma unit-isFinCW : IsFinCWUpTo 0 (\Sigma)
+  => zero-dim.2 (inP (1, \new QEquiv {
+       | f _ => 0
+       | ret _ => ()
+       | ret_f _ => idp
+       | f_sec y => \case \elim y \with { | 0 => idp }
+     }))

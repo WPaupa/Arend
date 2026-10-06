@@ -1,0 +1,128 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.Pushout
+\import Homotopy.Sphere
+\import Logic
+\import Order.Biordered
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+\import Paths.Meta
+
+\func boundary (n : Nat) : \Type0 \elim n
+  | 0 => Empty
+  | suc n => Sphere n
+
+\record CW {
+  | stage : Nat -> \Type
+  | count : Nat -> Nat
+  | empty : stage 0 -> Empty
+  | attach (n : Nat) : \Sigma (Fin (count n)) (boundary n) -> stage n
+  | build (n : Nat) : QEquiv {PushoutData (attach n) (\lam p => p.1)} {stage (suc n)}
+
+    \func inclusion (n : Nat) (x : stage n) : stage (suc n) => build n (pinl x)
+
+    \func seq : Seq \cowith
+      | A => stage
+      | f {n} => inclusion n
+
+    \func Space => SeqColimit seq
+
+    \func Bound (d : Nat) => \Pi (k : Nat) -> d < k -> count k = 0
+
+    \lemma zeroCells {n : Nat} (p : count n = 0) : IsEquiv (inclusion n)
+      => IsEquiv.trans (inP (PushoutData.pinl-equiv (\lam c => \case transport Fin p c \with {}))) (inP (build n))
+
+    \func vertices : QEquiv {Fin (count 0)} {stage 1}
+      => PushoutData.pinr-equiv empty `transQEquiv` build 0
+  } \where {
+    \lemma bounded-stable.{u} {C : CW.{u}} {d : Nat} (b : C.Bound d) : IsEquiv (inSC {C.seq} {suc d})
+      => stable C.seq (suc d) (\lam n _ => C.zeroCells (b n linarith))
+
+    \func stableRealization.{u} {C : CW.{u}} {d : Nat} (b : C.Bound d) : QEquiv {C.stage (suc d)} {C.Space}
+      => IsEquiv.toQEquiv (bounded-stable b)
+  }
+
+\func HasCWStructure.{u} (X : \Type u) => \Sigma (C : CW.{u}) (QEquiv {X} {C.Space})
+  \where
+    \func transport.{u} {X Y : \Type u} (e : QEquiv {X} {Y}) (s : HasCWStructure X) : HasCWStructure Y
+      => (s.1, symQEquiv e `transQEquiv` s.2)
+
+\func IsCW.{u} (X : \Type u) => TruncP (HasCWStructure X)
+  \where
+    \lemma transport.{u} {X Y : \Type u} (e : QEquiv {X} {Y}) (c : IsCW X) : IsCW Y
+      => TruncP.map c (HasCWStructure.transport e)
+
+\func FinCWUpTo.{u} (d : Nat) => \Sigma (C : CW.{u}) (C.Bound d)
+  \where {
+    \func raise.{u} {m n : Nat} (p : m <= n) (F : FinCWUpTo.{u} m) : FinCWUpTo.{u} n
+      => (F.1, \lam k n<k => F.2 k (p <∘r n<k))
+
+    \func raise-id.{u} {n : Nat} (F : FinCWUpTo.{u} n) : raise <=-refl F = F
+      => ext idp
+
+    \func raise-comp.{u} {m n k : Nat} (p : m <= n) (q : n <= k) (F : FinCWUpTo.{u} m)
+      : raise q (raise p F) = raise (p <=∘ q) F
+      => ext idp
+
+    \func raise-embedding.{u} {m n : Nat} (p : m <= n) : Embedding (raise.{u} p) \cowith
+      | isEmb _ _ => \new Retraction {
+        | sec q => ext (pmap __.1 q)
+        | f_sec _ => (Embedding.pmap-isEquiv {Embedding.projection (\lam (C : CW.{u}) => C.Bound n)}).isInj idp
+      }
+  }
+
+\func FinCW.{u} => \Sigma (d : Nat) (FinCWUpTo.{u} d)
+
+\func HasFinCWStructureUpTo.{u} (d : Nat) (X : \Type u) => \Sigma (F : FinCWUpTo.{u} d) (QEquiv {X} {CW.Space {F.1}})
+  \where {
+    \func raise.{u} {m n : Nat} (p : m <= n) {X : \Type u} (s : HasFinCWStructureUpTo m X) : HasFinCWStructureUpTo n X
+      => (FinCWUpTo.raise p s.1, s.2)
+
+    \func transport.{u} {d : Nat} {X Y : \Type u} (e : QEquiv {X} {Y}) (s : HasFinCWStructureUpTo d X) : HasFinCWStructureUpTo d Y
+      => (s.1, symQEquiv e `transQEquiv` s.2)
+  }
+
+\func HasFinCWStructure.{u} (X : \Type u) => \Sigma (d : Nat) (HasFinCWStructureUpTo d X)
+
+\func IsFinCWUpTo.{u} (d : Nat) (X : \Type u) => TruncP (HasFinCWStructureUpTo d X)
+  \where {
+    \lemma raise.{u} {m n : Nat} (p : m <= n) {X : \Type u} (c : IsFinCWUpTo m X) : IsFinCWUpTo n X
+      => TruncP.map c (HasFinCWStructureUpTo.raise p)
+
+    \lemma transport.{u} {d : Nat} {X Y : \Type u} (e : QEquiv {X} {Y}) (c : IsFinCWUpTo d X) : IsFinCWUpTo d Y
+      => TruncP.map c (HasFinCWStructureUpTo.transport e)
+
+    \lemma toFinCW.{u} {d : Nat} {X : \Type u} (c : IsFinCWUpTo d X) : IsFinCW X
+      => TruncP.map c (\lam s => (d, s))
+  }
+
+\func IsFinCW.{u} (X : \Type u) => TruncP (HasFinCWStructure X)
+  \where {
+    \lemma toCW.{u} {X : \Type u} (c : IsFinCW X) : IsCW X
+      => TruncP.map c (\lam s => (s.2.1.1, s.2.2))
+
+    \lemma transport.{u} {X Y : \Type u} (e : QEquiv {X} {Y}) (c : IsFinCW X) : IsFinCW Y
+      => TruncP.map c (\lam s => (s.1, HasFinCWStructureUpTo.transport e s.2))
+
+    \lemma bounded-char.{u} {X : \Type u} : IsFinCW X <-> TruncP (\Sigma (d : Nat) (IsFinCWUpTo d X))
+      => (TruncP.map __ (\lam s => (s.1, inP s.2)),
+          \lam t => \case \elim t \with {
+            | inP (d, c) => IsFinCWUpTo.toFinCW c
+          })
+  }
+
+\func FinCWTypesUpTo.{u} (d : Nat) => \Sigma (X : \Type u) (IsFinCWUpTo d X)
+  \where {
+    \func include.{u} {m n : Nat} (p : m <= n) (X : FinCWTypesUpTo.{u} m) : FinCWTypesUpTo.{u} n
+      => (X.1, IsFinCWUpTo.raise p X.2)
+
+    \func include-embedding.{u} {m n : Nat} (p : m <= n) : Embedding (include.{u} p) \cowith
+      | isEmb _ _ => \new Retraction {
+        | sec q => ext (pmap __.1 q)
+        | f_sec _ => (Embedding.pmap-isEquiv {Embedding.projection (\lam (Y : \Type u) => IsFinCWUpTo n Y)}).isInj idp
+      }
+  }

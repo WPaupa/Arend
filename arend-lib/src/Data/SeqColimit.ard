@@ -4,6 +4,7 @@
 \import Homotopy.Fibration
 \import Logic
 \import Paths
+\import Paths.Meta
 
 \record Seq (A : Nat -> \Type) (f : \Pi {n : Nat} -> A n -> A (suc n))
 
@@ -11,6 +12,53 @@
   | inSC {n : Nat} (s.A n)
   | quotSC {n : Nat} (x : s.A n) : inSC x = inSC (s.f x)
   \where {
+    \func pquotSC {s : Seq} {n : Nat} (x : s.A n) : inSC x = {SeqColimit s} inSC (s.f x) => path (quotSC x)
+
+    \func Cocone (s : Seq) (Z : \Type)
+      => \Sigma (h : \Pi (n : Nat) -> s.A n -> Z) (\Pi (n : Nat) (x : s.A n) -> h n x = h (suc n) (s.f x))
+      \where
+        \func dep {s : Seq} (P : SeqColimit s -> \Type)
+          => \Sigma (h : \Pi (n : Nat) (x : s.A n) -> P (inSC x))
+                    (\Pi (n : Nat) (x : s.A n) -> Path (\lam i => P (quotSC x i)) (h n x) (h (suc n) (s.f x)))
+
+    \func rec {s : Seq} {Z : \Type} (c : Cocone s Z) (z : SeqColimit s) : Z \elim z
+      | inSC {n} x => c.1 n x
+      | quotSC {n} x => c.2 n x
+      \where {
+        \func map {s : Seq} {Y Z : \Type} (g : Y -> Z) (c : Cocone s Y) (z : SeqColimit s)
+          : g (rec c z) = rec (\lam n x => g (c.1 n x), \lam n x => pmap g (c.2 n x)) z \elim z
+          | inSC x => idp
+          | quotSC x i => idp
+
+        \func equiv {s : Seq} (Z : \Type) : QEquiv {SeqColimit s -> Z} {Cocone s Z} \cowith
+          | f g => (\lam _ x => g (inSC x), \lam _ x => pmap g (pquotSC x))
+          | ret => rec
+          | ret_f g => ext (\lam z => \case \elim z \return rec (\lam _ x => g (inSC x), \lam _ x => pmap g (pquotSC x)) z = g z \with {
+            | inSC x => idp
+            | quotSC x i => idp
+          })
+          | f_sec _ => idp
+      }
+
+    \func drec {s : Seq} (P : SeqColimit s -> \Type) (c : Cocone.dep P) (z : SeqColimit s) : P z \elim z
+      | inSC {n} x => c.1 n x
+      | quotSC {n} x => c.2 n x
+      \where
+        \func equiv {s : Seq} (P : SeqColimit s -> \Type) : QEquiv {\Pi (z : SeqColimit s) -> P z} {Cocone.dep P} \cowith
+          | f g => (\lam _ x => g (inSC x), \lam _ x => path (\lam i => g (quotSC x i)))
+          | ret => drec P
+          | ret_f g => path (\lam j z => (\case \elim z \return drec P (\lam _ x => g (inSC x), \lam _ x => path (\lam i => g (quotSC x i))) z = g z \with {
+            | inSC x => idp
+            | quotSC x i => idp
+          }) @ j)
+          | f_sec _ => idp
+
+    \func homotopy {s : Seq} {Z : \Type} {F G : SeqColimit s -> Z} (H : \Pi (n : Nat) (x : s.A n) -> F (inSC x) = G (inSC x))
+                   (sq : \Pi (n : Nat) (x : s.A n) -> H n x *> pmap G (pquotSC x) = pmap F (pquotSC x) *> H (suc n) (s.f x))
+                   (z : SeqColimit s) : F z = G z \elim z
+      | inSC {n} x => H n x
+      | quotSC {n} x i => pathOver (transport_path_pmap F G (pquotSC x) (H n x) (H (suc n) (s.f x)) (sq n x)) @ i
+
     -- | The total space of a fibration over a sequential colimit is equivalent to a sequential colimit of fibers of this fibration.
     \func flattening.{u} {s : Seq.{u}} (P : SeqColimit s -> \Type u) : total = (\Sigma (w : SeqColimit s) (P w))
       => QEquiv_= totalSeqColimitLeft *> path TotalSeqColimit *> QEquiv_= totalSeqColimitRight

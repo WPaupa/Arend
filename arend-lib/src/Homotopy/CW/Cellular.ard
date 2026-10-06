@@ -1,0 +1,109 @@
+\import Category (Precat)
+\import Category.Functor (Functor)
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Homotopy.CW
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\open SeqMap.Homotopy (assoc, whisker-left, whisker-right)
+
+\func CellularMap (C D : CW) => SeqMap C.seq D.seq
+
+\func CellularHomotopy {C D : CW} (F G : CellularMap C D)
+  => SeqMap.Homotopy (SeqMap.comp (next D.seq) F) (SeqMap.comp (next D.seq) G)
+  \where {
+    \func refl {C D : CW} (F : CellularMap C D) : CellularHomotopy F F
+      => SeqMap.Homotopy.refl {C.seq} {shift D.seq 1} _
+
+    \func inverse {C D : CW} {F G : CellularMap C D} (h : CellularHomotopy F G) : CellularHomotopy G F
+      => SeqMap.Homotopy.inverse {C.seq} {shift D.seq 1} h
+
+    \func concat {C D : CW} {F G K : CellularMap C D} (h : CellularHomotopy F G) (k : CellularHomotopy G K) : CellularHomotopy F K
+      => SeqMap.Homotopy.concat {C.seq} {shift D.seq 1} h k
+
+    \func ofSeq {C D : CW} {F G : CellularMap C D} (h : SeqMap.Homotopy F G) : CellularHomotopy F G
+      => whisker-left (next D.seq) h
+
+    \func pre {B C D : CW} {F G : CellularMap C D} (h : CellularHomotopy F G) (K : CellularMap B C)
+      : CellularHomotopy (SeqMap.comp F K) (SeqMap.comp G K)
+      => SeqMap.Homotopy.concat {B.seq} {shift D.seq 1} (SeqMap.Homotopy.inverse {B.seq} {shift D.seq 1} (assoc (next D.seq) F K))
+          (SeqMap.Homotopy.concat {B.seq} {shift D.seq 1} (whisker-right {B.seq} {C.seq} {shift D.seq 1} {SeqMap.comp (next D.seq) F} {SeqMap.comp (next D.seq) G} h K) (assoc (next D.seq) G K))
+
+    \func post {C D D' : CW} (E : CellularMap D D') {F G : CellularMap C D} (h : CellularHomotopy F G)
+      : CellularHomotopy (SeqMap.comp E F) (SeqMap.comp E G)
+      => hc (hi (assoc (next D'.seq) E F))
+           (hc (whisker-right {C.seq} {D.seq} {shift D'.seq 1} {SeqMap.comp (next D'.seq) E} {SeqMap.comp (next.shiftMap E) (next D.seq)} (next.natural E) F)
+           (hc (assoc (next.shiftMap E) (next D.seq) F)
+           (hc (whisker-left {C.seq} {shift D.seq 1} {shift D'.seq 1} (next.shiftMap E) {SeqMap.comp (next D.seq) F} {SeqMap.comp (next D.seq) G} h)
+           (hc (hi (assoc (next.shiftMap E) (next D.seq) G))
+           (hc (whisker-right {C.seq} {D.seq} {shift D'.seq 1} {SeqMap.comp (next.shiftMap E) (next D.seq)} {SeqMap.comp (next D'.seq) E}
+                              (SeqMap.Homotopy.inverse {D.seq} {shift D'.seq 1} (next.natural E)) G)
+               (assoc (next D'.seq) E G))))))
+      \where {
+        \func hc {F1 F2 F3 : SeqMap C.seq (shift D'.seq 1)} (p : SeqMap.Homotopy F1 F2) (q : SeqMap.Homotopy F2 F3) : SeqMap.Homotopy F1 F3
+          => SeqMap.Homotopy.concat {C.seq} {shift D'.seq 1} p q
+
+        \func hi {F1 F2 : SeqMap C.seq (shift D'.seq 1)} (p : SeqMap.Homotopy F1 F2) : SeqMap.Homotopy F2 F1
+          => SeqMap.Homotopy.inverse {C.seq} {shift D'.seq 1} p
+      }
+
+    \func realize-homotopy {C D : CW} {F G : CellularMap C D} (h : CellularHomotopy F G) (z : C.Space) : realize F z = realize G z
+      => inv (next.tail-realize D.seq (realize F z))
+         *> pmap (tail D.seq 1) (inv (realize.comp-law (next D.seq) F z)
+                                 *> realize.homotopy-law {C.seq} {shift D.seq 1} {SeqMap.comp (next D.seq) F} {SeqMap.comp (next D.seq) G} h z
+                                 *> realize.comp-law (next D.seq) G z)
+         *> next.tail-realize D.seq (realize G z)
+  }
+
+\func CellularHom (C D : CW) => Quotient {CellularMap C D} (\lam F G => TruncP (CellularHomotopy F G))
+  \where
+    \func comp {B C D : CW} (g : CellularHom C D) (f : CellularHom B C) : CellularHom B D \elim g, f
+      | in~ G, in~ F => in~ (SeqMap.comp G F)
+      | in~ G, ~-equiv F F' r i => ~-equiv _ _ (TruncP.map r (CellularHomotopy.post G)) i
+      | ~-equiv G G' r i, in~ F => ~-equiv _ _ (TruncP.map r (CellularHomotopy.pre __ F)) i
+
+\func CellularHoCat.{u} : Precat CW.{u} \cowith
+  | Hom C D => CellularHom C D
+  | id {C} => in~ (SeqMap.id C.seq)
+  | o => CellularHom.comp
+  | id-left {_} {_} {f} => \case \elim f \with {
+    | in~ F => ~-pequiv (inP (CellularHomotopy.ofSeq (SeqMap.Homotopy.id-left F)))
+  }
+  | id-right {_} {_} {f} => \case \elim f \with {
+    | in~ F => ~-pequiv (inP (CellularHomotopy.ofSeq (SeqMap.Homotopy.id-right F)))
+  }
+  | o-assoc {_} {_} {_} {_} {h} {g} {f} => \case \elim h, \elim g, \elim f \with {
+    | in~ H, in~ G, in~ F => ~-pequiv (inP (CellularHomotopy.ofSeq (assoc H G F)))
+  }
+
+\func MapHom.{u} (X Y : \Type u) => Quotient {X -> Y} (\lam f g => TruncP (\Pi (x : X) -> f x = g x))
+  \where
+    \func comp.{u} {X Y Z : \Type u} (g : MapHom Y Z) (f : MapHom X Y) : MapHom X Z \elim g, f
+      | in~ g, in~ f => in~ (\lam x => g (f x))
+      | in~ g, ~-equiv f f' r i => ~-equiv _ _ (TruncP.map r (\lam h x => pmap g (h x))) i
+      | ~-equiv g g' r i, in~ f => ~-equiv _ _ (TruncP.map r (\lam h x => h (f x))) i
+
+\func HoTypes.{u} : Precat (\Type u) \cowith
+  | Hom => MapHom
+  | id => in~ (\lam x => x)
+  | o => MapHom.comp
+  | id-left {_} {_} {f} => \case \elim f \with {
+    | in~ f => idp
+  }
+  | id-right {_} {_} {f} => \case \elim f \with {
+    | in~ f => idp
+  }
+  | o-assoc {_} {_} {_} {_} {h} {g} {f} => \case \elim h, \elim g, \elim f \with {
+    | in~ h, in~ g, in~ f => idp
+  }
+
+\func realizeFunctor.{u} : Functor CellularHoCat.{u} HoTypes.{u} \cowith
+  | F C => C.Space
+  | Func => Quotient.map realize (\lam {F} {G} r => TruncP.map r (CellularHomotopy.realize-homotopy {_} {_} {F} {G}))
+  | Func-id => ~-pequiv (inP realize.id-law)
+  | Func-o {_} {_} {_} {g} {f} => \case \elim g, \elim f \with {
+    | in~ G, in~ F => ~-pequiv (inP (realize.comp-law G F))
+  }

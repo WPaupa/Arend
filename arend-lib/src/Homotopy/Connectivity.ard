@@ -3,11 +3,15 @@
      ``n = 1`` is ordinary connectedness. The same shift applies to {isNConnectedMap} and {isNTruncatedMap}.
  -}
 
+\import Algebra.Meta
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
 \import Equiv
 \import Equiv.Path
 \import Equiv.Sigma
 \import Homotopy.Connected
 \import Homotopy.Fibration
+\import Homotopy.Pushout
 \import Homotopy.HLevel
 \import Arith.Nat
 \import Homotopy.Join
@@ -183,3 +187,55 @@
        | ret_f _ => idp
        | f_sec => trunc-unique (Trunc_-1+.level n A) (\lam t => inT (r t)) (\lam t => t) (\lam _ => idp)
      }
+
+-- | The HoTT book, Lemma 7.5.7.
+\lemma nconnected-ext.{u} {n : Nat} {A B : \Type u} {f : A -> B} (c : isNConnectedMap n f)
+                          (P : B -> \Type u) (lv : \Pi (b : B) -> P b ofHLevel_-1+ n)
+  : IsEquiv {\Pi (b : B) -> P b} {\Pi (a : A) -> P (f a)} (\lam s a => s (f a))
+  => connected_depEquiv {truncUniverse n} f c (\lam b => \new Local {truncUniverse n} (P b) (lv b))
+
+-- | The HoTT book, Lemma 7.5.7, (iii) implies (i).
+\lemma section=>nconnected.{u} (n : Nat) {A B : \Type u} (f : A -> B)
+  (s : \Pi (P : B -> \Type u) (lv : \Pi (b : B) -> P b ofHLevel_-1+ n) (g : \Pi (a : A) -> P (f a))
+         -> \Sigma (h : \Pi (b : B) -> P b) (\Pi (a : A) -> h (f a) = g a))
+  : isNConnectedMap n f
+  => propExt.conv (nconnected-map-fibers n f) \lam b =>
+      \let t => s (\lam b => Trunc_-1+ n (Fib f b)) (\lam b => isTruncated {Trunc_-1+.level n (Fib f b)}) (\lam a => inT (a, idp))
+      \in Contr.make (t.1 b) (Trunc_-1+.elim (\lam y => \new Truncated_-1+ n (t.1 b = y) (HLevel_-1_suc (isTruncated {Trunc_-1+.level n (Fib f b)}) _ _))
+                                             (\lam z => Jl (\lam b' p => t.1 b' = inT (z.1, p)) (t.2 z.1) z.2))
+
+\lemma nconnected-map-comp.{u} {n : Nat} {A B C : \Type u} {f : A -> B} {g : B -> C}
+                               (cf : isNConnectedMap n f) (cg : isNConnectedMap n g) : isNConnectedMap n (\lam a => g (f a))
+  => section=>nconnected n _ \lam P lv h =>
+      \let r => IsEquiv.splitSurj (IsEquiv.trans (nconnected-ext cg P lv) (nconnected-ext cf (\lam b => P (g b)) (\lam b => lv (g b)))) h
+      \in (r.1, \lam a => path ((r.2 @ __) a))
+
+-- | The HoTT book, Lemma 7.5.12.
+\lemma nconnected-pinl.{u} {n : Nat} {A B C : \Type u} (f : A -> B) {g : A -> C} (c : isNConnectedMap n g)
+  : isNConnectedMap n (pinl {A} {B} {C} {f} {g})
+  => section=>nconnected n pinl \lam P lv s =>
+      \let r => IsEquiv.splitSurj (nconnected-ext c (\lam c => P (pinr c)) (\lam c => lv (pinr c))) (\lam a => transport P (PushoutData.ppglue a) (s (f a)))
+      \in (PushoutData.drec P s r.1 (\lam a => pathOver (inv (path ((r.2 @ __) a)))), \lam _ => idp)
+
+\lemma nconnected-proj.{u} {n : Nat} {C : \Type u} (F : C -> \Type u) (c : \Pi (x : C) -> isNConnectedType n (F x))
+  : isNConnectedMap n (\lam (t : \Sigma (x : C) (F x)) => t.1)
+  => \lam x => nconnected-equiv n (symQEquiv (proj-fib F x)) (c x)
+
+\lemma nconnected-seqColimit.{u} {n : Nat} (S : Seq.{u}) (N : Nat) (c : \Pi (k : Nat) -> N <= k -> isNConnectedMap n (S.f {k}))
+  : isNConnectedMap n (inSC {S} {N})
+  => nconnected-map-comp-left n (IsEquiv.toQEquiv (tail.isEquiv S N)) (zero (shift S N) (\lam k => c (k Nat.+ N) linarith))
+  \where {
+    \lemma zero.{u} {n : Nat} (S : Seq.{u}) (c : \Pi (k : Nat) -> isNConnectedMap n (S.f {k})) : isNConnectedMap n (inSC {S} {0})
+      => section=>nconnected.{u} n (inSC {S} {0}) \lam P lv s0 =>
+          (SeqColimit.drec P (extend c P lv s0, \lam k x => pathOver (inv (path ((IsEquiv.f_ret (stepEquiv c P lv k) @ __) x)))), \lam _ => idp)
+
+    \lemma stepEquiv.{u} {n : Nat} {S : Seq.{u}} (c : \Pi (k : Nat) -> isNConnectedMap n (S.f {k}))
+                         (P : SeqColimit S -> \Type u) (lv : \Pi (z : SeqColimit S) -> P z ofHLevel_-1+ n) (k : Nat)
+      => nconnected-ext (c k) (\lam y => P (inSC y)) (\lam y => lv (inSC y))
+
+    \func extend.{u} {n : Nat} {S : Seq.{u}} (c : \Pi (k : Nat) -> isNConnectedMap n (S.f {k}))
+                     (P : SeqColimit S -> \Type u) (lv : \Pi (z : SeqColimit S) -> P z ofHLevel_-1+ n)
+                     (s0 : \Pi (x : S.A 0) -> P (inSC x)) (k : Nat) : \Pi (x : S.A k) -> P (inSC x) \elim k
+      | 0 => s0
+      | suc k => IsEquiv.ret (stepEquiv c P lv k) (\lam x => transport P (SeqColimit.pquotSC x) (extend c P lv s0 k x))
+  }

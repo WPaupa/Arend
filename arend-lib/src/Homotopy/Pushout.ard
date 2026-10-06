@@ -91,6 +91,18 @@
       | pinr b => hr b
       | pglue c i => pathOver (transport_path_pmap F G (ppglue c) (hl (u c)) (hr (v c)) (hg c)) @ i
 
+    \func pinl-equiv {A B C : \Type} {f : A -> B} {g : A -> C} (e : C -> Empty) : QEquiv (pinl {A} {B} {C} {f} {g}) \cowith
+      | ret => rec (\lam b => b) (\lam c => absurd (e c)) (\lam a => absurd (e (g a)))
+      | ret_f _ => idp
+      | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam x => pinl (rec (\lam b => b) (\lam c => absurd (e c)) (\lam a => absurd (e (g a))) x)} {\lam x => x}
+                          (\lam _ => idp) (\lam c => absurd (e c)) (\lam a => absurd (e (g a)))
+
+    \func pinr-equiv {A B C : \Type} {f : A -> B} {g : A -> C} (e : B -> Empty) : QEquiv (pinr {A} {B} {C} {f} {g}) \cowith
+      | ret => rec (\lam b => absurd (e b)) (\lam c => c) (\lam a => absurd (e (f a)))
+      | ret_f _ => idp
+      | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam x => pinr (rec (\lam b => absurd (e b)) (\lam c => c) (\lam a => absurd (e (f a))) x)} {\lam x => x}
+                          (\lam b => absurd (e b)) (\lam _ => idp) (\lam a => absurd (e (f a)))
+
     -- | Congruence of pushouts along an equivalence of spans.
     \func congr {J A B J' A' B' : \Type} (u : J -> A) (v : J -> B) (u' : J' -> A') (v' : J' -> B')
                     (eJ : J -> J') (eA : A -> A') (eB : B -> B')

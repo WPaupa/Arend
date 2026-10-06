@@ -1,0 +1,97 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Data.Bool
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.Pushout
+\import Logic
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+
+\func cap (n d : Nat) : Nat \elim n, d
+  | 0, _ => 0
+  | suc _, 0 => 1
+  | suc n, suc d => suc (cap n d)
+  \where {
+    \func top (d : Nat) : cap (suc d) d = suc d \elim d
+      | 0 => idp
+      | suc d => pmap suc (top d)
+
+    \func keep-cap {n d : Nat} (p : keep n d = true) : cap n d = n \elim n, d, p
+      | 0, _, _ => idp
+      | suc n, suc d, p => pmap suc (keep-cap p)
+
+    \func keep-cap-suc {n d : Nat} (p : keep n d = true) : cap (suc n) d = suc n \elim n, d, p
+      | 0, 0, _ => idp
+      | 0, suc d, _ => idp
+      | suc n, suc d, p => pmap suc (keep-cap-suc p)
+
+    \func drop-cap {n d : Nat} (p : keep n d = false) : cap n d = suc d \elim n, d, p
+      | suc n, 0, _ => idp
+      | suc n, suc d, p => pmap suc (drop-cap p)
+
+    \func drop-cap-suc {n d : Nat} (p : keep n d = false) : cap (suc n) d = suc d \elim n, d, p
+      | suc n, 0, _ => idp
+      | suc n, suc d, p => pmap suc (drop-cap-suc p)
+  }
+
+\func keep (n d : Nat) : Bool \elim n, d
+  | 0, _ => true
+  | suc _, 0 => false
+  | suc n, suc d => keep n d
+  \where
+    \lemma above {n d : Nat} (_ : d < n) : keep n d = false \elim n, d
+      | 0, _ => absurd linarith
+      | suc n, 0 => idp
+      | suc n, suc d => above linarith
+
+\func freeze (C : CW) (d : Nat) : CW \cowith
+  | stage n => C.stage (cap n d)
+  | count n => if (keep n d) (C.count n) 0
+  | empty => C.empty
+  | attach n => att n (keep n d) idp
+  | build n => bld n (keep n d) idp
+  \where {
+    \func att (n : Nat) (b : Bool) (p : keep n d = b) : \Sigma (Fin (if b (C.count n) 0)) (boundary n) -> C.stage (cap n d) \elim b
+      | true => \lam a => transport C.stage (inv (cap.keep-cap p)) (C.attach n a)
+      | false => \lam a => \case a.1 \with {}
+
+    \func bld (n : Nat) (b : Bool) (p : keep n d = b) : QEquiv {PushoutData (att n b p) (\lam a => a.1)} {C.stage (cap (suc n) d)} \elim b
+      | true => buildTrans (cap.keep-cap p) (cap.keep-cap-suc p)
+      | false => symQEquiv (PushoutData.pinl-equiv (\lam (c : Fin 0) => \case c \with {})) `transQEquiv` stageEquiv (cap.drop-cap p *> inv (cap.drop-cap-suc p))
+
+    \func buildTrans {n m m' : Nat} (p : m = n) (q : m' = suc n)
+      : QEquiv {PushoutData (\lam a => transport C.stage (inv p) (C.attach n a)) (\lam a => a.1)} {C.stage m'} \elim p, q
+      | idp, idp => C.build n
+
+    \func stageEquiv {m m' : Nat} (q : m = m') : QEquiv {C.stage m} {C.stage m'} \elim q
+      | idp => idEquiv
+
+    \lemma bound : CW.Bound {freeze C d} d
+      => \lam k p => pmap (if __ (C.count k) 0) (keep.above p)
+  }
+
+\func skeletonEquiv.{u} (C : CW.{u}) (d : Nat) : QEquiv {C.stage (suc d)} {CW.Space {freeze C d}}
+  => transQEquiv {_} {C.stage (cap (suc d) d)} (freeze.stageEquiv (inv (cap.top d))) (CW.stableRealization (freeze.bound {C} {d}))
+
+\func skeleton.{u} (C : CW.{u}) (d : Nat) (z : CW.Space {freeze C d}) : C.Space
+  => inSC {C.seq} {suc d} ((skeletonEquiv C d).ret z)
+
+\func hasFiniteSkeleton.{u} (C : CW.{u}) (d : Nat) : HasFinCWStructureUpTo d (C.stage (suc d))
+  => ((freeze C d, freeze.bound), skeletonEquiv C d)
+
+\lemma isFiniteSkeleton.{u} (C : CW.{u}) (d : Nat) : IsFinCWUpTo d (C.stage (suc d))
+  => inP (hasFiniteSkeleton C d)
+
+\func skeletonInclusion (C : CW) (d k : Nat) : C.stage (suc d) -> C.stage (suc (k Nat.+ d))
+  => iter C.seq (suc d) k
+  \where {
+    \func comm (C : CW) (d k : Nat) (x : C.stage (suc d)) : inSC (skeletonInclusion C d k x) = inSC x
+      => iter.path C.seq (suc d) k x
+
+    \lemma bounded {C : CW} {d : Nat} (b : C.Bound d) (k : Nat) : IsEquiv (skeletonInclusion C d k)
+      => iter.isEquiv (\lam n _ => C.zeroCells (b n linarith)) k
+  }

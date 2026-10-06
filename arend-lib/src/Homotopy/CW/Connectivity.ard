@@ -1,0 +1,28 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Data.SeqColimit
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.Connectivity
+\import Homotopy.Sphere
+\import Homotopy.Whitehead.Connected
+\import Logic
+\import Order.PartialOrder
+\import Paths
+
+\lemma attach-nconnected.{u} {C : CW.{u}} (n : Nat) : isNConnectedMap n (C.inclusion (suc n))
+  => nconnected-map-comp-left n (C.build (suc n))
+      (nconnected-pinl (C.attach (suc n)) (nconnected-proj (\lam _ => Sphere n) (\lam _ => sphere-nconnected.{u} n)))
+
+\lemma skeleton-nconnected.{u} (C : CW.{u}) (d : Nat) : isNConnectedMap d (inSC {C.seq} {suc d})
+  => nconnected-seqColimit C.seq (suc d) step
+  \where
+    \lemma step (k : Nat) (_ : suc d <= k) : isNConnectedMap d (C.inclusion k) \elim k
+      | 0 => absurd linarith
+      | suc k => nconnected-map-mono linarith (attach-nconnected k)
+
+\lemma skeleton-trunc-equiv.{u} (C : CW.{u}) (d : Nat) : IsEquiv (TruncMap d (inSC {C.seq} {suc d}))
+  => nconnected-map=>trunc-equiv _ (skeleton-nconnected C d)
+
+\lemma vertices-surj.{u} (C : CW.{u}) (x : C.Space) : TruncP (\Sigma (v : C.stage 1) (inSC v = x))
+  => transport (\lam P => P) (nconnected0-iff-surj _) (skeleton-nconnected C 0) x
