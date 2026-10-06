@@ -75,7 +75,7 @@
   }
 
 \func skeletonEquiv.{u} (C : CW.{u}) (d : Nat) : QEquiv {C.stage (suc d)} {CW.Space {freeze C d}}
-  => transQEquiv {_} {C.stage (cap (suc d) d)} (freeze.stageEquiv (inv (cap.top d))) (CW.stableRealization (freeze.bound {C} {d}))
+  => transQEquiv {_} {C.stage (cap (suc d) d)} (freeze.stageEquiv (inv (cap.top d))) (RelCW.stableRealization (freeze.bound {C} {d}))
 
 \func skeleton.{u} (C : CW.{u}) (d : Nat) (z : CW.Space {freeze C d}) : C.Space
   => inSC {C.seq} {suc d} ((skeletonEquiv C d).ret z)

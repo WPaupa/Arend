@@ -37,8 +37,8 @@
   }
 
 \lemma zero-dim.{u} {X : \Type u} : IsFinCWUpTo 0 X <-> TruncP (\Sigma (N : Nat) (QEquiv {X} {Fin N}))
-  => (\lam c => TruncP.map c (\lam s => (s.1.1.count 0, s.2 `transQEquiv` symQEquiv (CW.stableRealization s.1.2) `transQEquiv` symQEquiv s.1.1.vertices)),
-      \lam t => TruncP.map t (\lam s => ((discrete s.1, discrete.bound s.1), s.2 `transQEquiv` CW.stableRealization (discrete.bound s.1))))
+  => (\lam c => TruncP.map c (\lam s => (s.1.1.count 0, s.2 `transQEquiv` symQEquiv (RelCW.stableRealization s.1.2) `transQEquiv` symQEquiv s.1.1.vertices)),
+      \lam t => TruncP.map t (\lam s => ((discrete s.1, discrete.bound s.1), s.2 `transQEquiv` RelCW.stableRealization (discrete.bound s.1))))
 
 \lemma empty-isFinCW : IsFinCWUpTo 0 Empty
   => zero-dim.2 (inP (0, emptyEquiv (\lam x => x) (\lam (c : Fin 0) => \case c \with {})))
@@ -50,3 +50,60 @@
        | ret_f _ => idp
        | f_sec y => \case \elim y \with { | 0 => idp }
      }))
+
+-- | After ``Cubical/CW/Instances`` in the cubical library.
+\lemma finiteCWInduction.{u} (P : \Type u -> \Prop) (equivInvariant : \Pi {X Y : \Type u} -> QEquiv {X} {Y} -> P X -> P Y)
+                             (emptyCase : P Empty) (unitCase : P (\Sigma))
+                             (pushoutCase : \Pi {A B E : \Type u} (f : A -> B) (g : A -> E) -> P A -> P B -> P E -> P (PushoutData f g))
+                             {X : \Type u} (c : IsFinCW X) : P X
+  => CWMotive.induction {\new CWMotive P equivInvariant emptyCase unitCase pushoutCase} c
+
+\record CWMotive.{u} (P : \Type u -> \Prop) {
+  | equivInvariant {X Y : \Type u} : QEquiv {X} {Y} -> P X -> P Y
+  | emptyCase : P Empty
+  | unitCase : P (\Sigma)
+  | pushoutCase {A B E : \Type u} (f : A -> B) (g : A -> E) : P A -> P B -> P E -> P (PushoutData f g)
+
+  \lemma sphere (n : Nat) : P (boundary n) \elim n
+    | 0 => emptyCase
+    | 1 => pushoutCase (\lam (_ : Empty) => ()) (\lam _ => ()) emptyCase unitCase unitCase
+    | suc (suc n) => pushoutCase (\lam _ => ()) (\lam _ => ()) (sphere (suc n)) unitCase unitCase
+
+  \lemma copies {Y : \Type u} (p : P Y) (c : Nat) : P (\Sigma (Fin c) Y) \elim c
+    | 0 => equivInvariant (emptyEquiv (\lam x => x) (\lam (t : \Sigma (Fin 0) Y) => \case t.1 \with {})) emptyCase
+    | suc c => equivInvariant (coproduct Y c) (pushoutCase (\lam e => absurd e) (\lam e => absurd e) emptyCase p (copies p c))
+
+  \lemma stage (C : CW.{u}) (n : Nat) : P (C.stage n) \elim n
+    | 0 => equivInvariant (emptyEquiv (\lam x => x) C.empty) emptyCase
+    | suc n => equivInvariant (C.build n) (pushoutCase (C.attach n) (\lam p => p.1) (copies (sphere n) (C.count n)) (stage C n)
+                                                      (equivInvariant fin (copies unitCase (C.count n))))
+
+  \lemma induction {X : \Type u} (c : IsFinCW X) : P X \elim c
+    | inP (d, ((C, b), e)) => equivInvariant (symQEquiv e) (equivInvariant (RelCW.stableRealization b) (stage C (suc d)))
+} \where {
+  \func fin {c : Nat} : QEquiv {\Sigma (Fin c) (\Sigma)} {Fin c} \cowith
+    | f t => t.1
+    | ret j => (j, ())
+    | ret_f _ => idp
+    | f_sec _ => idp
+
+  \func coproduct (Y : \Type) (c : Nat)
+    : QEquiv {PushoutData {Empty} {Y} {\Sigma (Fin c) Y} (\lam e => absurd e) (\lam e => absurd e)} {\Sigma (Fin (suc c)) Y} \cowith
+    | f => merge
+    | ret => split
+    | ret_f => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam z => split (merge z)} {\lam z => z}
+                                    (\lam _ => idp) (\lam _ => idp) (\lam e => absurd e)
+    | f_sec => split-sec
+    \where {
+      \func merge (z : PushoutData {Empty} {Y} {\Sigma (Fin c) Y} (\lam e => absurd e) (\lam e => absurd e)) : \Sigma (Fin (suc c)) Y
+        => PushoutData.rec {Empty} {Y} {\Sigma (Fin c) Y} {_} {_} {\Sigma (Fin (suc c)) Y} (\lam y => (0, y)) (\lam t => (suc t.1, t.2)) (\lam e => absurd e) z
+
+      \func split (t : \Sigma (Fin (suc c)) Y) : PushoutData {Empty} {Y} {\Sigma (Fin c) Y} (\lam e => absurd e) (\lam e => absurd e) \elim t
+        | (0, y) => pinl y
+        | (suc j, y) => pinr (j, y)
+
+      \func split-sec (t : \Sigma (Fin (suc c)) Y) : merge (split t) = t \elim t
+        | (0, y) => idp
+        | (suc j, y) => idp
+    }
+}

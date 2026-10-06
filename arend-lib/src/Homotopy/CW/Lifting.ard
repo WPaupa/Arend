@@ -2,6 +2,7 @@
 \import Arith.Nat
 \import Data.SeqColimit
 \import Equiv
+\import Equiv.Sigma
 \import Homotopy.CW
 \import Homotopy.Connectivity
 \import Homotopy.Fibration
@@ -12,6 +13,7 @@
 \import Logic.Unique
 \import Order.PartialOrder
 \import Paths
+\import Paths.Meta
 \import Set.Fin
 
 \lemma sphereFill.{u} {T : \Type u} (r : Nat) (c : isNConnectedType r T) (h : boundary r -> T)
@@ -27,29 +29,86 @@
       => TruncP.map p \lam q => (h south, PushoutData.homotopy {_} {_} {_} {_} {_} {_} {h} {\lam _ => h south}
                                                                (\lam _ => q.1) (\lam _ => idp) (\lam a => inv (q.2 a)))
 
-\lemma finiteLift.{u} {C : CW.{u}} {d : Nat} (b : C.Bound d) {Y Z : \Type u} (f : Y -> Z) (c : isNConnectedMap d f) (g : C.Space -> Z)
-  : TruncP (\Sigma (l : C.Space -> Y) (\Pi (x : C.Space) -> f (l x) = g x))
+\func Extension {R : RelCW} (n : Nat) (Q : R.stage (suc n) -> \Type) (old : \Pi (x : R.stage n) -> Q (R.inclusion n x))
+  => \Sigma (s : \Pi (y : R.stage (suc n)) -> Q y) (\Pi (x : R.stage n) -> s (R.inclusion n x) = old x)
+  \where {
+    \func Fillers {R : RelCW} (n : Nat) (Q : R.stage (suc n) -> \Type) (old : \Pi (x : R.stage n) -> Q (R.inclusion n x)) (c : Fin (R.count n))
+      => \Sigma (z : Q (R.build n (pinr c)))
+                (\Pi (s : boundary n) -> transport (\lam y => Q (R.build n y)) (PushoutData.ppglue (c,s)) (old (R.attach n (c,s))) = z)
+
+    \func fromFillers {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
+                      (F : \Pi (c : Fin (R.count n)) -> Fillers n Q old c) : Extension n Q old
+      => \let | t => PushoutData.drec (\lam y => Q (R.build n y)) old (\lam c => (F c).1) (\lam a => pathOver ((F a.1).2 a.2))
+              | e => pi-left {_} {_} {Q} (R.build n)
+         \in (e.ret t, \lam x => path ((e.f_sec t @ __) (pinl x)))
+
+    \func toFillers {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
+                    (E : Extension n Q old) (c : Fin (R.count n)) : Fillers n Q old c
+      => (E.1 (R.build n (pinr c)),
+          \lam s => pmap (transport (\lam y => Q (R.build n y)) (PushoutData.ppglue (c,s))) (inv (E.2 (R.attach n (c,s))))
+                    *> pmapd (\lam y => E.1 (R.build n y)) (PushoutData.ppglue (c,s)))
+
+    \lemma criterion {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
+      : TruncP (Extension n Q old) <-> (\Pi (c : Fin (R.count n)) -> TruncP (Fillers n Q old c))
+      => (\lam t c => TruncP.map t (toFillers __ c), \lam h => TruncP.map (FinSet.finiteAC h) fromFillers)
+
+    \lemma connected.{u} {R : RelCW.{u}} (n : Nat) (Q : R.stage (suc n) -> \Type u)
+                         (conn : \Pi (c : Fin (R.count n)) -> isNConnectedType n (Q (R.build n (pinr c))))
+                         (old : \Pi (x : R.stage n) -> Q (R.inclusion n x)) : TruncP (Extension n Q old)
+      => (criterion {R} {n} {Q} {old}).2 (\lam c => sphereFill n (conn c) _)
+  }
+
+\lemma relativeLift.{u} {R : RelCW.{u}} {d : Nat} (b : R.Bound d) {Y Z : \Type u} (f : Y -> Z) (c : isNConnectedMap d f) (g : R.Space -> Z)
+                        (a0 : \Pi (x : R.stage 0) -> Fib f (g (inSC x)))
+  : TruncP (\Sigma (s : \Pi (z : R.Space) -> Fib f (g z)) (\Pi (x : R.stage 0) -> s (inSC x) = a0 x))
   => \case stageSection (suc d) <=-refl \with {
-    | inP s => \let | e => CW.stableRealization b
-                    | t (z : C.Space) => transport P (e.f_ret z) (s (e.ret z))
-               \in inP (\lam z => (t z).1, \lam z => (t z).2)
+    | inP (t, r) => \let | e => pi-left {_} {_} {P} (RelCW.stableRealization b)
+                    \in inP (e.ret t, \lam x => path ((relDown (e.ret t) 0 (suc d) (transport (Rel (suc d)) (inv (e.f_sec t)) r) @ __) x))
   }
   \where {
-    \func P (z : C.Space) => Fib f (g z)
+    \func P (z : R.Space) => Fib f (g z)
 
-    \lemma stageSection (k : Nat) (_ : k <= suc d) : TruncP (\Pi (x : C.stage k) -> P (inSC x)) \elim k
-      | 0 => inP (\lam x => absurd (C.empty x))
+    \func down {k : Nat} (t : \Pi (x : R.stage (suc k)) -> P (inSC x)) (x : R.stage k) : P (inSC x)
+      => transport P (inv (SeqColimit.pquotSC x)) (t (R.inclusion k x))
+
+    \func downs (k : Nat) (t : \Pi (x : R.stage k) -> P (inSC x)) : \Pi (x : R.stage 0) -> P (inSC x) \elim k
+      | 0 => t
+      | suc k => downs k (down t)
+
+    \func Rel (k : Nat) (t : \Pi (x : R.stage k) -> P (inSC x)) => downs k t = a0
+
+    \func relDown (s : \Pi (z : R.Space) -> P z) (k j : Nat) (r : Rel (j Nat.+ k) (\lam x => s (inSC x))) : Rel k (\lam x => s (inSC x)) \elim j
+      | 0 => r
+      | suc j => relDown s k j (transport (Rel (j Nat.+ k)) (ext (\lam x => pmapd s (inv (SeqColimit.pquotSC x)))) r)
+
+    \lemma stageSection (k : Nat) (_ : k <= suc d) : TruncP (\Sigma (t : \Pi (x : R.stage k) -> P (inSC x)) (Rel k t)) \elim k
+      | 0 => inP (a0, idp)
       | suc k => \case stageSection k linarith \with {
-        | inP s =>
-          \let | Q (y : PushoutData (C.attach k) (\lam p => p.1)) => P (inSC (C.build k y))
-               | left (x : C.stage k) : Q (pinl x) => transport P (SeqColimit.pquotSC x) (s x)
-          \in \case FinSet.finiteAC (\lam j => sphereFill k (nconnected-mono linarith (c (g (inSC (C.build k (pinr j))))))
-                                                     (\lam s => transport Q (PushoutData.ppglue (j, s)) (left (C.attach k (j, s))))) \with {
-            | inP F => \let t => PushoutData.drec Q left (\lam j => (F j).1) (\lam a => pathOver ((F a.1).2 a.2))
-                       \in inP (\lam x => transport (\lam y => P (inSC y)) ((C.build k).f_ret x) (t ((C.build k).ret x)))
-          }
+        | inP (t, r) => TruncP.map (Extension.connected k (\lam y => P (inSC y)) (\lam _ => nconnected-mono linarith (c _))
+                                                        (\lam x => transport P (SeqColimit.pquotSC x) (t x)))
+            (\lam E => (E.1, transport (Rel k) (inv (ext (\lam x => pmap (transport P _) (E.2 x) *> transport_inv_id P _ _))) r))
       }
   }
+
+\lemma relativeLiftStructure.{u} {d : Nat} {A X Y Z : \Type u} {i : A -> X} (S : RelativeStructure i) (b : S.1.Bound d)
+                                 (f : Y -> Z) (c : isNConnectedMap d f) (g : X -> Z) (a : A -> Y) (hA : \Pi (x : A) -> f (a x) = g (i x))
+  : TruncP (\Sigma (s : \Pi (x : X) -> Fib f (g x)) (\Pi (x : A) -> s (i x) = (a x, hA x)))
+  => \let | e0 => pi-left {_} {_} {\lam x' => Fib f (g (S.3 (inSC x')))} S.2
+          | a0 => e0.ret (\lam x => (a x, hA x *> inv (pmap g (S.4 x))))
+     \in TruncP.map (relativeLift b f c (\lam z => g (S.3 z)) a0) \lam L =>
+          \let e => pi-left {_} {_} {\lam x => Fib f (g x)} S.3
+          \in (e.ret L.1, \lam x => inv (pmapd (e.ret L.1) (S.4 x))
+                                    *> pmap (transport (\lam x => Fib f (g x)) (S.4 x)) (path ((e.f_sec L.1 @ __) (inSC (S.2 x))) *> L.2 (S.2 x)
+                                                                                         *> path ((e0.f_sec _ @ __) x))
+                                    *> fiber-transport (S.4 x))
+  \where
+    \func fiber-transport {X Y Z : \Type} {f : Y -> Z} {g : X -> Z} {x x' : X} (p : x = x') {y : Y} {q : f y = g x'}
+      : transport (\lam x => Fib f (g x)) p (y, q *> inv (pmap g p)) = (y, q) \elim p
+      | idp => idp
+
+\lemma finiteLift.{u} {C : CW.{u}} {d : Nat} (b : C.Bound d) {Y Z : \Type u} (f : Y -> Z) (c : isNConnectedMap d f) (g : C.Space -> Z)
+  : TruncP (\Sigma (l : C.Space -> Y) (\Pi (x : C.Space) -> f (l x) = g x))
+  => TruncP.map (relativeLift b f c g (\lam x => absurd (C.empty x))) \lam S => (\lam z => (S.1 z).1, \lam z => (S.1 z).2)
 
 \lemma finiteLiftProperty.{u} {d : Nat} {X Y Z : \Type u} (finite : IsFinCWUpTo d X) (f : Y -> Z) (c : isNConnectedMap d f) (g : X -> Z)
   : TruncP (\Sigma (l : X -> Y) (\Pi (x : X) -> f (l x) = g x)) \elim finite

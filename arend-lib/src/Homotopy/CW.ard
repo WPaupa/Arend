@@ -3,6 +3,8 @@
 \import Data.SeqColimit
 \import Data.SeqColimit.Map
 \import Equiv
+\import Equiv.Sigma
+\import Logic.Unique
 \import Homotopy.Pushout
 \import Homotopy.Sphere
 \import Logic
@@ -16,10 +18,20 @@
   | 0 => Empty
   | suc n => Sphere n
 
-\record CW {
+\func Disk (n : Nat) => PushoutData {boundary n} (\lam s => s) (\lam _ => ())
+  \where {
+    \func extension {n : Nat} {Z : \Type} (b : boundary n -> Z)
+      : QEquiv {\Sigma (u : Disk n -> Z) (\Pi (s : boundary n) -> u (pinl s) = b s)} {\Sigma (z : Z) (\Pi (s : boundary n) -> b s = z)}
+      => PushoutData.extension-equiv (\lam s => s) (\lam _ => ()) b `transQEquiv` sigma-left {_} {_} {\lam z => \Pi (s : boundary n) -> b s = z} (unit-func Z)
+
+    \func contr (n : Nat) : Contr (Disk n)
+      => Contr.make (pinr ()) (\lam x => inv (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam x => x} {\lam _ => pinr ()}
+                                                                 (\lam s => PushoutData.ppglue s) (\lam _ => idp) (\lam _ => idp) x))
+  }
+
+\record RelCW {
   | stage : Nat -> \Type
   | count : Nat -> Nat
-  | empty : stage 0 -> Empty
   | attach (n : Nat) : \Sigma (Fin (count n)) (boundary n) -> stage n
   | build (n : Nat) : QEquiv {PushoutData (attach n) (\lam p => p.1)} {stage (suc n)}
 
@@ -33,18 +45,27 @@
 
     \func Bound (d : Nat) => \Pi (k : Nat) -> d < k -> count k = 0
 
+    \func LowerBound (d : Nat) => \Pi (k : Nat) -> k < d -> count k = 0
+
     \lemma zeroCells {n : Nat} (p : count n = 0) : IsEquiv (inclusion n)
       => IsEquiv.trans (inP (PushoutData.pinl-equiv (\lam c => \case transport Fin p c \with {}))) (inP (build n))
-
-    \func vertices : QEquiv {Fin (count 0)} {stage 1}
-      => PushoutData.pinr-equiv empty `transQEquiv` build 0
   } \where {
-    \lemma bounded-stable.{u} {C : CW.{u}} {d : Nat} (b : C.Bound d) : IsEquiv (inSC {C.seq} {suc d})
-      => stable C.seq (suc d) (\lam n _ => C.zeroCells (b n linarith))
+    \lemma bounded-stable.{u} {R : RelCW.{u}} {d : Nat} (b : R.Bound d) : IsEquiv (inSC {R.seq} {suc d})
+      => stable R.seq (suc d) (\lam n _ => R.zeroCells (b n linarith))
 
-    \func stableRealization.{u} {C : CW.{u}} {d : Nat} (b : C.Bound d) : QEquiv {C.stage (suc d)} {C.Space}
+    \func stableRealization.{u} {R : RelCW.{u}} {d : Nat} (b : R.Bound d) : QEquiv {R.stage (suc d)} {R.Space}
       => IsEquiv.toQEquiv (bounded-stable b)
   }
+
+\record CW \extends RelCW {
+  | empty : stage 0 -> Empty
+
+  \func vertices : QEquiv {Fin (count 0)} {stage 1}
+    => PushoutData.pinr-equiv empty `transQEquiv` build 0
+}
+
+\func RelativeStructure.{u} {A X : \Type u} (i : A -> X)
+  => \Sigma (R : RelCW.{u}) (b : QEquiv {A} {R.stage 0}) (e : QEquiv {R.Space} {X}) (\Pi (a : A) -> e (inSC (b a)) = i a)
 
 \func HasCWStructure.{u} (X : \Type u) => \Sigma (C : CW.{u}) (QEquiv {X} {C.Space})
   \where

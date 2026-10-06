@@ -210,6 +210,11 @@
       \let r => IsEquiv.splitSurj (IsEquiv.trans (nconnected-ext cg P lv) (nconnected-ext cf (\lam b => P (g b)) (\lam b => lv (g b)))) h
       \in (r.1, \lam a => path ((r.2 @ __) a))
 
+\lemma nconnected-pmap.{u} {n : Nat} {A B : \Type u} {f : A -> B} (c : isNConnectedMap (suc n) f) (a a' : A)
+  : isNConnectedMap n (pmap f {a} {a'})
+  => \lam p => nconnected-equiv n (Fib.equiv {_} {_} {f} (f a') (a, p) (a', idp))
+                                 (nconnected-path.{u} {n} {Fib f (f a')} (c (f a')) (a, p) (a', idp))
+
 -- | The HoTT book, Lemma 7.5.12.
 \lemma nconnected-pinl.{u} {n : Nat} {A B C : \Type u} (f : A -> B) {g : A -> C} (c : isNConnectedMap n g)
   : isNConnectedMap n (pinl {A} {B} {C} {f} {g})

@@ -91,6 +91,21 @@
       | pinr b => hr b
       | pglue c i => pathOver (transport_path_pmap F G (ppglue c) (hl (u c)) (hr (v c)) (hg c)) @ i
 
+    \func extension-equiv {A B C Z : \Type} (u : A -> B) (v : A -> C) (old : B -> Z)
+      : QEquiv {\Sigma (h : PushoutData u v -> Z) (\Pi (b : B) -> h (pinl b) = old b)}
+               {\Sigma (rm : C -> Z) (\Pi (a : A) -> old (u a) = rm (v a))} \cowith
+      | f p => (\lam c => p.1 (pinr c), \lam a => inv (p.2 (u a)) *> pmap p.1 (ppglue a))
+      | ret q => (rec old q.1 q.2, \lam _ => idp)
+      | ret_f p => lem p.1 (path (\lam i b => p.2 b @ i))
+      | f_sec q => path (\lam i => (q.1, \lam a => idp_*> (q.2 a) @ i))
+      \where
+        \func lem {A B C Z : \Type} {u : A -> B} {v : A -> C} (h : PushoutData u v -> Z) {old : B -> Z} (H : (\lam b => h (pinl b)) = old)
+          : ((rec old (\lam c => h (pinr c)) (\lam a => inv (path ((H @ __) (u a))) *> pmap h (ppglue a)), \lam _ => idp)
+              : \Sigma (k : PushoutData u v -> Z) (\Pi (b : B) -> k (pinl b) = old b))
+            = (h, \lam b => path ((H @ __) b)) \elim old, H
+          | _, idp => path (\lam i => (\lam z => homotopy {_} {_} {_} {_} {_} {_} {rec (\lam b => h (pinl b)) (\lam c => h (pinr c)) (\lam a => idp *> pmap h (ppglue a))} {h}
+                                                         (\lam _ => idp) (\lam _ => idp) (\lam _ => idp) z @ i, \lam _ => idp))
+
     \func pinl-equiv {A B C : \Type} {f : A -> B} {g : A -> C} (e : C -> Empty) : QEquiv (pinl {A} {B} {C} {f} {g}) \cowith
       | ret => rec (\lam b => b) (\lam c => absurd (e c)) (\lam a => absurd (e (g a)))
       | ret_f _ => idp

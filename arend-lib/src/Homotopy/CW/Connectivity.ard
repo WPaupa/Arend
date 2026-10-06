@@ -1,16 +1,19 @@
 \import Algebra.Meta
 \import Arith.Nat
+\import Data.Or
 \import Data.SeqColimit
+\import Data.SeqColimit.Map
 \import Equiv
 \import Homotopy.CW
 \import Homotopy.Connectivity
 \import Homotopy.Sphere
 \import Homotopy.Whitehead.Connected
 \import Logic
+\import Order.LinearOrder
 \import Order.PartialOrder
 \import Paths
 
-\lemma attach-nconnected.{u} {C : CW.{u}} (n : Nat) : isNConnectedMap n (C.inclusion (suc n))
+\lemma attach-nconnected.{u} {C : RelCW.{u}} (n : Nat) : isNConnectedMap n (C.inclusion (suc n))
   => nconnected-map-comp-left n (C.build (suc n))
       (nconnected-pinl (C.attach (suc n)) (nconnected-proj (\lam _ => Sphere n) (\lam _ => sphere-nconnected.{u} n)))
 
@@ -26,3 +29,16 @@
 
 \lemma vertices-surj.{u} (C : CW.{u}) (x : C.Space) : TruncP (\Sigma (v : C.stage 1) (inSC v = x))
   => transport (\lam P => P) (nconnected0-iff-surj _) (skeleton-nconnected C 0) x
+
+\lemma relative-nconnected.{u} (R : RelCW.{u}) {m : Nat} (low : R.LowerBound (suc m)) : isNConnectedMap m (inSC {R.seq} {0})
+  => nconnected-seqColimit R.seq 0 (\lam k _ => step k)
+  \where
+    \lemma step (k : Nat) : isNConnectedMap m (R.inclusion k) \elim k
+      | 0 => nconnected-map-equiv m (R.zeroCells (low 0 linarith))
+      | suc k => \case LinearOrder.dec<_<= k m \with {
+        | inl k<m => nconnected-map-equiv m (R.zeroCells (low (suc k) linarith))
+        | inr m<=k => nconnected-map-mono m<=k (attach-nconnected k)
+      }
+
+\lemma noCells-equiv.{u} (R : RelCW.{u}) (p : \Pi (k : Nat) -> R.count k = 0) : IsEquiv (inSC {R.seq} {0})
+  => stable R.seq 0 (\lam k _ => R.zeroCells (p k))

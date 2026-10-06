@@ -1,0 +1,151 @@
+-- | After ``Cubical/CW/Approximation.agda`` in the cubical library.
+
+\import Algebra.Meta
+\import Arith.Nat
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Cellular
+\import Homotopy.CW.Connectivity
+\import Homotopy.CW.Lifting
+\import Homotopy.Connectivity
+\import Homotopy.Fibration
+\import Logic
+\import Paths
+
+\func FiniteTower.{u} {C D : CW.{u}} (k : Nat) (top : C.stage k -> D.stage k) : \Type u \elim k
+  | 0 => \Sigma
+  | suc k => \Sigma (top' : C.stage k -> D.stage k) (FiniteTower k top') (\Pi (x : C.stage k) -> D.inclusion k (top' x) = top (C.inclusion k x))
+  \where
+    \func fromCellular.{u} {C D : CW.{u}} (F : CellularMap C D) (k : Nat) : FiniteTower k (F.func k) \elim k
+      | 0 => ()
+      | suc k => (F.func k, fromCellular F k, F.natural k)
+
+\func FiniteCellularMap.{u} (C D : CW.{u}) (k : Nat) => \Sigma (top : C.stage k -> D.stage k) (FiniteTower k top)
+  \where {
+    \func restrict.{u} {C D : CW.{u}} {k : Nat} (F : FiniteCellularMap C D (suc k)) : FiniteCellularMap C D k
+      => (F.2.1, F.2.2)
+
+    \func fromCellular.{u} {C D : CW.{u}} (F : CellularMap C D) (k : Nat) : FiniteCellularMap C D k
+      => (F.func k, FiniteTower.fromCellular F k)
+  }
+
+\func CellularApproximationThrough.{u} {C D : CW.{u}} (d : Nat) (f : C.Space -> D.Space)
+  => \Sigma (F : FiniteCellularMap C D (suc d)) (\Pi (x : C.stage (suc d)) -> inSC (F.1 x) = f (inSC x))
+
+\func ApproxFiber.{u} {C D : CW.{u}} (f : C.Space -> D.Space) (k : Nat) (x : C.stage k) => Fib (inSC {D.seq} {k}) (f (inSC x))
+  \where
+    \func advance.{u} {C D : CW.{u}} (f : C.Space -> D.Space) {k : Nat} (s : \Pi (x : C.stage k) -> ApproxFiber f k x) (x : C.stage k)
+      : ApproxFiber f (suc k) (C.inclusion k x)
+      => (D.inclusion k (s x).1, inv (SeqColimit.pquotSC (s x).1) *> (s x).2 *> pmap f (SeqColimit.pquotSC x))
+
+\func ApproxTower.{u} {C D : CW.{u}} (f : C.Space -> D.Space) (k : Nat) (s : \Pi (x : C.stage k) -> ApproxFiber f k x) : \Type u \elim k
+  | 0 => \Sigma
+  | suc k => \Sigma (s' : \Pi (x : C.stage k) -> ApproxFiber f k x) (ApproxTower f k s') (\Pi (x : C.stage k) -> s (C.inclusion k x) = ApproxFiber.advance f s' x)
+  \where
+    \func toFinite.{u} {C D : CW.{u}} (f : C.Space -> D.Space) {k : Nat} {s : \Pi (x : C.stage k) -> ApproxFiber f k x} (T : ApproxTower f k s)
+      : FiniteTower k (\lam x => (s x).1) \elim k, T
+      | 0, _ => ()
+      | suc k, (s', T', q) => (\lam x => (s' x).1, toFinite f T',\lam x => inv (pmap __.1 (q x)))
+
+\func Approx.{u} {C D : CW.{u}} (f : C.Space -> D.Space) (k : Nat) => \Sigma (s : \Pi (x : C.stage k) -> ApproxFiber f k x) (ApproxTower f k s)
+
+\lemma approximate.{u} {C D : CW.{u}} (f : C.Space -> D.Space) (k : Nat) : TruncP (Approx f k) \elim k
+  | 0 => inP (\lam x => absurd (C.empty x), ())
+  | suc k => \case approximate f k \with {
+    | inP (s, T) => TruncP.map (Extension.connected k (ApproxFiber f (suc k)) (\lam _ => skeleton-nconnected D k _) (ApproxFiber.advance f s))
+                               (\lam E => (E.1, (s, T, E.2)))
+  }
+
+\lemma approximateBounded.{u} {C D : CW.{u}} {d : Nat} (b : C.Bound d) (f : C.Space -> D.Space)
+  : TruncP (\Sigma (F : CellularMap C D) (\Pi (z : C.Space) -> realize F z = f z))
+  => TruncP.map (approximate f (suc d)) \lam A =>
+      \let | F => cellular b A
+           | e => RelCW.stableRealization b
+      \in (F, \lam z => pmap (realize F) (inv (e.f_ret z)) *> (stage b A (suc d) (e.ret z)).2 *> pmap f (e.f_ret z))
+  \where {
+    \func extendNoCells.{u} {C D : CW.{u}} {f : C.Space -> D.Space} {k : Nat} (p : C.count k = 0) (A : Approx f k) : Approx f (suc k)
+      => \let E => Extension.fromFillers {C} {k} {ApproxFiber f (suc k)} {ApproxFiber.advance f A.1} (\lam c => \case transport Fin p c \with {})
+         \in (E.1, (A.1, A.2, E.2))
+
+    \func full.{u} {C D : CW.{u}} {d : Nat} (b : C.Bound d) {f : C.Space -> D.Space} (A : Approx f (suc d)) (m : Nat) : Approx f (suc d Nat.+ m) \elim m
+      | 0 => A
+      | suc m => extendNoCells (b (suc d Nat.+ m) linarith) (full b A m)
+
+    \func restrict.{u} {C D : CW.{u}} {f : C.Space -> D.Space} (j : Nat) {n : Nat} (A : Approx f (j Nat.+ n)) : Approx f n \elim j
+      | 0 => A
+      | suc j => restrict j (A.2.1, A.2.2)
+
+    \func restrict-step.{u} {C D : CW.{u}} {f : C.Space -> D.Space} (j : Nat) {n : Nat} (A : Approx f (j Nat.+ suc n))
+      : ((restrict j {suc n} A).2.1, (restrict j {suc n} A).2.2) = {Approx f n} restrict j {n} (A.2.1, A.2.2) \elim j
+      | 0 => idp
+      | suc j => restrict-step j (A.2.1, A.2.2)
+
+    \func stage.{u} {C D : CW.{u}} {d : Nat} (b : C.Bound d) {f : C.Space -> D.Space} (A : Approx f (suc d)) (n : Nat)
+      => (restrict (suc d) (full b A n)).1
+
+    \func cellular.{u} {C D : CW.{u}} {d : Nat} (b : C.Bound d) {f : C.Space -> D.Space} (A : Approx f (suc d)) : CellularMap C D \cowith
+      | func n x => (stage b A n x).1
+      | natural n x => pmap (\lam (B : Approx f n) => D.inclusion n (B.1 x).1) (inv (restrict-step (suc d) {n} (full b A (suc n))))
+                       *> inv (pmap __.1 ((restrict (suc d) {suc n} (full b A (suc n))).2.3 x))
+  }
+
+\lemma approximateThrough.{u} {C D : CW.{u}} (d : Nat) (f : C.Space -> D.Space) : TruncP (CellularApproximationThrough d f)
+  => TruncP.map (approximate f (suc d)) \lam A => ((\lam x => (A.1 x).1, ApproxTower.toFinite f {suc d} {A.1} A.2), \lam x => (A.1 x).2)
+
+-- | After ``Cubical/CW/Homotopy.agda`` in the cubical library.
+\func FiniteCellularHomotopy.{u} {C D : CW.{u}} (F G : CellularMap C D) (k : Nat)
+                                 (H : \Pi (x : C.stage k) -> D.inclusion k (F.func k x) = D.inclusion k (G.func k x)) : \Type u \elim k
+  | 0 => \Sigma
+  | suc k => \Sigma (H' : \Pi (x : C.stage k) -> D.inclusion k (F.func k x) = D.inclusion k (G.func k x)) (FiniteCellularHomotopy F G k H')
+                    (\Pi (x : C.stage k) -> H (C.inclusion k x) = pmap (D.inclusion (suc k)) (inv (F.natural k x) *> H' x *> G.natural k x))
+
+\func HomotopyFiber.{u} {C D : CW.{u}} (F G : CellularMap C D) (h : \Pi (z : C.Space) -> realize F z = realize G z) (k : Nat) (x : C.stage k)
+  => Fib (pmap (inSC {D.seq} {suc k}) {D.inclusion k (F.func k x)} {D.inclusion k (G.func k x)})
+         (inv (SeqColimit.pquotSC (F.func k x)) *> h (inSC x) *> SeqColimit.pquotSC (G.func k x))
+  \where {
+    \func advance.{u} {C D : CW.{u}} (F G : CellularMap C D) (h : \Pi (z : C.Space) -> realize F z = realize G z) {k : Nat}
+                      (s : \Pi (x : C.stage k) -> HomotopyFiber F G h k x) (x : C.stage k) : HomotopyFiber F G h (suc k) (C.inclusion k x)
+      => (pmap (D.inclusion (suc k)) (inv (F.natural k x) *> (s x).1 *> G.natural k x),
+          conjugate {_} {_} {_} {inSC {D.seq} {suc k}} {inSC {D.seq} {suc (suc k)}} {D.inclusion (suc k)} SeqColimit.pquotSC
+                    (inv (F.natural k x) *> (s x).1 *> G.natural k x)
+          *> pmap (\lam t => inv (SeqColimit.pquotSC _) *> t *> SeqColimit.pquotSC _)
+                  (compare (inSC {D.seq} {suc k}) (s x).1 (F.natural k x) (G.natural k x) (s x).2 (inv (homotopy-isNatural (realize F) (realize G) h (SeqColimit.pquotSC x)))))
+
+    \func conjugate {Y Y' T : \Type} {j : Y -> T} {j' : Y' -> T} {i : Y -> Y'} (K : \Pi (y : Y) -> j y = j' (i y)) {a b : Y} (r : a = b)
+      : pmap j' (pmap i r) = inv (K a) *> pmap j r *> K b \elim r
+      | idp => inv (pmap (inv (K a) *>) (idp_*> (K a)) *> inv_*> (K a))
+
+    \func compare {Y T : \Type} (j : Y -> T) {p0 q0 p1 q1 : Y} {e0 e1 : T} {qa : e0 = j p0} {qb : e1 = j q0} {h0 : e0 = e1} {h1 : j p1 = j q1} (s : p0 = q0)
+                  (Fn : p0 = p1) (Gn : q0 = q1) (c : pmap j s = inv qa *> h0 *> qb) (N : h0 *> qb *> pmap j Gn = (qa *> pmap j Fn) *> h1)
+      : pmap j (inv Fn *> s *> Gn) = h1 \elim qa, qb, Fn, Gn
+      | idp, idp, idp, idp => pmap (pmap j) (idp_*> s) *> c *> idp_*> h0 *> N *> idp_*> h1
+  }
+
+\func HApproxTower.{u} {C D : CW.{u}} (F G : CellularMap C D) (h : \Pi (z : C.Space) -> realize F z = realize G z) (k : Nat)
+                       (s : \Pi (x : C.stage k) -> HomotopyFiber F G h k x) : \Type u \elim k
+  | 0 => \Sigma
+  | suc k => \Sigma (s' : \Pi (x : C.stage k) -> HomotopyFiber F G h k x) (HApproxTower F G h k s')
+                    (\Pi (x : C.stage k) -> s (C.inclusion k x) = HomotopyFiber.advance F G h s' x)
+  \where
+    \func toFinite.{u} {C D : CW.{u}} {F G : CellularMap C D} {h : \Pi (z : C.Space) -> realize F z = realize G z} {k : Nat}
+                       {s : \Pi (x : C.stage k) -> HomotopyFiber F G h k x} (T : HApproxTower F G h k s)
+      : FiniteCellularHomotopy F G k (\lam x => (s x).1) \elim k, T
+      | 0, _ => ()
+      | suc k, (s', T', q) => (\lam x => (s' x).1, toFinite T', \lam x => pmap __.1 (q x))
+
+\lemma approximateHomotopy.{u} {C D : CW.{u}} (F G : CellularMap C D) (h : \Pi (z : C.Space) -> realize F z = realize G z) (k : Nat)
+  : TruncP (\Sigma (s : \Pi (x : C.stage k) -> HomotopyFiber F G h k x) (HApproxTower F G h k s)) \elim k
+  | 0 => inP (\lam x => absurd (C.empty x), ())
+  | suc k => \case approximateHomotopy F G h k \with {
+    | inP (s, T) => TruncP.map (Extension.connected k (HomotopyFiber F G h (suc k)) (\lam _ => nconnected-pmap (skeleton-nconnected D (suc k)) _ _ _)
+                                                    (HomotopyFiber.advance F G h s))
+                               (\lam E => (E.1, (s, T, E.2)))
+  }
+
+\lemma approximateHomotopyThrough.{u} {C D : CW.{u}} (d : Nat) (F G : CellularMap C D) (h : \Pi (z : C.Space) -> realize F z = realize G z)
+  : TruncP (\Sigma (H : \Pi (x : C.stage (suc d)) -> D.inclusion (suc d) (F.func (suc d) x) = D.inclusion (suc d) (G.func (suc d) x))
+                   (FiniteCellularHomotopy F G (suc d) H)
+                   (\Pi (x : C.stage (suc d)) -> pmap inSC (H x) = inv (SeqColimit.pquotSC (F.func (suc d) x)) *> h (inSC x) *> SeqColimit.pquotSC (G.func (suc d) x)))
+  => TruncP.map (approximateHomotopy F G h (suc d)) \lam A => (\lam x => (A.1 x).1, HApproxTower.toFinite {C} {D} {F} {G} {h} {suc d} {A.1} A.2, \lam x => (A.1 x).2)
