@@ -106,6 +106,54 @@
           | _, idp => path (\lam i => (\lam z => homotopy {_} {_} {_} {_} {_} {_} {rec (\lam b => h (pinl b)) (\lam c => h (pinr c)) (\lam a => idp *> pmap h (ppglue a))} {h}
                                                          (\lam _ => idp) (\lam _ => idp) (\lam _ => idp) z @ i, \lam _ => idp))
 
+    \func dextension-equiv {A B C : \Type} (u : A -> B) (v : A -> C) (P : PushoutData u v -> \Type) (old : \Pi (b : B) -> P (pinl b))
+      : QEquiv {\Sigma (h : \Pi (x : PushoutData u v) -> P x) (\Pi (b : B) -> h (pinl b) = old b)}
+               {\Sigma (rm : \Pi (c : C) -> P (pinr c)) (\Pi (a : A) -> transport P (ppglue a) (old (u a)) = rm (v a))} \cowith
+      | f p => (\lam c => p.1 (pinr c), \lam a => pmap (transport P (ppglue a)) (inv (p.2 (u a))) *> pmapd p.1 (ppglue a))
+      | ret q => (drec P old q.1 (\lam a => pathOver (q.2 a)), \lam _ => idp)
+      | ret_f p => lem P p.1 (path (\lam i b => p.2 b @ i))
+      | f_sec q => path (\lam i => (q.1, \lam a => (idp_*> _ *> pmapd_pathOver P (drec P old q.1 (\lam a => pathOver (q.2 a))) (ppglue a) (q.2 a) idp) @ i))
+      \where {
+        \func pathOver_pmapd {X : \Type} (Y : X -> \Type) (h : \Pi (x : X) -> Y x) {x x' : X} (p : x = x')
+          : pathOver (pmapd h p) = {Path (\lam i => Y (p @ i)) (h x) (h x')} path (\lam i => h (p @ i)) \elim p
+          | idp => idp
+
+        \func htpy {A B C : \Type} {u : A -> B} {v : A -> C} (P : PushoutData u v -> \Type) (h : \Pi (x : PushoutData u v) -> P x) (x : PushoutData u v)
+          : drec P (\lam b => h (pinl b)) (\lam c => h (pinr c)) (\lam a => pathOver (idp *> pmapd h (ppglue a))) x = h x \elim x
+          | pinl b => idp
+          | pinr c => idp
+          | pglue a i => path (\lam j => (pmap pathOver (idp_*> (pmapd h (ppglue a))) *> pathOver_pmapd P h (ppglue a)) @ j @ i)
+
+        \func lem {A B C : \Type} {u : A -> B} {v : A -> C} (P : PushoutData u v -> \Type) (h : \Pi (x : PushoutData u v) -> P x)
+                  {old : \Pi (b : B) -> P (pinl b)} (H : (\lam b => h (pinl b)) = old)
+          : ((drec P old (\lam c => h (pinr c)) (\lam a => pathOver (pmap (transport P (ppglue a)) (inv (path ((H @ __) (u a)))) *> pmapd h (ppglue a))), \lam _ => idp)
+              : \Sigma (k : \Pi (x : PushoutData u v) -> P x) (\Pi (b : B) -> k (pinl b) = old b))
+            = (h, \lam b => path ((H @ __) b)) \elim old, H
+          | _, idp => path (\lam i => (\lam x => htpy P h x @ i, \lam _ => idp))
+      }
+
+    \func paste {A B C D : \Type} (u : A -> B) (v : A -> C) (w : C -> D)
+      : QEquiv {PushoutData {C} {PushoutData u v} {D} pinr w} {PushoutData u (\lam a => w (v a))} \cowith
+      | f => to u v w
+      | ret => from u v w
+      | ret_f x => homotopy {_} {_} {_} {_} {_} {_} {\lam x => from u v w (to u v w x)} {\lam x => x}
+                            (\lam p => homotopy {_} {_} {_} {_} {_} {_} {\lam p => from u v w (inner u v w p)} {pinl}
+                                                (\lam _ => idp) (\lam c => inv (ppglue c))
+                                                (\lam a => idp_*> _ *> inv (*>-assoc _ _ _ *> pmap (_ *>) (*>_inv _))) p)
+                            (\lam _ => idp) (\lam c => inv_*> (ppglue c)) x
+      | f_sec y => homotopy {_} {_} {_} {_} {_} {_} {\lam y => to u v w (from u v w y)} {\lam y => y}
+                            (\lam _ => idp) (\lam _ => idp) (\lam a => idp_*> _ *> inv (pmap_*>-comm (to u v w) (pmap pinl (ppglue a)) (ppglue (v a)))) y
+      \where {
+        \func inner {A B C D : \Type} (u : A -> B) (v : A -> C) (w : C -> D) (p : PushoutData u v) : PushoutData u (\lam a => w (v a))
+          => rec pinl (\lam c => pinr (w c)) ppglue p
+
+        \func to {A B C D : \Type} (u : A -> B) (v : A -> C) (w : C -> D) (x : PushoutData {C} {PushoutData u v} {D} pinr w) : PushoutData u (\lam a => w (v a))
+          => rec (inner u v w) pinr (\lam _ => idp) x
+
+        \func from {A B C D : \Type} (u : A -> B) (v : A -> C) (w : C -> D) (y : PushoutData u (\lam a => w (v a))) : PushoutData {C} {PushoutData u v} {D} pinr w
+          => rec (\lam b => pinl (pinl b)) pinr (\lam a => pmap pinl (ppglue a) *> ppglue (v a)) y
+      }
+
     \func pinl-equiv {A B C : \Type} {f : A -> B} {g : A -> C} (e : C -> Empty) : QEquiv (pinl {A} {B} {C} {f} {g}) \cowith
       | ret => rec (\lam b => b) (\lam c => absurd (e c)) (\lam a => absurd (e (g a)))
       | ret_f _ => idp

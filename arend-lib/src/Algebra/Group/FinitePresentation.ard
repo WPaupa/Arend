@@ -1,0 +1,231 @@
+\import Algebra.Domain.Euclidean (IntDomain)
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Linear.Matrix
+\import Algebra.Linear.Matrix.Smith
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Algebra.Semiring
+\import Arith.Int
+\import Arith.Nat (pred, suc/=0)
+\import Category \hiding (id, o)
+\import Data.Fin (fsuc/=0)
+\import Equiv
+\import Logic
+\import Logic.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\open ZFree
+
+\func mulHom (d : Int) : AddGroupHom IntRing IntRing \cowith
+  | func x => d * x
+  | func-+ => ldistr
+
+\func Zmod (d : Nat) => Coker (mulHom d)
+
+\func FinitePresentation (A : AbGroup)
+  => \Sigma (g r : Nat) (M : AddGroupHom (ZFree r) (ZFree g)) (f : AddGroupHom A (Coker M)) (IsEquiv f)
+  \where {
+    \func transport {A B : AbGroup} (e : AddGroupHom B A) (ee : IsEquiv e) (p : FinitePresentation A) : FinitePresentation B
+      => (p.1, p.2, p.3, p.4 AddGroupHom.∘ e, IsEquiv.trans ee p.5)
+
+    \func trivial {A : AbGroup} (h : \Pi (x : A) -> x = 0) : FinitePresentation A
+      => (0, 0, AddGroupHom.zero, AddGroupHom.zero, inP (trivialEquiv h (Coker.trivial \lam y => inP (0, inv (zero-trivial y)))))
+
+    \func int : FinitePresentation IntRing
+      => (1, 0, AddGroupHom.zero, Coker.proj {ZFree 0} {ZFree 1} AddGroupHom.zero AddGroupHom.∘ unit,
+          inP (transQEquiv (symQEquiv one-equiv) (symQEquiv (Coker.zeroEquiv {ZFree 0} {ZFree 1} {AddGroupHom.zero} \lam _ => idp))))
+
+    \func unit : AddGroupHom IntRing (ZFree 1) => AddGroupHom.inverse one one-equiv
+
+    \func cyclic (d : Nat) : FinitePresentation (Zmod d)
+      => (1, 1, relation d, Coker.map (mulHom d) (relation d) unit unit (\lam _ => idp),
+          inP (Coker.mapEquiv (mulHom d) (relation d) unit unit (\lam _ => idp) (symQEquiv one-equiv) (symQEquiv one-equiv)))
+      \where
+        \func relation (d : Nat) : AddGroupHom (ZFree 1) (ZFree 1)
+          => unit AddGroupHom.∘ mulHom d AddGroupHom.∘ one
+
+    \func product {A B : AbGroup} (p : FinitePresentation A) (q : FinitePresentation B) : FinitePresentation (ProductAbGroup A B)
+      => (p.1 Nat.+ q.1, p.2 Nat.+ q.2, relation p.3 q.3, cokerMap p.3 q.3 AddGroupHom.∘ prodHom p.4 q.4,
+          IsEquiv.trans (prodEquiv p.5 q.5) (inP (cokerMap.equiv p.3 q.3)))
+      \where {
+        \func relation {g r g' r' : Nat} (M : AddGroupHom (ZFree r) (ZFree g)) (N : AddGroupHom (ZFree r') (ZFree g'))
+          : AddGroupHom (ZFree (r Nat.+ r')) (ZFree (g Nat.+ g'))
+          => AddGroupHom.inverse split split-equiv AddGroupHom.∘ prodHom M N AddGroupHom.∘ split
+
+        \lemma square {g r g' r' : Nat} (M : AddGroupHom (ZFree r) (ZFree g)) (N : AddGroupHom (ZFree r') (ZFree g'))
+                      (x : ProductAbGroup (ZFree r) (ZFree r'))
+          : AddGroupHom.inverse split split-equiv (prodHom M N x) = relation M N (AddGroupHom.inverse split split-equiv x)
+          => pmap (\lam y => split-equiv.ret (prodHom M N y)) (inv (split-equiv.f_ret x))
+
+        \func cokerMap {g r g' r' : Nat} (M : AddGroupHom (ZFree r) (ZFree g)) (N : AddGroupHom (ZFree r') (ZFree g'))
+          : AddGroupHom (ProductAbGroup (Coker M) (Coker N)) (Coker (relation M N))
+          => Coker.map (prodHom M N) (relation M N) (AddGroupHom.inverse split split-equiv) (AddGroupHom.inverse split split-equiv) (square M N)
+               AddGroupHom.∘ Coker.product.inverse M N
+          \where
+            \func equiv {g r g' r' : Nat} (M : AddGroupHom (ZFree r) (ZFree g)) (N : AddGroupHom (ZFree r') (ZFree g')) : QEquiv (cokerMap M N)
+              => transQEquiv (symQEquiv (Coker.product.equiv M N))
+                             (Coker.mapEquiv (prodHom M N) (relation M N) (AddGroupHom.inverse split split-equiv) (AddGroupHom.inverse split split-equiv) (square M N)
+                                             (symQEquiv split-equiv) (symQEquiv split-equiv))
+
+        \lemma prodEquiv {A B C D : AbGroup} {f : AddGroupHom A C} {g : AddGroupHom B D} (fe : IsEquiv f) (ge : IsEquiv g) : IsEquiv (prodHom f g)
+          => \case fe, ge \with {
+            | inP fe, inP ge => inP \new QEquiv {
+              | ret s => (fe.ret s.1, ge.ret s.2)
+              | ret_f s => pmap2 (__,__) (fe.ret_f s.1) (ge.ret_f s.2)
+              | f_sec s => pmap2 (__,__) (fe.f_sec s.1) (ge.f_sec s.2)
+            }
+          }
+      }
+  }
+
+\func trivialEquiv {A B : AbGroup} (ha : \Pi (a : A) -> a = 0) (hb : \Pi (b : B) -> b = 0) : QEquiv (AddGroupHom.zero {A} {B}) \cowith
+  | ret _ => 0
+  | ret_f a => inv (ha a)
+  | f_sec b => inv (hb b)
+
+\func IsFP (A : AbGroup) : \Prop => TruncP (FinitePresentation A)
+  \where {
+    \lemma transport {A B : AbGroup} (e : AddGroupHom B A) (ee : IsEquiv e) (p : IsFP A) : IsFP B
+      => TruncP.map p (FinitePresentation.transport e ee)
+
+    \lemma trivial {A : AbGroup} (h : \Pi (x : A) -> x = 0) : IsFP A
+      => inP (FinitePresentation.trivial h)
+
+    \lemma int : IsFP IntRing
+      => inP FinitePresentation.int
+
+    \lemma cyclic (d : Nat) : IsFP (Zmod d)
+      => inP (FinitePresentation.cyclic d)
+
+    \lemma product {A B : AbGroup} (p : IsFP A) (q : IsFP B) : IsFP (ProductAbGroup A B)
+      => \case p, q \with {
+        | inP p, inP q => inP (FinitePresentation.product p q)
+      }
+  }
+
+\func smithCokerIso {g r : Nat} (M : AddGroupHom (ZFree r) (ZFree g)) (U : Monoid.Inv {MatrixRing IntRing g}) (V : Monoid.Inv {MatrixRing IntRing r})
+                    {D : Matrix Int g r} (eq : D = U.val MatrixRing.product columnMatrix M MatrixRing.product V.val)
+  : AddGroupHom (Coker M) (Coker (columnAction D))
+  => Coker.map M (columnAction D) (columnAction V.inv) (columnAction U.val) (square M U V eq)
+  \where {
+    \lemma matrix {g r : Nat} (M : AddGroupHom (ZFree r) (ZFree g)) (U : Monoid.Inv {MatrixRing IntRing g}) (V : Monoid.Inv {MatrixRing IntRing r})
+                  {D : Matrix Int g r} (eq : D = U.val MatrixRing.product columnMatrix M MatrixRing.product V.val)
+      : U.val MatrixRing.product columnMatrix M = D MatrixRing.product V.inv
+      => inv (pmap (\lam (X : Matrix Int g r) => X MatrixRing.product V.inv) eq
+              *> MatrixRing.product-assoc (U.val MatrixRing.product columnMatrix M) V.val V.inv
+              *> pmap (\lam (Y : Matrix Int r r) => (U.val MatrixRing.product columnMatrix M) MatrixRing.product Y) V.inv-right
+              *> MatrixRing.product_ide-right)
+
+    \lemma squareHom {g r : Nat} (M : AddGroupHom (ZFree r) (ZFree g)) (U : Monoid.Inv {MatrixRing IntRing g}) (V : Monoid.Inv {MatrixRing IntRing r})
+                     {D : Matrix Int g r} (eq : D = U.val MatrixRing.product columnMatrix M MatrixRing.product V.val)
+      : columnAction U.val AddGroupHom.∘ M = columnAction D AddGroupHom.∘ columnAction V.inv
+      => pmap (columnAction U.val AddGroupHom.∘ __) (inv (columnAction_columnMatrix M))
+         *> inv (columnAction_product U.val (columnMatrix M))
+         *> pmap columnAction (matrix M U V eq)
+         *> columnAction_product D V.inv
+
+    \lemma square {g r : Nat} (M : AddGroupHom (ZFree r) (ZFree g)) (U : Monoid.Inv {MatrixRing IntRing g}) (V : Monoid.Inv {MatrixRing IntRing r})
+                  {D : Matrix Int g r} (eq : D = U.val MatrixRing.product columnMatrix M MatrixRing.product V.val) (x : ZFree r)
+      : columnAction U.val (M x) = columnAction D (columnAction V.inv x)
+      => pmap {AddGroupHom (ZFree r) (ZFree g)} (\lam h => h x) (squareHom M U V eq)
+
+    \func equiv {g r : Nat} (M : AddGroupHom (ZFree r) (ZFree g)) (U : Monoid.Inv {MatrixRing IntRing g}) (V : Monoid.Inv {MatrixRing IntRing r})
+                {D : Matrix Int g r} (eq : D = U.val MatrixRing.product columnMatrix M MatrixRing.product V.val)
+      : QEquiv (smithCokerIso M U V eq)
+      => Coker.mapEquiv M (columnAction D) (columnAction V.inv) (columnAction U.val) (square M U V eq) (actionEquiv (Monoid.Inv.reverse {V})) (actionEquiv U)
+  }
+
+\lemma smithIso {g r : Nat} (M : AddGroupHom (ZFree r) (ZFree g))
+  : ∃ (D : Matrix Int g r) (IsSmith D) (f : AddGroupHom (Coker M) (Coker (columnAction D))) (IsEquiv f)
+  => \case IntDomain.toSmith (columnMatrix M) \with {
+    | inP (D, s, inP (U, V, eq)) => inP (D, s, smithCokerIso M U V eq, inP (smithCokerIso.equiv M U V eq))
+  }
+
+\lemma fpInduction.{u} (P : AbGroup.{u} -> \Prop) (cyclic : \Pi (d : Nat) -> P (Zmod d))
+                       (product : \Pi {A B : AbGroup.{u}} -> P A -> P B -> P (ProductAbGroup A B))
+                       {A : AbGroup.{u}} (fp : IsFP A) : P A
+  => \case fp \with {
+    | inP (g, r, M, e, ee) => \case smithIso M \with {
+      | inP (D, s, f, fe) => transportEquiv P (AddGroupHom.inverse e (IsEquiv.toQEquiv ee)) (symQEquiv (IsEquiv.toQEquiv ee))
+                               (transportEquiv P (AddGroupHom.inverse f (IsEquiv.toQEquiv fe)) (symQEquiv (IsEquiv.toQEquiv fe)) (diagonal P cyclic product D s.1))
+    }
+  }
+  \where {
+    \lemma transportEquiv.{u} (P : AbGroup.{u} -> \Prop) {A B : AbGroup.{u}} (f : AddGroupHom A B) (e : QEquiv f) (a : P A) : P B
+      => Paths.transport P (Cat.isotoid (AbGroupCat.isoOfEquiv f e)) a
+
+    \lemma integer.{u} (P : AbGroup.{u} -> \Prop) (cyclic : \Pi (d : Nat) -> P (Zmod d)) (d : Int) : P (Coker (mulHom d)) \elim d
+      | pos n => cyclic n
+      | neg n => transportEquiv P (Coker.map (mulHom (pos n)) (mulHom (neg n)) AddGroupHom.negate AddGroupHom.id (sq n))
+                                  (Coker.mapEquiv (mulHom (pos n)) (mulHom (neg n)) AddGroupHom.negate AddGroupHom.id (sq n) negate-equiv idEquiv) (cyclic n)
+      \where {
+        \lemma sq (n : Nat) (x : Int) : pos n * x = neg n * negative x
+          => inv (Ring.negative_* {IntRing} {pos n} {x})
+
+        \func negate-equiv : QEquiv (AddGroupHom.negate {IntRing}) \cowith
+          | ret => negative
+          | ret_f _ => AddGroup.negative-isInv
+          | f_sec _ => AddGroup.negative-isInv
+      }
+
+    \lemma free.{u} (P : AbGroup.{u} -> \Prop) (cyclic : \Pi (d : Nat) -> P (Zmod d))
+                    (product : \Pi {A B : AbGroup.{u}} -> P A -> P B -> P (ProductAbGroup A B)) (g : Nat) : P (ZFree g) \elim g
+      | 0 => transportEquiv P {Zmod 1} {ZFree 0} AddGroupHom.zero (trivialEquiv (Coker.trivial \lam y => inP (y, ide-left)) zero-trivial) (cyclic 1)
+      | suc g => transportEquiv P (AddGroupHom.inverse uncons uncons-equiv) (symQEquiv uncons-equiv)
+                   (product (transportEquiv P (Coker.desc {IntRing} {IntRing} {IntRing} {mulHom 0} AddGroupHom.id \lam _ => zro_*-left) (Coker.zeroEquiv \lam _ => zro_*-left) (cyclic 0))
+                            (free P cyclic product g))
+
+    \func tail {g r : Nat} (D : Matrix Int (suc g) (suc r)) : Matrix Int g r
+      => mkMatrix \lam i j => D (suc i) (suc j)
+
+    \lemma square {g r : Nat} (D : Matrix Int (suc g) (suc r)) (d : IsDiagonal D)
+      : uncons AddGroupHom.∘ columnAction D = prodHom (mulHom (D 0 0)) (columnAction (tail D)) AddGroupHom.∘ uncons
+      => hom-ext (uncons AddGroupHom.∘ columnAction D) (prodHom (mulHom (D 0 0)) (columnAction (tail D)) AddGroupHom.∘ uncons) \lam a => \case \elim a \with {
+        | 0 => column0 *> inv (pmap (prodHom (mulHom (D 0 0)) (columnAction (tail D))) uncons-basis0
+                               *> pmap2 (__,__) ide-right (AddMonoidHom.func-zro {columnAction (tail D)}))
+        | suc a => column a *> inv (pmap (prodHom (mulHom (D 0 0)) (columnAction (tail D))) (uncons-basis a)
+                                    *> pmap2 (__,__) zro_*-right idp)
+      }
+      \where {
+        \lemma column0 : uncons (columnAction D (basis {suc r} 0)) = (D 0 0, AddPointed.zro {ZFree g})
+          => pmap2 (__,__) (columnActionBasis D 0 0) (exts \lam i => columnActionBasis D 0 (suc i) *> d {suc i} {0} suc/=0)
+
+        \lemma column (a : Fin r) : uncons (columnAction D (basis {suc r} (suc a))) = (0, columnAction (tail D) (basis a))
+          => pmap2 (__,__) (columnActionBasis D (suc a) 0 *> d {0} {suc a} (\lam q => suc/=0 (inv q)))
+                           (exts \lam i => columnActionBasis D (suc a) (suc i) *> inv (columnActionBasis (tail D) a i))
+      }
+
+    \func iso {g r : Nat} (D : Matrix Int (suc g) (suc r)) (d : IsDiagonal D)
+      : AddGroupHom (Coker (columnAction D)) (ProductAbGroup (Coker (mulHom (D 0 0))) (Coker (columnAction (tail D))))
+      => Coker.product (mulHom (D 0 0)) (columnAction (tail D)) AddGroupHom.∘ Coker.map (columnAction D) (prodHom (mulHom (D 0 0)) (columnAction (tail D))) uncons uncons (sq D d)
+      \where {
+        \lemma sq {g r : Nat} (D : Matrix Int (suc g) (suc r)) (d : IsDiagonal D) (x : ZFree (suc r))
+          : uncons (columnAction D x) = prodHom (mulHom (D 0 0)) (columnAction (tail D)) (uncons x)
+          => pmap {AddGroupHom (ZFree (suc r)) (ProductAbGroup IntRing (ZFree g))} (\lam h => h x) (square D d)
+
+        \func equiv {g r : Nat} (D : Matrix Int (suc g) (suc r)) (d : IsDiagonal D) : QEquiv (iso D d)
+          => transQEquiv (Coker.mapEquiv (columnAction D) (prodHom (mulHom (D 0 0)) (columnAction (tail D))) uncons uncons (sq D d) uncons-equiv uncons-equiv)
+                         (Coker.product.equiv (mulHom (D 0 0)) (columnAction (tail D)))
+      }
+
+    \lemma diagonal.{u} (P : AbGroup.{u} -> \Prop) (cyclic : \Pi (d : Nat) -> P (Zmod d))
+                        (product : \Pi {A B : AbGroup.{u}} -> P A -> P B -> P (ProductAbGroup A B))
+                        {g r : Nat} (D : Matrix Int g r) (d : IsDiagonal D) : P (Coker (columnAction D)) \elim g, r
+      | g, 0 => transportEquiv P (Coker.proj (columnAction D))
+                  (symQEquiv (Coker.zeroEquiv \lam x => pmap (columnAction D) (zero-trivial x) *> AddMonoidHom.func-zro {columnAction D}))
+                  (free P cyclic product g)
+      | 0, suc r => transportEquiv P {Zmod 1} {Coker (columnAction D)} AddGroupHom.zero
+                      (trivialEquiv (Coker.trivial \lam y => inP (y, ide-left))
+                                    (Coker.trivial \lam y => inP (0, AddMonoidHom.func-zro {columnAction D} *> inv (zero-trivial y))))
+                      (cyclic 1)
+      | suc g, suc r => transportEquiv P (AddGroupHom.inverse (iso D d) (iso.equiv D d)) (symQEquiv (iso.equiv D d))
+                          (product (integer P cyclic (D 0 0)) (diagonal P cyclic product (tail D) \lam p => d \lam q => p (pmap pred q)))
+  }

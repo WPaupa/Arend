@@ -1,0 +1,158 @@
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Group.SubGroup
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Pointed
+\import Arith.Nat (pred)
+\import Function
+\import Logic
+\import Logic.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\record ChainComplex {
+  | C : Nat -> AbGroup
+  | d (n : Nat) : AddGroupHom (C (suc n)) (C n)
+  | dd (n : Nat) (x : C (suc (suc n))) : d n (d (suc n) x) = 0
+
+  \func dOut (n : Nat) : AddGroupHom (C n) (C (pred n)) \elim n
+    | 0 => AddGroupHom.zero
+    | suc n => d n
+
+  \lemma dOut-d (n : Nat) (x : C (suc n)) : dOut n (d n x) = 0 \elim n
+    | 0 => idp
+    | suc n => dd n x
+
+  \func Cycles (n : Nat) => IAbGroup (KernelAddGroup (dOut n))
+
+  \func boundary (n : Nat) : AddGroupHom (C (suc n)) (Cycles n) \cowith
+    | func x => (d n x, dOut-d n x)
+    | func-+ => ext (d n).func-+
+
+  \func cycleInc (n : Nat) : AddGroupHom (Cycles n) (C n) \cowith
+    | func z => z.1
+    | func-+ => idp
+}
+
+\func Homology (X : ChainComplex) (n : Nat) => Coker (X.boundary n)
+  \where {
+    \lemma class-eq {X : ChainComplex} {n : Nat} {z z' : X.Cycles n} (w : X.C (suc n)) (q : X.d n w = z.1 - z'.1)
+      : in~ z = {Homology X n} in~ z'
+      => Coker.proj-equality.2 (inP (w, ext q))
+
+    \lemma class-eq-inv {X : ChainComplex} {n : Nat} {z z' : X.Cycles n} (p : in~ z = {Homology X n} in~ z')
+      : ∃ (w : X.C (suc n)) (X.d n w = z.1 - z'.1)
+      => TruncP.map (Coker.proj-equality.1 p) \lam s => (s.1, pmap __.1 s.2)
+  }
+
+\record ChainMap (X Y : ChainComplex) {
+  | f (n : Nat) : AddGroupHom (X.C n) (Y.C n)
+  | comm (n : Nat) (x : X.C (suc n)) : Y.d n (f (suc n) x) = f n (X.d n x)
+
+  \lemma comm-out (n : Nat) (x : X.C n) (p : X.dOut n x = 0) : Y.dOut n (f n x) = 0 \elim n
+    | 0 => idp
+    | suc n => comm n x *> pmap (f n) p *> AddMonoidHom.func-zro {f n}
+
+  \func cycles (n : Nat) : AddGroupHom (X.Cycles n) (Y.Cycles n) \cowith
+    | func z => (f n z.1, comm-out n z.1 z.2)
+    | func-+ => ext (f n).func-+
+
+  \func homology (n : Nat) : AddGroupHom (Homology X n) (Homology Y n)
+    => Coker.map (X.boundary n) (Y.boundary n) (f (suc n)) (cycles n) \lam x => ext (inv (comm n x))
+} \where {
+  \func id {X : ChainComplex} : ChainMap X X \cowith
+    | f _ => AddGroupHom.id
+    | comm _ _ => idp
+
+  \func \fixl 8 compose \alias \infixl 8 ∘ {X Y Z : ChainComplex} (G : ChainMap Y Z) (F : ChainMap X Y) : ChainMap X Z \cowith
+    | f n => G.f n AddGroupHom.∘ F.f n
+    | comm n x => G.comm n (F.f (suc n) x) *> pmap (G.f n) (F.comm n x)
+
+  \lemma homology-id {X : ChainComplex} (n : Nat) : ChainMap.homology {id {X}} n = AddGroupHom.id
+    => Coker.hom-ext _ AddGroupHom.id \lam _ => pmap in~ (ext idp)
+
+  \lemma homology-comp {X Y Z : ChainComplex} (G : ChainMap Y Z) (F : ChainMap X Y) (n : Nat)
+    : ChainMap.homology {G ∘ F} n = ChainMap.homology {G} n AddGroupHom.∘ ChainMap.homology {F} n
+    => Coker.hom-ext (ChainMap.homology {G ∘ F} n) _ \lam _ => pmap in~ (ext idp)
+}
+
+\record ChainHomotopy {X Y : ChainComplex} (F G : ChainMap X Y) {
+  | K (n : Nat) : AddGroupHom (X.C n) (Y.C (suc n))
+  | htpy0 (x : X.C 0) : F.f 0 x - G.f 0 x = Y.d 0 (K 0 x)
+  | htpy (n : Nat) (x : X.C (suc n)) : F.f (suc n) x - G.f (suc n) x = Y.d (suc n) (K (suc n) x) + K n (X.d n x)
+
+  \lemma on-cycle (n : Nat) (z : X.Cycles n) : F.f n z.1 - G.f n z.1 = Y.d n (K n z.1) \elim n
+    | 0 => htpy0 z.1
+    | suc n => htpy n z.1 *> pmap (_ +) (pmap (K n) z.2 *> AddMonoidHom.func-zro {K n}) *> zro-right
+
+  \lemma homology-eq (n : Nat) : F.homology n = G.homology n
+    => Coker.hom-ext (F.homology n) (G.homology n) \lam z => Coker.proj-equality.2 (inP (K n z.1, ext (inv (on-cycle n z))))
+}
+
+\func Cone {X Y : ChainComplex} (F : ChainMap X Y) : ChainComplex \cowith
+  | C n => \case \elim n \with {
+    | 0 => Y.C 0
+    | suc n => ProductAbGroup (Y.C (suc n)) (X.C n)
+  }
+  | d n => \case \elim n \with {
+    | 0 => copairHom (Y.d 0) (F.f 0)
+    | suc n => pairHom (copairHom (Y.d (suc n)) (F.f (suc n))) (AddGroupHom.negate AddGroupHom.∘ X.d n AddGroupHom.∘ snd)
+  }
+  | dd n x => \case \elim n, \elim x \with {
+    | 0, (y, c) => pmap2 (+) (Y.d 0).func-+ (F.f 0).func-negative *> cancel (Y.dd 0 y) (F.comm 0 c)
+    | suc n, (y, c) => pmap2 (__,__) (pmap2 (+) (Y.d (suc n)).func-+ (F.f (suc n)).func-negative *> cancel (Y.dd (suc n) y) (F.comm (suc n) c))
+                                     (pmap negative ((X.d n).func-negative *> pmap negative (X.dd n c) *> AddGroup.negative_zro) *> AddGroup.negative_zro)
+  }
+  \where {
+    \func snd {A B : AbGroup} : AddGroupHom (ProductAbGroup A B) B \cowith
+      | func p => p.2
+      | func-+ => idp
+
+    \func fst {A B : AbGroup} : AddGroupHom (ProductAbGroup A B) A \cowith
+      | func p => p.1
+      | func-+ => idp
+
+    \lemma cancel {A : AbGroup} {a b c : A} (p : a = 0) (q : b = c) : (a + b) + negative c = 0
+      => rewrite (p, q) (pmap (`+ negative c) zro-left *> negative-right)
+
+    \func inc {X Y : ChainComplex} (F : ChainMap X Y) : ChainMap Y (Cone F) \cowith
+      | f n => \case \elim n \with {
+        | 0 => AddGroupHom.id
+        | suc n => pairHom AddGroupHom.id AddGroupHom.zero
+      }
+      | comm n y => \case \elim n, \elim y \with {
+        | 0, y => pmap (_ +) (AddMonoidHom.func-zro {F.f 0}) *> zro-right
+        | suc n, y => pmap2 (__,__) (pmap (_ +) (AddMonoidHom.func-zro {F.f (suc n)}) *> zro-right) (pmap negative (AddMonoidHom.func-zro {X.d n}) *> AddGroup.negative_zro)
+      }
+
+    \func proj {X Y : ChainComplex} (F : ChainMap X Y) : ChainMap (Cone F) (Shift X) \cowith
+      | f n => \case \elim n \with {
+        | 0 => AddGroupHom.zero
+        | suc n => snd
+      }
+      | comm n c => \case \elim n, \elim c \with {
+        | 0, _ => idp
+        | suc n, _ => idp
+      }
+  }
+
+\func Shift (X : ChainComplex) : ChainComplex \cowith
+  | C n => \case \elim n \with {
+    | 0 => TrivialAbGroup
+    | suc n => X.C n
+  }
+  | d n => \case \elim n \with {
+    | 0 => AddGroupHom.zero
+    | suc n => AddGroupHom.negate AddGroupHom.∘ X.d n
+  }
+  | dd n x => \case \elim n, \elim x \with {
+    | 0, _ => idp
+    | suc n, x => pmap negative ((X.d n).func-negative *> pmap negative (X.dd n x) *> AddGroup.negative_zro) *> AddGroup.negative_zro
+  }

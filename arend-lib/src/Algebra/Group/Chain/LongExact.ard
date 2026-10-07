@@ -1,0 +1,155 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.Cokernel
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Pointed
+\import Function
+\import Logic
+\import Logic.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\func coneSplit {X Y : ChainComplex} (F : ChainMap X Y) : SplitExact (Cone.inc F) (Cone.proj F) \cowith
+  | r n => \case \elim n \with {
+    | 0 => AddGroupHom.id
+    | suc n => Cone.fst
+  }
+  | s n => \case \elim n \with {
+    | 0 => AddGroupHom.zero
+    | suc n => pairHom AddGroupHom.zero AddGroupHom.id
+  }
+  | ri n a => \case \elim n, \elim a \with {
+    | 0, a => idp
+    | suc n, a => idp
+  }
+  | ps n q => \case \elim n, \elim q \with {
+    | 0, q => idp
+    | suc n, q => idp
+  }
+  | split n b => \case \elim n, \elim b \with {
+    | 0, b => zro-right
+    | suc n, b => pmap2 (__,__) zro-right zro-left
+  }
+
+\record SplitExact {A B Q : ChainComplex} (i : ChainMap A B) (p : ChainMap B Q) {
+  | r (n : Nat) : AddGroupHom (B.C n) (A.C n)
+  | s (n : Nat) : AddGroupHom (Q.C n) (B.C n)
+  | ri (n : Nat) (a : A.C n) : r n (i.f n a) = a
+  | ps (n : Nat) (q : Q.C n) : p.f n (s n q) = q
+  | split (n : Nat) (b : B.C n) : i.f n (r n b) + s n (p.f n b) = b
+
+  \lemma i-inj (n : Nat) : IsInj (i.f n)
+    => \lam q => inv (ri n _) *> pmap (r n) q *> ri n _
+
+  \lemma pi (n : Nat) (a : A.C n) : p.f n (i.f n a) = 0
+    => \have sp : s n (p.f n (i.f n a)) = 0
+                => AddGroup.cancel-left (i.f n a) (pmap (\lam x => i.f n x + s n (p.f n (i.f n a))) (inv (ri n a)) *> split n (i.f n a) *> inv zro-right)
+       \in inv (ps n _) *> pmap (p.f n) sp *> AddMonoidHom.func-zro {p.f n}
+
+  \lemma kernel (n : Nat) (b : B.C n) (q : p.f n b = 0) : i.f n (r n b) = b
+    => inv zro-right *> pmap (_ +) (inv (pmap (s n) q *> AddMonoidHom.func-zro {s n})) *> split n b
+
+  \func lift (n : Nat) (z : Q.C (suc n)) : A.C n
+    => r n (B.d n (s (suc n) z))
+
+  \lemma lift-eq (n : Nat) (z : Q.C (suc n)) (dz : Q.d n z = 0) : i.f n (lift n z) = B.d n (s (suc n) z)
+    => kernel n _ (inv (p.comm n (s (suc n) z)) *> pmap (Q.d n) (ps (suc n) z) *> dz)
+
+  \lemma lift-cycle (n : Nat) (z : Q.C (suc n)) (dz : Q.d n z = 0) : A.dOut n (lift n z) = 0 \elim n
+    | 0 => idp
+    | suc m => i-inj m (inv (i.comm m (lift (suc m) z)) *> pmap (B.d m) (lift-eq (suc m) z dz) *> B.dd m _ *> inv (AddMonoidHom.func-zro {i.f m}))
+
+  \func liftCycle (n : Nat) : AddGroupHom (Q.Cycles (suc n)) (A.Cycles n) \cowith
+    | func z => (lift n z.1, lift-cycle n z.1 z.2)
+    | func-+ => ext (pmap (r n) (pmap (B.d n) (s (suc n)).func-+ *> (B.d n).func-+) *> (r n).func-+)
+
+  \func diff (n : Nat) (w : Q.C (suc (suc n))) : B.C (suc n)
+    => s (suc n) (Q.d (suc n) w) - B.d (suc n) (s (suc (suc n)) w)
+
+  \lemma diff-kernel (n : Nat) (w : Q.C (suc (suc n))) : p.f (suc n) (diff n w) = 0
+    => (p.f (suc n)).func-minus *> pmap2 (\lam x y => x - y) (ps (suc n) _) (inv (p.comm (suc n) _) *> pmap (Q.d (suc n)) (ps (suc (suc n)) w)) *> negative-right
+
+  \func boundaryLift (n : Nat) : AddGroupHom (Q.C (suc (suc n))) (A.C (suc n)) \cowith
+    | func w => r (suc n) (diff n w)
+    | func-+ => pmap (r (suc n)) (pmap2 (\lam x y => x - y) (pmap (s (suc n)) (Q.d (suc n)).func-+ *> (s (suc n)).func-+)
+                                                          (pmap (B.d (suc n)) (s (suc (suc n))).func-+ *> (B.d (suc n)).func-+) *> equation.abGroup)
+                *> (r (suc n)).func-+
+
+  \lemma boundaryLift-eq (n : Nat) (w : Q.C (suc (suc n))) : lift n (Q.d (suc n) w) = A.d n (boundaryLift n w)
+    => pmap (\lam x => r n (B.d n x)) (inv (equation.abGroup : diff n w + B.d (suc n) (s (suc (suc n)) w) = s (suc n) (Q.d (suc n) w)))
+       *> pmap (r n) ((B.d n).func-+ *> pmap (_ +) (B.dd n _) *> zro-right *> pmap (B.d n) (inv (kernel (suc n) _ (diff-kernel n w))) *> i.comm n _)
+       *> ri n _
+
+  \func connecting (n : Nat) : AddGroupHom (Homology Q (suc n)) (Homology A n)
+    => Coker.map (Q.boundary (suc n)) (A.boundary n) (boundaryLift n) (liftCycle n) \lam w => ext (boundaryLift-eq n w)
+
+  \lemma sp (n : Nat) (b : B.C n) : s n (p.f n b) = b - i.f n (r n b)
+    => inv equation.abGroup *> pmap (\lam x => x - i.f n (r n b)) (split n b)
+
+  \lemma lift-p (n : Nat) (b : B.C (suc n)) : lift n (p.f (suc n) b) = r n (B.d n b) - A.d n (r (suc n) b)
+    => pmap (\lam x => r n (B.d n x)) (sp (suc n) b) *> pmap (r n) ((B.d n).func-minus *> pmap (_ -) (i.comm n _)) *> (r n).func-minus *> pmap (_ -) (ri n _)
+
+  \lemma i-cycle (n : Nat) (a : A.C n) (q : B.dOut n (i.f n a) = 0) : A.dOut n a = 0 \elim n
+    | 0 => idp
+    | suc m => i-inj m (inv (i.comm m a) *> q *> inv (AddMonoidHom.func-zro {i.f m}))
+
+  \lemma exact-middle (n : Nat) : AbExactAt (i.homology n) (p.homology n)
+    => \lam c => \case \elim c \with {
+      | in~ b => (\lam pc => \case Homology.class-eq-inv pc \with {
+        | inP (w, dw) =>
+          \have | pb' : p.f n (corr b.1 w) = 0 => (p.f n).func-minus *> pmap (_ -) (inv (p.comm n _) *> pmap (Q.d n) (ps (suc n) w) *> dw) *> equation.abGroup
+                | cb' : B.dOut n (corr b.1 w) = 0 => (B.dOut n).func-minus *> pmap2 (\lam x y => x - y) b.2 (B.dOut-d n _) *> negative-right
+          \in inP (in~ (r n (corr b.1 w), i-cycle n _ (pmap (B.dOut n) (kernel n _ pb') *> cb')),
+                   Homology.class-eq (negative (s (suc n) w)) ((B.d n).func-negative *> equation.abGroup *> pmap (\lam x => x - b.1) (inv (kernel n _ pb'))))
+      }, \lam (inP (x, q)) => inv (pmap (p.homology n) q) *> zero x)
+    }
+    \where {
+      \func corr {n : Nat} (b : B.C n) (w : Q.C (suc n)) : B.C n => b - B.d n (s (suc n) w)
+
+      \lemma zero (x : Homology A n) : p.homology n (i.homology n x) = 0 \elim x
+        | in~ a => pmap in~ (ext (pi n a.1))
+    }
+
+  \lemma exact-right (n : Nat) : AbExactAt (p.homology (suc n)) (connecting n)
+    => \lam c => \case \elim c \with {
+      | in~ z => (\lam dc => \case Homology.class-eq-inv dc \with {
+        | inP (u, du) =>
+          \have cb : B.d n (corr z.1 u) = 0 => (B.d n).func-minus *> pmap2 (\lam x y => x - y) (inv (lift-eq n z.1 z.2)) (i.comm n u)
+                                                *> inv (i.f n).func-minus *> pmap (i.f n) (pmap (_ -) du *> equation.abGroup) *> AddMonoidHom.func-zro {i.f n}
+          \in inP (in~ (corr z.1 u, cb), pmap in~ (ext ((p.f (suc n)).func-minus *> pmap2 (\lam x y => x - y) (ps (suc n) z.1) (pi (suc n) u) *> AddGroup.minus_zro)))
+      }, \lam (inP (x, q)) => inv (pmap (connecting n) q) *> zero x)
+    }
+    \where {
+      \func corr {n : Nat} (z : Q.C (suc n)) (u : A.C (suc n)) : B.C (suc n) => s (suc n) z - i.f (suc n) u
+
+      \lemma zero (x : Homology B (suc n)) : connecting n (p.homology (suc n) x) = 0 \elim x
+        | in~ b => Homology.class-eq (negative (r (suc n) b.1))
+                     ((A.d n).func-negative *> inv (lift-p n b.1 *> pmap (\lam y => r n y - _) b.2 *> pmap (`- _) (AddMonoidHom.func-zro {r n}) *> zro-left) *> inv AddGroup.minus_zro)
+    }
+
+  \lemma bottom : IsSurj (p.homology 0)
+    => \lam c => \case \elim c \with {
+      | in~ z => inP (in~ (s 0 z.1, idp), pmap in~ (ext (ps 0 z.1)))
+    }
+
+  \lemma exact-left (n : Nat) : AbExactAt (connecting n) (i.homology n)
+    => \lam x => \case \elim x \with {
+      | in~ a => (\lam ia => \case Homology.class-eq-inv ia \with {
+        | inP (w, dw) =>
+          \have cz : Q.d n (p.f (suc n) w) = 0 => p.comm n w *> pmap (p.f n) dw *> (p.f n).func-minus *> pmap2 (\lam x y => x - y) (pi n a.1) (AddMonoidHom.func-zro {p.f n}) *> negative-right
+          \in inP (in~ (p.f (suc n) w, cz),
+                   Homology.class-eq (negative (r (suc n) w))
+                     ((A.d n).func-negative *> inv (pmap (`- a.1) (lift-p n w *> pmap (\lam y => r n y - _) dw *> pmap (`- _) ((r n).func-minus *> pmap2 (\lam x y => x - y) (ri n a.1) (AddMonoidHom.func-zro {r n}))) *> equation.abGroup)))
+      }, \lam (inP (y, q)) => inv (pmap (i.homology n) q) *> zero y)
+    }
+    \where
+      \lemma zero (y : Homology Q (suc n)) : i.homology n (connecting n y) = 0 \elim y
+        | in~ z => Homology.class-eq (s (suc n) z.1) (inv (lift-eq n z.1 z.2) *> inv AddGroup.minus_zro)
+}

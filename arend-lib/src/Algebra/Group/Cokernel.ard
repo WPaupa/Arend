@@ -1,0 +1,148 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Group.SubGroup
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Category \hiding (id, o)
+\import Equiv
+\import Function
+\import Logic
+\import Logic.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\func cosets {G : AbGroup} (S : SubAddGroup G) : Equivalence G \cowith
+  | ~ x y => S.contains (x - y)
+  | ~-reflexive => transportInv S.contains negative-right S.contains_zro
+  | ~-symmetric c => transport S.contains equation.abGroup (S.contains_negative c)
+  | ~-transitive c d => transport S.contains equation.abGroup (S.contains_+ c d)
+
+\instance AbQuotient {G : AbGroup} (S : SubAddGroup G) : AbGroup (Quotient (cosets S).~)
+  | zro => in~ 0
+  | + (_ _ : Quotient (cosets S).~) : Quotient (cosets S).~ \with {
+    | in~ a, in~ b => in~ (a G.+ b)
+    | in~ a, ~-equiv x y r => ~-pequiv (transportInv S.contains equation.abGroup r)
+    | ~-equiv x y r, in~ b => ~-pequiv (transportInv S.contains equation.abGroup r)
+  }
+  | zro-left {x} => cases x \with {
+    | in~ a => pmap in~ zro-left
+  }
+  | zro-right {x} => cases x \with {
+    | in~ a => pmap in~ zro-right
+  }
+  | +-assoc {x} {y} {z} => cases (x,y,z) \with {
+    | in~ a, in~ b, in~ c => pmap in~ +-assoc
+  }
+  | negative (_ : Quotient (cosets S).~) : Quotient (cosets S).~ \with {
+    | in~ a => in~ (G.negative a)
+    | ~-equiv x y r => ~-pequiv (transport S.contains equation.abGroup (S.contains_negative r))
+  }
+  | negative-left {x} => cases x \with {
+    | in~ a => pmap in~ negative-left
+  }
+  | +-comm {x} {y} => cases (x,y) \with {
+    | in~ a, in~ b => pmap in~ +-comm
+  }
+  \where {
+    \func proj {G : AbGroup} (S : SubAddGroup G) : AddGroupHom G (AbQuotient S) \cowith
+      | func => in~
+      | func-+ => idp
+
+    \lemma proj-equality {G : AbGroup} {S : SubAddGroup G} {x y : G} : in~ x = {AbQuotient S} in~ y <-> S.contains (x - y)
+      => (Quotient.equalityEquiv (cosets S), ~-pequiv)
+
+    \func desc {G T : AbGroup} {S : SubAddGroup G} (h : AddGroupHom G T) (p : \Pi {x : G} -> S.contains x -> h x = 0)
+      : AddGroupHom (AbQuotient S) T \cowith
+      | func (_ : Quotient (cosets S).~) : T \with {
+        | in~ a => h a
+        | ~-equiv x y r => AddGroup.fromZero (inv h.func-minus *> p r)
+      }
+      | func-+ {x} {y} => cases (x,y) \with {
+        | in~ a, in~ b => h.func-+
+      }
+
+    \lemma hom-ext {G T : AbGroup} {S : SubAddGroup G} (h k : AddGroupHom (AbQuotient S) T) (p : \Pi (x : G) -> h (in~ x) = k (in~ x)) : h = k
+      => exts \lam x => \case \elim x \with {
+        | in~ a => p a
+      }
+  }
+
+\func Coker {R G : AbGroup} (M : AddGroupHom R G) => AbQuotient (ImageAddGroup M)
+  \where {
+    \func proj {R G : AbGroup} (M : AddGroupHom R G) : AddGroupHom G (Coker M) => AbQuotient.proj (ImageAddGroup M)
+
+    \lemma proj-surj {R G : AbGroup} {M : AddGroupHom R G} : IsSurj (proj M)
+      => Quotient.in-surj
+
+    \lemma proj-kills {R G : AbGroup} {M : AddGroupHom R G} (x : R) : proj M (M x) = 0
+      => ~-pequiv (inP (x, inv AddGroup.minus_zro))
+
+    \lemma proj-equality {R G : AbGroup} {M : AddGroupHom R G} {x y : G} : proj M x = proj M y <-> ∃ (a : R) (M a = x - y)
+      => AbQuotient.proj-equality
+
+    \lemma hom-ext {R G T : AbGroup} {M : AddGroupHom R G} (h k : AddGroupHom (Coker M) T) (p : \Pi (x : G) -> h (proj M x) = k (proj M x)) : h = k
+      => AbQuotient.hom-ext h k p
+
+    \func desc {R G T : AbGroup} {M : AddGroupHom R G} (h : AddGroupHom G T) (p : \Pi (x : R) -> h (M x) = 0) : AddGroupHom (Coker M) T
+      => AbQuotient.desc {G} {T} {ImageAddGroup M} h \lam (inP (a, q)) => pmap h (inv q) *> p a
+
+    \func universal {R G T : AbGroup} {M : AddGroupHom R G}
+      : QEquiv {AddGroupHom (Coker M) T} {\Sigma (h : AddGroupHom G T) (\Pi (x : R) -> h (M x) = 0)} \cowith
+      | f h => (h AddGroupHom.∘ proj M, \lam x => pmap h (proj-kills x) *> h.func-zro)
+      | ret s => desc s.1 s.2
+      | ret_f h => hom-ext _ h \lam _ => idp
+      | f_sec _ => ext (exts \lam _ => idp)
+
+    \func map {R G R' G' : AbGroup} (M : AddGroupHom R G) (N : AddGroupHom R' G') (u : AddGroupHom R R') (v : AddGroupHom G G')
+              (sq : \Pi (x : R) -> v (M x) = N (u x)) : AddGroupHom (Coker M) (Coker N)
+      => desc (proj N AddGroupHom.∘ v) \lam x => pmap (proj N) (sq x) *> proj-kills (u x)
+
+    \func mapEquiv {R G R' G' : AbGroup} (M : AddGroupHom R G) (N : AddGroupHom R' G') (u : AddGroupHom R R') (v : AddGroupHom G G')
+                   (sq : \Pi (x : R) -> v (M x) = N (u x)) (ue : QEquiv u) (ve : QEquiv v) : QEquiv (map M N u v sq) \cowith
+      | ret => map N M (AddGroupHom.inverse u ue) (AddGroupHom.inverse v ve)
+                   \lam y => ve.isInj (ve.f_ret (N y) *> pmap N (inv (ue.f_ret y)) *> inv (sq (ue.ret y)))
+      | ret_f x => \case \elim x \with {
+        | in~ a => pmap in~ (ve.ret_f a)
+      }
+      | f_sec y => \case \elim y \with {
+        | in~ b => pmap in~ (ve.f_ret b)
+      }
+
+    \func zeroEquiv {R G : AbGroup} {M : AddGroupHom R G} (p : \Pi (x : R) -> M x = 0) : QEquiv (desc AddGroupHom.id p) \cowith
+      | ret => proj M
+      | ret_f x => \case \elim x \with {
+        | in~ a => idp
+      }
+      | f_sec _ => idp
+
+    \lemma trivial {R G : AbGroup} {M : AddGroupHom R G} (s : IsSurj M) (y : Coker M) : y = 0 \elim y
+      | in~ b => \case s b \with {
+        | inP (a, q) => pmap (proj M) (inv q) *> proj-kills a
+      }
+
+    \func product {A B C D : AbGroup} (M : AddGroupHom A C) (N : AddGroupHom B D)
+      : AddGroupHom (Coker (prodHom M N)) (ProductAbGroup (Coker M) (Coker N))
+      => desc {ProductAbGroup A B} {ProductAbGroup C D} {_} {prodHom M N} (prodHom (proj M) (proj N)) \lam (a, b) => pmap2 (__,__) (proj-kills a) (proj-kills b)
+      \where {
+        \func inverse {A B C D : AbGroup} (M : AddGroupHom A C) (N : AddGroupHom B D)
+          : AddGroupHom (ProductAbGroup (Coker M) (Coker N)) (Coker (prodHom M N))
+          => copairHom (desc (proj (prodHom M N) AddGroupHom.∘ pairHom AddGroupHom.id AddGroupHom.zero) \lam a => pmap (proj _) (pmap2 (__,__) idp (inv N.func-zro)) *> proj-kills (a, B.zro))
+                       (desc (proj (prodHom M N) AddGroupHom.∘ pairHom AddGroupHom.zero AddGroupHom.id) \lam b => pmap (proj _) (pmap2 (__,__) (inv M.func-zro) idp) *> proj-kills (A.zro, b))
+
+        \func equiv {A B C D : AbGroup} (M : AddGroupHom A C) (N : AddGroupHom B D) : QEquiv (product M N) \cowith
+          | ret => inverse M N
+          | ret_f x => \case \elim x \with {
+            | in~ (c, d) => pmap in~ (pmap2 (__,__) zro-right zro-left)
+          }
+          | f_sec s => \case \elim s \with {
+            | (x, y) => \case \elim x, \elim y \with {
+              | in~ c, in~ d => pmap2 (__,__) (pmap in~ zro-right) (pmap in~ zro-left)
+            }
+          }
+      }
+  }

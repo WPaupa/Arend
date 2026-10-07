@@ -38,15 +38,29 @@
 
     \func fromFillers {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
                       (F : \Pi (c : Fin (R.count n)) -> Fillers n Q old c) : Extension n Q old
-      => \let | t => PushoutData.drec (\lam y => Q (R.build n y)) old (\lam c => (F c).1) (\lam a => pathOver ((F a.1).2 a.2))
-              | e => pi-left {_} {_} {Q} (R.build n)
-         \in (e.ret t, \lam x => path ((e.f_sec t @ __) (pinl x)))
+      => (equiv {R} {n} {Q} {old}).ret F
 
     \func toFillers {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
                     (E : Extension n Q old) (c : Fin (R.count n)) : Fillers n Q old c
       => (E.1 (R.build n (pinr c)),
           \lam s => pmap (transport (\lam y => Q (R.build n y)) (PushoutData.ppglue (c,s))) (inv (E.2 (R.attach n (c,s))))
                     *> pmapd (\lam y => E.1 (R.build n y)) (PushoutData.ppglue (c,s)))
+
+    \func equiv {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
+      : QEquiv {Extension n Q old} {\Pi (c : Fin (R.count n)) -> Fillers n Q old c} (toFillers {R} {n} {Q} {old})
+      => sigma-left {_} {_} {\lam (t : \Pi (y : PushoutData (R.attach n) __.1) -> Q (R.build n y)) => \Pi (x : R.stage n) -> t (pinl x) = old x}
+                    (pi-left {_} {_} {Q} (R.build n))
+         `transQEquiv` PushoutData.dextension-equiv (R.attach n) __.1 (\lam y => Q (R.build n y)) old
+         `transQEquiv` curry {R} {n} {Q} {old}
+      \where
+        \func curry {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
+          : QEquiv {\Sigma (rm : \Pi (c : Fin (R.count n)) -> Q (R.build n (pinr c)))
+                           (\Pi (a : \Sigma (Fin (R.count n)) (boundary n)) -> transport (\lam y => Q (R.build n y)) (PushoutData.ppglue a) (old (R.attach n a)) = rm a.1)}
+                   {\Pi (c : Fin (R.count n)) -> Fillers n Q old c} \cowith
+          | f p c => (p.1 c, \lam s => p.2 (c, s))
+          | ret F => (\lam c => (F c).1, \lam a => (F a.1).2 a.2)
+          | ret_f _ => idp
+          | f_sec _ => idp
 
     \lemma criterion {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
       : TruncP (Extension n Q old) <-> (\Pi (c : Fin (R.count n)) -> TruncP (Fillers n Q old c))

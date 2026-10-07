@@ -1,0 +1,92 @@
+\import Algebra.Group
+\import Algebra.Group.Free
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupHom
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Equiv
+\import Function.Meta
+\import Logic
+\import Logic.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\func Swapped {G : Group} (x y : G) : \Prop
+  => ∃ (a b c d : G) (x = a * b * c * d) (y = a * c * b * d)
+
+\instance Ab (G : Group) : AbGroup (Quotient (Swapped {G}))
+  | zro => in~ ide
+  | + (_ _ : Quotient (Swapped {G})) : Quotient (Swapped {G}) \with {
+    | in~ a, in~ b => in~ (a G.* b)
+    | in~ e, ~-equiv x y r => ~-pequiv (TruncP.map r \lam s => (e * s.1, s.2, s.3, s.4, pmap (e *) s.5 *> equation.monoid, pmap (e *) s.6 *> equation.monoid))
+    | ~-equiv x y r, in~ e => ~-pequiv (TruncP.map r \lam s => (s.1, s.2, s.3, s.4 * e, pmap (`* e) s.5 *> equation.monoid, pmap (`* e) s.6 *> equation.monoid))
+  }
+  | zro-left {x} => cases x \with {
+    | in~ a => pmap in~ ide-left
+  }
+  | zro-right {x} => cases x \with {
+    | in~ a => pmap in~ ide-right
+  }
+  | +-assoc {x} {y} {z} => cases (x,y,z) \with {
+    | in~ a, in~ b, in~ c => pmap in~ *-assoc
+  }
+  | negative (_ : Quotient (Swapped {G})) : Quotient (Swapped {G}) \with {
+    | in~ a => in~ (G.inverse a)
+    | ~-equiv x y r => ~-pequiv (TruncP.map r \lam s => (inverse s.4, inverse s.3, inverse s.2, inverse s.1,
+                                                         pmap inverse s.5 *> equation.group, pmap inverse s.6 *> equation.group))
+  }
+  | negative-left {x} => cases x \with {
+    | in~ a => pmap in~ inverse-left
+  }
+  | +-comm {x} {y} => cases (x,y) \with {
+    | in~ a, in~ b => ~-pequiv (inP (ide, a, b, ide, equation.monoid, equation.monoid))
+  }
+  \where {
+    \func proj (G : Group) : GroupHom G (Ab G) \cowith
+      | func => in~
+      | func-* => idp
+
+    \func desc {G : Group} {T : AbGroup} (f : GroupHom G T) : AddGroupHom (Ab G) T \cowith
+      | func (_ : Quotient (Swapped {G})) : T \with {
+        | in~ a => f a
+        | ~-equiv x y r => \case r \with {
+          | inP s => pmap f s.5 *> swap f *> inv (pmap f s.6)
+        }
+      }
+      | func-+ {x} {y} => cases (x,y) \with {
+        | in~ a, in~ b => f.func-*
+      }
+      \where
+        \lemma swap {G : Group} {T : AbGroup} (f : GroupHom G T) {a b c d : G} : f (a * b * c * d) = f (a * c * b * d)
+          => expand f *> (equation.abGroup : f a T.+ f b T.+ f c T.+ f d = f a T.+ f c T.+ f b T.+ f d) *> inv (expand f)
+          \where
+            \lemma expand {G : Group} {T : AbGroup} (f : GroupHom G T) {x y z w : G} : f (x * y * z * w) = f x T.+ f y T.+ f z T.+ f w
+              => f.func-* *> pmap (\lam t => t T.+ f w) (f.func-* *> pmap (\lam t => t T.+ f z) f.func-*)
+
+    \lemma hom-ext {G : Group} {T : AbGroup} (h k : AddGroupHom (Ab G) T) (p : \Pi (a : G) -> h (in~ a) = k (in~ a)) : h = k
+      => exts \lam x => \case \elim x \with {
+        | in~ a => p a
+      }
+
+    \func universal {G : Group} {T : AbGroup} : QEquiv {AddGroupHom (Ab G) T} {GroupHom G T} \cowith
+      | f h => AddGroupHom.toGroupHom h GroupHom.∘ proj G
+      | ret => desc
+      | ret_f h => hom-ext _ h \lam _ => idp
+      | f_sec _ => exts \lam _ => idp
+
+    \func free (g : Nat) : AddGroupHom (Ab (FreeGroup (Fin g))) (ZFree g)
+      => desc (FreeGroupUniversalProperty (Fin g) (ZFree g) ZFree.basis).1
+
+    \func free-equiv (g : Nat) : QEquiv (free g) \cowith
+      | ret => ZFree.extend \lam a => in~ (FreeGroup.can a)
+      | ret_f x => pmap {AddGroupHom (Ab (FreeGroup (Fin g))) (Ab (FreeGroup (Fin g)))} (__ x)
+                     (hom-ext (ZFree.extend (\lam a => in~ (FreeGroup.can a)) AddGroupHom.∘ free g) AddGroupHom.id
+                              (FreeGroup.hom-ext (AddGroupHom.toGroupHom (ZFree.extend (\lam a => in~ (FreeGroup.can a)) AddGroupHom.∘ free g) GroupHom.∘ proj _)
+                                                 (proj _) \lam a => pmap (ZFree.extend (\lam a => in~ (FreeGroup.can a))) (AddMonoid.zro-right {ZFree g} {ZFree.basis a}) *> ZFree.extend-basis _ a))
+      | f_sec y => pmap {AddGroupHom (ZFree g) (ZFree g)} (__ y)
+                     (ZFree.hom-ext (free g AddGroupHom.∘ ZFree.extend (\lam a => in~ (FreeGroup.can a))) AddGroupHom.id
+                                    \lam a => pmap (free g) (ZFree.extend-basis _ a) *> AddMonoid.zro-right {ZFree g} {ZFree.basis a})
+  }

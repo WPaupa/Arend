@@ -3,6 +3,7 @@
 \import Algebra.Monoid
 \import Algebra.Monoid.MonoidHom
 \import Algebra.Pointed
+\import Equiv
 \import Function
 \import Function.Meta
 \import Paths
@@ -71,4 +72,16 @@
   \func \fixl 8 compose \alias \infixl 8 ∘ {A B C : AddGroup} (g : AddGroupHom B C) (f : AddGroupHom A B) : AddGroupHom A C \cowith
     | func x => g (f x)
     | func-+ => pmap g f.func-+ *> g.func-+
+
+  \func zero {A B : AddGroup} : AddGroupHom A B \cowith
+    | func _ => 0
+    | func-+ => inv zro-left
+
+  \func negate {A : AbGroup} : AddGroupHom A A \cowith
+    | func => negative
+    | func-+ => AddGroup.negative_+ *> +-comm
+
+  \func inverse {A B : AddGroup} (f : AddGroupHom A B) (e : QEquiv f) : AddGroupHom B A \cowith
+    | func => e.ret
+    | func-+ => e.isInj (e.f_ret _ *> inv (f.func-+ *> pmap2 (+) (e.f_ret _) (e.f_ret _)))
 }

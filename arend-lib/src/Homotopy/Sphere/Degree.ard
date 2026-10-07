@@ -1,0 +1,101 @@
+\import Algebra.Domain.Euclidean (IntDomain)
+\import Algebra.Group
+\import Algebra.Group.FinitePresentation (mulHom)
+\import Algebra.Group.FreeAbelian (*c_*i)
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Monoid
+\import Algebra.Pointed (ide)
+\import Algebra.Ring
+\import Algebra.Semiring
+\import Arith.Int
+\import Arith.Nat
+\import Category \hiding (id, o)
+\import Equiv
+\import Function
+\import Homotopy.HomotopyGroup
+\import Homotopy.HomotopyGroup.Circle
+\import Homotopy.HomotopyGroup.Hopf
+\import Homotopy.HomotopyGroup.Stabilization
+\import Homotopy.Pointed
+\import Homotopy.Sphere
+\import Homotopy.Suspension
+\import Logic
+\import Meta
+\import Paths
+\import Paths.Meta
+
+\func generatorHom (n : Nat) : GroupHom (AddGroup.toGroup IntRing) (PiGroup n (Sphere.pointed (suc n))) \elim n
+  | 0 => PiGroup_S1.hom
+  | suc n => piStabilization.hom n (Sphere.pointed (suc n)) GroupHom.∘ generatorHom n
+  \where {
+    \lemma isEquiv (n : Nat) : IsEquiv (generatorHom n) \elim n
+      | 0 => circle
+      | 1 => IsEquiv.trans circle (IsEquiv.fromInjSurj lowest (sphereStabilization.isSurj.{0} 0))
+      | suc (suc m) => IsEquiv.trans (isEquiv (suc m)) (sphereStabilization.isEquiv (suc m) (suc (suc m)) linarith)
+
+    \lemma circle : IsEquiv PiGroup_S1.hom
+      => \have s => (GroupCat.Iso<->Inj+Surj PiGroup_S1.hom).1 PiGroup_S1.iso
+         \in IsEquiv.fromInjSurj s.1 s.2
+
+    \lemma lowest : IsInj (piStabilization 1 (Sphere.pointed 1))
+      => \lam {x} {y} p => \case circle-surj x, circle-surj y \with {
+        | inP (a, pa), inP (b, pb) => inv pa *> pmap PiGroup_S1.hom (int-surj-inj composite composite-surj (pmap (Iso.f {iso}) (pmap (piStabilization 1 _) pa *> p *> inv (pmap (piStabilization 1 _) pb)))) *> pb
+      }
+      \where {
+        \lemma circle-surj : IsSurj PiGroup_S1.hom
+          => ((GroupCat.Iso<->Inj+Surj PiGroup_S1.hom).1 PiGroup_S1.iso).2
+
+        \func iso => Cat.idtoiso {GroupCat} PiGroup2_S2.{0}
+
+        \func composite : GroupHom (AddGroup.toGroup IntRing) (AddGroup.toGroup IntRing)
+          => Iso.f {iso} GroupCat.∘ piStabilization.hom 0 (Sphere.pointed 1) GroupHom.∘ PiGroup_S1.hom
+
+        \lemma composite-surj : IsSurj composite
+          => IsSurj.comp (IsSurj.comp circle-surj (sphereStabilization.isSurj.{0} 0)) (((GroupCat.Iso<->Inj+Surj (Iso.f {iso})).1 iso).2)
+      }
+
+    \lemma int-value (h : GroupHom (AddGroup.toGroup IntRing) (AddGroup.toGroup IntRing)) (k : Int) : h k = k * h 1
+      => pmap h (inv ide-right *> *c_*i {RingLModule IntRing} {k} {1}) *> AddGroupHom.func-*i {AddGroupHom.fromGroupHom h} *> inv (*c_*i {RingLModule IntRing})
+
+    \lemma int-surj-inj (h : GroupHom (AddGroup.toGroup IntRing) (AddGroup.toGroup IntRing)) (s : IsSurj h) : IsInj h
+      => \lam {x} {y} p => \case s 1 \with {
+        | inP (k, q) => IntDomain.nonZero-cancel-right (\lam h1 => IntDomain.zro/=ide (inv (inv q *> int-value h k *> pmap (k IntRing.*) h1 *> IntRing.zro_*-right)))
+                          (inv (int-value h x) *> p *> int-value h y)
+      }
+
+    \lemma int-hom-ext {G : Group} (h k : GroupHom (AddGroup.toGroup IntRing) G) (p : h 1 = k 1) (x : Int) : h x = k x \elim x
+      | pos n => nat h k p n
+      | neg (suc n) => h.func-inverse {pos (suc n)} *> pmap inverse (nat h k p (suc n)) *> inv (k.func-inverse {pos (suc n)})
+      \where
+        \lemma nat {G : Group} (h k : GroupHom (AddGroup.toGroup IntRing) G) (p : h 1 = k 1) (n : Nat) : h (pos n) = k (pos n) \elim n
+          | 0 => h.func-ide *> inv k.func-ide
+          | suc n => h.func-* {pos n} {1} *> pmap2 (*) (nat h k p n) p *> inv (k.func-* {pos n} {1})
+  }
+
+\func generator (n : Nat) : pi (suc n) (Sphere.pointed (suc n)) => generatorHom n 1
+
+\func degree {n : Nat} (f : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : Int
+  => IsEquiv.ret (generatorHom.isEquiv n) (piMap (suc n) f (generator n))
+  \where {
+    \lemma generator-eq {n : Nat} (f : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : piMap (suc n) f (generator n) = generatorHom n (degree f)
+      => inv (IsEquiv.f_ret (generatorHom.isEquiv n))
+
+    \lemma unique {n : Nat} (f : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) (k : Int) (p : piMap (suc n) f (generator n) = generatorHom n k) : degree f = k
+      => pmap (IsEquiv.ret (generatorHom.isEquiv n)) p *> IsEquiv.ret_f (generatorHom.isEquiv n)
+
+    \lemma action {n : Nat} (f : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) (k : Int) : piMap (suc n) f (generatorHom n k) = generatorHom n (degree f * k)
+      => generatorHom.int-hom-ext (piGroupMap n f GroupHom.∘ generatorHom n) (generatorHom n GroupHom.∘ AddGroupHom.toGroupHom (mulHom (degree f)))
+                                  (generator-eq f *> pmap (generatorHom n) (inv ide-right)) k
+
+    \lemma id {n : Nat} : degree (->*.id {Sphere.pointed (suc n)}) = 1
+      => unique _ 1 (piMap-id (suc n) _)
+
+    \lemma comp {n : Nat} (g f : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : degree (g ->*.∘* f) = degree g * degree f
+      => unique _ _ (piMap-comp (suc n) g f _ *> pmap (piMap (suc n) g) (generator-eq f) *> action g (degree f))
+
+    \lemma susp {n : Nat} (f : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : degree (Susp-Func f) = degree f
+      => unique {suc n} (Susp-Func f) (degree f) (piStabilization.natural (suc n) f (generator n) *> pmap (piStabilization (suc n) _) (generator-eq f))
+  }

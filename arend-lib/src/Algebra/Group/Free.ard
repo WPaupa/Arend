@@ -119,6 +119,15 @@
     \func univ_map' {G : Group} (i : S -> G) (w : FreeGroup S) : G \elim w
       | in~ a => univ_map i a
       | ~-equiv x y p => univ_equiv {S} {G} i x y p
+
+    \lemma hom-ext {S : \Set} {G : Group} (h k : GroupHom (FreeGroup S) G) (p : \Pi (s : S) -> h (can s) = k (can s)) (x : FreeGroup S) : h x = k x \elim x
+      | in~ w => words w
+      \where
+        \lemma words (w : List (\Sigma S Bool)) : h (in~ w) = k (in~ w) \elim w
+          | nil => h.func-ide *> Paths.inv k.func-ide
+          | (s, true) :: w => h.func-* {can s} {in~ w} *> pmap2 (*) (p s) (words w) *> Paths.inv (k.func-* {can s} {in~ w})
+          | (s, false) :: w => h.func-* {inverse (can s)} {in~ w} *> pmap2 (*) (h.func-inverse *> pmap inverse (p s) *> Paths.inv k.func-inverse) (words w)
+                               *> Paths.inv (k.func-* {inverse (can s)} {in~ w})
   }
 
 \func FreeGroupUniversalProperty (S : \Set) (G : Group) (i : S -> G) : \Sigma (f : GroupHom (FreeGroup S) G) (f o FreeGroup.can = i) =>

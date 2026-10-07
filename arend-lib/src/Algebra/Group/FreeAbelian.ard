@@ -1,0 +1,175 @@
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Linear.Matrix
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Module.FinModule
+\import Algebra.Module.LinearMap
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Arith.Int
+\import Data.Array
+\import Data.Fin (fsuc/=, fsuc/=0)
+\import Equiv
+\import Function.Meta
+\import Logic
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Set
+\import Set.Fin
+\open AddMonoid
+\open AddGroup (*i, *i-assoc, *i-rdistr, *n_negative)
+\open AbGroup (*i-ldistr)
+\open LModule (natCoef_*c, *c_negative-left)
+
+\func ZFree (g : Nat) : AbGroup (Array Int g) => ArrayLModule g (RingLModule IntRing)
+  \where {
+    \func basis {g : Nat} (a : Fin g) : ZFree g => MatrixRing.ide {IntRing} {g} a
+
+    \func coordinate {g : Nat} (b : Fin g) : AddGroupHom (ZFree g) IntRing \cowith
+      | func x => x b
+      | func-+ => idp
+
+    \lemma basis-coordinate {g : Nat} {a b : Fin g} (p : a /= b) : basis a b = 0
+      => rewrite (decideEq/=_reduce p) idp
+
+    \lemma basis-diagonal {g : Nat} {a : Fin g} : basis a a = 1
+      => rewrite (decideEq=_reduce idp) idp
+
+    \lemma basis-symm {g : Nat} {a b : Fin g} : basis a b = basis b a
+      => \case decideEq a b \with {
+        | yes p => rewrite p idp
+        | no q => basis-coordinate q *> inv (basis-coordinate (/=-sym q))
+      }
+
+    \func extend {A : AbGroup} {g : Nat} (v : Fin g -> A) : AddGroupHom (ZFree g) A \cowith
+      | func x => A.BigSum (\lam a => x a *i v a)
+      | func-+ {x} {y} => pmap A.BigSum (exts \lam _ => *i-rdistr) *> A.BigSum_+ {g} {\lam a => x a *i v a} {\lam a => y a *i v a}
+
+    \lemma extend-basis {A : AbGroup} {g : Nat} (v : Fin g -> A) (a : Fin g) : extend v (basis a) = v a
+      => A.BigSum-unique {\lam b => basis a b *i v b} a (\lam b a/=b => pmap (`*i v b) (basis-coordinate a/=b)) *> pmap (`*i v a) (basis-diagonal {g} {a}) *> zro-left
+
+    \func toLinear {M N : LModule IntRing} (f : AddGroupHom M N) : LinearMap M N \cowith
+      | func => f
+      | func-+ => f.func-+
+      | func-*c => pmap f *c_*i *> f.func-*i *> inv *c_*i
+
+    \func intModule (A : AbGroup) : LModule IntRing \cowith
+      | AbGroup => A
+      | *c => *i
+      | *c-assoc => *i-assoc
+      | *c-ldistr => *i-ldistr
+      | *c-rdistr => *i-rdistr
+      | ide_*c => zro-left
+
+    \lemma hom-ext {A : AbGroup} {g : Nat} (h k : AddGroupHom (ZFree g) A) (p : \Pi (a : Fin g) -> h (basis a) = k (basis a)) : h = k
+      => exts (LinearMap.basis-ext {IntRing} {ArrayLModule g (RingLModule IntRing)} {intModule A} (lin h) (lin k) (ArrayFinModule.basis {IntRing} {g}).2 p)
+      \where
+        \func lin {A : AbGroup} {g : Nat} (h : AddGroupHom (ZFree g) A) : LinearMap (ArrayLModule g (RingLModule IntRing)) (intModule A) \cowith
+          | func => h
+          | func-+ => h.func-+
+          | func-*c => pmap h *c_*i *> h.func-*i
+
+    \func freeUniversal {A : AbGroup} {g : Nat} : QEquiv {AddGroupHom (ZFree g) A} {Fin g -> A} \cowith
+      | f h a => h (basis a)
+      | ret => extend
+      | ret_f h => hom-ext _ h (extend-basis _)
+      | f_sec v => ext (extend-basis v)
+
+    \func columnMatrix {r g : Nat} (f : AddGroupHom (ZFree r) (ZFree g)) : Matrix Int g r
+      => mkMatrix \lam b a => f (basis a) b
+
+    \func columnAction {r g : Nat} (M : Matrix Int g r) : AddGroupHom (ZFree r) (ZFree g)
+      => LinearMap.toLinearMap {IntRing} {ArrayLModule r (RingLModule IntRing)} {ArrayLModule g (RingLModule IntRing)} ArrayFinModule.basis (MatrixRing.ide {IntRing} {g}) (transpose M)
+
+    \lemma columnActionBasis {r g : Nat} (M : Matrix Int g r) (a : Fin r) (b : Fin g) : columnAction M (basis a) b = M b a
+      => path (\lam i => LinearMap.toLinearMap-basis {IntRing} {ArrayLModule r (RingLModule IntRing)} {ArrayLModule g (RingLModule IntRing)} ArrayFinModule.basis (MatrixRing.ide {IntRing} {g}) {transpose M} {a} i b)
+         *> inv (path (\lam i => ArrayFinModule.split {IntRing} {g} (\lam b => M b a) i b))
+
+    \lemma columnMatrix_toMatrix {r g : Nat} (f : AddGroupHom (ZFree r) (ZFree g)) : columnMatrix f = transpose (rowMatrix f)
+      => matrixExt \lam _ _ => inv ArrayFinModule.coordinate
+      \where
+        \func rowMatrix {r g : Nat} (f : AddGroupHom (ZFree r) (ZFree g)) : Matrix Int r g
+          => LinearMap.toMatrix {IntRing} {ArrayLModule r (RingLModule IntRing)} {ArrayLModule g (RingLModule IntRing)} (MatrixRing.ide {IntRing} {r}) ArrayFinModule.basis (toLinear f)
+
+    \lemma columnMatrix_columnAction {r g : Nat} (M : Matrix Int g r) : columnMatrix (columnAction M) = M
+      => matrixExt \lam b a => columnActionBasis M a b
+
+    \lemma columnAction_columnMatrix {r g : Nat} (f : AddGroupHom (ZFree r) (ZFree g)) : columnAction (columnMatrix f) = f
+      => hom-ext (columnAction (columnMatrix f)) f \lam a => exts \lam b => columnActionBasis (columnMatrix f) a b
+
+    \lemma columnMatrix_compose {r g h : Nat} (f : AddGroupHom (ZFree r) (ZFree g)) (k : AddGroupHom (ZFree g) (ZFree h))
+      : columnMatrix (k AddGroupHom.∘ f) = columnMatrix k MatrixRing.product columnMatrix f
+      => columnMatrix_toMatrix (k AddGroupHom.∘ f)
+         *> pmap transpose (LinearMap.toMatrix_* {IntRing} {ArrayLModule r (RingLModule IntRing)} {ArrayLModule g (RingLModule IntRing)} {ArrayLModule h (RingLModule IntRing)} (toLinear f) (toLinear k) (MatrixRing.ide {IntRing} {r}) ArrayFinModule.basis ArrayFinModule.basis)
+         *> transpose_*.product {IntRing} {r} {g} {h} {columnMatrix_toMatrix.rowMatrix f} {columnMatrix_toMatrix.rowMatrix k}
+         *> inv (pmap2 (MatrixRing.product) (columnMatrix_toMatrix k) (columnMatrix_toMatrix f))
+
+    \lemma columnMatrix_id {g : Nat} : columnMatrix (AddGroupHom.id {ZFree g}) = MatrixRing.ide
+      => matrixExt \lam _ _ => basis-symm
+
+    \lemma columnAction_product {r g h : Nat} (A : Matrix Int h g) (B : Matrix Int g r)
+      : columnAction (A MatrixRing.product B) = columnAction A AddGroupHom.∘ columnAction B
+      => pmap columnAction (inv (columnMatrix_compose (columnAction B) (columnAction A) *> pmap2 (MatrixRing.product) (columnMatrix_columnAction A) (columnMatrix_columnAction B)))
+         *> columnAction_columnMatrix _
+
+    \lemma columnAction_ide {g : Nat} : columnAction (MatrixRing.ide {IntRing} {g}) = AddGroupHom.id
+      => pmap columnAction (inv columnMatrix_id) *> columnAction_columnMatrix _
+
+    \func actionEquiv {g : Nat} (U : Monoid.Inv {MatrixRing IntRing g}) : QEquiv (columnAction U.val) \cowith
+      | ret => columnAction U.inv
+      | ret_f x => pmap {AddGroupHom (ZFree g) (ZFree g)} (\lam h => h x) (inv (columnAction_product U.inv U.val) *> pmap columnAction U.inv-left *> columnAction_ide)
+      | f_sec y => pmap {AddGroupHom (ZFree g) (ZFree g)} (\lam h => h y) (inv (columnAction_product U.val U.inv) *> pmap columnAction U.inv-right *> columnAction_ide)
+
+    \lemma zero-trivial (x : ZFree 0) : x = 0
+      => exts \lam a => \case a
+
+    \func one : AddGroupHom (ZFree 1) IntRing => coordinate 0
+
+    \func one-equiv : QEquiv one \cowith
+      | ret n => n :: nil
+      | ret_f _ => exts \lam j => \case \elim j \with {
+        | 0 => idp
+      }
+      | f_sec _ => idp
+
+    \func uncons {g : Nat} : AddGroupHom (ZFree (suc g)) (ProductAbGroup IntRing (ZFree g)) \cowith
+      | func x => (x 0, \lam i => x (suc i))
+      | func-+ => idp
+
+    \func uncons-equiv {g : Nat} : QEquiv (uncons {g}) \cowith
+      | ret s => s.1 :: s.2
+      | ret_f _ => exts \lam j => \case \elim j \with {
+        | 0 => idp
+        | suc j => idp
+      }
+      | f_sec _ => idp
+
+    \lemma uncons-basis0 {r : Nat} : uncons (basis {suc r} 0) = (1, 0)
+      => pmap2 (__,__) (basis-diagonal {suc r} {0}) (exts \lam i => basis-coordinate {suc r} {0} {suc i} \lam q => fsuc/=0 (inv q))
+
+    \lemma uncons-basis {r : Nat} (a : Fin r) : uncons (basis {suc r} (suc a)) = (0, basis a)
+      => pmap2 (__,__) (basis-coordinate {suc r} {suc a} {0} fsuc/=0) (exts \lam _ => basis-suc)
+
+    \func split {g g' : Nat} : AddGroupHom (ZFree (g Nat.+ g')) (ProductAbGroup (ZFree g) (ZFree g')) \cowith
+      | func x => (\lam i => x (fin-inc i), \lam j => x (fin-raise j))
+      | func-+ => idp
+
+    \func split-equiv {g g' : Nat} : QEquiv (split {g} {g'}) \cowith
+      | ret s => s.1 ++' s.2
+      | ret_f _ => inv ++'-split
+      | f_sec (y, z) => pmap2 (__,__) (exts \lam i => ++'.++'_index-left {_} {y} {g'} {z} {i}) (exts \lam j => ++'.++'_index-right {_} {y} {g'} {z} {j})
+
+    \lemma basis-suc {g : Nat} {a b : Fin g} : basis {suc g} (suc a) (suc b) = basis a b
+      => \case decideEq a b \with {
+        | yes p => rewrite p (basis-diagonal *> inv basis-diagonal)
+        | no q => basis-coordinate (fsuc/= q) *> inv (basis-coordinate q)
+      }
+  }
+
+\lemma *c_*i {M : LModule IntRing} {n : Int} {x : M} : n *c x = n M.*i x \elim n
+  | pos n => natCoef_*c
+  | neg n => *c_negative-left *> pmap negative natCoef_*c *> inv *n_negative
