@@ -17,15 +17,20 @@
 \import Function
 \import Homotopy.HomotopyGroup
 \import Homotopy.HomotopyGroup.Circle
+\import Homotopy.HomotopyGroup.Connectivity
+\import Homotopy.Loop
+\import Homotopy.Sphere.Circle
 \import Homotopy.HomotopyGroup.Hopf
 \import Homotopy.HomotopyGroup.Stabilization
 \import Homotopy.Pointed
 \import Homotopy.Sphere
 \import Homotopy.Suspension
 \import Logic
+\import Logic.Unique
 \import Meta
 \import Paths
 \import Paths.Meta
+\import Set (Trunc0, in0)
 
 \func generatorHom (n : Nat) : GroupHom (AddGroup.toGroup IntRing) (PiGroup n (Sphere.pointed (suc n))) \elim n
   | 0 => PiGroup_S1.hom
@@ -54,7 +59,7 @@
           => Iso.f {iso} GroupCat.∘ piStabilization.hom 0 (Sphere.pointed 1) GroupHom.∘ PiGroup_S1.hom
 
         \lemma composite-surj : IsSurj composite
-          => IsSurj.comp (IsSurj.comp circle-surj (sphereStabilization.isSurj.{0} 0)) (((GroupCat.Iso<->Inj+Surj (Iso.f {iso})).1 iso).2)
+          => IsSurj.comp (IsSurj.comp circle-surj (sphereStabilization.isSurj.{0} 0)) ((GroupCat.Iso<->Inj+Surj (Iso.f {iso})).1 iso).2
       }
 
     \lemma int-value (h : GroupHom (AddGroup.toGroup IntRing) (AddGroup.toGroup IntRing)) (k : Int) : h k = k * h 1
@@ -98,4 +103,37 @@
 
     \lemma susp {n : Nat} (f : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : degree (Susp-Func f) = degree f
       => unique {suc n} (Susp-Func f) (degree f) (piStabilization.natural (suc n) f (generator n) *> pmap (piStabilization (suc n) _) (generator-eq f))
+
+    \lemma zero {n : Nat} : degree (->*.zero (Sphere.pointed (suc n)) (Sphere.pointed (suc n))) = 0
+      => unique _ 0 (piMap-comp (suc n) (point n) (toPoint n) (generator n)
+                     *> pmap (piMap (suc n) (point n)) (isContr=>isProp (pi-vanishes-above {0} {suc n} {Pointed.make ()} (toProp \lam _ _ => idp) zero<=_)
+                                                                     (piMap (suc n) (toPoint n) (generator n)) (ide {PiGroup n (Pointed.make ())}))
+                     *> GroupHom.func-ide {piGroupMap n (point n)} *> inv (GroupHom.func-ide {generatorHom n}))
+      \where {
+        \func toPoint (n : Nat) : Sphere.pointed (suc n) ->* Pointed.make () => (\lam _ => (), idp)
+
+        \func point (n : Nat) : Pointed.make () ->* Sphere.pointed (suc n) => (\lam _ => north, idp)
+      }
+
+    \lemma reflect {n : Nat} : degree (reflection n) = -1 \elim n
+      | 0 => unique (reflection 0) -1 (pmap in0 circle *> inv (GroupHom.func-inverse {generatorHom 0} {1}))
+      | suc n => susp (reflection n) *> reflect
+      \where {
+        \func m (x : Sphere 0) : north = {Sphere 1} south => pmerid x
+
+        \func circle : loopMap (reflection.raw 1) idp (loopMap Sphere1-equiv.f idp (wind 1)) = inv (loopMap Sphere1-equiv.f idp (wind 1))
+          => idp_*> _ *> pmap (pmap (reflection.raw 1)) loops
+             *> pmap_*>-comm (reflection.raw 1) (m north) (inv (m south)) *> pmap (m south *>) (pmap_inv-comm (reflection.raw 1) (m south))
+             *> inv (*>_inv-comm (m north) (inv (m south)) *> pmap (`*> inv (m north)) (inv_inv (m south))) *> pmap inv (inv loops)
+
+        \func loops : loopMap Sphere1-equiv.f idp (wind 1) = m north *> inv (m south)
+          => idp_*> _ *> pmap (pmap Sphere1-equiv.f) (idp_*> (path loop))
+      }
   }
+
+\func reflection (n : Nat) : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)
+  => (raw (suc n), idp)
+  \where
+    \func raw (n : Nat) : Sphere n -> Sphere n \elim n
+      | 0 => Susp.rec south north absurd
+      | suc n => Susp.map (raw n)

@@ -108,6 +108,14 @@
                      (inv (pmap_*>-comm (Section.ret {toHAEquiv e}) e.map.2 (inv e.map.2)) *> pmap (pmap (Section.ret {toHAEquiv e})) (*>_inv e.map.2))
                    *> idp_*> _))
 
+    \sfunc inverse-comp {A : Pointed} (e : PointedEquiv) {f : A ->* e.X} {g : A ->* e.Y} (p : e.map ->*.∘* f = g)
+      : (inverse e).map ->*.∘* g = f
+      => pmap ((inverse e).map ->*.∘*) (inv p) *> ->*.compose-assoc (inverse e).map e.map f *> pmap (->*.∘* f) (inverse-ret e)
+
+    \sfunc epi (e : PointedEquiv) {Z : Pointed} {P Q : e.Y ->* Z} (p : P ->*.∘* e.map = Q ->*.∘* e.map) : P = Q
+      => inv (->*.compose-id P) *> pmap (P ->*.∘*) (inv (inverse-sec e)) *> ->*.compose-assoc P e.map (inverse e).map
+         *> pmap (->*.∘* (inverse e).map) p *> inv (->*.compose-assoc Q e.map (inverse e).map) *> pmap (Q ->*.∘*) (inverse-sec e) *> ->*.compose-id Q
+
     \func \fixl 8 compose \alias \infixl 8 ∘~ {X Y Z : Pointed} (g : PointedEquiv Y Z) (f : PointedEquiv X Y)
       : PointedEquiv X Z \cowith
       | map => g.map ->*.∘* f.map

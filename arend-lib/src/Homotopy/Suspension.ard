@@ -22,6 +22,12 @@
 
     \func pointed (A : \Type) => \new Pointed (Susp A) north
 
+    \func unit : QEquiv {\Sigma} {Susp (\Sigma)} \cowith
+      | f _ => north
+      | ret _ => ()
+      | ret_f _ => idp
+      | f_sec => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam _ => north} {\lam x => x} (\lam _ => idp) (\lam _ => pmerid ()) (\lam _ => idp)
+
     \func flip (X : Pointed) : pointed X ->* pointed X
       => (rec south north (\lam x => inv (pmerid x)), inv (pmerid base))
 
@@ -36,6 +42,19 @@
 
 \func Susp-Func {X Y : Pointed} (f : X ->* Y) : Susp.pointed X ->* Susp.pointed Y
   => (Susp.map f.1, idp)
+  \where {
+    \sfunc comp {X Y Z : Pointed} (g : Y ->* Z) (f : X ->* Y) : Susp-Func (g ->*.∘* f) = Susp-Func g ->*.∘* Susp-Func f
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam x => Susp.map (\lam x => g.1 (f.1 x)) x} {\lam x => Susp.map g.1 (Susp.map f.1 x)}
+                                       (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _)) idp
+
+    \sfunc id {X : Pointed} : Susp-Func (->*.id {X}) = ->*.id
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Susp.map (\lam x => x)} {\lam x => x}
+                                       (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _)) idp
+
+    \sfunc zero {X Y : Pointed} : Susp-Func (->*.zero X Y) = ->*.zero _ _
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Susp.map (\lam _ => base)} {\lam _ => north}
+                                       (\lam _ => idp) (\lam _ => inv (pmerid base)) (\lam _ => inv (*>_inv (pmerid base)))) idp
+  }
 
 \cons north {A : \Type} : Susp A => pinl ()
 

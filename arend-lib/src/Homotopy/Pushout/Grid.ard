@@ -1,0 +1,442 @@
+{- | The 3×3 lemma for pushouts: for a 3×3 diagram whose squares commute up to homotopy, the pushout of the row pushouts
+ -   is equivalent to the pushout of the column pushouts.
+ -   Both have the universal property of maps out of the grid ({Grid.Data}); the comparison follows by the Yoneda argument {yoneda}.
+ -   See Guillaume Brunerie, "On the homotopy groups of spheres in homotopy type theory", Appendix A. -}
+
+\import Equiv
+\import Equiv.Path
+\import Equiv.Sigma
+\import Homotopy.Pushout
+\import Paths
+\import Paths.Meta
+
+\open PushoutData (ppglue, rec, congr, homotopy-equiv)
+
+\func Face {Z : \Type} {a00 b00 a02 b02 a20 b20 a22 b22 : Z}
+           (q00 : a00 = b00) (q02 : a02 = b02) (q20 : a20 = b20) (q22 : a22 = b22)
+           (t : a00 = a02) (l : b00 = b20) (b : a20 = a22) (r : b02 = b22) : \Type
+  => r = (inv (side q00 t q02) *> l) *> side q20 b q22
+  \where {
+    \func side {Z : \Type} {a b a' b' : Z} (q : a = b) (t : a = a') (q' : a' = b') : b = b'
+      => (inv q *> t) *> q'
+
+    \func side-map {Z Z' : \Type} (h : Z -> Z') {a b a' b' : Z} (q : a = b) (t : a = a') (q' : a' = b')
+      : pmap h (side q t q') = side (pmap h q) (pmap h t) (pmap h q') \elim q, t, q'
+      | idp, idp, idp => idp
+
+    \func inverse {A : \Type} {a a' : A} : QEquiv {a = a'} {a' = a} \cowith
+      | f => inv
+      | ret => inv
+      | ret_f => inv_inv
+      | f_sec => inv_inv
+
+    \func map {Z Z' : \Type} (h : Z -> Z') {a00 b00 a02 b02 a20 b20 a22 b22 : Z}
+              {q00 : a00 = b00} {q02 : a02 = b02} {q20 : a20 = b20} {q22 : a22 = b22}
+              {t : a00 = a02} {l : b00 = b20} {b : a20 = a22} {r : b02 = b22} (p : Face q00 q02 q20 q22 t l b r)
+      : Face (pmap h q00) (pmap h q02) (pmap h q20) (pmap h q22) (pmap h t) (pmap h l) (pmap h b) (pmap h r)
+      => pmap (pmap h) p *> coh h q00 q02 q20 q22 t l b
+      \where
+        \func coh {Z Z' : \Type} (h : Z -> Z') {a00 b00 a02 b02 a20 b20 a22 b22 : Z}
+                  (q00 : a00 = b00) (q02 : a02 = b02) (q20 : a20 = b20) (q22 : a22 = b22)
+                  (t : a00 = a02) (l : b00 = b20) (b : a20 = a22)
+          : pmap h ((inv (side q00 t q02) *> l) *> side q20 b q22)
+            = (inv (side (pmap h q00) (pmap h t) (pmap h q02)) *> pmap h l) *> side (pmap h q20) (pmap h b) (pmap h q22)
+          \elim q00, q02, q20, q22, t, l, b
+          | idp, idp, idp, idp, idp, idp, idp => idp
+
+    \sfunc map-comp {Z Z' Z'' : \Type} (h' : Z' -> Z'') (h : Z -> Z') {a00 b00 a02 b02 a20 b20 a22 b22 : Z}
+                   {q00 : a00 = b00} {q02 : a02 = b02} {q20 : a20 = b20} {q22 : a22 = b22}
+                   {t : a00 = a02} {l : b00 = b20} {b : a20 = a22} {r : b02 = b22} (p : Face q00 q02 q20 q22 t l b r)
+      : map h' (map h p) = map (\lam z => h' (h z)) p
+      \elim q00, q02, q20, q22, t, l, b, p
+      | idp, idp, idp, idp, idp, idp, idp, idp => idp
+
+    \func swap {Z : \Type} {a00 b00 a02 b02 a20 b20 a22 b22 : Z}
+               {q00 : a00 = b00} {q02 : a02 = b02} {q20 : a20 = b20} {q22 : a22 = b22}
+               {q00' : b00 = a00} {q02' : b20 = a20} {q20' : b02 = a02} {q22' : b22 = a22}
+               (e00 : q00' = inv q00) (e02 : q02' = inv q20) (e20 : q20' = inv q02) (e22 : q22' = inv q22)
+               (t : a00 = a02) (l : b00 = b20) (b : a20 = a22) (r : b02 = b22)
+      : QEquiv {Face q00 q02 q20 q22 t l b r} {Face q00' q02' q20' q22' l t r b}
+      \elim q00, q02, q20, q22, e00, e02, e20, e22, t, l, b
+      | idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp => transQEquiv inverse (pathConcatEquiv-right (inv (idp_*> (idp *> r) *> idp_*> r)))
+
+    \sfunc swap-map {Z Z' : \Type} (h : Z -> Z') {a00 b00 a02 b02 a20 b20 a22 b22 : Z}
+                   {q00 : a00 = b00} {q02 : a02 = b02} {q20 : a20 = b20} {q22 : a22 = b22}
+                   {q00' : b00 = a00} {q02' : b20 = a20} {q20' : b02 = a02} {q22' : b22 = a22}
+                   (e00 : q00' = inv q00) (e02 : q02' = inv q20) (e20 : q20' = inv q02) (e22 : q22' = inv q22)
+                   {e00' : pmap h q00' = inv (pmap h q00)} {e02' : pmap h q02' = inv (pmap h q20)}
+                   {e20' : pmap h q20' = inv (pmap h q02)} {e22' : pmap h q22' = inv (pmap h q22)}
+                   (c00 : e00' = pmap (pmap h) e00 *> pmap_inv-comm h q00) (c02 : e02' = pmap (pmap h) e02 *> pmap_inv-comm h q20)
+                   (c20 : e20' = pmap (pmap h) e20 *> pmap_inv-comm h q02) (c22 : e22' = pmap (pmap h) e22 *> pmap_inv-comm h q22)
+                   (t : a00 = a02) (l : b00 = b20) (b : a20 = a22) (r : b02 = b22) (p : Face q00 q02 q20 q22 t l b r)
+      : swap e00' e02' e20' e22' (pmap h t) (pmap h l) (pmap h b) (pmap h r) (map h p) = map h (swap e00 e02 e20 e22 t l b r p)
+      \elim q00, q02, q20, q22, e00, e02, e20, e22, c00, c02, c20, c22, t, l, b, p
+      | idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp => idp
+
+    \sfunc inv-comm-map {X Z Z' : \Type} (h : Z -> Z') (k : X -> Z) {x x' : X} (s : x = x')
+      : pmap_inv-comm (\lam a => h (k a)) s = pmap (pmap h) (pmap_inv-comm k s) *> pmap_inv-comm h (pmap k s) \elim s
+      | idp => idp
+
+    \func conv {Z : \Type} {a00 b00 a02 b02 a20 b20 a22 b22 : Z}
+               (q00 : a00 = b00) (q02 : a02 = b02) (q20 : a20 = b20) (q22 : a22 = b22)
+               (t : a00 = a02) (l : b00 = b20) (b : a20 = a22) (r : b02 = b22)
+               {m0 : b00 = b02} {m2 : b20 = b22} (e0 : m0 = side q00 t q02) (e2 : m2 = side q20 b q22)
+      : QEquiv {l *> m2 = m0 *> r} {Face q00 q02 q20 q22 t l b r}
+      \elim q00, q02, q20, q22, t, l, b, e0, e2
+      | idp, idp, idp, idp, idp, idp, idp, idp, idp => transQEquiv (pathConcatEquiv-right (idp_*> r)) inverse
+
+    \func square-map {Z Z' : \Type} (k : Z -> Z') {x y z w : Z} {l : x = y} {m2 : y = w} {m0 : x = z} {r : z = w} (S : l *> m2 = m0 *> r)
+      : pmap k l *> pmap k m2 = pmap k m0 *> pmap k r
+      => inv (pmap_*>-comm k l m2) *> pmap (pmap k) S *> pmap_*>-comm k m0 r
+
+    \sfunc conv-map {Z Z' : \Type} (k : Z -> Z') {a00 b00 a02 b02 a20 b20 a22 b22 : Z}
+                   (q00 : a00 = b00) (q02 : a02 = b02) (q20 : a20 = b20) (q22 : a22 = b22)
+                   (t : a00 = a02) (l : b00 = b20) (b : a20 = a22) (r : b02 = b22)
+                   {m0 : b00 = b02} {m2 : b20 = b22} (e0 : m0 = side q00 t q02) (e2 : m2 = side q20 b q22)
+                   {e0' : pmap k m0 = side (pmap k q00) (pmap k t) (pmap k q02)} {e2' : pmap k m2 = side (pmap k q20) (pmap k b) (pmap k q22)}
+                   (c0 : e0' = pmap (pmap k) e0 *> side-map k q00 t q02) (c2 : e2' = pmap (pmap k) e2 *> side-map k q20 b q22)
+                   (p : Face q00 q02 q20 q22 t l b r)
+      : map k p = conv (pmap k q00) (pmap k q02) (pmap k q20) (pmap k q22) (pmap k t) (pmap k l) (pmap k b) (pmap k r) e0' e2'
+                       (square-map k ((conv q00 q02 q20 q22 t l b r e0 e2).ret p))
+      \elim q00, q02, q20, q22, t, l, b, e0, e2, c0, c2, p
+      | idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp => idp
+
+    \sfunc square-natural {Y Z Z' : \Type} (k : Z -> Z') (F G : Y -> Z) {y y' : Y} (p : y = y') {a : F y = G y} {b : F y' = G y'}
+                         (P : Path (\lam i => F (p @ i) = G (p @ i)) a b)
+      : square-map k (homotopy-equiv.square F G p a b P)
+        = homotopy-equiv.square (\lam x => k (F x)) (\lam x => k (G x)) p (pmap k a) (pmap k b) (path (\lam i => pmap k (P @ i)))
+      \elim p, P
+      | idp, idp => lem k a
+      \where
+        \sfunc lem {Z Z' : \Type} (k : Z -> Z') {x x' : Z} (a : x = x')
+          : square-map k {_} {_} {_} {_} {a} {idp} {idp} {a} (idp *> inv (idp_*> a)) = idp *> inv (idp_*> (pmap k a)) \elim a
+          | idp => idp
+  }
+
+\func yoneda {X Y : \Type} (PX : QEquiv {X -> X} {Y -> X}) (PY : QEquiv {X -> Y} {Y -> Y})
+             (natX : \Pi (h : Y -> X) (s : X -> Y) -> PX (\lam x => h (s x)) = (\lam y => h (PY s y)))
+             (natY : \Pi (h : X -> Y) (s : X -> X) -> PY (\lam x => h (s x)) = (\lam y => h (PX s y)))
+  : QEquiv {X} {Y} \cowith
+  | f => PY.ret (\lam y => y)
+  | ret => PX (\lam x => x)
+  | ret_f x => path (\lam i => ((inv (PX.ret_f (\lam x => PX (\lam x => x) (PY.ret (\lam y => y) x)))
+                                 *> pmap PX.ret (natX (PX (\lam x => x)) (PY.ret (\lam y => y))
+                                                 *> pmap (\lam g y => PX (\lam x => x) (g y)) (PY.f_sec (\lam y => y)))
+                                 *> PX.ret_f (\lam x => x)) @ i) x)
+  | f_sec y => path (\lam i => ((inv (natY (PY.ret (\lam y => y)) (\lam x => x)) *> PY.f_sec (\lam y => y)) @ i) y)
+
+\record Grid {
+  | A00 : \Type
+  | A01 : \Type
+  | A02 : \Type
+  | A10 : \Type
+  | A11 : \Type
+  | A12 : \Type
+  | A20 : \Type
+  | A21 : \Type
+  | A22 : \Type
+  | f01 : A01 -> A00
+  | f03 : A01 -> A02
+  | f11 : A11 -> A10
+  | f13 : A11 -> A12
+  | f21 : A21 -> A20
+  | f23 : A21 -> A22
+  | g10 : A10 -> A00
+  | g30 : A10 -> A20
+  | g11 : A11 -> A01
+  | g31 : A11 -> A21
+  | g12 : A12 -> A02
+  | g32 : A12 -> A22
+  | s00 (c : A11) : f01 (g11 c) = g10 (f11 c)
+  | s02 (c : A11) : f03 (g11 c) = g12 (f13 c)
+  | s20 (c : A11) : f21 (g31 c) = g30 (f11 c)
+  | s22 (c : A11) : f23 (g31 c) = g32 (f13 c)
+
+  \func R0 => PushoutData f01 f03
+
+  \func R1 => PushoutData f11 f13
+
+  \func R2 => PushoutData f21 f23
+
+  \func r0 (x : R1) : R0 => congr f11 f13 f01 f03 g11 g10 g12 s00 s02 x
+
+  \func r2 (x : R1) : R2 => congr f11 f13 f21 f23 g31 g30 g32 s20 s22 x
+
+  \func Prows => PushoutData r0 r2
+}
+  \where {
+    \sfunc comparison (G : Grid) : QEquiv {G.Prows} {Pcols G}
+      => yoneda (restrictions G G.Prows) (restrictions G (Pcols G)) (restrictions.natural G) (restrictions.natural G)
+      \where {
+        \func eval (G : Grid) : (comparison G).f = {G.Prows -> Pcols G} (yoneda (restrictions G G.Prows) (restrictions G (Pcols G)) (restrictions.natural G) (restrictions.natural G)).f
+          => pmap (\lam (e : QEquiv {G.Prows} {Pcols G}) => e.f) (\peval comparison G)
+
+        \func corner00 (G : Grid) (a : G.A00) : comparison G (pinl (pinl a)) = {Pcols G} pinl (pinl a) => pmap (__ (pinl (pinl a))) (eval G)
+
+        \func corner02 (G : Grid) (a : G.A02) : comparison G (pinl (pinr a)) = {Pcols G} pinr (pinl a) => pmap (__ (pinl (pinr a))) (eval G)
+
+        \func corner20 (G : Grid) (a : G.A20) : comparison G (pinr (pinl a)) = {Pcols G} pinl (pinr a) => pmap (__ (pinr (pinl a))) (eval G)
+
+        \func corner22 (G : Grid) (a : G.A22) : comparison G (pinr (pinr a)) = {Pcols G} pinr (pinr a) => pmap (__ (pinr (pinr a))) (eval G)
+
+        \sfunc edge01 (G : Grid) (a : G.A01)
+          : pmap (comparison G) (pmap {G.R0} {G.Prows} pinl (ppglue a)) = corner00 G (G.f01 a) *> ppglue (pinl a) *> inv (corner02 G (G.f03 a))
+          => conjugate (eval G) (pmap {G.R0} {G.Prows} pinl (ppglue a))
+
+        \sfunc edge21 (G : Grid) (a : G.A21)
+          : pmap (comparison G) (pmap {G.R2} {G.Prows} pinr (ppglue a)) = corner20 G (G.f21 a) *> ppglue (pinr a) *> inv (corner22 G (G.f23 a))
+          => conjugate (eval G) (pmap {G.R2} {G.Prows} pinr (ppglue a))
+
+        \sfunc edge10 (G : Grid) (a : G.A10)
+          : pmap (comparison G) (ppglue {G.R1} {G.R0} {G.R2} {G.r0} {G.r2} (pinl a)) = corner00 G (G.g10 a) *> pmap pinl (ppglue a) *> inv (corner20 G (G.g30 a))
+          => conjugate (eval G) (ppglue {G.R1} {G.R0} {G.R2} {G.r0} {G.r2} (pinl a))
+
+        \sfunc edge12 (G : Grid) (a : G.A12)
+          : pmap (comparison G) (ppglue {G.R1} {G.R0} {G.R2} {G.r0} {G.r2} (pinr a)) = corner02 G (G.g12 a) *> pmap pinr (ppglue a) *> inv (corner22 G (G.g32 a))
+          => conjugate (eval G) (ppglue {G.R1} {G.R0} {G.R2} {G.r0} {G.r2} (pinr a))
+
+        \sfunc conjugate {A B : \Type} {e e' : A -> B} (q : e = e') {x y : A} (p : x = y) : pmap e p = pmap (__ x) q *> pmap e' p *> inv (pmap (__ y) q) \elim q
+          | idp => inv (idp_*> _)
+
+        \func restrictions (G : Grid) (Z : \Type) : QEquiv {G.Prows -> Z} {Pcols G -> Z}
+          => universal G Z `transQEquiv` Data.swapEquiv `transQEquiv` symQEquiv (universal (transpose G) Z)
+          \where
+            \sfunc natural (G : Grid) {Z Z' : \Type} (h : Z -> Z') (s : G.Prows -> Z)
+              : restrictions G Z' (\lam x => h (s x)) = (\lam y => h (restrictions G Z s y))
+              => pmap (\lam D => (universal (transpose G) Z').ret (Data.swap D)) (universal.natural G h s)
+                 *> pmap (universal (transpose G) Z').ret (Data.swap-map h (universal.restrict G s))
+                 *> universal.extend-natural (transpose G) h (Data.swap (universal.restrict G s))
+      }
+
+    \func transpose (G : Grid) : Grid \cowith
+      | A00 => G.A00
+      | A01 => G.A10
+      | A02 => G.A20
+      | A10 => G.A01
+      | A11 => G.A11
+      | A12 => G.A21
+      | A20 => G.A02
+      | A21 => G.A12
+      | A22 => G.A22
+      | f01 => G.g10
+      | f03 => G.g30
+      | f11 => G.g11
+      | f13 => G.g31
+      | f21 => G.g12
+      | f23 => G.g32
+      | g10 => G.f01
+      | g30 => G.f03
+      | g11 => G.f11
+      | g31 => G.f13
+      | g12 => G.f21
+      | g32 => G.f23
+      | s00 c => inv (G.s00 c)
+      | s02 c => inv (G.s20 c)
+      | s20 c => inv (G.s02 c)
+      | s22 c => inv (G.s22 c)
+
+    \func Pcols (G : Grid) => Grid.Prows {transpose G}
+
+    \record Data (G : Grid) (Z : \Type)
+      | h00 : G.A00 -> Z
+      | h02 : G.A02 -> Z
+      | h20 : G.A20 -> Z
+      | h22 : G.A22 -> Z
+      | e01 (a : G.A01) : h00 (G.f01 a) = h02 (G.f03 a)
+      | e21 (a : G.A21) : h20 (G.f21 a) = h22 (G.f23 a)
+      | e10 (a : G.A10) : h00 (G.g10 a) = h20 (G.g30 a)
+      | e12 (a : G.A12) : h02 (G.g12 a) = h22 (G.g32 a)
+      | face (c : G.A11) : Face (pmap h00 (G.s00 c)) (pmap h02 (G.s02 c)) (pmap h20 (G.s20 c)) (pmap h22 (G.s22 c))
+                                (e01 (G.g11 c)) (e10 (G.f11 c)) (e21 (G.g31 c)) (e12 (G.f13 c))
+      \where {
+        \func map {G : Grid} {Z Z' : \Type} (h : Z -> Z') (D : Data G Z) : Data G Z' \cowith
+          | h00 a => h (D.h00 a)
+          | h02 a => h (D.h02 a)
+          | h20 a => h (D.h20 a)
+          | h22 a => h (D.h22 a)
+          | e01 a => pmap h (D.e01 a)
+          | e21 a => pmap h (D.e21 a)
+          | e10 a => pmap h (D.e10 a)
+          | e12 a => pmap h (D.e12 a)
+          | face c => Face.map h (D.face c)
+
+        \sfunc map-comp {G : Grid} {Z Z' Z'' : \Type} (h' : Z' -> Z'') (h : Z -> Z') (D : Data G Z)
+          : map h' (map h D) = map (\lam z => h' (h z)) D
+          => path (\lam i => \new Data G Z'' {
+            | h00 a => h' (h (D.h00 a))
+            | h02 a => h' (h (D.h02 a))
+            | h20 a => h' (h (D.h20 a))
+            | h22 a => h' (h (D.h22 a))
+            | e01 a => pmap (\lam z => h' (h z)) (D.e01 a)
+            | e21 a => pmap (\lam z => h' (h z)) (D.e21 a)
+            | e10 a => pmap (\lam z => h' (h z)) (D.e10 a)
+            | e12 a => pmap (\lam z => h' (h z)) (D.e12 a)
+            | face c => Face.map-comp h' h (D.face c) @ i
+          })
+
+        \func swap {G : Grid} {Z : \Type} (D : Data G Z) : Data (transpose G) Z \cowith
+          | h00 => D.h00
+          | h02 => D.h20
+          | h20 => D.h02
+          | h22 => D.h22
+          | e01 => D.e10
+          | e21 => D.e12
+          | e10 => D.e01
+          | e12 => D.e21
+          | face c => swapFace D.h00 D.h02 D.h20 D.h22 c _ _ _ _ (D.face c)
+
+        \func unswap {G : Grid} {Z : \Type} (D : Data (transpose G) Z) : Data G Z \cowith
+          | h00 => D.h00
+          | h02 => D.h20
+          | h20 => D.h02
+          | h22 => D.h22
+          | e01 => D.e10
+          | e21 => D.e12
+          | e10 => D.e01
+          | e12 => D.e21
+          | face c => (swapFace D.h00 D.h20 D.h02 D.h22 c _ _ _ _).ret (D.face c)
+
+        \func swapFace {G : Grid} {Z : \Type} (h00 : G.A00 -> Z) (h02 : G.A02 -> Z) (h20 : G.A20 -> Z) (h22 : G.A22 -> Z) (c : G.A11)
+                       (t : h00 (G.f01 (G.g11 c)) = h02 (G.f03 (G.g11 c))) (l : h00 (G.g10 (G.f11 c)) = h20 (G.g30 (G.f11 c)))
+                       (b : h20 (G.f21 (G.g31 c)) = h22 (G.f23 (G.g31 c))) (r : h02 (G.g12 (G.f13 c)) = h22 (G.g32 (G.f13 c)))
+          => Face.swap (pmap_inv-comm h00 (G.s00 c)) (pmap_inv-comm h20 (G.s20 c)) (pmap_inv-comm h02 (G.s02 c)) (pmap_inv-comm h22 (G.s22 c)) t l b r
+
+        \func swapEquiv {G : Grid} {Z : \Type} : QEquiv {Data G Z} {Data (transpose G) Z} \cowith
+          | f => swap
+          | ret => unswap
+          | ret_f D => path (\lam i => \new Data G Z D.h00 D.h02 D.h20 D.h22 D.e01 D.e21 D.e10 D.e12
+                                         (\lam c => (swapFace D.h00 D.h02 D.h20 D.h22 c _ _ _ _).ret_f (D.face c) @ i))
+          | f_sec D => path (\lam i => \new Data (transpose G) Z D.h00 D.h02 D.h20 D.h22 D.e01 D.e21 D.e10 D.e12
+                                           (\lam c => (swapFace D.h00 D.h20 D.h02 D.h22 c _ _ _ _).f_sec (D.face c) @ i))
+
+        \sfunc swap-map {G : Grid} {Z Z' : \Type} (h : Z -> Z') (D : Data G Z) : swap (map h D) = map h (swap D)
+          => path (\lam i => \new Data (transpose G) Z' {
+            | h00 a => h (D.h00 a)
+            | h02 a => h (D.h20 a)
+            | h20 a => h (D.h02 a)
+            | h22 a => h (D.h22 a)
+            | e01 a => pmap h (D.e10 a)
+            | e21 a => pmap h (D.e12 a)
+            | e10 a => pmap h (D.e01 a)
+            | e12 a => pmap h (D.e21 a)
+            | face c => Face.swap-map h (pmap_inv-comm D.h00 (G.s00 c)) (pmap_inv-comm D.h20 (G.s20 c)) (pmap_inv-comm D.h02 (G.s02 c)) (pmap_inv-comm D.h22 (G.s22 c))
+                                      (Face.inv-comm-map h D.h00 (G.s00 c)) (Face.inv-comm-map h D.h20 (G.s20 c))
+                                      (Face.inv-comm-map h D.h02 (G.s02 c)) (Face.inv-comm-map h D.h22 (G.s22 c))
+                                      _ _ _ _ (D.face c) @ i
+          })
+      }
+
+    \func universal (G : Grid) (Z : \Type) : QEquiv {G.Prows -> Z} {Data G Z}
+      => retraction (equiv G Z) (restrict G) (restrict-extend G)
+      \where {
+        \func retraction {A B : \Type} (e : QEquiv {A} {B}) (r : A -> B) (p : \Pi (b : B) -> r (e.ret b) = b) : QEquiv {A} {B} \cowith
+          | f => r
+          | ret => e.ret
+          | ret_f a => pmap (\lam a' => e.ret (r a')) (inv (e.ret_f a)) *> pmap e.ret (p (e a)) *> e.ret_f a
+          | f_sec => p
+
+        \func restrict (G : Grid) {Z : \Type} (s : G.Prows -> Z) : Data G Z
+          => Data.map s (unit G)
+
+        \func unit (G : Grid) : Data G G.Prows \cowith
+          | h00 a => pinl (pinl a)
+          | h02 a => pinl (pinr a)
+          | h20 a => pinr (pinl a)
+          | h22 a => pinr (pinr a)
+          | e01 a => pmap pinl (ppglue a)
+          | e21 a => pmap pinr (ppglue a)
+          | e10 a => ppglue (pinl a)
+          | e12 a => ppglue (pinr a)
+          | face c => conv G (rows (\lam x => x)) (\lam a => ppglue (pinl a)) (\lam a => ppglue (pinr a)) c (glue-square G c)
+
+        \func rows {G : Grid} {Z : \Type} (k : G.Prows -> Z) : \Sigma (G.R0 -> Z) (G.R2 -> Z)
+          => (\lam x => k (pinl x), \lam x => k (pinr x))
+
+        \func glue-square (G : Grid) (c : G.A11)
+          => homotopy-equiv.square (\lam x => pinl (G.r0 x)) (\lam x => pinr (G.r2 x)) (ppglue c) _ _ (path (\lam i => ppglue {G.R1} {G.R0} {G.R2} {G.r0} {G.r2} (pglue c i)))
+
+        \sfunc natural (G : Grid) {Z Z' : \Type} (h : Z -> Z') (s : G.Prows -> Z) : restrict G (\lam x => h (s x)) = Data.map h (restrict G s)
+          => inv (Data.map-comp h s (unit G))
+
+        \sfunc extend-natural (G : Grid) {Z Z' : \Type} (h : Z -> Z') (D : Data G Z)
+          : (universal G Z').ret (Data.map h D) = (\lam x => h ((universal G Z).ret D x))
+          => pmap (\lam D' => (universal G Z').ret (Data.map h D')) (inv ((universal G Z).f_sec D))
+             *> pmap (universal G Z').ret (inv (natural G h ((universal G Z).ret D))) *> (universal G Z').ret_f _
+
+        \sfunc restrict-extend (G : Grid) {Z : \Type} (D : Data G Z) : restrict G ((equiv G Z).ret D) = D
+          => path (\lam i => \new Data G Z D.h00 D.h02 D.h20 D.h22 D.e01 D.e21 D.e10 D.e12 (\lam c => face-eq D c @ i))
+          \where
+            \sfunc face-eq {G : Grid} {Z : \Type} (D : Data G Z) (c : G.A11)
+              : Face.map ((equiv G Z).ret D) ((unit G).face c) = D.face c
+              => Face.conv-map ((equiv G Z).ret D) _ _ _ _ _ _ _ _ _ _
+                               (expand-map ((equiv G Z).ret D) pinl pinl pinr (G.s00 c) (G.s02 c) (ppglue (G.g11 c)))
+                               (expand-map ((equiv G Z).ret D) pinr pinl pinr (G.s20 c) (G.s22 c) (ppglue (G.g31 c))) ((unit G).face c)
+                 *> pmap (\lam S => conv G (rows ((equiv G Z).ret D)) D.e10 D.e12 c (Face.square-map ((equiv G Z).ret D) S))
+                         ((conv G (rows (\lam x => x)) (\lam a => ppglue (pinl a)) (\lam a => ppglue (pinr a)) c).ret_f (glue-square G c))
+                 *> pmap (conv G (rows ((equiv G Z).ret D)) D.e10 D.e12 c)
+                         (Face.square-natural ((equiv G Z).ret D) (\lam x => pinl (G.r0 x)) (\lam x => pinr (G.r2 x)) (ppglue c) (path (\lam i => ppglue (pglue c i)))
+                          *> (homotopy-equiv.square (\lam x => (equiv G Z).ret D (pinl (G.r0 x))) (\lam x => (equiv G Z).ret D (pinr (G.r2 x))) (ppglue c)
+                                                    (D.e10 (G.f11 c)) (D.e12 (G.f13 c))).f_sec ((conv G (rows ((equiv G Z).ret D)) D.e10 D.e12 c).ret (D.face c)))
+                 *> (conv G (rows ((equiv G Z).ret D)) D.e10 D.e12 c).f_sec (D.face c)
+      }
+
+    \func equiv (G : Grid) (Z : \Type) : QEquiv {G.Prows -> Z} {Data G Z}
+      => rec.equiv Z `transQEquiv` Cocone.nest G.r0 G.r2 Z `transQEquiv` sigma-right (fiber G)
+         `transQEquiv` symQEquiv (sigma-left {_} {_} {\lam q => Fiber G q} (corners G Z)) `transQEquiv` sigma G Z
+      \where {
+        \func Fiber (G : Grid) {Z : \Type} (q : \Sigma (G.R0 -> Z) (G.R2 -> Z))
+          => \Sigma (e10 : \Pi (a : G.A10) -> q.1 (pinl (G.g10 a)) = q.2 (pinl (G.g30 a)))
+                    (e12 : \Pi (a : G.A12) -> q.1 (pinr (G.g12 a)) = q.2 (pinr (G.g32 a)))
+                    (\Pi (c : G.A11) -> Face (pmap (\lam x => q.1 (pinl x)) (G.s00 c)) (pmap (\lam x => q.1 (pinr x)) (G.s02 c))
+                                             (pmap (\lam x => q.2 (pinl x)) (G.s20 c)) (pmap (\lam x => q.2 (pinr x)) (G.s22 c))
+                                             (pmap q.1 (ppglue (G.g11 c))) (e10 (G.f11 c)) (pmap q.2 (ppglue (G.g31 c))) (e12 (G.f13 c)))
+
+        \func fiber (G : Grid) {Z : \Type} (q : \Sigma (G.R0 -> Z) (G.R2 -> Z))
+          : QEquiv {\Pi (x : G.R1) -> q.1 (G.r0 x) = q.2 (G.r2 x)} {Fiber G q}
+          => homotopy-equiv (\lam x => q.1 (G.r0 x)) (\lam x => q.2 (G.r2 x)) `transQEquiv` faces
+          \where
+            \func faces : QEquiv {\Sigma (e10 : \Pi (a : G.A10) -> q.1 (pinl (G.g10 a)) = q.2 (pinl (G.g30 a)))
+                                         (e12 : \Pi (a : G.A12) -> q.1 (pinr (G.g12 a)) = q.2 (pinr (G.g32 a)))
+                                         (\Pi (c : G.A11) -> e10 (G.f11 c) *> pmap (\lam x => q.2 (G.r2 x)) (ppglue c) = pmap (\lam x => q.1 (G.r0 x)) (ppglue c) *> e12 (G.f13 c))}
+                                 {Fiber G q} \cowith
+              | f t => (t.1, t.2, \lam c => conv G q t.1 t.2 c (t.3 c))
+              | ret t => (t.1, t.2, \lam c => (conv G q t.1 t.2 c).ret (t.3 c))
+              | ret_f t => path (\lam i => (t.1, t.2, \lam c => (conv G q t.1 t.2 c).ret_f (t.3 c) @ i))
+              | f_sec t => path (\lam i => (t.1, t.2, \lam c => (conv G q t.1 t.2 c).f_sec (t.3 c) @ i))
+
+        \func corners (G : Grid) (Z : \Type) : QEquiv {\Sigma (Cocone G.f01 G.f03 Z) (Cocone G.f21 G.f23 Z)} {\Sigma (G.R0 -> Z) (G.R2 -> Z)} \cowith
+          | f p => (rec p.1.1 p.1.2 p.1.3, rec p.2.1 p.2.2 p.2.3)
+          | ret q => (rec.equiv Z q.1, rec.equiv Z q.2)
+          | ret_f p => idp
+          | f_sec q => path (\lam i => ((rec.equiv Z).ret_f q.1 @ i, (rec.equiv Z).ret_f q.2 @ i))
+
+        \func sigma (G : Grid) (Z : \Type)
+          : QEquiv {\Sigma (p : \Sigma (Cocone G.f01 G.f03 Z) (Cocone G.f21 G.f23 Z)) (Fiber G (corners G Z p))} {Data G Z} \cowith
+          | f p => \new Data G Z p.1.1.1 p.1.1.2 p.1.2.1 p.1.2.2 p.1.1.3 p.1.2.3 p.2.1 p.2.2 p.2.3
+          | ret D => (((D.h00, D.h02, D.e01), (D.h20, D.h22, D.e21)), (D.e10, D.e12, D.face))
+          | ret_f p => idp
+          | f_sec D => idp
+      }
+
+    \func conv (G : Grid) {Z : \Type} (q : \Sigma (G.R0 -> Z) (G.R2 -> Z))
+               (e10 : \Pi (a : G.A10) -> q.1 (pinl (G.g10 a)) = q.2 (pinl (G.g30 a)))
+               (e12 : \Pi (a : G.A12) -> q.1 (pinr (G.g12 a)) = q.2 (pinr (G.g32 a))) (c : G.A11)
+      => Face.conv (pmap (\lam x => q.1 (pinl x)) (G.s00 c)) (pmap (\lam x => q.1 (pinr x)) (G.s02 c))
+                   (pmap (\lam x => q.2 (pinl x)) (G.s20 c)) (pmap (\lam x => q.2 (pinr x)) (G.s22 c))
+                   (pmap q.1 (ppglue (G.g11 c))) (e10 (G.f11 c)) (pmap q.2 (ppglue (G.g31 c))) (e12 (G.f13 c))
+                   (expand q.1 pinl pinr (G.s00 c) (G.s02 c) (ppglue (G.g11 c)))
+                   (expand q.2 pinl pinr (G.s20 c) (G.s22 c) (ppglue (G.g31 c)))
+
+    \func expand {X Y W Z : \Type} (k : W -> Z) (i : X -> W) (j : Y -> W) {x x' : X} (s : x = x') {y y' : Y} (s' : y = y') (m : i x = j y)
+      : pmap k ((pmap i (inv s) *> m) *> pmap j s') = Face.side (pmap (\lam a => k (i a)) s) (pmap k m) (pmap (\lam a => k (j a)) s') \elim s, s'
+      | idp, idp => pmap_*>-comm k idp m
+
+    \sfunc expand-map {X Y W Z Z' : \Type} (h : Z -> Z') (k : W -> Z) (i : X -> W) (j : Y -> W) {x x' : X} (s : x = x') {y y' : Y} (s' : y = y') (m : i x = j y)
+      : expand (\lam w => h (k w)) i j s s' m
+        = pmap (pmap h) (expand k i j s s' m) *> Face.side-map h (pmap (\lam a => k (i a)) s) (pmap k m) (pmap (\lam a => k (j a)) s') \elim s, s'
+      | idp, idp => lem h k m
+      \where
+        \sfunc lem {W Z Z' : \Type} (h : Z -> Z') (k : W -> Z) {w w' : W} (m : w = w')
+          : pmap_*>-comm (\lam w => h (k w)) idp m = pmap (pmap h) (pmap_*>-comm k idp m) *> Face.side-map h idp (pmap k m) idp \elim m
+          | idp => idp
+  }

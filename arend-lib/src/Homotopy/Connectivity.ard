@@ -226,6 +226,18 @@
   : isNConnectedMap n (\lam (t : \Sigma (x : C) (F x)) => t.1)
   => \lam x => nconnected-equiv n (symQEquiv (proj-fib F x)) (c x)
 
+\lemma nconnected-unit.{u} {n : Nat} {A : \Type u} : isNConnectedType n A <-> isNConnectedMap n (\lam (_ : A) => ())
+  => (\lam c _ => nconnected-equiv n fib c, \lam c => nconnected-equiv n (symQEquiv fib) (c ()))
+  \where
+    \func fib {A : \Type} : QEquiv {A} {Fib (\lam (_ : A) => ()) ()} \cowith
+      | f a => (a, idp)
+      | ret t => t.1
+      | ret_f _ => idp
+      | f_sec _ => idp
+
+\lemma nconnected-product.{u} {n : Nat} {A B : \Type u} (ca : isNConnectedType n A) (cb : isNConnectedType n B) : isNConnectedType n (\Sigma A B)
+  => nconnected-unit.2 (nconnected-map-comp {n} {\Sigma A B} {A} {\Sigma} {\lam t => t.1} {\lam _ => ()} (nconnected-proj (\lam _ => B) (\lam _ => cb)) (nconnected-unit.1 ca))
+
 \lemma nconnected-seqColimit.{u} {n : Nat} (S : Seq.{u}) (N : Nat) (c : \Pi (k : Nat) -> N <= k -> isNConnectedMap n (S.f {k}))
   : isNConnectedMap n (inSC {S} {N})
   => nconnected-map-comp-left n (IsEquiv.toQEquiv (tail.isEquiv S N)) (zero (shift S N) (\lam k => c (k Nat.+ N) linarith))

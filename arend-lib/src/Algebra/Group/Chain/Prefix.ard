@@ -1,0 +1,64 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.Cokernel
+\import Algebra.Group.GroupHom
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Pointed
+\import Arith.Nat
+\import Logic
+\import Meta
+\import Order.LinearOrder
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\record PrefixMap (X Y : ChainComplex) (N : Nat) {
+  | f (n : Nat) : AddGroupHom (X.C n) (Y.C n)
+  | comm (n : Nat) (h : n < N) (x : X.C (suc n)) : Y.d n (f (suc n) x) = f n (X.d n x)
+
+  \lemma comm-out (n : Nat) (h : n <= N) (x : X.C n) (p : X.dOut n x = 0) : Y.dOut n (f n x) = 0 \elim n
+    | 0 => idp
+    | suc n => comm n linarith x *> pmap (f n) p *> AddMonoidHom.func-zro {f n}
+
+  \func cycles (n : Nat) (h : n <= N) : AddGroupHom (X.Cycles n) (Y.Cycles n) \cowith
+    | func z => (f n z.1, comm-out n h z.1 z.2)
+    | func-+ => ext (f n).func-+
+
+  \func homology (n : Nat) (h : n < N) : AddGroupHom (Homology X n) (Homology Y n)
+    => Coker.map (X.boundary n) (Y.boundary n) (f (suc n)) (cycles n linarith) \lam x => ext (inv (comm n h x))
+} \where {
+  \func ofMap {X Y : ChainComplex} (F : ChainMap X Y) (N : Nat) : PrefixMap X Y N \cowith
+    | f => F.f
+    | comm n _ x => F.comm n x
+
+  \lemma homology-ofMap {X Y : ChainComplex} (F : ChainMap X Y) {N : Nat} (n : Nat) (h : n < N) (x : Homology X n)
+    : PrefixMap.homology {ofMap F N} n h x = F.homology n x \elim x
+    | in~ _ => pmap in~ (ext idp)
+}
+
+\record HomotopyAt {X Y : ChainComplex} {N : Nat} (F G : PrefixMap X Y N) (n : Nat) {
+  | K : AddGroupHom (X.C n) (Y.C (suc n))
+  | K' : AddGroupHom (X.C (pred n)) (Y.C n)
+  | htpy (x : X.C n) : F.f n x - G.f n x = Y.d n (K x) + K' (X.dOut n x)
+
+  \lemma homology-eq (h : n < N) : F.homology n h = G.homology n h
+    => Coker.hom-ext (F.homology n h) (G.homology n h) \lam z => Coker.proj-equality.2
+         (inP (K z.1, ext (inv (htpy z.1 *> pmap (_ +) (pmap K' z.2 *> AddMonoidHom.func-zro {K'}) *> zro-right))))
+} \where {
+  \func ofHomotopy {X Y : ChainComplex} {F G : ChainMap X Y} (H : ChainHomotopy F G) (N n : Nat)
+    : HomotopyAt (PrefixMap.ofMap F N) (PrefixMap.ofMap G N) n \elim n
+    | 0 => \new HomotopyAt {
+      | K => H.K 0
+      | K' => AddGroupHom.zero
+      | htpy x => H.htpy0 x *> inv zro-right
+    }
+    | suc n => \new HomotopyAt {
+      | K => H.K (suc n)
+      | K' => H.K n
+      | htpy => H.htpy n
+    }
+}

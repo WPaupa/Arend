@@ -153,3 +153,25 @@
       \lemma zero (y : Homology Q (suc n)) : i.homology n (connecting n y) = 0 \elim y
         | in~ z => Homology.class-eq (s (suc n) z.1) (inv (lift-eq n z.1 z.2) *> inv AddGroup.minus_zro)
 }
+
+\lemma connecting-natural {A B Q A' B' Q' : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} {i' : ChainMap A' B'} {p' : ChainMap B' Q'}
+                          (E : SplitExact i p) (E' : SplitExact i' p') (u : ChainMap A A') (v : ChainMap B B') (w : ChainMap Q Q')
+                          (sq-i : \Pi (n : Nat) (a : A.C n) -> v.f n (i.f n a) = i'.f n (u.f n a))
+                          (sq-p : \Pi (n : Nat) (b : B.C n) -> w.f n (p.f n b) = p'.f n (v.f n b)) (n : Nat)
+  : u.homology n AddGroupHom.∘ E.connecting n = E'.connecting n AddGroupHom.∘ w.homology (suc n)
+  => Coker.hom-ext (u.homology n AddGroupHom.∘ E.connecting n) (E'.connecting n AddGroupHom.∘ w.homology (suc n)) \lam z =>
+      Homology.class-eq (E'.r (suc n) (diff z)) (E'.i-inj n (inv (i'.comm n _) *> pmap (B'.d n) (E'.kernel (suc n) _ (diff-kernel z)) *> left z *> inv (right z)))
+  \where {
+    \func diff {n : Nat} (z : Q.Cycles (suc n)) : B'.C (suc n)
+      => v.f (suc n) (E.s (suc n) z.1) - E'.s (suc n) (w.f (suc n) z.1)
+
+    \lemma diff-kernel {n : Nat} (z : Q.Cycles (suc n)) : p'.f (suc n) (diff z) = 0
+      => (p'.f (suc n)).func-minus *> pmap2 (\lam x y => x - y) (inv (sq-p (suc n) _) *> pmap (w.f (suc n)) (E.ps (suc n) z.1)) (E'.ps (suc n) _) *> negative-right
+
+    \lemma left {n : Nat} (z : Q.Cycles (suc n)) : B'.d n (diff z) = v.f n (B.d n (E.s (suc n) z.1)) - B'.d n (E'.s (suc n) (w.f (suc n) z.1))
+      => (B'.d n).func-minus *> pmap (`- _) (v.comm n _)
+
+    \lemma right {n : Nat} (z : Q.Cycles (suc n)) : i'.f n (u.f n (E.lift n z.1) - E'.lift n (w.f (suc n) z.1))
+                                                     = v.f n (B.d n (E.s (suc n) z.1)) - B'.d n (E'.s (suc n) (w.f (suc n) z.1))
+      => (i'.f n).func-minus *> pmap2 (\lam x y => x - y) (inv (sq-i n _) *> pmap (v.f n) (E.lift-eq n z.1 z.2)) (E'.lift-eq n _ (w.comm-out (suc n) z.1 z.2))
+  }

@@ -1,0 +1,129 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupHom
+\import Algebra.Module
+\import Algebra.Module.BilinearMap
+\import Algebra.Module.Instances
+\import Algebra.Module.LinearMap
+\import Algebra.Module.TensorProduct
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Arith.Int
+\import Equiv
+\import Paths
+\import Paths.Meta
+\open ZFree (intModule, intLinear)
+
+\meta Tensor A B => TensorProductModule (intModule A) (intModule B)
+
+\func tensorRight {A A' : AbGroup} (f : AddGroupHom A A') (B : AbGroup) : LinearMap (Tensor A B) (Tensor A' B)
+  => tensorLift {IntRing} {intModule A} {intModule B} {Tensor A' B} \new BilinearMap (intModule A) (intModule B) (Tensor A' B) {
+    | func a b => tensor {IntRing} {intModule A'} {intModule B} (f a) b
+    | linear-left {b} => \new LinearMap {
+      | func-+ => pmap (tensor {IntRing} {intModule A'} {intModule B} __ b) f.func-+ *> tensor_+-left {IntRing} {intModule A'} {intModule B}
+      | func-*c => pmap (tensor {IntRing} {intModule A'} {intModule B} __ b) f.func-*i
+    }
+    | linear-right {a} => tensor-linear-right {IntRing} {intModule A'} {intModule B} {f a}
+  }
+  \where {
+    \lemma value {A A' B : AbGroup} (f : AddGroupHom A A') (a : A) (b : B)
+      : tensorRight f B (tensor {IntRing} {intModule A} {intModule B} a b) = tensor {IntRing} {intModule A'} {intModule B} (f a) b
+      => AddMonoid.zro-right {Tensor A' B}
+
+    \lemma ext {A A' B : AbGroup} (h k : LinearMap (Tensor A B) (Tensor A' B))
+               (p : \Pi (a : A) (b : B) -> h (tensor {IntRing} {intModule A} {intModule B} a b) = k (tensor {IntRing} {intModule A} {intModule B} a b))
+               (x : TensorProduct (intModule A) (intModule B)) : h x = k x
+      => tensorLift-unique {IntRing} {intModule A} {intModule B} {Tensor A' B} h k p
+
+    \lemma comp {A A' A'' B : AbGroup} (g : AddGroupHom A' A'') (f : AddGroupHom A A') (x : TensorProduct (intModule A) (intModule B))
+      : tensorRight g B (tensorRight f B x) = tensorRight (g AddGroupHom.∘ f) B x
+      => ext (LinearMap.compose {IntRing} {Tensor A B} {Tensor A' B} {Tensor A'' B} (tensorRight g B) (tensorRight f B)) (tensorRight (g AddGroupHom.∘ f) B)
+             (\lam a b => pmap (tensorRight g B) (value f a b) *> value g (f a) b *> inv (value (g AddGroupHom.∘ f) a b)) x
+
+    \lemma congr {A A' B : AbGroup} {f f' : AddGroupHom A A'} (p : \Pi (a : A) -> f a = f' a) (x : TensorProduct (intModule A) (intModule B))
+      : tensorRight f B x = tensorRight f' B x
+      => ext (tensorRight f B) (tensorRight f' B) (\lam a b => value f a b *> pmap (tensor {IntRing} {intModule A'} {intModule B} __ b) (p a) *> inv (value f' a b)) x
+
+    \lemma null {A A' B : AbGroup} {f : AddGroupHom A A'} (p : \Pi (a : A) -> f a = 0) (x : TensorProduct (intModule A) (intModule B))
+      : tensorRight f B x = AddPointed.zro {Tensor A' B}
+      => ext (tensorRight f B) (linearMap_zro {IntRing} {Tensor A B} {Tensor A' B})
+             (\lam a b => value f a b *> pmap (tensor {IntRing} {intModule A'} {intModule B} __ b) (p a)
+                          *> AddMonoidHom.func-zro {tensor-linear-left {IntRing} {intModule A'} {intModule B} {b}}) x
+
+    \lemma relation {A A' B : AbGroup} (f g h k : AddGroupHom A A') (p : \Pi (a : A) -> f a - g a = h a + k a) (x : TensorProduct (intModule A) (intModule B))
+      : linearMap_+ {IntRing} {Tensor A B} {Tensor A' B} (tensorRight f B) (linearMap_negative {IntRing} {Tensor A B} {Tensor A' B} (tensorRight g B)) x
+        = linearMap_+ {IntRing} {Tensor A B} {Tensor A' B} (tensorRight h B) (tensorRight k B) x
+      => ext (linearMap_+ {IntRing} {Tensor A B} {Tensor A' B} (tensorRight f B) (linearMap_negative {IntRing} {Tensor A B} {Tensor A' B} (tensorRight g B)))
+             (linearMap_+ {IntRing} {Tensor A B} {Tensor A' B} (tensorRight h B) (tensorRight k B))
+             (\lam a b => pmap2 (AddMonoid.+ {Tensor A' B}) (value f a b) (pmap (AddGroup.negative {Tensor A' B}) (value g a b))
+                          *> inv (tensor_+-left {IntRing} {intModule A'} {intModule B}
+                                  *> pmap2 (AddMonoid.+ {Tensor A' B}) (idp {_} {tensor {IntRing} {intModule A'} {intModule B} (f a) b}) (LinearMap.func-negative {tensor-linear-left {IntRing} {intModule A'} {intModule B} {b}} {g a}))
+                          *> pmap (tensor {IntRing} {intModule A'} {intModule B} __ b) (p a) *> tensor_+-left {IntRing} {intModule A'} {intModule B}
+                          *> inv (pmap2 (AddMonoid.+ {Tensor A' B}) (value h a b) (value k a b))) x
+  }
+
+\func Coefficients (X : ChainComplex) (A : AbGroup) : ChainComplex \cowith
+  | C n => Tensor (X.C n) A
+  | d n => tensorRight (X.d n) A
+  | dd n x => tensorRight.comp (X.d n) (X.d (suc n)) x *> tensorRight.null {_} {_} {_} {X.d n AddGroupHom.∘ X.d (suc n)} (X.dd n) x
+  \where {
+    \func map {X Y : ChainComplex} (F : ChainMap X Y) (A : AbGroup) : ChainMap (Coefficients X A) (Coefficients Y A) \cowith
+      | f n => tensorRight (F.f n) A
+      | comm n x => tensorRight.comp (Y.d n) (F.f (suc n)) x *> tensorRight.congr {_} {_} {_} {Y.d n AddGroupHom.∘ F.f (suc n)} {F.f n AddGroupHom.∘ X.d n} (F.comm n) x *> inv (tensorRight.comp (F.f n) (X.d n) x)
+
+    \func homotopy {X Y : ChainComplex} {F G : ChainMap X Y} (H : ChainHomotopy F G) (A : AbGroup)
+      : ChainHomotopy (map F A) (map G A) \cowith
+      | K n => tensorRight (H.K n) A
+      | htpy0 x => tensorRight.relation (F.f 0) (G.f 0) (Y.d 0 AddGroupHom.∘ H.K 0) AddGroupHom.zero (\lam a => H.htpy0 a *> inv zro-right) x
+                   *> pmap2 (AddMonoid.+ {Tensor (Y.C 0) A}) (inv (tensorRight.comp (Y.d 0) (H.K 0) x)) (tensorRight.null {X.C 0} {Y.C 0} {A} {AddGroupHom.zero} (\lam _ => idp) x)
+                   *> AddMonoid.zro-right {Tensor (Y.C 0) A}
+      | htpy n x => tensorRight.relation (F.f (suc n)) (G.f (suc n)) (Y.d (suc n) AddGroupHom.∘ H.K (suc n)) (H.K n AddGroupHom.∘ X.d n) (H.htpy n) x
+                    *> pmap2 (AddMonoid.+ {Tensor (Y.C (suc n)) A}) (inv (tensorRight.comp (Y.d (suc n)) (H.K (suc n)) x)) (inv (tensorRight.comp (H.K n) (X.d n) x))
+  }
+
+\record CochainComplex {
+  | D : Nat -> AbGroup
+  | delta (n : Nat) : AddGroupHom (D n) (D (suc n))
+  | delta-delta (n : Nat) (x : D n) : delta (suc n) (delta n x) = 0
+}
+
+\record CochainMap (X Y : CochainComplex) {
+  | g (n : Nat) : AddGroupHom (X.D n) (Y.D n)
+  | commute (n : Nat) (x : X.D n) : Y.delta n (g n x) = g (suc n) (X.delta n x)
+}
+
+\record CochainHomotopy {X Y : CochainComplex} (F G : CochainMap X Y) {
+  | L (n : Nat) : AddGroupHom (X.D (suc n)) (Y.D n)
+  | homotopy0 (x : X.D 0) : F.g 0 x - G.g 0 x = L 0 (X.delta 0 x)
+  | homotopy (n : Nat) (x : X.D (suc n)) : F.g (suc n) x - G.g (suc n) x = L (suc n) (X.delta (suc n) x) + Y.delta n (L n x)
+}
+
+\func Cochains (X : ChainComplex) (A : AbGroup) : CochainComplex \cowith
+  | D n => LinearMapAbGroup (intModule (X.C n)) (intModule A)
+  | delta n => precomp (X.d n) A
+  | delta-delta n phi => exts \lam x => pmap phi (X.dd n x) *> AddMonoidHom.func-zro {phi}
+  \where {
+    \func precomp {M N : AbGroup} (h : AddGroupHom M N) (A : AbGroup)
+      : AddGroupHom (LinearMapAbGroup (intModule N) (intModule A)) (LinearMapAbGroup (intModule M) (intModule A)) \cowith
+      | func phi => LinearMap.compose {IntRing} {intModule M} {intModule N} {intModule A} phi (intLinear h)
+      | func-+ => exts \lam _ => idp
+
+    \func map {X Y : ChainComplex} (F : ChainMap X Y) (A : AbGroup) : CochainMap (Cochains Y A) (Cochains X A) \cowith
+      | g n => precomp (F.f n) A
+      | commute n phi => exts \lam x => pmap phi (inv (F.comm n x))
+
+    \func homotopy {X Y : ChainComplex} {F G : ChainMap X Y} (H : ChainHomotopy F G) (A : AbGroup)
+      : CochainHomotopy (map F A) (map G A) \cowith
+      | L n => precomp (H.K n) A
+      | homotopy0 phi => exts \lam x => inv (AddGroupHom.func-minus {phi}) *> pmap phi (H.htpy0 x)
+      | homotopy n phi => exts \lam x => inv (AddGroupHom.func-minus {phi}) *> pmap phi (H.htpy n x) *> AddGroupHom.func-+ {phi}
+  }
+
+\func freeCochains {g : Nat} {A : AbGroup} : QEquiv {LinearMap (intModule (ZFree g)) (intModule A)} {Fin g -> A} \cowith
+  | f phi a => phi (ZFree.basis a)
+  | ret v => intLinear (ZFree.extend v)
+  | ret_f phi => exts \lam x => pmap {AddGroupHom (ZFree g) A} (__ x) (ZFree.hom-ext (ZFree.extend \lam a => phi (ZFree.basis a)) phi (ZFree.extend-basis _))
+  | f_sec v => ext (ZFree.extend-basis v)

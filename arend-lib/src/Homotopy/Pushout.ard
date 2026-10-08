@@ -91,6 +91,21 @@
       | pinr b => hr b
       | pglue c i => pathOver (transport_path_pmap F G (ppglue c) (hl (u c)) (hr (v c)) (hg c)) @ i
 
+    \func homotopy-equiv {J A B T : \Type} {u : J -> A} {v : J -> B} (F G : PushoutData u v -> T)
+      : QEquiv {\Pi (x : PushoutData u v) -> F x = G x}
+               {\Sigma (hl : \Pi (a : A) -> F (pinl a) = G (pinl a)) (hr : \Pi (b : B) -> F (pinr b) = G (pinr b))
+                       (\Pi (c : J) -> hl (u c) *> pmap G (ppglue c) = pmap F (ppglue c) *> hr (v c))} \cowith
+      | f H => (\lam a => H (pinl a), \lam b => H (pinr b), \lam c => square F G (ppglue c) _ _ (path (\lam i => H (pglue c i))))
+      | ret t => drec (\lam x => F x = G x) t.1 t.2 (\lam c => (square F G (ppglue c) _ _).ret (t.3 c))
+      | ret_f H => path (\lam j => drec (\lam x => F x = G x) (\lam a => H (pinl a)) (\lam b => H (pinr b))
+                                        (\lam c => (square F G (ppglue c) _ _).ret_f (path (\lam i => H (pglue c i))) @ j))
+                   *> (drec.equiv (\lam x => F x = G x)).ret_f H
+      | f_sec t => path (\lam j => (t.1, t.2, \lam c => (square F G (ppglue c) _ _).f_sec (t.3 c) @ j))
+      \where
+        \func square {Y T : \Type} (F G : Y -> T) {y y' : Y} (p : y = y') (a : F y = G y) (b : F y' = G y')
+          : QEquiv {Path (\lam i => F (p @ i) = G (p @ i)) a b} {a *> pmap G p = pmap F p *> b} \elim p
+          | idp => pathConcatEquiv-right (inv (idp_*> b))
+
     \func extension-equiv {A B C Z : \Type} (u : A -> B) (v : A -> C) (old : B -> Z)
       : QEquiv {\Sigma (h : PushoutData u v -> Z) (\Pi (b : B) -> h (pinl b) = old b)}
                {\Sigma (rm : C -> Z) (\Pi (a : A) -> old (u a) = rm (v a))} \cowith

@@ -1,5 +1,7 @@
 {- | The wedge of two pointed types and the wedge extension principle, the HoTT book, Lemma 8.6.2. -}
 
+\import Algebra.Meta
+\import Arith.Nat
 \import Equiv
 \import Equiv.Univalence
 \import Homotopy.Connectivity
@@ -10,6 +12,8 @@
 \import Homotopy.Localization.Universe
 \import Homotopy.Pointed
 \import Homotopy.Pushout
+\import Homotopy.Pushout.Grid
+\import Homotopy.Suspension
 \import Logic
 \import Paths
 
@@ -29,6 +33,145 @@
 
     \func toProduct.{l} (A B : Pointed.{l}) : pointed A B ->* PointedProduct A B
       => (wedgeToProduct A B, idp)
+
+    \func copair.{l} {A B : Pointed.{l}} {Z : Pointed} (f : A ->* Z) (g : B ->* Z) : pointed A B ->* Z
+      => (rec f.1 g.1 (\lam _ => f.2 *> inv g.2), f.2)
+      \where {
+        \func left-eq.{l} {A B : Pointed.{l}} {Z : Pointed} (f : A ->* Z) (g : B ->* Z) : copair f g ->*.∘* Wedge.left A B = f
+          => ->*.ext (\lam _ => idp) idp
+
+        \func right-eq.{l} {A B : Pointed.{l}} {Z : Pointed} (f : A ->* Z) (g : B ->* Z) : copair f g ->*.∘* Wedge.right A B = g
+          => ->*.ext (\lam _ => idp) (coh f.2 g.2 *> pmap (`*> f.2) (inv (pmap_inv-comm (copair f g).1 (ppglue ()))))
+
+        \func coh {X : \Type} {z z' z'' : X} (a : z = z'') (b : z' = z'') : idp *> b = inv (a *> inv b) *> a \elim a, b
+          | idp, idp => idp
+
+        \sfunc eta.{l} {A B : Pointed.{l}} {Z : Pointed} (h : pointed A B ->* Z) : copair (h ->*.∘* left A B) (h ->*.∘* right A B) = h
+          => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(copair (h ->*.∘* left A B) (h ->*.∘* right A B)).1} {h.1} (\lam _ => idp) (\lam _ => idp)
+                       (\lam _ => eta-coh (pmap h.1 (ppglue ())) h.2 *> pmap (\lam t => (idp *> h.2) *> inv (t *> h.2)) (inv (pmap_inv-comm h.1 (ppglue ())))))
+                     idp
+
+        \sfunc eta-coh {X : \Type} {z z' w : X} (P : z = z') (e : z = w) : idp *> P = (idp *> e) *> inv (inv P *> e) \elim P, e
+          | idp, idp => idp
+
+        \sfunc post.{l} {A B : Pointed.{l}} {Z W : Pointed} (h : Z ->* W) (f : A ->* Z) (g : B ->* Z)
+          : h ->*.∘* copair f g = copair (h ->*.∘* f) (h ->*.∘* g)
+          => ext (inv (->*.compose-assoc h (copair f g) (left A B)) *> pmap (h ->*.∘*) (left-eq f g) *> inv (left-eq (h ->*.∘* f) (h ->*.∘* g)))
+                 (inv (->*.compose-assoc h (copair f g) (right A B)) *> pmap (h ->*.∘*) (right-eq f g) *> inv (right-eq (h ->*.∘* f) (h ->*.∘* g)))
+      }
+
+    \sfunc ext.{l} {A B : Pointed.{l}} {Z : Pointed} {h k : pointed A B ->* Z}
+                   (p : h ->*.∘* left A B = k ->*.∘* left A B) (q : h ->*.∘* right A B = k ->*.∘* right A B) : h = k
+      => inv (copair.eta h) *> pmap2 copair p q *> copair.eta k
+
+    \func map.{l} {A A' B B' : Pointed.{l}} (f : A ->* A') (g : B ->* B') : pointed A B ->* pointed A' B'
+      => (congr _ _ _ _ (\lam c => c) f.1 g.1 (\lam _ => inv f.2) (\lam _ => inv g.2), pmap pinl f.2)
+      \where {
+        \sfunc left-eq.{l} {A A' B B' : Pointed.{l}} (f : A ->* A') (g : B ->* B') : map f g ->*.∘* left A B = left A' B' ->*.∘* f
+          => ->*.ext (\lam _ => idp) idp
+
+        \sfunc right-eq.{l} {A A' B B' : Pointed.{l}} (f : A ->* A') (g : B ->* B') : map f g ->*.∘* right A B = right A' B' ->*.∘* g
+          => ->*.ext (\lam _ => idp) (lem pinl pinr (ppglue ()) f.2 g.2 *> inv (pmap (`*> pmap pinl f.2) (pmap_inv-comm (map f g).1 (ppglue ()))))
+          \where {
+            \sfunc lem {X Y W : \Type} (L : X -> W) (R : Y -> W) {x0 : X} {y0 : Y} (G : L x0 = R y0) {x : X} {y : Y} (a : x = x0) (b : y = y0)
+              : idp *> (pmap R b *> inv G) = inv ((pmap L (inv (inv a)) *> G) *> pmap R (inv b)) *> pmap L a \elim a, b
+              | idp, idp => lem' G
+
+            \sfunc lem' {W : \Type} {u v : W} (G : u = v) : idp *> (idp *> inv G) = inv (idp *> G) \elim G
+              | idp => idp
+          }
+
+        \func equiv.{l} {A A' B B' : Pointed.{l}} (e : PointedEquiv A A') (e' : PointedEquiv B B') : PointedEquiv (pointed A B) (pointed A' B') \cowith
+          | map => map e.map e'.map
+          | map-isEquiv => congr.isEquiv _ _ _ _ idEquiv (PointedEquiv.toHAEquiv e) (PointedEquiv.toHAEquiv e') (\lam _ => inv e.map.2) (\lam _ => inv e'.map.2)
+      }
+
+    \func susp.{l} (X Y : Pointed.{l}) : PointedEquiv (Susp.pointed (pointed X Y)) (pointed (Susp.pointed X) (Susp.pointed Y))
+      => PointedEquiv.inverse (unsusp X Y)
+      \where {
+        \sfunc ext.{l} {X Y : Pointed.{l}} {Z : Pointed} {P Q : Susp.pointed (pointed X Y) ->* Z}
+                       (p : P ->*.∘* Susp-Func (left X Y) = Q ->*.∘* Susp-Func (left X Y)) (q : P ->*.∘* Susp-Func (right X Y) = Q ->*.∘* Susp-Func (right X Y)) : P = Q
+          => PointedEquiv.epi (unsusp X Y)
+               (Wedge.ext (inv (->*.compose-assoc P (unsusp X Y).map (left (Susp.pointed X) (Susp.pointed Y))) *> pmap (P ->*.∘*) (unsusp.left-eq X Y)
+                           *> p *> inv (pmap (Q ->*.∘*) (unsusp.left-eq X Y)) *> ->*.compose-assoc Q (unsusp X Y).map (left (Susp.pointed X) (Susp.pointed Y)))
+                          (inv (->*.compose-assoc P (unsusp X Y).map (right (Susp.pointed X) (Susp.pointed Y))) *> pmap (P ->*.∘*) (unsusp.right-eq X Y)
+                           *> q *> inv (pmap (Q ->*.∘*) (unsusp.right-eq X Y)) *> ->*.compose-assoc Q (unsusp X Y).map (right (Susp.pointed X) (Susp.pointed Y))))
+
+        \sfunc left-eq.{l} (X Y : Pointed.{l}) : (susp X Y).map ->*.∘* Susp-Func (left X Y) = left (Susp.pointed X) (Susp.pointed Y)
+          => PointedEquiv.inverse-comp (unsusp X Y) {left (Susp.pointed X) (Susp.pointed Y)} {Susp-Func (left X Y)} (unsusp.left-eq X Y)
+
+        \sfunc right-eq.{l} (X Y : Pointed.{l}) : (susp X Y).map ->*.∘* Susp-Func (right X Y) = right (Susp.pointed X) (Susp.pointed Y)
+          => PointedEquiv.inverse-comp (unsusp X Y) {right (Susp.pointed X) (Susp.pointed Y)} {Susp-Func (right X Y)} (unsusp.right-eq X Y)
+
+        \func unsusp.{l} (X Y : Pointed.{l}) : PointedEquiv (pointed (Susp.pointed X) (Susp.pointed Y)) (Susp.pointed (pointed X Y)) \cowith
+          | map => (\lam w => cols X Y (Grid.comparison (grid X Y) (rows X Y w)), pmap (cols X Y) (Grid.comparison.corner00 (grid X Y) ()))
+          | map-isEquiv => IsEquiv.trans (congr.isEquiv _ _ _ _ Susp.unit idEquiv idEquiv (\lam _ => idp) (\lam _ => idp))
+                             (IsEquiv.trans (inP (Grid.comparison (grid X Y)))
+                                            (congr.isEquiv _ _ _ _ idEquiv (symQEquiv Susp.unit) (symQEquiv Susp.unit) (\lam _ => idp) (\lam _ => idp)))
+          \where {
+            \func grid.{l} (X Y : Pointed.{l}) : Grid \cowith
+              | A00 => \Sigma
+              | A01 => X
+              | A02 => \Sigma
+              | A10 => \Sigma
+              | A11 => \Sigma
+              | A12 => \Sigma
+              | A20 => \Sigma
+              | A21 => Y
+              | A22 => \Sigma
+              | f01 _ => ()
+              | f03 _ => ()
+              | f11 _ => ()
+              | f13 _ => ()
+              | f21 _ => ()
+              | f23 _ => ()
+              | g10 _ => ()
+              | g30 _ => ()
+              | g11 _ => base
+              | g31 _ => base
+              | g12 _ => ()
+              | g32 _ => ()
+              | s00 _ => idp
+              | s02 _ => idp
+              | s20 _ => idp
+              | s22 _ => idp
+
+            \func rows.{l} (X Y : Pointed.{l}) (w : Wedge (Susp.pointed X) (Susp.pointed Y)) : Grid.Prows {grid X Y}
+              => congr _ _ (Grid.r0 {grid X Y}) (Grid.r2 {grid X Y}) (\lam _ => north) (\lam x => x) (\lam y => y) (\lam _ => idp) (\lam _ => idp) w
+
+            \func cols.{l} (X Y : Pointed.{l}) (z : Grid.Pcols (grid X Y)) : Susp (Wedge X Y)
+              => congr (Grid.r0 {Grid.transpose (grid X Y)}) (Grid.r2 {Grid.transpose (grid X Y)}) (\lam _ => ()) (\lam _ => ())
+                       (\lam w => w) (\lam _ => ()) (\lam _ => ()) (\lam _ => idp) (\lam _ => idp) z
+
+            \sfunc left-eq.{l} (X Y : Pointed.{l}) : (unsusp X Y).map ->*.∘* left (Susp.pointed X) (Susp.pointed Y) = Susp-Func (left X Y)
+              => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam x => (unsusp X Y).map.1 (pinl x)} {Susp.map pinl}
+                           (\lam _ => pmap (cols X Y) (Grid.comparison.corner00 (grid X Y) ())) (\lam _ => pmap (cols X Y) (Grid.comparison.corner02 (grid X Y) ()))
+                           (\lam x => pmap (pmap (cols X Y) (Grid.comparison.corner00 (grid X Y) ()) *>) (inv (idp_*> (pmerid (pinl x))))
+                                      *> glue-square (cols X Y) (Grid.comparison.corner00 (grid X Y) ()) (ppglue (pinl x)) (Grid.comparison.corner02 (grid X Y) ())
+                                      *> inv (pmap (\lam t => pmap (cols X Y) t *> pmap (cols X Y) (Grid.comparison.corner02 (grid X Y) ())) (Grid.comparison.edge01 (grid X Y) x))))
+                         (inv (idp_*> _))
+
+            \sfunc right-eq.{l} (X Y : Pointed.{l}) : (unsusp X Y).map ->*.∘* right (Susp.pointed X) (Susp.pointed Y) = Susp-Func (right X Y)
+              => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam y => (unsusp X Y).map.1 (pinr y)} {Susp.map pinr}
+                           (\lam _ => pmap (cols X Y) (Grid.comparison.corner20 (grid X Y) ())) (\lam _ => pmap (cols X Y) (Grid.comparison.corner22 (grid X Y) ()))
+                           (\lam y => pmap (pmap (cols X Y) (Grid.comparison.corner20 (grid X Y) ()) *>) (inv (idp_*> (pmerid (pinr y))))
+                                      *> glue-square (cols X Y) (Grid.comparison.corner20 (grid X Y) ()) (ppglue (pinr y)) (Grid.comparison.corner22 (grid X Y) ())
+                                      *> inv (pmap (\lam t => pmap (cols X Y) t *> pmap (cols X Y) (Grid.comparison.corner22 (grid X Y) ())) (Grid.comparison.edge21 (grid X Y) y))))
+                         (base-square (cols X Y) (Grid.comparison.corner00 (grid X Y) ()) (pmap pinl (ppglue ())) (Grid.comparison.corner20 (grid X Y) ())
+                          *> pmap (`*> pmap (cols X Y) (Grid.comparison.corner00 (grid X Y) ()))
+                                  (inv (pmap_inv-comm (unsusp X Y).map.1 (ppglue ())
+                                        *> pmap inv (pmap (pmap (cols X Y)) (pmap_*>-comm (Grid.comparison (grid X Y)) idp (ppglue (pinl ())))
+                                                     *> pmap (\lam t => pmap (cols X Y) (idp *> t)) (Grid.comparison.edge10 (grid X Y) ())))))
+
+            \sfunc glue-square {Y W : \Type} (k : Y -> W) {y0 z0 z1 y1 : Y} (a : y0 = z0) (q : z0 = z1) (b : y1 = z1)
+              : pmap k a *> pmap k q = pmap k (a *> q *> inv b) *> pmap k b \elim a, q, b
+              | idp, idp, idp => idp
+
+            \sfunc base-square {Y W : \Type} (k : Y -> W) {y z z' y' : Y} (a : y = z) (P : z = z') (b : y' = z')
+              : pmap k b = inv (pmap k (idp *> (a *> P *> inv b))) *> pmap k a *> pmap k P \elim a, P, b
+              | idp, idp, idp => idp
+          }
+      }
   }
 
 \func wedgeToProduct.{l} (A B : Pointed.{l}) (z : Wedge A B) : \Sigma A B
@@ -105,6 +248,13 @@
       (symQEquiv (wedgeToProduct-fiberEquiv A B t.1 t.2))
       (nconnected_join (base {A} = t.1) (base {B} = t.2)
                        (nconnected-path ca base t.1) (nconnected-path cb base t.2))
+
+\lemma wedge-nconnected.{l} (m : Nat) {A B : Pointed.{l}} (ca : isNConnectedType (suc m) A) (cb : isNConnectedType (suc m) B)
+  : isNConnectedType (suc m) (Wedge A B)
+  => (nconnected-unit {suc m} {Wedge A B}).2
+       (nconnected-map-comp {suc m} {Wedge A B} {\Sigma A B} {\Sigma} {wedgeToProduct A B} {\lam _ => ()}
+                            (nconnected-map-mono {suc m} {suc (m Nat.+ m)} linarith (wedgeToProduct-connected m m A B ca cb))
+                            ((nconnected-unit {suc m} {\Sigma A B}).1 (nconnected-product {suc m} ca cb)))
 
 \func WedgeData.{l} {A B : Pointed.{l}} (D : \Sigma A B -> \Type l)
   => \Sigma (lm : \Pi (a : A) -> D (a, base {B})) (rm : \Pi (b : B) -> D (base {A}, b))

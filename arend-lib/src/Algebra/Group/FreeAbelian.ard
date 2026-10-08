@@ -65,6 +65,11 @@
       | *c-rdistr => *i-rdistr
       | ide_*c => zro-left
 
+    \func intLinear {A B : AbGroup} (h : AddGroupHom A B) : LinearMap (intModule A) (intModule B) \cowith
+      | func => h
+      | func-+ => h.func-+
+      | func-*c => h.func-*i
+
     \lemma hom-ext {A : AbGroup} {g : Nat} (h k : AddGroupHom (ZFree g) A) (p : \Pi (a : Fin g) -> h (basis a) = k (basis a)) : h = k
       => exts (LinearMap.basis-ext {IntRing} {ArrayLModule g (RingLModule IntRing)} {intModule A} (lin h) (lin k) (ArrayFinModule.basis {IntRing} {g}).2 p)
       \where
@@ -115,6 +120,11 @@
       : columnAction (A MatrixRing.product B) = columnAction A AddGroupHom.∘ columnAction B
       => pmap columnAction (inv (columnMatrix_compose (columnAction B) (columnAction A) *> pmap2 (MatrixRing.product) (columnMatrix_columnAction A) (columnMatrix_columnAction B)))
          *> columnAction_columnMatrix _
+
+    \lemma columnAction_+ {r g : Nat} (M N : Matrix Int g r)
+      : columnAction (mkMatrix \lam b a => M b a + N b a) = AddGroupHom.sum (columnAction M) (columnAction N)
+      => hom-ext (columnAction (mkMatrix \lam b a => M b a + N b a)) (AddGroupHom.sum (columnAction M) (columnAction N))
+           \lam a => exts \lam b => columnActionBasis (mkMatrix \lam b a => M b a + N b a) a b *> inv (pmap2 (+) (columnActionBasis M a b) (columnActionBasis N a b))
 
     \lemma columnAction_ide {g : Nat} : columnAction (MatrixRing.ide {IntRing} {g}) = AddGroupHom.id
       => pmap columnAction (inv columnMatrix_id) *> columnAction_columnMatrix _
@@ -167,6 +177,56 @@
       => \case decideEq a b \with {
         | yes p => rewrite p (basis-diagonal *> inv basis-diagonal)
         | no q => basis-coordinate (fsuc/= q) *> inv (basis-coordinate q)
+      }
+
+    \func reindex {g g' : Nat} (e : QEquiv {Fin g} {Fin g'}) : AddGroupHom (ZFree g) (ZFree g') \cowith
+      | func x b => x (e.ret b)
+      | func-+ => idp
+      \where {
+        \func equiv {g g' : Nat} (e : QEquiv {Fin g} {Fin g'}) : QEquiv (reindex e) \cowith
+          | ret => reindex (symQEquiv e)
+          | ret_f x => exts \lam a => pmap x (e.ret_f a)
+          | f_sec y => exts \lam b => pmap y (e.f_ret b)
+
+        \lemma basis {g g' : Nat} (e : QEquiv {Fin g} {Fin g'}) (a : Fin g) : reindex e (ZFree.basis a) = ZFree.basis (e a)
+          => exts \lam b => \case decideEq (e a) b \with {
+            | yes p => rewriteI p (pmap (ZFree.basis a) (e.ret_f a) *> basis-diagonal *> inv basis-diagonal)
+            | no q => basis-coordinate (\lam r => q (pmap e r *> e.f_ret b)) *> inv (basis-coordinate q)
+          }
+
+        \lemma id {g : Nat} : reindex (idEquiv {Fin g}) = AddGroupHom.id
+          => idp
+
+        \lemma comp {g g' g'' : Nat} (e : QEquiv {Fin g} {Fin g'}) (e' : QEquiv {Fin g'} {Fin g''})
+          : reindex (transQEquiv e e') = reindex e' AddGroupHom.∘ reindex e
+          => idp
+      }
+
+    \func basisOn {J : \Type} {g : Nat} (e : QEquiv {Fin g} {J}) (j : J) : ZFree g
+      => basis (e.ret j)
+
+    \func extendOn {A : AbGroup} {J : \Type} {g : Nat} (e : QEquiv {Fin g} {J}) (v : J -> A) : AddGroupHom (ZFree g) A
+      => extend \lam a => v (e a)
+
+    \lemma extendOn-basis {A : AbGroup} {J : \Type} {g : Nat} (e : QEquiv {Fin g} {J}) (v : J -> A) (j : J) : extendOn e v (basisOn e j) = v j
+      => extend-basis _ _ *> pmap v (e.f_ret j)
+
+    \func change {J : \Type} {g g' : Nat} (e : QEquiv {Fin g} {J}) (e' : QEquiv {Fin g'} {J}) : AddGroupHom (ZFree g) (ZFree g')
+      => reindex (transQEquiv e (symQEquiv e'))
+      \where {
+        \lemma basis {J : \Type} {g g' : Nat} (e : QEquiv {Fin g} {J}) (e' : QEquiv {Fin g'} {J}) (j : J) : change e e' (basisOn e j) = basisOn e' j
+          => reindex.basis _ _ *> pmap (\lam x => ZFree.basis (e'.ret x)) (e.f_ret j)
+
+        \lemma extend {A : AbGroup} {J : \Type} {g g' : Nat} (e : QEquiv {Fin g} {J}) (e' : QEquiv {Fin g'} {J}) (v : J -> A)
+          : extendOn e' v AddGroupHom.∘ change e e' = extendOn e v
+          => hom-ext (extendOn e' v AddGroupHom.∘ change e e') (extendOn e v) \lam a => pmap (extendOn e' v) (reindex.basis _ a) *> extend-basis _ _ *> pmap v (e'.f_ret (e a)) *> inv (extend-basis (\lam a => v (e a)) a)
+
+        \lemma self {J : \Type} {g : Nat} (e : QEquiv {Fin g} {J}) (x : ZFree g) : change e e x = x
+          => exts \lam b => pmap x (e.ret_f b)
+
+        \lemma comp {J : \Type} {g g' g'' : Nat} (e : QEquiv {Fin g} {J}) (e' : QEquiv {Fin g'} {J}) (e'' : QEquiv {Fin g''} {J}) (x : ZFree g)
+          : change e' e'' (change e e' x) = change e e'' x
+          => exts \lam b => pmap x (pmap e.ret (e'.f_ret _))
       }
   }
 

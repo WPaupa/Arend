@@ -1,0 +1,258 @@
+\import Algebra.Group
+\import Algebra.Group.Abelianization
+\import Algebra.Group.Free
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupHom
+\import Algebra.Linear.Matrix (MatrixRing, matrixExt, mkMatrix)
+\import Algebra.Monoid
+\import Arith.Int
+\import Category (Iso)
+\import Data.Array (mkArray)
+\import Data.Bool (true)
+\import Data.List (::, nil)
+\import Data.Or
+\import Equiv
+\import Homotopy.HomotopyGroup
+\import Homotopy.K1.Presentation (PiGroup_Bouquet, bouquetHom, bouquetHom-word, bouquetLoop)
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pushout (PushoutData, pinl, pinr)
+\import Homotopy.Sphere
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Sphere.Degree
+\import Homotopy.Suspension
+\import Homotopy.Wedge
+\import Logic
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence (in~)
+\import Set (in0)
+\open ZFree
+\open PushoutData (ppglue)
+
+\func circleBouquet (g : Nat) : PointedEquiv (Bouquet 1 g) (Susp.pointed (Or (Fin g) (\Sigma))) \elim g
+  | 0 => \new PointedEquiv {
+    | map => (\lam _ => north, idp)
+    | map-isEquiv => IsEquiv.trans (inP Susp.unit) (inP (Susp.mapEquiv empty))
+  }
+  | suc g => suspend (glue g) PointedEquiv.∘~ Wedge.susp.unsusp (Sphere.pointed 0) (petals g) PointedEquiv.∘~ Wedge.map.equiv PointedEquiv.id (circleBouquet g)
+  \where {
+    \func petals (g : Nat) : Pointed.{0} => Pointed.make {Or (Fin g) (\Sigma)} (inr ())
+
+    \func suspend {A B : \Type} (e : QEquiv {A} {B}) : PointedEquiv (Susp.pointed A) (Susp.pointed B) \cowith
+      | map => (Susp.map e, idp)
+      | map-isEquiv => inP (Susp.mapEquiv e)
+
+    \func empty : QEquiv {\Sigma} {Or (Fin 0) (\Sigma)} \cowith
+      | f _ => inr ()
+      | ret _ => ()
+      | ret_f _ => idp
+      | f_sec y => \case \elim y \with {
+        | inl a => \case a \with {}
+        | inr _ => idp
+      }
+
+    \func shift {g : Nat} (x : Or (Fin g) (\Sigma)) : Or (Fin (suc g)) (\Sigma) \elim x
+      | inl k => inl (suc k)
+      | inr _ => inr ()
+
+    \func kappa (g : Nat) (w : Wedge (Sphere.pointed 0) (petals g)) : Or (Fin (suc g)) (\Sigma)
+      => PushoutData.rec (Susp.rec {_} {Or (Fin (suc g)) (\Sigma)} (inr ()) (inl 0) (\lam e => absurd e)) shift (\lam _ => idp) w
+
+    \func unkappa {g : Nat} (y : Or (Fin (suc g)) (\Sigma)) : Wedge (Sphere.pointed 0) (petals g) \elim y
+      | inl 0 => pinl south
+      | inl (suc k) => pinr (inl k)
+      | inr _ => pinl north
+
+    \func glue (g : Nat) : QEquiv {Wedge (Sphere.pointed 0) (petals g)} {Or (Fin (suc g)) (\Sigma)} \cowith
+      | f => kappa g
+      | ret => unkappa
+      | ret_f => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam w => unkappa (kappa g w)} {\lam w => w}
+                   (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam s => unkappa (kappa g (pinl s))} {pinl} (\lam _ => idp) (\lam _ => idp) (\lam e => absurd e))
+                   (\lam x => \case \elim x \with {
+                     | inl k => idp
+                     | inr _ => ppglue ()
+                   })
+                   (\lam _ => idp)
+      | f_sec y => \case \elim y \with {
+        | inl 0 => idp
+        | inl (suc k) => idp
+        | inr _ => idp
+      }
+
+    \func kappaP (g : Nat) : Wedge.pointed (Sphere.pointed 0) (petals g) ->* petals (suc g)
+      => (kappa g, idp)
+
+    \func point {g : Nat} (a : Fin g) : Sphere.pointed 0 ->* petals g \elim g, a
+      | suc g, 0 => kappaP g ->*.∘* Wedge.left (Sphere.pointed 0) (petals g)
+      | suc g, suc a => kappaP g ->*.∘* (Wedge.right (Sphere.pointed 0) (petals g) ->*.∘* point a)
+
+    \sfunc point-south {g : Nat} (a : Fin g) : (point a).1 south = inl a \elim g, a
+      | suc g, 0 => idp
+      | suc g, suc a => pmap (\lam x => kappa g (pinr x)) (point-south a)
+
+    \func E (g : Nat) : Bouquet 1 g ->* Susp.pointed (Or (Fin g) (\Sigma))
+      => (circleBouquet g).map
+
+    \func Einv (g : Nat) : Susp.pointed (Or (Fin g) (\Sigma)) ->* Bouquet 1 g
+      => (PointedEquiv.inverse (circleBouquet g)).map
+
+    \func gen {g : Nat} (a : Fin g) : PiGroup 0 (Bouquet 1 g)
+      => piMap 1 {Sphere.pointed 1} {Bouquet 1 g} (Bouquet.include {1} a) (generator 0)
+
+    \func sk (g : Nat) : Susp.pointed (Wedge.pointed (Sphere.pointed 0) (petals g)) ->* Susp.pointed (Or (Fin (suc g)) (\Sigma))
+      => (suspend (glue g)).map
+
+    \func us (g : Nat) : Wedge.pointed (Sphere.pointed 1) (Susp.pointed (petals g)) ->* Susp.pointed (Wedge.pointed (Sphere.pointed 0) (petals g))
+      => (Wedge.susp.unsusp (Sphere.pointed 0) (petals g)).map
+
+    \func head (g : Nat) : Wedge.pointed (Sphere.pointed 1) (Susp.pointed (petals g)) ->* Susp.pointed (Or (Fin (suc g)) (\Sigma))
+      => sk g ->*.∘* us g
+
+    \func lift (g : Nat) : Wedge.pointed (Sphere.pointed 1) (Bouquet 1 g) ->* Wedge.pointed (Sphere.pointed 1) (Susp.pointed (petals g))
+      => Wedge.map (->*.id {Sphere.pointed 1}) (E g)
+
+    \sfunc right-eq (g : Nat)
+      : E (suc g) ->*.∘* Wedge.right (Sphere.pointed 1) (Bouquet 1 g)
+        = Susp-Func (kappaP g ->*.∘* Wedge.right (Sphere.pointed 0) (petals g)) ->*.∘* E g
+      => inv (->*.compose-assoc (head g) (lift g) (Wedge.right (Sphere.pointed 1) (Bouquet 1 g)))
+         *> pmap (head g ->*.∘*) (Wedge.map.right-eq {Sphere.pointed 1} {Sphere.pointed 1} {Bouquet 1 g} {Susp.pointed (petals g)} ->*.id (E g))
+         *> ->*.compose-assoc (head g) (Wedge.right (Sphere.pointed 1) (Susp.pointed (petals g))) (E g)
+         *> pmap (->*.∘* E g)
+                 (inv (->*.compose-assoc (sk g) (us g) (Wedge.right (Sphere.pointed 1) (Susp.pointed (petals g))))
+                  *> pmap (sk g ->*.∘*) (Wedge.susp.unsusp.right-eq (Sphere.pointed 0) (petals g))
+                  *> inv (Susp-Func.comp (kappaP g) (Wedge.right (Sphere.pointed 0) (petals g))))
+
+    \sfunc include {g : Nat} (a : Fin g) : E g ->*.∘* Bouquet.include {1} a = Susp-Func (point a) \elim g, a
+      | suc g, 0 => inv (->*.compose-assoc (head g) (lift g) (Wedge.left (Sphere.pointed 1) (Bouquet 1 g)))
+                    *> pmap (head g ->*.∘*) (Wedge.map.left-eq {Sphere.pointed 1} {Sphere.pointed 1} {Bouquet 1 g} {Susp.pointed (petals g)} ->*.id (E g))
+                    *> inv (->*.compose-assoc (sk g) (us g) (Wedge.left (Sphere.pointed 1) (Susp.pointed (petals g))))
+                    *> pmap (sk g ->*.∘*) (Wedge.susp.unsusp.left-eq (Sphere.pointed 0) (petals g))
+                    *> inv (Susp-Func.comp (kappaP g) (Wedge.left (Sphere.pointed 0) (petals g)))
+      | suc g, suc a => ->*.compose-assoc (E (suc g)) (Wedge.right (Sphere.pointed 1) (Bouquet 1 g)) (Bouquet.include {1} a)
+                        *> pmap (->*.∘* Bouquet.include {1} a) (right-eq g)
+                        *> inv (->*.compose-assoc (Susp-Func (kappaP g ->*.∘* Wedge.right (Sphere.pointed 0) (petals g))) (E g) (Bouquet.include {1} a))
+                        *> pmap (Susp-Func (kappaP g ->*.∘* Wedge.right (Sphere.pointed 0) (petals g)) ->*.∘*) (include a)
+                        *> inv (Susp-Func.comp (kappaP g ->*.∘* Wedge.right (Sphere.pointed 0) (petals g)) (point a))
+                        *> pmap Susp-Func (inv (->*.compose-assoc (kappaP g) (Wedge.right (Sphere.pointed 0) (petals g)) (point a)))
+
+    \sfunc loop {g : Nat} (a : Fin g)
+      : piMap 1 {Sphere.pointed 1} {Susp.pointed (Or (Fin g) (\Sigma))} (Susp-Func (point a)) (generator 0) = in0 (inv (bouquetLoop a))
+      => pmap in0 (pmap (loopMap (Susp.map (point a).1) idp) degree.reflect.loops
+                   *> SuspLoopEquiv.unit.loopMap_*>-inv (Susp.map (point a).1) (pmerid north) (pmerid south)
+                   *> pmap2 (\lam x y => pmerid x *> inv (pmerid y)) (point a).2 (point-south a)
+                   *> inv (*>_inv-comm (pmerid (inl a)) (inv (pmerid (inr ()))) *> pmap (`*> inv (pmerid (inl a))) (inv_inv (pmerid (inr ())))))
+
+    \sfunc back {g : Nat} (y : PiGroup 0 (Bouquet 1 g)) : piMap 1 (Einv g) (piMap 1 (E g) y) = y
+      => inv (piMap-comp 1 (Einv g) (E g) y)
+         *> pmap (\lam (m : Bouquet 1 g ->* Bouquet 1 g) => piMap 1 m y) (PointedEquiv.inverse-ret (circleBouquet g)) *> piMap-id 1 y
+
+    \func Phi (g : Nat) : GroupHom (FreeGroup (Fin g)) (PiGroup 0 (Bouquet 1 g))
+      => piGroupMap 0 (Einv g) GroupHom.∘ bouquetHom (Fin g)
+
+    \sfunc Phi-can {g : Nat} (a : Fin g) : Phi g (FreeGroup.can a) = inverse {PiGroup 0 (Bouquet 1 g)} (gen a)
+      => pmap (piMap 1 (Einv g))
+              (bouquetHom-word ((a, true) :: nil) *> pmap in0 (inv (inv_inv (bouquetLoop a))) *> pmap (inverse {PiGroup 0 (Susp.pointed (Or (Fin g) (\Sigma)))}) (inv (loop a)))
+         *> GroupHom.func-inverse {piGroupMap 0 (Einv g)} {piMap 1 {Sphere.pointed 1} {Susp.pointed (Or (Fin g) (\Sigma))} (Susp-Func (point a)) (generator 0)}
+         *> pmap (inverse {PiGroup 0 (Bouquet 1 g)})
+                 (pmap (\lam m => piMap 1 (Einv g) (piMap 1 m (generator 0))) (inv (include a))
+                  *> pmap (piMap 1 (Einv g)) (piMap-comp 1 (E g) (Bouquet.include {1} a) (generator 0))
+                  *> back (gen a))
+
+    \sfunc round {g : Nat} (x : PiGroup 0 (Bouquet 1 g)) : Phi g (Iso.hinv {PiGroup_Bouquet (Fin g)} (piMap 1 (E g) x)) = x
+      => pmap (piMap 1 (Einv g))
+              (pmap (\lam (m : GroupHom (PiGroup 0 (Susp.pointed (Or (Fin g) (\Sigma)))) (PiGroup 0 (Susp.pointed (Or (Fin g) (\Sigma))))) => m (piMap 1 (E g) x))
+                    (Iso.f_hinv {PiGroup_Bouquet (Fin g)}))
+         *> back x
+
+    \sfunc generated {g : Nat} {H : Group} (h k : GroupHom (PiGroup 0 (Bouquet 1 g)) H) (p : \Pi (a : Fin g) -> h (gen a) = k (gen a))
+                     (x : PiGroup 0 (Bouquet 1 g)) : h x = k x
+      => inv (pmap h (round x))
+         *> FreeGroup.hom-ext (h GroupHom.∘ Phi g) (k GroupHom.∘ Phi g)
+              (\lam a => pmap h (Phi-can a) *> h.func-inverse *> pmap inverse (p a) *> inv k.func-inverse *> inv (pmap k (Phi-can a))) _
+         *> pmap k (round x)
+  }
+
+\func bottom1 (g : Nat) : AddGroupHom (Ab (PiGroup 0 (Bouquet 1 g))) (ZFree g)
+  => Ab.desc (count g)
+  \where {
+    \func count (g : Nat) : GroupHom (PiGroup 0 (Bouquet 1 g)) (ZFree g) \cowith
+      | func x => mkArray \lam b => sphereInt 0 (piMap 1 (Bouquet.project {1} b) x)
+      | func-* => exts \lam b => pmap (sphereInt 0) (GroupHom.func-* {piGroupMap 0 (Bouquet.project {1} b)}) *> AddGroupHom.func-+ {sphereInt 0}
+
+    \sfunc basis-generator {g : Nat} (a : Fin g) : count g (circleBouquet.gen a) = basis a
+      => exts \lam b => pmap (sphereInt 0) (inv (piMap-comp 1 (Bouquet.project {1} b) (Bouquet.include {1} a) (generator 0))) *> Bouquet.petal {0} a b
+
+    \func back (g : Nat) : AddGroupHom (ZFree g) (Ab (PiGroup 0 (Bouquet 1 g)))
+      => extend {Ab (PiGroup 0 (Bouquet 1 g))} \lam a => in~ (circleBouquet.gen a)
+
+    \func isEquiv (g : Nat) : QEquiv (bottom1 g) \cowith
+      | ret => back g
+      | ret_f y => pmap {AddGroupHom (Ab (PiGroup 0 (Bouquet 1 g))) (Ab (PiGroup 0 (Bouquet 1 g)))} (__ y)
+                     (Ab.hom-ext {PiGroup 0 (Bouquet 1 g)} {Ab (PiGroup 0 (Bouquet 1 g))} (back g AddGroupHom.∘ bottom1 g) AddGroupHom.id
+                       (circleBouquet.generated (AddGroupHom.toGroupHom (back g AddGroupHom.∘ bottom1 g) GroupHom.∘ Ab.proj (PiGroup 0 (Bouquet 1 g)))
+                                                (Ab.proj (PiGroup 0 (Bouquet 1 g)))
+                                                (\lam a => pmap (back g) (basis-generator a) *> extend-basis {Ab (PiGroup 0 (Bouquet 1 g))} (\lam a => in~ (circleBouquet.gen a)) a)))
+      | f_sec z => pmap {AddGroupHom (ZFree g) (ZFree g)} (__ z)
+                     (hom-ext (bottom1 g AddGroupHom.∘ back g) AddGroupHom.id
+                              (\lam a => pmap (bottom1 g) (extend-basis {Ab (PiGroup 0 (Bouquet 1 g))} (\lam a => in~ (circleBouquet.gen a)) a) *> basis-generator a))
+
+    \sfunc action {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) (x : PiGroup 0 (Bouquet 1 g)) : count h (piMap 1 f x) = degreeHom f (count g x)
+      => circleBouquet.generated (count h GroupHom.∘ piGroupMap 0 f) (AddGroupHom.toGroupHom (degreeHom f) GroupHom.∘ count g)
+           (\lam a => exts (\lam b => pmap (sphereInt 0) (inv (pmap (piMap 1 (Bouquet.project {1} b)) (piMap-comp 1 f (Bouquet.include {1} a) (generator 0)))
+                                                         *> inv (piMap-comp 1 (Bouquet.project {1} b) (f ->*.∘* Bouquet.include {1} a) (generator 0)))
+                                      *> inv (columnActionBasis (degreeMatrix f) a b))
+                      *> pmap (degreeHom f) (inv (basis-generator a))) x
+
+    \lemma comp {g h k : Nat} (F : Bouquet 1 h ->* Bouquet 1 k) (f : Bouquet 1 g ->* Bouquet 1 h)
+      : degreeHom (F ->*.∘* f) = degreeHom F AddGroupHom.∘ degreeHom f
+      => hom-ext (degreeHom (F ->*.∘* f)) (degreeHom F AddGroupHom.∘ degreeHom f) \lam a =>
+           pmap (degreeHom (F ->*.∘* f)) (inv (basis-generator a)) *> inv (action (F ->*.∘* f) (circleBouquet.gen a))
+           *> pmap (count k) (piMap-comp 1 F f (circleBouquet.gen a)) *> action F (piMap 1 f (circleBouquet.gen a))
+           *> pmap (degreeHom F) (action f (circleBouquet.gen a) *> pmap (degreeHom f) (basis-generator a))
+
+    \lemma matrix-comp {g h k : Nat} (F : Bouquet 1 h ->* Bouquet 1 k) (f : Bouquet 1 g ->* Bouquet 1 h)
+      : degreeMatrix (F ->*.∘* f) = degreeMatrix F MatrixRing.product degreeMatrix f
+      => inv (columnMatrix_columnAction _) *> pmap columnMatrix (comp F f) *> columnMatrix_compose (degreeHom f) (degreeHom F)
+         *> pmap2 (MatrixRing.product) (columnMatrix_columnAction (degreeMatrix F)) (columnMatrix_columnAction (degreeMatrix f))
+
+    \sfunc pinch-split
+      : in~ (piMap 1 {Sphere.pointed 1} {Bouquet 1 2} (pinch 0) (generator 0))
+        = {Ab (PiGroup 0 (Bouquet 1 2))} (AddMonoid.+ {Ab (PiGroup 0 (Bouquet 1 2))}) (in~ (circleBouquet.gen {2} 0)) (in~ (circleBouquet.gen {2} 1))
+      => (isEquiv 2).isInj
+           (exts (\lam (b : Fin 2) => pmap (sphereInt 0) (inv (piMap-comp 1 {Sphere.pointed 1} {Bouquet 1 2} {Sphere.pointed 1} (Bouquet.project {1} {2} b) (pinch 0) (generator 0)))
+                                      *> coordinate b)
+            *> inv (AddGroupHom.func-+ {bottom1 2} {in~ (circleBouquet.gen {2} 0)} {in~ (circleBouquet.gen {2} 1)}
+                    *> pmap2 (AddMonoid.+ {ZFree 2}) (basis-generator {2} 0) (basis-generator {2} 1)))
+      \where
+        \lemma coordinate (b : Fin 2)
+          : degree {0} (->*.compose {Sphere.pointed 1} {Bouquet 1 2} {Sphere.pointed 1} (Bouquet.project {1} {2} b) (pinch 0))
+            = basis {2} 0 b IntRing.+ basis 1 b \elim b
+          | 0 => pmap degree (pinch.project0 0) *> degree.id
+          | 1 => pmap degree (pinch.project1 0) *> degree.id
+
+    \func sigma (f g : Sphere.pointed 1 ->* Sphere.pointed 1) : GroupHom (PiGroup 0 (Bouquet 1 2)) IntRing \cowith
+      | func x => sphereInt 0 (piMap 1 {Bouquet 1 2} {Sphere.pointed 1} (sumTo.copair {0} f g) x)
+      | func-* => pmap (sphereInt 0) (GroupHom.func-* {piGroupMap 0 {Bouquet 1 2} {Sphere.pointed 1} (sumTo.copair {0} f g)}) *> AddGroupHom.func-+ {sphereInt 0}
+
+    \lemma degree-sum (f g : Sphere.pointed 1 ->* Sphere.pointed 1) : degree {0} (sumTo {0} f g) = degree {0} f IntRing.+ degree {0} g
+      => pmap (sphereInt 0) (piMap-comp 1 {Sphere.pointed 1} {Bouquet 1 2} {Sphere.pointed 1} (sumTo.copair {0} f g) (pinch 0) (generator 0))
+         *> pmap (Ab.desc (sigma f g)) pinch-split
+         *> AddGroupHom.func-+ {Ab.desc (sigma f g)} {in~ (circleBouquet.gen {2} 0)} {in~ (circleBouquet.gen {2} 1)}
+         *> pmap2 (IntRing.+)
+              (pmap (sphereInt 0) (inv (piMap-comp 1 {Sphere.pointed 1} {Bouquet 1 2} {Sphere.pointed 1} (sumTo.copair {0} f g) (Bouquet.include {1} {2} 0) (generator 0)))
+               *> pmap degree (Wedge.copair.left-eq f (Wedge.copair g (->*.zero (Pointed.make ()) (Sphere.pointed 1)))))
+              (pmap (sphereInt 0) (inv (piMap-comp 1 {Sphere.pointed 1} {Bouquet 1 2} {Sphere.pointed 1} (sumTo.copair {0} f g) (Bouquet.include {1} {2} 1) (generator 0)))
+               *> pmap degree (sumTo.right {0} f g))
+
+    \lemma matrix-sum {g h : Nat} (f k : Bouquet 1 g ->* Bouquet 1 h) (b : Fin h) (a : Fin g)
+      : degreeMatrix (Bouquet.sum f k) b a = degreeMatrix f b a + degreeMatrix k b a
+      => pmap (\lam t => degree (Bouquet.project {1} b ->*.∘* t)) (Bouquet.copairAll.include _ a)
+         *> pmap degree (sumTo.post {0} (Bouquet.project {1} b) (f ->*.∘* Bouquet.include {1} a) (k ->*.∘* Bouquet.include {1} a))
+         *> degree-sum (Bouquet.project {1} b ->*.∘* (f ->*.∘* Bouquet.include {1} a)) (Bouquet.project {1} b ->*.∘* (k ->*.∘* Bouquet.include {1} a))
+
+    \lemma sum {g h : Nat} (f k : Bouquet 1 g ->* Bouquet 1 h) : degreeHom (Bouquet.sum f k) = AddGroupHom.sum (degreeHom f) (degreeHom k)
+      => pmap columnAction (matrixExt {_} {_} {_} {degreeMatrix (Bouquet.sum f k)} {mkMatrix \lam b a => degreeMatrix f b a + degreeMatrix k b a} (matrix-sum f k))
+         *> columnAction_+ (degreeMatrix f) (degreeMatrix k)
+  }

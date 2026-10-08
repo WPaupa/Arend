@@ -77,6 +77,10 @@
     | func _ => 0
     | func-+ => inv zro-left
 
+  \func sum {A : AddGroup} {B : AbGroup} (h k : AddGroupHom A B) : AddGroupHom A B \cowith
+    | func x => h x + k x
+    | func-+ => pmap2 (+) h.func-+ k.func-+ *> equation
+
   \func negate {A : AbGroup} : AddGroupHom A A \cowith
     | func => negative
     | func-+ => AddGroup.negative_+ *> +-comm
