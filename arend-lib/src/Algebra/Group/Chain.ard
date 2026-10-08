@@ -81,6 +81,10 @@
   \lemma homology-comp {X Y Z : ChainComplex} (G : ChainMap Y Z) (F : ChainMap X Y) (n : Nat)
     : ChainMap.homology {G ∘ F} n = ChainMap.homology {G} n AddGroupHom.∘ ChainMap.homology {F} n
     => Coker.hom-ext (ChainMap.homology {G ∘ F} n) _ \lam _ => pmap in~ (ext idp)
+
+  \lemma homology-ext {X Y : ChainComplex} {F G : ChainMap X Y} (p : \Pi (n : Nat) (x : X.C n) -> F.f n x = G.f n x) (n : Nat)
+    : ChainMap.homology {F} n = ChainMap.homology {G} n
+    => Coker.hom-ext (ChainMap.homology {F} n) _ \lam z => pmap in~ (ext (p n z.1))
 }
 
 \record ChainHomotopy {X Y : ChainComplex} (F G : ChainMap X Y) {

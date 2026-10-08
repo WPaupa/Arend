@@ -14,6 +14,11 @@
     \func pointed {X Y : Pointed} (f : X ->* Y)
       => \new Pointed (Cof f.1) (pinl base)
 
+    \func based {A B : \Type} (f : A -> B) => \new Pointed (Cof f) (pinr ())
+
+    \func connecting {A B : \Type} (f : A -> B) : based f ->* Susp.pointed A
+      => (rec (\lam _ => south) (\lam _ => north) (\lam a => inv (pmerid a)), idp)
+
     \func inc {X Y : Pointed} (f : X ->* Y) : Y ->* pointed f
       => (pinl, idp)
 

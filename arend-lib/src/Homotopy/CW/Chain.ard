@@ -1,0 +1,231 @@
+\import Algebra.Group.Chain
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupHom
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Quotient
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Suspension
+\import Paths
+\import Paths.Meta
+
+\open PushoutData (ppglue, homotopy)
+
+\func boundaryMap {C : RelCW} (n : Nat) : Bouquet (suc n) (C.count (suc n)) ->* Bouquet (suc n) (C.count n)
+  => (Bouquet.suspEquiv n (C.count n)).map ->*.∘* (Susp.func (collapseInc n) ->*.∘* (Quotient.connecting n ->*.∘* Quotient.expand (suc n)))
+  \where {
+    \func collapseInc {C : RelCW} (n : Nat) (x : C.stage (suc n)) : Bouquet n (C.count n)
+      => (Quotient.collapse n).1 (Quotient.inc n x)
+
+    \sfunc after-inc {C : RelCW} (n : Nat) : Susp.func (boundaryMap {C} n).1 ->*.∘* Susp.func (collapseInc (suc n)) = ->*.zero _ _
+      => inv (Susp.func.comp (boundaryMap n).1 (collapseInc (suc n)))
+         *> pmap Susp.func (path \lam i x => (Bouquet.suspEquiv n (C.count n)).map.1 (Susp.map (collapseInc n)
+                                               ((Quotient.connecting n).1 (->*.happly (Quotient.expand-collapse (suc n)) (Quotient.inc (suc n) x) @ i))))
+         *> Susp.func.const _
+
+    \sfunc null {C : RelCW} (n : Nat) : Bouquet.suspend (boundaryMap {C} n) ->*.∘* boundaryMap (suc n) = ->*.zero _ _
+      => inv (->*.compose-assoc (E {C} n n).map (S n ->*.∘* (PointedEquiv.inverse (E {C} n (suc n))).map) (boundaryMap (suc n)))
+         *> pmap ((E {C} n n).map ->*.∘*)
+                 (inv (->*.compose-assoc (S n) (PointedEquiv.inverse (E {C} n (suc n))).map (boundaryMap (suc n)))
+                  *> pmap (S n ->*.∘*) (->*.compose-assoc (PointedEquiv.inverse (E {C} n (suc n))).map (E {C} n (suc n)).map (W n)
+                                        *> pmap (->*.∘* W n) (PointedEquiv.inverse-ret (E {C} n (suc n))))
+                  *> ->*.compose-assoc (S n) (Susp.func (collapseInc (suc n))) (R n)
+                  *> pmap (->*.∘* R n) (after-inc n))
+         *> ->*.compose-zero (E {C} n n).map
+      \where {
+        \func S {C : RelCW} (n : Nat) => Susp.func (boundaryMap {C} n).1
+
+        \func E {C : RelCW} (n k : Nat) => Bouquet.suspEquiv (suc n) (C.count k)
+
+        \func R {C : RelCW} (n : Nat) => Quotient.connecting {C} (suc n) ->*.∘* Quotient.expand (suc (suc n))
+
+        \func W {C : RelCW} (n : Nat) => Susp.func (collapseInc {C} (suc n)) ->*.∘* R n
+      }
+  }
+
+\func cellular (C : RelCW) : ChainComplex \cowith
+  | C n => ZFree (C.count n)
+  | d n => degreeHom (boundaryMap {C} n)
+  | dd n x => pmap (\lam (h : AddGroupHom (ZFree (C.count (suc (suc n)))) (ZFree (C.count n))) => h x) (square-zero n)
+  \where
+    \sfunc square-zero {C : RelCW} (n : Nat) : degreeHom (boundaryMap {C} n) AddGroupHom.∘ degreeHom (boundaryMap (suc n)) = AddGroupHom.zero
+      => pmap (AddGroupHom.∘ degreeHom (boundaryMap (suc n))) (inv (degreeHom.suspend (boundaryMap n)))
+         *> inv (degreeHom.comp (Bouquet.suspend (boundaryMap n)) (boundaryMap (suc n)))
+         *> pmap degreeHom (boundaryMap.null n) *> degreeHom.zero
+
+\record CellStep (C D : RelCW) (n : Nat)
+  | low : C.stage n -> D.stage n
+  | high : C.stage (suc n) -> D.stage (suc n)
+  | square (x : C.stage n) : D.inclusion n (low x) = high (C.inclusion n x)
+  \where {
+    \func of {C D : RelCW} (F : SeqMap C.seq D.seq) (n : Nat) : CellStep C D n \cowith
+      | low => F.func n
+      | high => F.func (suc n)
+      | square => F.natural n
+
+    \func id {C : RelCW} (n : Nat) : CellStep C C n \cowith
+      | low x => x
+      | high x => x
+      | square _ => idp
+
+    \func comp {C D E : RelCW} {n : Nat} (G : CellStep D E n) (F : CellStep C D n) : CellStep C E n \cowith
+      | low x => G.low (F.low x)
+      | high x => G.high (F.high x)
+      | square x => G.square (F.low x) *> pmap G.high (F.square x)
+  }
+
+\record CellSteps (C D : RelCW) (n : Nat)
+  | map0 : C.stage n -> D.stage n
+  | map1 : C.stage (suc n) -> D.stage (suc n)
+  | map2 : C.stage (suc (suc n)) -> D.stage (suc (suc n))
+  | square0 (x : C.stage n) : D.inclusion n (map0 x) = map1 (C.inclusion n x)
+  | square1 (x : C.stage (suc n)) : D.inclusion (suc n) (map1 x) = map2 (C.inclusion (suc n) x)
+  \where {
+    \func lower {C D : RelCW} {n : Nat} (W : CellSteps C D n) : CellStep C D n \cowith
+      | low => W.map0
+      | high => W.map1
+      | square => W.square0
+
+    \func upper {C D : RelCW} {n : Nat} (W : CellSteps C D n) : CellStep C D (suc n) \cowith
+      | low => W.map1
+      | high => W.map2
+      | square => W.square1
+
+    \func of {C D : RelCW} (F : SeqMap C.seq D.seq) (n : Nat) : CellSteps C D n \cowith
+      | map0 => F.func n
+      | map1 => F.func (suc n)
+      | map2 => F.func (suc (suc n))
+      | square0 => F.natural n
+      | square1 => F.natural (suc n)
+  }
+
+\func quotientMap {C D : RelCW} {n : Nat} (F : CellStep C D n) : Quotient {C} n ->* Quotient {D} n
+  => (Cof.map F.low F.high (\lam x => inv (F.square x)), idp)
+  \where {
+    \sfunc connecting {C D : RelCW} {n : Nat} (F : CellStep C D (suc n))
+      : Quotient.connecting {D} n ->*.∘* quotientMap F = Susp.func F.low ->*.∘* Quotient.connecting {C} n
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {\lam w => (Quotient.connecting {D} n).1 ((quotientMap F).1 w)}
+                           {\lam w => Susp.map F.low ((Quotient.connecting {C} n).1 w)} (\lam _ => idp) (\lam _ => idp)
+                           (\lam x => idp_*> _ *> pmap_inv-comm (Susp.map F.low) (pmerid x) *> inv (idp_*> _)
+                                      *> inv (pmap_*>-comm (Quotient.connecting {D} n).1 (pmap pinl (inv (F.square x))) (ppglue (F.low x)))))
+                 idp
+
+    \sfunc id {C : RelCW} (n : Nat) : quotientMap (CellStep.id {C} n) = ->*.id
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(quotientMap (CellStep.id {C} n)).1} {\lam w => w} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp)) idp
+
+    \sfunc comp {C D E : RelCW} {n : Nat} (G : CellStep D E n) (F : CellStep C D n)
+      : quotientMap (CellStep.comp G F) = quotientMap G ->*.∘* quotientMap F
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(quotientMap (CellStep.comp G F)).1} {\lam w => (quotientMap G).1 ((quotientMap F).1 w)}
+                           (\lam _ => idp) (\lam _ => idp)
+                           (\lam x => pmap (idp *>) (pmap_*>-comm (quotientMap G).1 _ _)
+                                      *> glue pinl G.high (F.square x) (G.square (F.low x)) (ppglue (G.low (F.low x)))))
+                 idp
+      \where
+        \sfunc glue {Y Y' W : \Type} (L : Y' -> W) (G' : Y -> Y') {u v : Y} (P : u = v) {u' : Y'} (Q : u' = G' u) {w : W} (g : L u' = w)
+          : idp *> (pmap (\lam y => L (G' y)) (inv P) *> (pmap L (inv Q) *> g)) = pmap L (inv (Q *> pmap G' P)) *> g \elim P, Q, g
+          | idp, idp, idp => idp
+  }
+
+\func bouquetMap {C D : RelCW} {n : Nat} (F : CellStep C D n) : Bouquet n (C.count n) ->* Bouquet n (D.count n)
+  => Quotient.collapse {D} n ->*.∘* (quotientMap F ->*.∘* Quotient.expand {C} n)
+  \where {
+    \func E {C : RelCW} (n : Nat) => (Bouquet.suspEquiv n (C.count n)).map
+
+    \func R {C : RelCW} (n : Nat) => Quotient.connecting {C} n ->*.∘* Quotient.expand (suc n)
+
+    \func psi {C D : RelCW} {n : Nat} (F : CellStep C D n) (x : C.stage (suc n)) : Bouquet n (D.count n)
+      => (Quotient.collapse {D} n).1 ((quotientMap F).1 (Quotient.inc {C} n x))
+
+    \sfunc boundary-left {C D : RelCW} {n : Nat} (W : CellSteps C D n)
+      : boundaryMap {D} n ->*.∘* bouquetMap (CellSteps.upper W) = E {D} n ->*.∘* (Susp.func (psi (CellSteps.lower W)) ->*.∘* R {C} n)
+      => inv (->*.compose-assoc (E {D} n) (Susp.func (boundaryMap.collapseInc {D} n) ->*.∘* R {D} n) (bouquetMap (CellSteps.upper W)))
+         *> pmap (E {D} n ->*.∘*)
+              (inv (->*.compose-assoc (Susp.func (boundaryMap.collapseInc {D} n)) (R {D} n) (bouquetMap (CellSteps.upper W)))
+               *> pmap (Susp.func (boundaryMap.collapseInc {D} n) ->*.∘*)
+                    (inv (->*.compose-assoc (Quotient.connecting {D} n) (Quotient.expand {D} (suc n)) (bouquetMap (CellSteps.upper W)))
+                     *> pmap (Quotient.connecting {D} n ->*.∘*)
+                          (->*.compose-assoc (Quotient.expand {D} (suc n)) (Quotient.collapse {D} (suc n)) (quotientMap (CellSteps.upper W) ->*.∘* Quotient.expand {C} (suc n))
+                           *> pmap (->*.∘* (quotientMap (CellSteps.upper W) ->*.∘* Quotient.expand {C} (suc n))) (Quotient.expand-collapse (suc n)))
+                     *> ->*.compose-assoc (Quotient.connecting {D} n) (quotientMap (CellSteps.upper W)) (Quotient.expand {C} (suc n))
+                     *> pmap (->*.∘* Quotient.expand {C} (suc n)) (quotientMap.connecting (CellSteps.upper W))
+                     *> inv (->*.compose-assoc (Susp.func W.map1) (Quotient.connecting {C} n) (Quotient.expand {C} (suc n))))
+               *> ->*.compose-assoc (Susp.func (boundaryMap.collapseInc {D} n)) (Susp.func W.map1) (R {C} n)
+               *> pmap (->*.∘* R {C} n) (inv (Susp.func.comp (boundaryMap.collapseInc {D} n) W.map1)))
+
+    \sfunc boundary-right {C D : RelCW} {n : Nat} (F : CellStep C D n)
+      : Bouquet.suspend (bouquetMap F) ->*.∘* boundaryMap {C} n = E {D} n ->*.∘* (Susp.func (psi F) ->*.∘* R {C} n)
+      => inv (->*.compose-assoc (E {D} n) (Susp.func (bouquetMap F).1 ->*.∘* Ei {C} n) (boundaryMap {C} n))
+         *> pmap (E {D} n ->*.∘*)
+              (inv (->*.compose-assoc (Susp.func (bouquetMap F).1) (Ei {C} n) (boundaryMap {C} n))
+               *> pmap (Susp.func (bouquetMap F).1 ->*.∘*)
+                    (->*.compose-assoc (Ei {C} n) (E {C} n) (Susp.func (boundaryMap.collapseInc {C} n) ->*.∘* R {C} n)
+                     *> pmap (->*.∘* (Susp.func (boundaryMap.collapseInc {C} n) ->*.∘* R {C} n)) (PointedEquiv.inverse-ret (Bouquet.suspEquiv n (C.count n))))
+               *> ->*.compose-assoc (Susp.func (bouquetMap F).1) (Susp.func (boundaryMap.collapseInc {C} n)) (R {C} n)
+               *> pmap (->*.∘* R {C} n) (inv (Susp.func.comp (bouquetMap F).1 (boundaryMap.collapseInc {C} n))
+                                         *> pmap Susp.func (ext \lam x => pmap (\lam q => (Quotient.collapse {D} n).1 ((quotientMap F).1 q))
+                                                                                 (->*.happly (Quotient.expand-collapse {C} n) (Quotient.inc {C} n x)))))
+      \where
+        \func Ei {C : RelCW} (n : Nat) => (PointedEquiv.inverse (Bouquet.suspEquiv n (C.count n))).map
+
+    \sfunc boundary {C D : RelCW} {n : Nat} (W : CellSteps C D n)
+      : boundaryMap {D} n ->*.∘* bouquetMap (CellSteps.upper W) = Bouquet.suspend (bouquetMap (CellSteps.lower W)) ->*.∘* boundaryMap {C} n
+      => boundary-left W *> inv (boundary-right (CellSteps.lower W))
+
+    \sfunc id {C : RelCW} (n : Nat) : bouquetMap (CellStep.id {C} n) = ->*.id
+      => pmap (\lam q => Quotient.collapse {C} n ->*.∘* (q ->*.∘* Quotient.expand {C} n)) (quotientMap.id n) *> Quotient.collapse-expand n
+
+    \sfunc comp {C D E : RelCW} {n : Nat} (G : CellStep D E n) (F : CellStep C D n)
+      : bouquetMap (CellStep.comp G F) = bouquetMap G ->*.∘* bouquetMap F
+      => pmap (\lam q => Quotient.collapse {E} n ->*.∘* (q ->*.∘* Quotient.expand {C} n)) (quotientMap.comp G F)
+         *> inv (inv (->*.compose-assoc (Quotient.collapse {E} n) (quotientMap G ->*.∘* Quotient.expand {D} n) (bouquetMap F))
+                 *> pmap (Quotient.collapse {E} n ->*.∘*)
+                         (inv (->*.compose-assoc (quotientMap G) (Quotient.expand {D} n) (bouquetMap F))
+                          *> pmap (quotientMap G ->*.∘*) (->*.compose-assoc (Quotient.expand {D} n) (Quotient.collapse {D} n) (quotientMap F ->*.∘* Quotient.expand {C} n)
+                                                          *> pmap (->*.∘* (quotientMap F ->*.∘* Quotient.expand {C} n)) (Quotient.expand-collapse n))
+                          *> ->*.compose-assoc (quotientMap G) (quotientMap F) (Quotient.expand {C} n)))
+  }
+
+\func chainStep {C D : RelCW} {n : Nat} (F : CellStep C D n) : AddGroupHom (ZFree (C.count n)) (ZFree (D.count n))
+  => degreeHom (Bouquet.suspend (bouquetMap F))
+  \where {
+    \lemma comm {C D : RelCW} {n : Nat} (W : CellSteps C D n) (x : ZFree (C.count (suc n)))
+      : degreeHom (boundaryMap {D} n) (chainStep (CellSteps.upper W) x) = chainStep (CellSteps.lower W) (degreeHom (boundaryMap {C} n) x)
+      => pmap (\lam (h : AddGroupHom (ZFree (C.count (suc n))) (ZFree (D.count (suc n)))) => degreeHom (boundaryMap {D} n) (h x)) (degreeHom.suspend (bouquetMap (CellSteps.upper W)))
+         *> inv (pmap (\lam (h : AddGroupHom (ZFree (C.count (suc n))) (ZFree (D.count n))) => h x) (degreeHom.comp (boundaryMap {D} n) (bouquetMap (CellSteps.upper W))))
+         *> pmap (\lam f => degreeHom f x) (bouquetMap.boundary W)
+         *> pmap (\lam (h : AddGroupHom (ZFree (C.count (suc n))) (ZFree (D.count n))) => h x) (degreeHom.comp (Bouquet.suspend (bouquetMap (CellSteps.lower W))) (boundaryMap {C} n))
+
+    \lemma id {C : RelCW} (n : Nat) : chainStep (CellStep.id {C} n) = AddGroupHom.id
+      => pmap (\lam f => degreeHom (Bouquet.suspend f)) (bouquetMap.id n) *> pmap degreeHom Bouquet.suspend.id *> degreeHom.id
+
+    \lemma comp {C D E : RelCW} {n : Nat} (G : CellStep D E n) (F : CellStep C D n) : chainStep (CellStep.comp G F) = chainStep G AddGroupHom.∘ chainStep F
+      => pmap (\lam f => degreeHom (Bouquet.suspend f)) (bouquetMap.comp G F) *> pmap degreeHom (Bouquet.suspend.comp (bouquetMap G) (bouquetMap F))
+         *> degreeHom.comp (Bouquet.suspend (bouquetMap G)) (Bouquet.suspend (bouquetMap F))
+  }
+
+\func cellularMap {C D : RelCW} (F : SeqMap C.seq D.seq) : ChainMap (cellular C) (cellular D) \cowith
+  | f n => chainStep (CellStep.of F n)
+  | comm n x => chainStep.comm (CellSteps.of F n) x
+  \where {
+    \lemma id {C : RelCW} (n : Nat) : ChainMap.f {cellularMap (SeqMap.id C.seq)} n = AddGroupHom.id
+      => chainStep.id n
+
+    \lemma comp {C D E : RelCW} (G : SeqMap D.seq E.seq) (F : SeqMap C.seq D.seq) (n : Nat)
+      : ChainMap.f {cellularMap (SeqMap.comp G F)} n = ChainMap.f {cellularMap G} n AddGroupHom.∘ ChainMap.f {cellularMap F} n
+      => chainStep.comp (CellStep.of G n) (CellStep.of F n)
+
+    \lemma homology-id {C : RelCW} (n : Nat) : ChainMap.homology {cellularMap (SeqMap.id C.seq)} n = AddGroupHom.id
+      => ChainMap.homology-ext {_} {_} {cellularMap (SeqMap.id C.seq)} {ChainMap.id}
+           (\lam k x => pmap (\lam (h : AddGroupHom (ZFree (C.count k)) (ZFree (C.count k))) => h x) (id k)) n
+         *> ChainMap.homology-id n
+
+    \lemma homology-comp {C D E : RelCW} (G : SeqMap D.seq E.seq) (F : SeqMap C.seq D.seq) (n : Nat)
+      : ChainMap.homology {cellularMap (SeqMap.comp G F)} n = ChainMap.homology {cellularMap G} n AddGroupHom.∘ ChainMap.homology {cellularMap F} n
+      => ChainMap.homology-ext {_} {_} {cellularMap (SeqMap.comp G F)} {cellularMap G ChainMap.∘ cellularMap F}
+           (\lam k x => pmap (\lam (h : AddGroupHom (ZFree (C.count k)) (ZFree (E.count k))) => h x) (comp G F k)) n
+         *> ChainMap.homology-comp (cellularMap G) (cellularMap F) n
+  }

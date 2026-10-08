@@ -1,0 +1,99 @@
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupHom
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Pointed (ide)
+\import Arith.Nat
+\import Equiv
+\import Equiv.Path
+\import Equiv.Sigma
+\import Function
+\import Homotopy.Cofiber
+\import Homotopy.Connectivity
+\import Homotopy.FiberSequence
+\import Homotopy.FiberSequence.Connectivity
+\import Homotopy.FiberSequence.Exact
+\import Homotopy.Fibration
+\import Homotopy.HomotopyGroup
+\import Homotopy.HomotopyGroup.Connectivity
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere.Bouquet
+\import Logic
+\import Logic.Meta
+\import Paths
+
+\open PushoutData (ppglue)
+
+\func gap.{u} {X Y : Pointed.{u}} (f : X ->* Y) : X ->* PointedFib (Cof.inc f)
+  => (\lam a => totalEquiv.total (fill f) (totalFib f.1 a), base-path pinl f.2 (ppglue base))
+  \where {
+    \func fill {X Y : Pointed} (f : X ->* Y) (y : Y) (t : Fib f.1 y) : pinl y = {Cof f.1} pinl base
+      => (pmap pinl (inv t.2) *> ppglue t.1) *> (inv (ppglue base) *> pmap pinl f.2)
+
+    \func base-path {Y W : \Type} (L : Y -> W) {y0 y1 : Y} (p : y0 = y1) {w : W} (g : L y0 = w)
+      : ((y0, (idp *> g) *> (inv g *> pmap L p)) : \Sigma (y : Y) (L y = L y1)) = (y1, idp) \elim p
+      | idp => pmap (\lam (q : L y0 = L y0) => ((y0, q) : \Sigma (y : Y) (L y = L y0))) (pmap (`*> inv g) (idp_*> g) *> *>_inv g)
+
+    \func base-path-proj {Y W : \Type} (L : Y -> W) {y0 y1 : Y} (p : y0 = y1) {w : W} (g : L y0 = w)
+      : pmap (\lam (t : \Sigma (y : Y) (L y = L y1)) => t.1) (base-path L p g) = p \elim p
+      | idp => idp
+
+    \func proj.{u} {X Y : Pointed.{u}} (f : X ->* Y) : fibProj (Cof.inc f) ->*.∘* gap f = f
+      => ->*.ext (\lam _ => idp) (idp_*> f.2 *> inv (base-path-proj pinl f.2 (ppglue base)))
+
+    \lemma nconnected.{u} (r s : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (cf : isNConnectedMap (suc r) f.1) (cX : isNConnectedType (suc s) X)
+      : isNConnectedMap (suc (r Nat.+ s)) (gap f).1
+      => nconnected-map-comp-right (suc (r Nat.+ s)) (totalFib f.1)
+           (nconnected-total {suc (r Nat.+ s)} (fill f) \lam y => nconnected-map-comp-left (suc (r Nat.+ s)) (pathConcatEquiv-right (inv (ppglue base) *> pmap pinl f.2))
+                                                                                         (nconnected-cofiber r s f.1 cf cX y))
+  }
+
+\lemma cofiber-exact.{u} (k : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (c : isNConnectedMap (suc k) (gap f).1) (t : pi (suc k) Y)
+                         (q : piMap (suc k) (Cof.inc f) t = ide {PiGroup k (Cof.pointed f)}) : ∃ (s : pi (suc k) X) (piMap (suc k) f s = t)
+  => \case ((pi-exact-total (Cof.inc f) (suc k)) t).1 q \with {
+    | inP (u, e) => \case nconnected-pi-surj (gap f) c u \with {
+      | inP (v, e') => inP (v, pmap (piMap (suc k) __ v) (inv (gap.proj f)) *> piMap-comp (suc k) (fibProj (Cof.inc f)) (gap f) v
+                               *> pmap (piMap (suc k) (fibProj (Cof.inc f))) e' *> e)
+    }
+  }
+
+\func cofiberBottom {p g h : Nat} (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h)
+  : AddGroupHom (Coker (degreeHom f)) (AbGroup.fromCGroup (PiCGroup p (Cof.pointed f)))
+  => Coker.desc (AddGroupHom.fromGroupHom (piGroupMap (suc p) (Cof.inc f)) AddGroupHom.∘ unbottom p h) (kills f)
+  \where {
+    \func unbottom (p h : Nat) => AddGroupHom.inverse (bottom p h) (IsEquiv.toQEquiv (bottom.isEquiv p h))
+
+    \lemma unbottom-degree {p g h : Nat} (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h) (r : ZFree g)
+      : unbottom p h (degreeHom f r) = piMap (suc (suc p)) f (unbottom p g r)
+      => pmap (unbottom p h) (inv (pmap (degreeHom f) ((IsEquiv.toQEquiv (bottom.isEquiv p g)).f_ret r)) *> inv (degreeHom.action f _))
+         *> (IsEquiv.toQEquiv (bottom.isEquiv p h)).ret_f _
+
+    \lemma kills {p g h : Nat} (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h) (r : ZFree g)
+      : piMap (suc (suc p)) (Cof.inc f) (unbottom p h (degreeHom f r)) = ide {PiGroup (suc p) (Cof.pointed f)}
+      => pmap (piMap (suc (suc p)) (Cof.inc f)) (unbottom-degree f r) *> inv (piMap-comp (suc (suc p)) (Cof.inc f) f _)
+         *> pmap (piMap (suc (suc p)) __ _) (Cof.inc-null f) *> piMap-zero (suc p) _
+
+    \lemma gap-connected {p g h : Nat} (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h) : isNConnectedMap (suc (suc p)) (gap f).1
+      => nconnected-map-mono {suc (suc p)} {suc (p Nat.+ suc p)} linarith (gap.nconnected p (suc p) f
+           (nconnected-map-between {suc p} f.1 (Bouquet.connected (suc p) g) (Bouquet.connected (suc p) h)) (Bouquet.connected (suc p) g))
+
+    \lemma isEquiv {p g h : Nat} (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h) : IsEquiv (cofiberBottom f)
+      => IsEquiv.fromInjSurj (AddGroupHom.injective \lam {y} q => \case Coker.proj-surj {_} {_} {degreeHom f} y \with {
+                               | inP (x, ex) => inv ex *> kernel f x (pmap (cofiberBottom f) ex *> q)
+                             })
+                             \lam y => TruncP.map (nconnected-pi-surj {suc p} (Cof.inc f) (nconnected-pinl {suc (suc p)} f.1 ((nconnected-unit {suc (suc p)}).1 (Bouquet.connected (suc p) g))) y)
+                                         \lam s => (Coker.proj (degreeHom f) (bottom p h s.1),
+                                                    pmap (piMap (suc (suc p)) (Cof.inc f)) ((IsEquiv.toQEquiv (bottom.isEquiv p h)).ret_f s.1) *> s.2)
+
+    \lemma kernel {p g h : Nat} (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h) (x : ZFree h)
+                  (q : cofiberBottom f (Coker.proj (degreeHom f) x) = ide {PiGroup (suc p) (Cof.pointed f)})
+      : Coker.proj (degreeHom f) x = AddMonoid.zro {Coker (degreeHom f)}
+      => \case cofiber-exact (suc p) f (gap-connected f) _ q \with {
+        | inP (s, e) => pmap (Coker.proj (degreeHom f)) (inv ((IsEquiv.toQEquiv (bottom.isEquiv p h)).f_sec x) *> pmap (bottom p h) (inv e)
+                                                         *> degreeHom.action f s)
+                        *> Coker.proj-kills (bottom p g s)
+      }
+  }

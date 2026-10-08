@@ -1,0 +1,420 @@
+-- | After `Cubical/CW/Homotopy.agda` in the cubical library.
+
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupHom
+\import Algebra.Monoid
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Chain
+\import Homotopy.CW.Quotient
+\import Homotopy.Cofiber
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Sphere.Bouquet.Circle
+\import Homotopy.Suspension
+\import Homotopy.Wedge
+\import Logic
+\import Paths
+\import Paths.Meta
+
+\open PushoutData (ppglue, rec, homotopy)
+
+\func Lam {m : Nat} {Z : Pointed} (l : Sphere m -> base {Z} = base) : Sphere.pointed (suc m) ->* Z
+  => (Susp.rec base base l, idp)
+  \where {
+    \sfunc sum {m : Nat} {Z : Pointed} (l1 l2 : Sphere m -> base {Z} = base) (r1 : l1 north = idp) (r2 : l2 north = idp)
+      : Lam (\lam x => l1 x *> l2 x) = sumTo (Lam l1) (Lam l2)
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(Lam (\lam x => l1 x *> l2 x)).1} {(sumTo (Lam l1) (Lam l2)).1}
+                           (\lam _ => idp) (\lam _ => idp)
+                           (\lam x => idp_*> _ *> inv (idp_*> _) *> Loop-Func_*> {Bouquet (suc m) 2} {Z} (sumTo.copair (Lam l1) (Lam l2)) _ _
+                                      *> pmap2 (*>) (petal (sumTo.copair (Lam l1) (Lam l2)) 0 (Wedge.copair.left-eq (Lam l1) (Wedge.copair (Lam l2) (->*.zero (Pointed.make ()) Z))) r1 x)
+                                                    (petal (sumTo.copair (Lam l1) (Lam l2)) 1 (sumTo.right (Lam l1) (Lam l2)) r2 x)))
+                 idp
+
+    \sfunc petal {m : Nat} {Z : Pointed} (c : Bouquet (suc m) 2 ->* Z) (a : Fin 2) {l : Sphere m -> base {Z} = base}
+                 (p : ->*.compose {Sphere.pointed (suc m)} {Bouquet (suc m) 2} {Z} c (Bouquet.include {suc m} {2} a) = Lam l) (r : l north = idp) (x : Sphere m)
+      : (Loop-Func {Bouquet (suc m) 2} {Z} c).1 ((Loop-Func {Sphere.pointed (suc m)} {Bouquet (suc m) 2} (Bouquet.include {suc m} {2} a)).1 (pinch.u x)) = l x
+      => inv (->*.happly (Loop-Func-comp {Sphere.pointed (suc m)} {Bouquet (suc m) 2} {Z} c (Bouquet.include a)) (pinch.u x))
+         *> ->*.happly (pmap (Loop-Func {Sphere.pointed (suc m)} {Z}) p) (pinch.u x)
+         *> idp_*> _ *> pmap_*>-comm (Lam l).1 (pmerid x) (inv (pmerid north)) *> pmap (l x *>) (pmap_inv-comm (Lam l).1 (pmerid north) *> pmap inv r)
+  }
+
+\func realize {A B W : \Type} {i : A -> B} (m1 m2 : B -> W) (e : \Pi (y : A) -> m1 (i y) = m2 (i y)) : Susp.pointed (Cof i) ->* Susp.pointed W
+  => (Susp.rec north north (loops m1 m2 e), idp)
+  \where {
+    \func loops {A B W : \Type} {i : A -> B} (m1 m2 : B -> W) (e : \Pi (y : A) -> m1 (i y) = m2 (i y)) (w : Cof i) : north = {Susp W} north
+      => rec (\lam x => pmerid (m1 x) *> inv (pmerid (m2 x))) (\lam _ => idp)
+             (\lam y => pmap (\lam q => pmerid q *> inv (pmerid (m2 (i y)))) (e y) *> *>_inv (pmerid (m2 (i y)))) w
+
+    \sfunc sphere {A B W : \Type} {i : A -> B} (m1 m2 : B -> W) (e : \Pi (y : A) -> m1 (i y) = m2 (i y)) {m : Nat} (phi : Sphere m -> Cof i)
+      : realize m1 m2 e ->*.∘* Susp.func phi = Lam {m} {Susp.pointed W} (\lam s => loops m1 m2 e (phi s))
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {\lam x => (realize m1 m2 e).1 (Susp.map phi x)} {(Lam {m} {Susp.pointed W} (\lam s => loops m1 m2 e (phi s))).1}
+                           (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _)) idp
+
+    \sfunc add {A B W : \Type} {i : A -> B} (m1 m2 m3 : B -> W) (e1 : \Pi (y : A) -> m1 (i y) = m2 (i y)) (e2 : \Pi (y : A) -> m2 (i y) = m3 (i y)) (w : Cof i)
+      : loops m1 m3 (\lam y => e1 y *> e2 y) w = loops m1 m2 e1 w *> loops m2 m3 e2 w
+      => homotopy {_} {_} {_} {_} {_} {_} {loops m1 m3 (\lam y => e1 y *> e2 y)} {\lam w => loops m1 m2 e1 w *> loops m2 m3 e2 w}
+                  (\lam x => split (pmerid (m1 x)) (pmerid (m2 x)) (pmerid (m3 x))) (\lam _ => idp)
+                  (\lam y => pmap (split _ _ _ *>) (pmap-concat (loops m1 m2 e1) (loops m2 m3 e2) (ppglue y)) *> glue (\lam w => pmerid w) (e1 y) (e2 y)) w
+      \where {
+        \func split {T : \Type} {n s : T} (M1 M2 M3 : n = s) : M1 *> inv M3 = (M1 *> inv M2) *> (M2 *> inv M3)
+          => inv (*>-assoc _ _ _ *> pmap (M1 *>) (inv (*>-assoc _ _ _) *> pmap (`*> inv M3) (inv_*> M2) *> idp_*> _))
+
+        \sfunc pmap-concat {V T : \Type} {t t' t'' : T} (f : V -> t = t') (h : V -> t' = t'') {v v' : V} (g : v = v')
+          : pmap (\lam w => f w *> h w) g = pmap2 (*>) (pmap f g) (pmap h g) \elim g
+          | idp => idp
+
+        \sfunc glue {W T : \Type} {n s : T} (M : W -> n = s) {a1 a2 a3 : W} (e1 : a1 = a2) (e2 : a2 = a3)
+          : split (M a1) (M a2) (M a3) *> pmap2 (*>) (pmap (\lam q => M q *> inv (M a2)) e1 *> *>_inv (M a2)) (pmap (\lam q => M q *> inv (M a3)) e2 *> *>_inv (M a3))
+            = (pmap (\lam q => M q *> inv (M a3)) (e1 *> e2) *> *>_inv (M a3)) *> idp \elim e1, e2
+          | idp, idp => lem (M a1)
+
+        \sfunc lem {T : \Type} {n s : T} (M : n = s) : split M M M *> pmap2 (*>) (idp *> *>_inv M) (idp *> *>_inv M) = idp *> *>_inv M \elim M
+          | idp => idp
+      }
+
+    \sfunc susp {A B W : \Type} {i : A -> B} (P : Cof i -> W)
+      : realize (\lam x => P (pinl x)) (\lam _ => P (pinr ())) (\lam y => pmap P (ppglue y)) = Susp.func P
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(realize (\lam x => P (pinl x)) (\lam _ => P (pinr ())) (\lam y => pmap P (ppglue y))).1} {Susp.map P}
+                           (\lam _ => idp) (\lam _ => pmerid (P (pinr ())))
+                           (homotopy {_} {_} {_} {_} {_} {_} {\lam w => idp *> pmerid (P w)}
+                                     {\lam w => loops (\lam x => P (pinl x)) (\lam _ => P (pinr ())) (\lam y => pmap P (ppglue y)) w *> pmerid (P (pinr ()))}
+                                     (\lam x => cancel (pmerid (P (pinl x))) (pmerid (P (pinr ())))) (\lam _ => idp)
+                                     (\lam y => glue (\lam w => pmerid w) (pmap P (ppglue y)))))
+                 idp
+      \where {
+        \func cancel {T : \Type} {n s : T} (M M' : n = s) : idp *> M = (M *> inv M') *> M'
+          => idp_*> M *> inv (*>-assoc M (inv M') M' *> pmap (M *>) (inv_*> M'))
+
+        \sfunc glue {W T : \Type} {n s : T} (mer : \Pi (w : W) -> n = s) {a b : W} (p : a = b)
+          : cancel (mer a) (mer b) *> pmap (`*> mer b) (pmap (\lam q => mer q *> inv (mer b)) p *> *>_inv (mer b))
+            = pmap (\lam q => idp *> mer q) p *> idp \elim p
+          | idp => lem (mer a)
+
+        \sfunc lem {T : \Type} {n s : T} (M : n = s) : cancel M M *> pmap (`*> M) (idp *> *>_inv M) = idp \elim M
+          | idp => idp
+      }
+  }
+
+\func CellHomotopy {C D : RelCW} (F G : SeqMap C.seq D.seq) => SeqMap.Homotopy (SeqMap.comp (next D.seq) F) (SeqMap.comp (next D.seq) G)
+
+\record CellHtpyStep {C D : RelCW} {k : Nat} (F G : CellStep C D k)
+  | low : \Pi (y : C.stage k) -> D.inclusion k (F.low y) = D.inclusion k (G.low y)
+  | high : \Pi (x : C.stage (suc k)) -> D.inclusion (suc k) (F.high x) = D.inclusion (suc k) (G.high x)
+  | coh (y : C.stage k) : high (C.inclusion k y) = pmap (D.inclusion (suc k)) (inv (F.square y) *> low y *> G.square y)
+  \where
+    \func of {C D : RelCW} {F G : SeqMap C.seq D.seq} (h : CellHomotopy F G) (k : Nat) : CellHtpyStep (CellStep.of F k) (CellStep.of G k) \cowith
+      | low => h.1 k
+      | high => h.1 (suc k)
+      | coh y => prism.solve (D.inclusion (suc k)) (F.natural k y) (h.1 k y) (G.natural k y) (h.2 k y)
+
+\record CellHtpySteps {C D : RelCW} {k : Nat} (F G : CellSteps C D k)
+  | h0 : \Pi (y : C.stage k) -> D.inclusion k (F.map0 y) = D.inclusion k (G.map0 y)
+  | h1 : \Pi (x : C.stage (suc k)) -> D.inclusion (suc k) (F.map1 x) = D.inclusion (suc k) (G.map1 x)
+  | h2 : \Pi (x : C.stage (suc (suc k))) -> D.inclusion (suc (suc k)) (F.map2 x) = D.inclusion (suc (suc k)) (G.map2 x)
+  | coh0 (y : C.stage k) : h1 (C.inclusion k y) = pmap (D.inclusion (suc k)) (inv (F.square0 y) *> h0 y *> G.square0 y)
+  | coh1 (y : C.stage (suc k)) : h2 (C.inclusion (suc k) y) = pmap (D.inclusion (suc (suc k))) (inv (F.square1 y) *> h1 y *> G.square1 y)
+  \where {
+    \func lower {C D : RelCW} {k : Nat} {F G : CellSteps C D k} (W : CellHtpySteps F G) : CellHtpyStep (CellSteps.lower F) (CellSteps.lower G) \cowith
+      | low => W.h0
+      | high => W.h1
+      | coh => W.coh0
+
+    \func upper {C D : RelCW} {k : Nat} {F G : CellSteps C D k} (W : CellHtpySteps F G) : CellHtpyStep (CellSteps.upper F) (CellSteps.upper G) \cowith
+      | low => W.h1
+      | high => W.h2
+      | coh => W.coh1
+
+    \func of {C D : RelCW} {F G : SeqMap C.seq D.seq} (h : CellHomotopy F G) (k : Nat) : CellHtpySteps (CellSteps.of F k) (CellSteps.of G k) \cowith
+      | h0 => h.1 k
+      | h1 => h.1 (suc k)
+      | h2 => h.1 (suc (suc k))
+      | coh0 y => prism.solve (D.inclusion (suc k)) (F.natural k y) (h.1 k y) (G.natural k y) (h.2 k y)
+      | coh1 y => prism.solve (D.inclusion (suc (suc k))) (F.natural (suc k) y) (h.1 (suc k) y) (G.natural (suc k) y) (h.2 (suc k) y)
+  }
+
+\func prism {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) : Susp.pointed (Quotient {C} k) ->* Quotient {D} (suc k)
+  => (Susp.rec (pinr ()) (pinr ()) (loop H), idp)
+  \where {
+    \func side {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (y : C.stage k) : F.high (C.inclusion k y) = G.high (C.inclusion k y)
+      => inv (F.square y) *> H.low y *> G.square y
+
+    \func L {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (x : C.stage (suc k)) : pinr () = {Quotient {D} (suc k)} pinr ()
+      => inv (ppglue (F.high x)) *> pmap pinl (H.high x) *> ppglue (G.high x)
+
+    \func loop {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (w : Quotient {C} k) : pinr () = {Quotient {D} (suc k)} pinr ()
+      => rec (L H) (\lam _ => idp)
+             (\lam y => pmap (\lam q => inv (ppglue (F.high (C.inclusion k y))) *> pmap pinl q *> ppglue (G.high (C.inclusion k y))) (H.coh y)
+                        *> null (D.inclusion (suc k)) (side H y)) w
+
+    \sfunc solve {Y Y' : \Type} (i : Y -> Y') {a0 a b0 b : Y} (p : a0 = a) (q : a0 = b0) (r : b0 = b) {H : i a = i b}
+                 (e : pmap i q *> (idp *> pmap i r) = (idp *> pmap i p) *> H) : H = pmap i (inv p *> q *> r) \elim p, r
+      | idp, idp => inv (idp_*> H) *> inv e *> pmap (pmap i) (inv (idp_*> q))
+
+    \func null {Y Y' : \Type} (i : Y -> Y') {a b : Y} (P : a = b)
+      : inv (ppglue a) *> pmap (pinl {Y} {Y'} {\Sigma} {i} {\lam _ => ()}) (pmap i P) *> ppglue b = idp \elim P
+      | idp => pmap (inv (ppglue a) *>) (idp_*> (ppglue a)) *> inv_*> (ppglue a)
+
+    \func theta {Y Y' V : \Type} (i : Y -> Y') (j : Y -> V) (w : Cof i) : Susp V
+      => Susp.map j ((Cof.connecting i).1 w)
+
+    \func Bd {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G)
+      => realize (\lam x => Quotient.inc {D} k (F.high x)) (\lam x => Quotient.inc {D} k (G.high x)) (\lam y => pmap (Quotient.inc {D} k) (side H y))
+
+    \sfunc boundary {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G)
+      : Bd H = (\lam s => theta (D.inclusion (suc k)) (Quotient.inc {D} k) ((prism H).1 s), idp)
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(Bd H).1} {\lam s => theta (D.inclusion (suc k)) (Quotient.inc {D} k) ((prism H).1 s)}
+                           (\lam _ => idp) (\lam _ => idp)
+                           (homotopy {_} {_} {_} {_} {_} {_} {\lam w => idp *> pmap (theta (D.inclusion (suc k)) (Quotient.inc {D} k)) (loop H w)}
+                                     {realize.loops (\lam x => Quotient.inc {D} k (F.high x)) (\lam x => Quotient.inc {D} k (G.high x)) (\lam y => pmap (Quotient.inc {D} k) (side H y))}
+                                     (\lam x => theta-loop (D.inclusion (suc k)) (Quotient.inc {D} k) (H.high x)) (\lam _ => idp)
+                                     (\lam y => theta-glue (D.inclusion (suc k)) (Quotient.inc {D} k) (side H y) (H.coh y))))
+                 idp
+
+    \func theta-loop {Y Y' V : \Type} (i : Y -> Y') (j : Y -> V) {a b : Y} (q : i a = i b)
+      : idp *> pmap (theta i j) (inv (ppglue a) *> pmap pinl q *> ppglue b) = pmerid (j a) *> inv (pmerid (j b))
+      => idp_*> _ *> pmap_*>-comm (theta i j) (inv (ppglue a)) (pmap pinl q *> ppglue b)
+         *> pmap (_ *>) (pmap_*>-comm (theta i j) (pmap pinl q) (ppglue b))
+         *> pmap2 (*>) (pmap_inv-comm (theta i j) (ppglue a) *> pmap inv (pmap_inv-comm (Susp.map j) (pmerid a)) *> inv_inv (pmerid (j a)))
+                       (idp_*> _ *> pmap_inv-comm (Susp.map j) (pmerid b))
+
+    \sfunc theta-glue {Y Y' V : \Type} (i : Y -> Y') (j : Y -> V) {a b : Y} (P : a = b) {H : i a = i b} (E : H = pmap i P)
+      : theta-loop i j H *> (pmap (\lam q => pmerid q *> inv (pmerid (j b))) (pmap j P) *> *>_inv (pmerid (j b)))
+        = pmap (\lam l => idp *> pmap (theta i j) l) (pmap (\lam q => inv (ppglue a) *> pmap pinl q *> ppglue b) E *> null i P) *> idp \elim P, E
+      | idp, idp => coh (theta i j) (ppglue a) (pmerid (j a)) (pmap_inv-comm (Susp.map j) (pmerid a))
+      \where {
+        \sfunc coh {R T : \Type} (Th : R -> T) {u c : R} (g : u = c) (M : Th c = Th u) (nu : pmap Th g = inv M)
+          : (idp_*> _ *> pmap_*>-comm Th (inv g) (idp *> g) *> pmap (_ *>) (pmap_*>-comm Th idp g)
+               *> pmap2 (*>) (pmap_inv-comm Th g *> pmap inv nu *> inv_inv M) (idp_*> _ *> nu)) *> (idp *> *>_inv M)
+            = pmap (\lam l => idp *> pmap Th l) (idp *> (pmap (inv g *>) (idp_*> g) *> inv_*> g))
+          => pmap (`*> (idp *> *>_inv M)) (pmap (idp_*> _ *>) (pmap (pmap_*>-comm Th (inv g) (idp *> g) *>) (pmap (pmap (_ *>) (pmap_*>-comm Th idp g) *>)
+                 (split (*>) (pmap_inv-comm Th g) (pmap inv nu *> inv_inv M) (idp_*> _ *> nu)))))
+             *> assoc (idp_*> _) (pmap_*>-comm Th (inv g) (idp *> g)) (pmap (_ *>) (pmap_*>-comm Th idp g)) (pmap2 (*>) (pmap_inv-comm Th g) idp) _ (idp *> *>_inv M)
+             *> pmap (\lam t => idp_*> _ *> (pmap_*>-comm Th (inv g) (idp *> g) *> (pmap (_ *>) (pmap_*>-comm Th idp g) *> (pmap2 (*>) (pmap_inv-comm Th g) idp *> t))))
+                     (canonical (pmap Th g) M nu)
+             *> base Th g
+
+        \sfunc split {A B C : \Type} (f : A -> B -> C) {a a' a'' : A} {b b' : B} (p : a = a') (p' : a' = a'') (q : b = b')
+          : pmap2 f (p *> p') q = pmap2 f p idp *> pmap2 f p' q \elim p', q
+          | idp, idp => idp
+
+        \sfunc assoc {X : \Type} {x1 x2 x3 x4 x5 x6 x7 : X} (p1 : x1 = x2) (p2 : x2 = x3) (p3 : x3 = x4) (p4 : x4 = x5) (p5 : x5 = x6) (p6 : x6 = x7)
+          : (p1 *> p2 *> p3 *> p4 *> p5) *> p6 = p1 *> p2 *> p3 *> p4 *> p5 *> p6 \elim p6
+          | idp => idp
+
+        \sfunc canonical {T : \Type} {n s : T} (X : s = n) (M : n = s) (nu : X = inv M)
+          : pmap2 (*>) (pmap inv nu *> inv_inv M) (idp_*> X *> nu) *> (idp *> *>_inv M) = pmap (inv X *>) (idp_*> X) *> inv_*> X \elim M, nu
+          | idp, idp => idp
+
+        \sfunc base {R T : \Type} (Th : R -> T) {u c : R} (g : u = c)
+          : idp_*> _ *> pmap_*>-comm Th (inv g) (idp *> g) *> pmap (_ *>) (pmap_*>-comm Th idp g) *> pmap2 (*>) (pmap_inv-comm Th g) idp
+              *> pmap (inv (pmap Th g) *>) (idp_*> (pmap Th g)) *> inv_*> (pmap Th g)
+            = pmap (\lam l => idp *> pmap Th l) (idp *> (pmap (inv g *>) (idp_*> g) *> inv_*> g)) \elim g
+          | idp => idp
+      }
+  }
+
+\func conj {C D : RelCW} (k : Nat) (m : Susp.pointed (Quotient {C} k) ->* Susp.pointed (Quotient {D} k)) : Bouquet (suc k) (C.count k) ->* Bouquet (suc k) (D.count k)
+  => (Bouquet.suspEquiv k (D.count k)).map ->*.∘* (Susp.func (Quotient.collapse {D} k).1 ->*.∘* (m ->*.∘* (Susp.func (Quotient.expand {C} k).1 ->*.∘* Ei {C} k)))
+  \where {
+    \func Ei {C : RelCW} (k : Nat) => (PointedEquiv.inverse (Bouquet.suspEquiv k (C.count k))).map
+
+    \sfunc susp {C D : RelCW} (k : Nat) (P : Quotient {C} k -> Quotient {D} k)
+      : conj k (Susp.func P) = (Bouquet.suspEquiv k (D.count k)).map ->*.∘* (Susp.func (\lam x => (Quotient.collapse {D} k).1 (P ((Quotient.expand {C} k).1 x))) ->*.∘* Ei {C} k)
+      => pmap ((Bouquet.suspEquiv k (D.count k)).map ->*.∘*)
+              (->*.compose-assoc (Susp.func (Quotient.collapse {D} k).1) (Susp.func P) (Susp.func (Quotient.expand {C} k).1 ->*.∘* Ei {C} k)
+               *> ->*.compose-assoc (Susp.func (Quotient.collapse {D} k).1 ->*.∘* Susp.func P) (Susp.func (Quotient.expand {C} k).1) (Ei {C} k)
+               *> pmap (->*.∘* Ei {C} k) (inv (pmap (->*.∘* Susp.func (Quotient.expand {C} k).1) (Susp.func.comp (Quotient.collapse {D} k).1 P))
+                                         *> inv (Susp.func.comp (\lam x => (Quotient.collapse {D} k).1 (P x)) (Quotient.expand {C} k).1)))
+
+    \sfunc petal {C D : RelCW} (k : Nat) (m : Susp.pointed (Quotient {C} k) ->* Susp.pointed (Quotient {D} k)) (a : Fin (C.count k))
+      : conj k m ->*.∘* Bouquet.include a
+        = ((Bouquet.suspEquiv k (D.count k)).map ->*.∘* Susp.func (Quotient.collapse {D} k).1) ->*.∘* (m ->*.∘* Susp.func ((Quotient.expand {C} k) ->*.∘* Bouquet.include a).1)
+      => inv (->*.compose-assoc (Bouquet.suspEquiv k (D.count k)).map (Susp.func (Quotient.collapse {D} k).1 ->*.∘* (m ->*.∘* (Susp.func (Quotient.expand {C} k).1 ->*.∘* Ei {C} k))) (Bouquet.include a))
+         *> pmap ((Bouquet.suspEquiv k (D.count k)).map ->*.∘*)
+              (inv (->*.compose-assoc (Susp.func (Quotient.collapse {D} k).1) (m ->*.∘* (Susp.func (Quotient.expand {C} k).1 ->*.∘* Ei {C} k)) (Bouquet.include a))
+               *> pmap (Susp.func (Quotient.collapse {D} k).1 ->*.∘*)
+                    (inv (->*.compose-assoc m (Susp.func (Quotient.expand {C} k).1 ->*.∘* Ei {C} k) (Bouquet.include a))
+                     *> pmap (m ->*.∘*) (inv (->*.compose-assoc (Susp.func (Quotient.expand {C} k).1) (Ei {C} k) (Bouquet.include a))
+                                        *> pmap (Susp.func (Quotient.expand {C} k).1 ->*.∘*)
+                                                (PointedEquiv.inverse-comp (Bouquet.suspEquiv k (C.count k)) {Susp-Func (Bouquet.include a)} {Bouquet.include a} (Bouquet.suspEquiv.include a))
+                                        *> inv (Susp.func.comp (Quotient.expand {C} k).1 (Bouquet.include a).1))))
+         *> ->*.compose-assoc (Bouquet.suspEquiv k (D.count k)).map (Susp.func (Quotient.collapse {D} k).1) (m ->*.∘* Susp.func ((Quotient.expand {C} k) ->*.∘* Bouquet.include a).1)
+
+    \sfunc add {C D : RelCW} (k : Nat) (m1 m2 m3 : C.stage (suc k) -> Quotient {D} k)
+               (e1 : \Pi (y : C.stage k) -> m1 (C.inclusion k y) = m2 (C.inclusion k y)) (e2 : \Pi (y : C.stage k) -> m2 (C.inclusion k y) = m3 (C.inclusion k y))
+      : conj k (realize m1 m3 (\lam y => e1 y *> e2 y)) = Bouquet.sum (conj k (realize m1 m2 e1)) (conj k (realize m2 m3 e2))
+      => Bouquet.ext \lam a =>
+           petal k (realize m1 m3 (\lam y => e1 y *> e2 y)) a
+           *> pmap (T ->*.∘*) (realize.sphere m1 m3 (\lam y => e1 y *> e2 y) (phi a).1
+                               *> pmap (Lam {k} {Susp.pointed (Quotient {D} k)}) (ext \lam s => realize.add m1 m2 m3 e1 e2 ((phi a).1 s))
+                               *> Lam.sum (\lam s => realize.loops m1 m2 e1 ((phi a).1 s)) (\lam s => realize.loops m2 m3 e2 ((phi a).1 s))
+                                          (pmap (realize.loops m1 m2 e1) (phi a).2) (pmap (realize.loops m2 m3 e2) (phi a).2))
+           *> sumTo.post T (Lam {k} {Susp.pointed (Quotient {D} k)} \lam s => realize.loops m1 m2 e1 ((phi a).1 s))
+                           (Lam {k} {Susp.pointed (Quotient {D} k)} \lam s => realize.loops m2 m3 e2 ((phi a).1 s))
+           *> inv (pmap2 sumTo (petal k (realize m1 m2 e1) a *> pmap (T ->*.∘*) (realize.sphere m1 m2 e1 (phi a).1))
+                               (petal k (realize m2 m3 e2) a *> pmap (T ->*.∘*) (realize.sphere m2 m3 e2 (phi a).1)))
+           *> inv (Bouquet.copairAll.include _ a)
+      \where {
+        \func T {D : RelCW} {k : Nat} => (Bouquet.suspEquiv k (D.count k)).map ->*.∘* Susp.func (Quotient.collapse {D} k).1
+
+        \func phi {C : RelCW} {k : Nat} (a : Fin (C.count k)) => Quotient.expand {C} k ->*.∘* Bouquet.include a
+      }
+  }
+
+\func kappa {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) : Bouquet (suc k) (C.count k) ->* Bouquet (suc k) (D.count (suc k))
+  => Quotient.collapse {D} (suc k) ->*.∘* (prism H ->*.∘* (Susp.func (Quotient.expand {C} k).1 ->*.∘* conj.Ei {C} k))
+  \where {
+    \func lower {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (w : Quotient {C} (suc k)) : Quotient {D} (suc k)
+      => (prism H).1 (Susp.map (Quotient.inc {C} k) ((Quotient.connecting {C} k).1 w))
+
+    \sfunc boundary {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G)
+      : conj k (prism.Bd H) = boundaryMap {D} k ->*.∘* kappa H
+      => pmap (conj k) (prism.boundary H)
+         *> pmap (E ->*.∘*)
+              (pmap (Susp.func (Quotient.collapse {D} k).1 ->*.∘*)
+                    (inv (->*.compose-assoc (Susp.func (Quotient.inc {D} k)) (Quotient.connecting {D} k ->*.∘* prism H) Y)
+                     *> pmap (Susp.func (Quotient.inc {D} k) ->*.∘*) (inv (->*.compose-assoc (Quotient.connecting {D} k) (prism H) Y)))
+               *> ->*.compose-assoc (Susp.func (Quotient.collapse {D} k).1) (Susp.func (Quotient.inc {D} k)) (Quotient.connecting {D} k ->*.∘* Z)
+               *> pmap (->*.∘* (Quotient.connecting {D} k ->*.∘* Z)) (inv (Susp.func.comp (Quotient.collapse {D} k).1 (Quotient.inc {D} k))))
+         *> inv (inv (->*.compose-assoc E (Susp.func (boundaryMap.collapseInc {D} k) ->*.∘* (Quotient.connecting {D} k ->*.∘* Quotient.expand {D} (suc k))) (kappa H))
+                 *> pmap (E ->*.∘*)
+                      (inv (->*.compose-assoc (Susp.func (boundaryMap.collapseInc {D} k)) (Quotient.connecting {D} k ->*.∘* Quotient.expand {D} (suc k)) (kappa H))
+                       *> pmap (Susp.func (boundaryMap.collapseInc {D} k) ->*.∘*)
+                            (inv (->*.compose-assoc (Quotient.connecting {D} k) (Quotient.expand {D} (suc k)) (kappa H))
+                             *> pmap (Quotient.connecting {D} k ->*.∘*) (->*.compose-assoc (Quotient.expand {D} (suc k)) (Quotient.collapse {D} (suc k)) Z
+                                                                         *> pmap (->*.∘* Z) (Quotient.expand-collapse (suc k))))))
+      \where {
+        \func E {D : RelCW} {k : Nat} => (Bouquet.suspEquiv k (D.count k)).map
+
+        \func Y {C : RelCW} {k : Nat} => Susp.func (Quotient.expand {C} k).1 ->*.∘* conj.Ei {C} k
+
+        \func Z {C D : RelCW} {k : Nat} {F G : CellStep C D k} {H : CellHtpyStep F G} => prism H ->*.∘* Y {C} {k}
+      }
+
+    \sfunc lower-susp {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G)
+      : conj (suc k) (Susp.func (lower H)) = Bouquet.suspend (kappa H ->*.∘* boundaryMap {C} k)
+      => conj.susp (suc k) (lower H)
+         *> pmap (\lam q => (Bouquet.suspEquiv (suc k) (D.count (suc k))).map ->*.∘* (Susp.func q ->*.∘* conj.Ei {C} (suc k)))
+                 (ext \lam x => inv (pmap (\lam z => (Quotient.collapse {D} (suc k)).1 ((prism H).1 (Susp.map (Quotient.expand {C} k).1 z)))
+                                          (->*.happly (PointedEquiv.inverse-ret (Bouquet.suspEquiv k (C.count k))) (W x))
+                                     *> pmap (\lam z => (Quotient.collapse {D} (suc k)).1 ((prism H).1 z))
+                                             (inv (->*.happly (Susp.func.comp (Quotient.expand {C} k).1 (boundaryMap.collapseInc {C} k)) (V x)))
+                                     *> pmap (\lam f => (Quotient.collapse {D} (suc k)).1 ((prism H).1 (Susp.map f (V x))))
+                                             (ext \lam y => ->*.happly (Quotient.expand-collapse {C} k) (Quotient.inc {C} k y))))
+      \where {
+        \func V {C : RelCW} {k : Nat} (x : Bouquet (suc k) (C.count (suc k))) => (Quotient.connecting {C} k).1 ((Quotient.expand {C} (suc k)).1 x)
+
+        \func W {C : RelCW} {k : Nat} (x : Bouquet (suc k) (C.count (suc k))) => Susp.map (boundaryMap.collapseInc {C} k) (V x)
+      }
+
+    \sfunc relation-core {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (e3 : \Pi (y : C.stage k) -> pinr () = {Quotient {D} k} pinr ())
+                         (mm : \Pi (y : C.stage k) -> (pmap (Quotient.inc {D} k) (prism.side H y) *> pmap (quotientMap G).1 (ppglue y)) *> e3 y = pmap (quotientMap F).1 (ppglue y))
+                         (x : ZFree (C.count k))
+      : chainStep F x
+        = plus (plus (degreeHom (boundaryMap {D} k) (degreeHom (kappa H) x)) (chainStep G x))
+               (degreeHom (conj k (realize (\lam _ => pinr ()) (\lam _ => pinr ()) e3)) x)
+      => pmap (\lam f => degreeHom f x) (inv (conj.susp k (quotientMap F).1) *> inv (pmap (conj k) (realize.susp (quotientMap F).1))
+                                         *> pmap (\lam e => conj k (realize (mF H) (cst H) e)) (inv (ext mm))
+                                         *> conj.add k (mF H) (cst H) (cst H) (\lam y => eH H y *> eG H y) e3)
+         *> pmap (\lam (t : AddGroupHom (ZFree (C.count k)) (ZFree (D.count k))) => t x)
+                 (degree-sum (conj k (realize (mF H) (cst H) (\lam y => eH H y *> eG H y))) (conj k (realize (cst H) (cst H) e3)))
+         *> pmap (\lam t => plus t (degreeHom (conj k (realize (cst H) (cst H) e3)) x))
+                 (pmap (\lam f => degreeHom f x) (conj.add k (mF H) (mG H) (cst H) (eH H) (eG H))
+                  *> pmap (\lam (t : AddGroupHom (ZFree (C.count k)) (ZFree (D.count k))) => t x) (degree-sum (conj k (prism.Bd H)) (conj k (realize (mG H) (cst H) (eG H))))
+                  *> pmap2 plus (pmap (\lam f => degreeHom f x) (boundary H)
+                                 *> pmap (\lam (t : AddGroupHom (ZFree (C.count k)) (ZFree (D.count k))) => t x) (degreeHom.comp (boundaryMap {D} k) (kappa H)))
+                                (pmap (\lam f => degreeHom f x) (pmap (conj k) (realize.susp (quotientMap G).1) *> conj.susp k (quotientMap G).1)))
+      \where {
+        \func mF {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (x : C.stage (suc k)) : Quotient {D} k
+          => Quotient.inc {D} k (F.high x)
+
+        \func mG {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (x : C.stage (suc k)) : Quotient {D} k
+          => Quotient.inc {D} k (G.high x)
+
+        \func cst {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (x : C.stage (suc k)) : Quotient {D} k
+          => pinr ()
+
+        \func eH {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (y : C.stage k) : mF H (C.inclusion k y) = mG H (C.inclusion k y)
+          => pmap (Quotient.inc {D} k) (prism.side H y)
+
+        \func eG {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (y : C.stage k) : mG H (C.inclusion k y) = cst H (C.inclusion k y)
+          => pmap (quotientMap G).1 (ppglue y)
+      }
+
+    \func plus {n : Nat} (a b : ZFree n) : ZFree n
+      => (AddMonoid.+ {ZFree n}) a b
+
+    \func minus {n : Nat} (a b : ZFree n) : ZFree n
+      => plus a (AddGroup.negative {ZFree n} b)
+
+    \sfunc mm-suc {C D : RelCW} {k : Nat} {P Q : CellSteps C D k} (W : CellHtpySteps P Q) (y : C.stage (suc k))
+      : (pmap (Quotient.inc {D} (suc k)) (prism.side {C} {D} {suc k} {CellSteps.upper P} {CellSteps.upper Q} (CellHtpySteps.upper W) y)
+          *> pmap (quotientMap (CellSteps.upper Q)).1 (ppglue y)) *> pmap (lower {C} {D} {k} {CellSteps.lower P} {CellSteps.lower Q} (CellHtpySteps.lower W)) (ppglue y)
+        = pmap (quotientMap (CellSteps.upper P)).1 (ppglue y)
+      => eqn pinl (P.square1 y) (Q.square1 y) (W.h1 y) (ppglue (P.map1 y)) (ppglue (Q.map1 y))
+             (pmap (pmap (prism {C} {D} {k} {CellSteps.lower P} {CellSteps.lower Q} (CellHtpySteps.lower W)).1) (pmap_inv-comm (Susp.map (Quotient.inc {C} k)) (pmerid y))
+              *> pmap_inv-comm (prism {C} {D} {k} {CellSteps.lower P} {CellSteps.lower Q} (CellHtpySteps.lower W)).1 (pmerid (Quotient.inc {C} k y)))
+      \where
+        \sfunc eqn {Y Q : \Type} (j : Y -> Q) {u v a b : Y} (nF : u = a) (nG : v = b) (H : u = v) {c : Q} (gF : j u = c) (gG : j v = c) {Xi : c = c}
+                   (xi : Xi = inv (inv gF *> pmap j H *> gG))
+          : (pmap j (inv nF *> H *> nG) *> (pmap j (inv nG) *> gG)) *> Xi = pmap j (inv nF) *> gF \elim nF, nG, H, gF, xi
+          | idp, idp, idp, idp, idp => *>_inv _
+
+    \sfunc relation0 {C D : RelCW} {F G : CellStep C D 0} (H : CellHtpyStep F G) (emp : C.stage 0 -> Empty) (x : ZFree (C.count 0))
+      : chainStep F x = plus (plus (degreeHom (boundaryMap {D} 0) (degreeHom (kappa H) x)) (chainStep G x)) (degreeHom (conj 0 (Susp.func (\lam (_ : Quotient {C} 0) => pinr ()))) x)
+      => relation-core H (\lam _ => idp) (\lam y => absurd (emp y)) x
+         *> pmap (\lam f => plus (plus (degreeHom (boundaryMap {D} 0) (degreeHom (kappa H) x)) (chainStep G x)) (degreeHom (conj 0 f) x))
+                 (realize.susp (\lam (_ : Quotient {C} 0) => pinr ()))
+
+    \func up {C D : RelCW} {k : Nat} {F G : CellSteps C D k} (W : CellHtpySteps F G) => kappa {C} {D} {suc k} {CellSteps.upper F} {CellSteps.upper G} (CellHtpySteps.upper W)
+
+    \func down {C D : RelCW} {k : Nat} {F G : CellSteps C D k} (W : CellHtpySteps F G) => kappa {C} {D} {k} {CellSteps.lower F} {CellSteps.lower G} (CellHtpySteps.lower W)
+
+    \func below {C D : RelCW} {k : Nat} {F G : CellSteps C D k} (W : CellHtpySteps F G) => lower {C} {D} {k} {CellSteps.lower F} {CellSteps.lower G} (CellHtpySteps.lower W)
+
+    \sfunc relation-suc {C D : RelCW} {k : Nat} {F G : CellSteps C D k} (W : CellHtpySteps F G) (x : ZFree (C.count (suc k)))
+      : chainStep (CellSteps.upper F) x = plus (plus (degreeHom (boundaryMap {D} (suc k)) (degreeHom (up W) x)) (chainStep (CellSteps.upper G) x))
+                                             (degreeHom (conj (suc k) (Susp.func (below W))) x)
+      => relation-core {C} {D} {suc k} {CellSteps.upper F} {CellSteps.upper G} (CellHtpySteps.upper W) (\lam y => pmap (below W) (ppglue y)) (mm-suc W) x
+         *> pmap (\lam f => plus (plus (degreeHom (boundaryMap {D} (suc k)) (degreeHom (up W) x)) (chainStep (CellSteps.upper G) x)) (degreeHom (conj (suc k) f) x))
+                 (realize.susp (below W))
+
+    \lemma rearrange {A : AbGroup} {f a b c : A} (p : f = (a + b) + c) : f - b = a + c
+      => pmap (`- b) (p *> +-assoc *> pmap (a +) +-comm *> inv +-assoc) *> +-assoc *> pmap ((a + c) +) negative-right *> zro-right
+
+    \lemma lowest {C D : RelCW} (x : ZFree (C.count 0)) : degreeHom (conj {C} {D} 0 (Susp.func (\lam _ => pinr ()))) x = AddMonoid.zro {ZFree (D.count 0)}
+      => pmap (\lam f => degreeHom (conj {C} {D} 0 f) x) (Susp.func.const (pinr ()))
+         *> pmap (\lam f => degreeHom f x)
+                 (pmap ((Bouquet.suspEquiv 0 (D.count 0)).map ->*.∘*) (->*.compose-zero (Susp.func (Quotient.collapse {D} 0).1)) *> ->*.compose-zero _)
+         *> pmap (\lam (t : AddGroupHom (ZFree (C.count 0)) (ZFree (D.count 0))) => t x) degreeHom.zero
+
+    \lemma htpy0 {C D : RelCW} {F G : CellStep C D 0} (H : CellHtpyStep F G) (emp : C.stage 0 -> Empty) (x : ZFree (C.count 0))
+      : minus (chainStep F x) (chainStep G x) = degreeHom (boundaryMap {D} 0) (degreeHom (kappa H) x)
+      => rearrange {ZFree (D.count 0)} (relation0 H emp x) *> pmap (plus _) (lowest {C} {D} x) *> zro-right {ZFree (D.count 0)}
+
+    \lemma htpy-suc {C D : RelCW} {k : Nat} {F G : CellSteps C D k} (W : CellHtpySteps F G) (x : ZFree (C.count (suc k)))
+      : minus (chainStep (CellSteps.upper F) x) (chainStep (CellSteps.upper G) x)
+        = plus (degreeHom (boundaryMap {D} (suc k)) (degreeHom (up W) x)) (degreeHom (down W) (degreeHom (boundaryMap {C} k) x))
+      => rearrange {ZFree (D.count (suc k))} (relation-suc W x)
+         *> pmap (plus _) (pmap (\lam f => degreeHom f x) (lower-susp {C} {D} {k} {CellSteps.lower F} {CellSteps.lower G} (CellHtpySteps.lower W))
+                           *> pmap (\lam (t : AddGroupHom (ZFree (C.count (suc k))) (ZFree (D.count (suc k)))) => t x)
+                                   (degreeHom.suspend (down W ->*.∘* boundaryMap {C} k) *> degreeHom.comp (down W) (boundaryMap {C} k)))
+  }
+
+\lemma degree-sum {m g h : Nat} (f k : Bouquet (suc m) g ->* Bouquet (suc m) h)
+  : degreeHom (Bouquet.sum f k) = AddGroupHom.sum (degreeHom f) (degreeHom k) \elim m
+  | 0 => bottom1.sum f k
+  | suc p => degreeHom.sum f k
+
+\func chainHomotopy {C D : RelCW} {F G : SeqMap C.seq D.seq} (h : CellHomotopy F G) (emp : C.stage 0 -> Empty)
+  : ChainHomotopy (cellularMap F) (cellularMap G) \cowith
+  | K k => degreeHom (kappa {C} {D} {k} {CellStep.of F k} {CellStep.of G k} (CellHtpyStep.of h k))
+  | htpy0 x => kappa.htpy0 {C} {D} {CellStep.of F 0} {CellStep.of G 0} (CellHtpyStep.of h 0) emp x
+  | htpy n x => kappa.htpy-suc {C} {D} {n} {CellSteps.of F n} {CellSteps.of G n} (CellHtpySteps.of h n) x

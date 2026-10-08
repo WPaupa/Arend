@@ -22,6 +22,18 @@
 
     \func pointed (A : \Type) => \new Pointed (Susp A) north
 
+    \func func {A B : \Type} (f : A -> B) : pointed A ->* pointed B
+      => (map f, idp)
+      \where {
+        \sfunc comp {A B C : \Type} (g : B -> C) (f : A -> B) : func (\lam a => g (f a)) = func g ->*.∘* func f
+          => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {map (\lam a => g (f a))} {\lam x => map g (map f x)}
+                                           (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _)) idp
+
+        \sfunc const {A B : \Type} (b : B) : func {A} (\lam _ => b) = ->*.zero _ _
+          => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {map (\lam _ => b)} {\lam _ => north}
+                                           (\lam _ => idp) (\lam _ => inv (pmerid b)) (\lam _ => inv (*>_inv (pmerid b)))) idp
+      }
+
     \func unit : QEquiv {\Sigma} {Susp (\Sigma)} \cowith
       | f _ => north
       | ret _ => ()

@@ -87,6 +87,11 @@
                             *> pmap (->*.∘* Bouquet.include a) (Wedge.copair.right-eq (phi 0) (copairAll \lam a => phi (suc a)))
                             *> include (\lam a => phi (suc a)) a
 
+    \sfunc ext {n g : Nat} {Z : Pointed} {h k : Bouquet n g ->* Z} (p : \Pi (a : Fin g) -> h ->*.∘* include a = k ->*.∘* include a) : h = k \elim g
+      | 0 => ->*.ext (\lam _ => h.2 *> inv k.2) (*>-assoc _ _ _ *> pmap (h.2 *>) (inv_*> k.2))
+      | suc g => Wedge.ext (p 0) (ext \lam a => inv (->*.compose-assoc h (Wedge.right _ _) (include a)) *> p (suc a)
+                                                 *> ->*.compose-assoc k (Wedge.right _ _) (include a))
+
     \func sum {m g h : Nat} (f k : Bouquet (suc m) g ->* Bouquet (suc m) h) : Bouquet (suc m) g ->* Bouquet (suc m) h
       => copairAll \lam a => sumTo (f ->*.∘* include a) (k ->*.∘* include a)
 
@@ -145,6 +150,22 @@
 
     \func suspend {n g h : Nat} (f : Bouquet n g ->* Bouquet n h) : Bouquet (suc n) g ->* Bouquet (suc n) h
       => (suspEquiv n h).map ->*.∘* (Susp-Func f ->*.∘* (PointedEquiv.inverse (suspEquiv n g)).map)
+      \where {
+        \sfunc comp {n g h k : Nat} (F : Bouquet n h ->* Bouquet n k) (f : Bouquet n g ->* Bouquet n h)
+          : suspend (F ->*.∘* f) = suspend F ->*.∘* suspend f
+          => inv (inv (->*.compose-assoc (suspEquiv n k).map (Susp-Func F ->*.∘* Ei {n} h) (suspend f))
+                  *> pmap ((suspEquiv n k).map ->*.∘*)
+                          (inv (->*.compose-assoc (Susp-Func F) (Ei {n} h) (suspend f))
+                           *> pmap (Susp-Func F ->*.∘*) (->*.compose-assoc (Ei {n} h) (suspEquiv n h).map (Susp-Func f ->*.∘* Ei {n} g)
+                                                         *> pmap (->*.∘* (Susp-Func f ->*.∘* Ei {n} g)) (PointedEquiv.inverse-ret (suspEquiv n h)))
+                           *> ->*.compose-assoc (Susp-Func F) (Susp-Func f) (Ei {n} g)
+                           *> pmap (->*.∘* Ei {n} g) (inv (Susp-Func.comp F f))))
+
+        \func Ei {n : Nat} (g : Nat) => (PointedEquiv.inverse (suspEquiv n g)).map
+
+        \sfunc id {n g : Nat} : suspend (->*.id {Bouquet n g}) = ->*.id
+          => pmap (\lam q => (suspEquiv n g).map ->*.∘* (q ->*.∘* Ei {n} g)) Susp-Func.id *> PointedEquiv.inverse-sec (suspEquiv n g)
+      }
   }
 
 \func sphereInt (n : Nat) : AddGroupHom (AddGroup.fromGroup (PiGroup.{0} n (Sphere.pointed (suc n)))) IntRing \cowith
@@ -255,16 +276,26 @@
       => pmap columnAction (matrixExt {_} {_} {_} {degreeMatrix (->*.id {Bouquet (suc m) g})} {MatrixRing.ide} \lam b a => Bouquet.petal {m} a b *> basis-symm)
          *> columnAction_ide
 
-    \lemma comp {p g h k : Nat} (F : Bouquet (suc (suc p)) h ->* Bouquet (suc (suc p)) k) (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h)
+    \lemma comp {m g h k : Nat} (F : Bouquet (suc m) h ->* Bouquet (suc m) k) (f : Bouquet (suc m) g ->* Bouquet (suc m) h)
       : degreeHom (F ->*.∘* f) = degreeHom F AddGroupHom.∘ degreeHom f
-      => hom-ext (degreeHom (F ->*.∘* f)) (degreeHom F AddGroupHom.∘ degreeHom f) \lam a =>
-           pmap (degreeHom (F ->*.∘* f)) (inv (bottom.basis-generator a)) *> inv (action (F ->*.∘* f) _)
-           *> pmap (bottom p k) (piMap-comp (suc (suc p)) F f _) *> action F _ *> pmap (degreeHom F) (action f _ *> pmap (degreeHom f) (bottom.basis-generator a))
+      => inv (suspend (F ->*.∘* f)) *> pmap degreeHom (Bouquet.suspend.comp F f) *> high (Bouquet.suspend F) (Bouquet.suspend f)
+         *> pmap2 (\lam (a : AddGroupHom (ZFree h) (ZFree k)) (b : AddGroupHom (ZFree g) (ZFree h)) => a AddGroupHom.∘ b) (suspend F) (suspend f)
+      \where
+        \lemma high {p g h k : Nat} (F : Bouquet (suc (suc p)) h ->* Bouquet (suc (suc p)) k) (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h)
+          : degreeHom (F ->*.∘* f) = degreeHom F AddGroupHom.∘ degreeHom f
+          => hom-ext (degreeHom (F ->*.∘* f)) (degreeHom F AddGroupHom.∘ degreeHom f) \lam a =>
+               pmap (degreeHom (F ->*.∘* f)) (inv (bottom.basis-generator a)) *> inv (action (F ->*.∘* f) _)
+               *> pmap (bottom p k) (piMap-comp (suc (suc p)) F f _) *> action F _ *> pmap (degreeHom F) (action f _ *> pmap (degreeHom f) (bottom.basis-generator a))
 
     \lemma matrix-comp {p g h k : Nat} (F : Bouquet (suc (suc p)) h ->* Bouquet (suc (suc p)) k) (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h)
       : degreeMatrix (F ->*.∘* f) = degreeMatrix F MatrixRing.product degreeMatrix f
       => inv (columnMatrix_columnAction _) *> pmap columnMatrix (comp F f) *> columnMatrix_compose (degreeHom f) (degreeHom F)
          *> pmap2 (MatrixRing.product) (columnMatrix_columnAction (degreeMatrix F)) (columnMatrix_columnAction (degreeMatrix f))
+
+    \lemma zero {m g h : Nat} : degreeHom (->*.zero (Bouquet (suc m) g) (Bouquet (suc m) h)) = AddGroupHom.zero
+      => hom-ext (degreeHom (->*.zero (Bouquet (suc m) g) (Bouquet (suc m) h))) AddGroupHom.zero
+                 \lam a => exts \lam b => columnActionBasis (degreeMatrix (->*.zero (Bouquet (suc m) g) (Bouquet (suc m) h))) a b
+                                          *> pmap (degree {m}) (->*.compose-zero {Sphere.pointed (suc m)} (Bouquet.project {suc m} b)) *> degree.zero
 
     \lemma suspend {m g h : Nat} (f : Bouquet (suc m) g ->* Bouquet (suc m) h) : degreeHom (Bouquet.suspend f) = degreeHom f
       => pmap columnAction (degreeMatrix.suspend f)

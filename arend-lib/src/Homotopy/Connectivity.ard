@@ -238,6 +238,43 @@
 \lemma nconnected-product.{u} {n : Nat} {A B : \Type u} (ca : isNConnectedType n A) (cb : isNConnectedType n B) : isNConnectedType n (\Sigma A B)
   => nconnected-unit.2 (nconnected-map-comp {n} {\Sigma A B} {A} {\Sigma} {\lam t => t.1} {\lam _ => ()} (nconnected-proj (\lam _ => B) (\lam _ => cb)) (nconnected-unit.1 ca))
 
+\lemma nconnected-map-between.{u} {n : Nat} {A B : \Type u} (f : A -> B) (ca : isNConnectedType (suc n) A) (cb : isNConnectedType (suc n) B)
+  : isNConnectedMap n f
+  => \lam b => nconnected-unit.2 (nconnected-map-comp {n} {Fib f b} {A} {\Sigma} {\lam t => t.1} {\lam _ => ()}
+                                   (nconnected-proj (\lam a => f a = b) (\lam a => nconnected-path cb (f a) b))
+                                   (nconnected-unit.1 (nconnected-mono id<=suc ca)))
+
+\lemma nconnected-total.{u} {n : Nat} {J : \Type u} {A B : J -> \Type u} (f : \Pi (j : J) -> A j -> B j)
+                            (c : \Pi (j : J) -> isNConnectedMap n (f j)) : isNConnectedMap n (totalEquiv.total f)
+  => \lam p => transportInv (isNConnectedType n) (totalEquiv.totalFiber f p.1 p.2) (c p.1 p.2)
+
+-- | {nBlakersMassey} for the cofiber of {f}.
+\lemma nconnected-cofiber.{u} (r s : Nat) {A B : \Type u} (f : A -> B) (cf : isNConnectedMap (suc r) f) (ca : isNConnectedType (suc s) A) (b : B)
+  : isNConnectedMap (suc (r Nat.+ s)) (\lam (t : Fib f b) => pmap (pinl {A} {B} {\Sigma} {f} {\lam _ => ()}) (inv t.2) *> PushoutData.ppglue t.1)
+  => nconnected-map-comp-left (suc (r Nat.+ s)) (IsEquiv.toQEquiv (pmapIsEquiv {_} {_} {compare f} (compare-isEquiv f)))
+       (nBlakersMassey r s {B} {\Sigma} (\lam y _ => Fib f y)
+                       (\lam y => nconnected-equiv (suc r) (symQEquiv (contr-left unit-isContr {\lam _ => Fib f y})) (cf y))
+                       (\lam _ => nconnected-equiv (suc s) (totalFib f) ca)
+                       b ())
+  \where {
+    \func Span {A B : \Type} (f : A -> B) => \Sigma (y : B) (_ : \Sigma) (Fib f y)
+
+    \func compare {A B : \Type} (f : A -> B) (w : PushoutData {Span f} (\lam t => t.1) (\lam t => t.2)) : PushoutData f (\lam _ => ())
+      => PushoutData.congr (\lam (t : Span f) => t.1) (\lam t => t.2) f (\lam _ => ()) (\lam t => t.3.1) (\lam y => y) (\lam u => u) (\lam t => t.3.2) (\lam _ => idp) w
+
+    \lemma compare-isEquiv.{u} {A B : \Type u} (f : A -> B) : IsEquiv (compare f)
+      => PushoutData.congr.isEquiv (\lam (t : Span f) => t.1) (\lam t => t.2) f (\lam _ => ()) (symQEquiv (fibers f)) idEquiv idEquiv (\lam t => t.3.2) (\lam _ => idp)
+
+    \func fibers {A B : \Type} (f : A -> B) : QEquiv {A} {Span f} \cowith
+      | f a => (f a, (), (a, idp))
+      | ret t => t.3.1
+      | ret_f _ => idp
+      | f_sec t => lem f t.3.1 t.1 t.3.2
+      \where
+        \func lem {A B : \Type} (f : A -> B) (a : A) (b : B) (p : f a = b) : ((f a, (), (a, idp)) : Span f) = (b, (), (a, p)) \elim b, p
+          | _, idp => idp
+  }
+
 \lemma nconnected-seqColimit.{u} {n : Nat} (S : Seq.{u}) (N : Nat) (c : \Pi (k : Nat) -> N <= k -> isNConnectedMap n (S.f {k}))
   : isNConnectedMap n (inSC {S} {N})
   => nconnected-map-comp-left n (IsEquiv.toQEquiv (tail.isEquiv S N)) (zero (shift S N) (\lam k => c (k Nat.+ N) linarith))

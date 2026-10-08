@@ -1,0 +1,174 @@
+\import Equiv
+\import Equiv.HalfAdjoint
+\import Homotopy.CW
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Suspension
+\import Logic
+\import Paths
+
+\open PushoutData (ppglue, rec, homotopy)
+
+\func proj {J S : \Type} (p : \Sigma J S) : J => p.1
+
+\func cell {J S : \Type} (j : J) : Susp.pointed S ->* Cof.based (proj {J} {S})
+  => (Susp.rec (pinr ()) (pinl j) (\lam s => inv (ppglue (j, s))), idp)
+
+\func cellDesc {J S : \Type} {Z : Pointed} (phi : J -> Susp.pointed S ->* Z) : Cof.based (proj {J} {S}) ->* Z
+  => (rec (\lam j => (phi j).1 south) (\lam _ => base) (\lam p => pmap (phi p.1).1 (inv (pmerid p.2)) *> (phi p.1).2), idp)
+  \where {
+    \sfunc on-cell {J S : \Type} {Z : Pointed} (phi : J -> Susp.pointed S ->* Z) (j : J) : cellDesc phi ->*.∘* cell j = phi j
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {\lam x => (cellDesc phi).1 ((cell j).1 x)} {(phi j).1}
+                           (\lam _ => inv (phi j).2) (\lam _ => idp)
+                           (\lam s => inv-glue (phi j).1 (pmerid s) (phi j).2 *> inv (pmap_inv-comm (cellDesc phi).1 (ppglue (j, s)))))
+                 (inv_*> (phi j).2)
+
+    \sfunc ext {J S : \Type} {Z : Pointed} {h k : Cof.based (proj {J} {S}) ->* Z} (p : \Pi (j : J) -> h ->*.∘* cell j = k ->*.∘* cell j) : h = k
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {h.1} {k.1} (\lam j => ->*.happly (p j) south) (\lam _ => h.2 *> inv k.2)
+                           (\lam q => ext-glue h.1 k.1 (ppglue q) h.2 k.2
+                                        (homotopy-isNatural (\lam x => h.1 ((cell q.1).1 x)) (\lam x => k.1 ((cell q.1).1 x)) (->*.happly (p q.1)) (pmerid q.2))
+                                        (->*.happly-base (p q.1))))
+                 (*>-assoc _ _ _ *> pmap (h.2 *>) (inv_*> k.2))
+
+    \sfunc inv-glue {Y Z : \Type} (f : Y -> Z) {y y' : Y} (m : y = y') {z : Z} (P : f y = z) : inv P *> pmap f m = inv (pmap f (inv m) *> P) \elim m, P
+      | idp, idp => idp
+
+    \sfunc ext-glue {W Z : \Type} (h k : W -> Z) {w w' : W} (g : w = w') {z : Z} (h2 : h w' = z) (k2 : k w' = z) {hs : h w = k w} {hn : h w' = k w'}
+                    (nat : pmap h (inv g) *> hs = hn *> pmap k (inv g)) (b : hn *> (idp *> k2) = idp *> h2)
+      : hs *> pmap k g = pmap h g *> (h2 *> inv k2) \elim g, k2
+      | idp, idp => inv (idp_*> hs) *> nat *> b
+  }
+
+\func collapseCells {J S B : \Type} (u : \Sigma J S -> B)
+  : Cof.based (pinl {_} {B} {J} {u} {proj}) ->* Cof.based (proj {J} {S})
+  => (rec (inner u) (\lam _ => pinr ()) (\lam _ => idp), idp)
+  \where {
+    \func inner {J S B : \Type} (u : \Sigma J S -> B) (y : PushoutData u proj) : Cof (proj {J} {S})
+      => rec (\lam _ => pinr ()) (\lam j => pinl j) (\lam q => inv (ppglue q)) y
+
+    \func expand {J S B : \Type} (u : \Sigma J S -> B) : Cof.based (proj {J} {S}) ->* Cof.based (pinl {_} {B} {J} {u} {proj})
+      => (rec (\lam j => pinl (pinr j)) (\lam _ => pinr ()) (\lam q => pmap pinl (inv (ppglue q)) *> ppglue (u q)), idp)
+
+    \sfunc collapse-expand {J S B : \Type} (u : \Sigma J S -> B) : collapseCells u ->*.∘* expand u = ->*.id
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {\lam x => (collapseCells u).1 ((expand u).1 x)} {\lam x => x} (\lam _ => idp) (\lam _ => idp)
+                           (\lam q => idp_*> _ *> inv (inv_inv (ppglue q)) *> inv (pmap_inv-comm (inner u) (ppglue q))
+                                      *> inv (pmap_*>-comm (collapseCells u).1 (pmap pinl (inv (ppglue q))) (ppglue (u q)))))
+                 idp
+
+    \sfunc expand-collapse {J S B : \Type} (u : \Sigma J S -> B) : expand u ->*.∘* collapseCells u = ->*.id
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {\lam x => (expand u).1 ((collapseCells u).1 x)} {\lam x => x}
+                           (homotopy {_} {_} {_} {_} {_} {_} {\lam y => (expand u).1 (inner u y)} {pinl}
+                                     (\lam b => inv (ppglue b)) (\lam _ => idp)
+                                     (\lam q => cellDesc.inv-glue pinl (ppglue q) (ppglue (u q)) *> inv (pmap_inv-comm (expand u).1 (ppglue q))))
+                           (\lam _ => idp) (\lam b => inv_*> (ppglue b)))
+                 idp
+  }
+
+\func sphereCells {n g : Nat} : Cof.based (proj {Fin g} {boundary n}) ->* Bouquet n g \elim n
+  | 0 => cellDesc Bouquet.include
+  | suc n => cellDesc Bouquet.include
+  \where {
+    \func petal {n g : Nat} (a : Fin g) : Sphere.pointed n ->* Cof.based (proj {Fin g} {boundary n}) \elim n
+      | 0 => cell a
+      | suc n => cell a
+
+    \func expand {n g : Nat} : Bouquet n g ->* Cof.based (proj {Fin g} {boundary n})
+      => Bouquet.copairAll petal
+
+    \sfunc on-petal {n g : Nat} (a : Fin g) : sphereCells {n} ->*.∘* petal a = Bouquet.include a \elim n
+      | 0 => cellDesc.on-cell Bouquet.include a
+      | suc n => cellDesc.on-cell Bouquet.include a
+
+    \sfunc ext {n g : Nat} {Z : Pointed} {h k : Cof.based (proj {Fin g} {boundary n}) ->* Z}
+               (p : \Pi (a : Fin g) -> h ->*.∘* petal a = k ->*.∘* petal a) : h = k \elim n
+      | 0 => cellDesc.ext p
+      | suc n => cellDesc.ext p
+
+    \sfunc collapse-expand {n g : Nat} : sphereCells {n} {g} ->*.∘* expand = ->*.id
+      => Bouquet.ext \lam a => inv (->*.compose-assoc sphereCells expand (Bouquet.include a))
+                               *> pmap (sphereCells ->*.∘*) (Bouquet.copairAll.include petal a) *> on-petal a
+
+    \sfunc expand-collapse {n g : Nat} : expand ->*.∘* sphereCells {n} {g} = ->*.id
+      => ext \lam a => inv (->*.compose-assoc expand sphereCells (petal a)) *> pmap (expand ->*.∘*) (on-petal a)
+                       *> Bouquet.copairAll.include petal a
+  }
+
+\func Quotient {C : RelCW} (n : Nat) : Pointed
+  => Cof.based (C.inclusion n)
+  \where {
+    \func Cells {C : RelCW} (n : Nat) : Pointed
+      => Cof.based (pinl {_} {C.stage n} {Fin (C.count n)} {C.attach n} {proj})
+
+    \func cells {C : RelCW} (n : Nat) : PointedEquiv (Cells {C} n) (Quotient {C} n) \cowith
+      | map => (Cof.map (\lam x => x) (C.build n) (\lam _ => idp), idp)
+      | map-isEquiv => inP \new QEquiv {
+        | ret => Cof.map (\lam x => x) (C.build n).ret (\lam x => (C.build n).ret_f (pinl x))
+        | ret_f => homotopy (\lam y => pmap pinl ((C.build n).ret_f y)) (\lam _ => idp)
+                            (\lam x => inv (idp_*> _) *> inv (pmap_*>-comm (Cof.map (\lam x => x) (C.build n).ret (\lam x => (C.build n).ret_f (pinl x))) idp (ppglue x)))
+        | f_sec => homotopy (\lam z => pmap pinl ((B n).f_sec z)) (\lam _ => idp)
+                            (\lam x => pmap (\lam q => pmap pinl q *> ppglue x) (inv (HAEquiv.f_ret_f=f_sec_f {B n} (pinl x)))
+                                       *> pmap (_ *>) (inv (idp_*> (ppglue x)))
+                                       *> inv (pmap_*>-comm (Cof.map (\lam x => x) (C.build n) (\lam _ => idp)) (pmap pinl ((C.build n).ret_f (pinl x))) (ppglue x)))
+      }
+      \where
+        \func B {C : RelCW} (n : Nat) : HAEquiv (C.build n) => HAEquiv.fromQEquiv (C.build n)
+
+    \func inc {C : RelCW} (n : Nat) (x : C.stage (suc n)) : Quotient {C} n
+      => pinl x
+
+    \func connecting {C : RelCW} (n : Nat) : Quotient {C} (suc n) ->* Susp.pointed (C.stage (suc n))
+      => Cof.connecting (C.inclusion (suc n))
+
+    \func collapseCells' {C : RelCW} (n : Nat) : Cells {C} n ->* Bouquet n (C.count n)
+      => sphereCells ->*.∘* collapseCells (C.attach n)
+
+    \func expandCells {C : RelCW} (n : Nat) : Bouquet n (C.count n) ->* Cells {C} n
+      => collapseCells.expand (C.attach n) ->*.∘* sphereCells.expand
+
+    \sfunc cells-collapse-expand {C : RelCW} (n : Nat) : collapseCells' {C} n ->*.∘* expandCells n = ->*.id
+      => inv (->*.compose-assoc sphereCells (collapseCells (C.attach n)) (expandCells n))
+         *> pmap (sphereCells ->*.∘*) (->*.compose-assoc (collapseCells (C.attach n)) (collapseCells.expand (C.attach n)) sphereCells.expand
+                                      *> pmap (->*.∘* sphereCells.expand) (collapseCells.collapse-expand (C.attach n)))
+         *> sphereCells.collapse-expand
+
+    \sfunc cells-expand-collapse {C : RelCW} (n : Nat) : expandCells {C} n ->*.∘* collapseCells' n = ->*.id
+      => inv (->*.compose-assoc (collapseCells.expand (C.attach n)) sphereCells.expand (collapseCells' n))
+         *> pmap (collapseCells.expand (C.attach n) ->*.∘*) (->*.compose-assoc sphereCells.expand sphereCells (collapseCells (C.attach n))
+                                                           *> pmap (->*.∘* collapseCells (C.attach n)) sphereCells.expand-collapse)
+         *> collapseCells.expand-collapse (C.attach n)
+
+    \func collapse {C : RelCW} (n : Nat) : Quotient {C} n ->* Bouquet n (C.count n)
+      => collapseCells' n ->*.∘* (PointedEquiv.inverse (cells n)).map
+
+    \func expand {C : RelCW} (n : Nat) : Bouquet n (C.count n) ->* Quotient {C} n
+      => (cells n).map ->*.∘* expandCells n
+
+    \sfunc collapse-expand {C : RelCW} (n : Nat) : collapse {C} n ->*.∘* expand n = ->*.id
+      => inv (->*.compose-assoc (collapseCells' n) (PointedEquiv.inverse (cells n)).map (expand n))
+         *> pmap (collapseCells' n ->*.∘*) (->*.compose-assoc (PointedEquiv.inverse (cells n)).map (cells n).map (expandCells n)
+                                           *> pmap (->*.∘* expandCells n) (PointedEquiv.inverse-ret (cells n)))
+         *> cells-collapse-expand n
+
+    \sfunc expand-collapse {C : RelCW} (n : Nat) : expand {C} n ->*.∘* collapse n = ->*.id
+      => inv (->*.compose-assoc (cells n).map (expandCells n) (collapse n))
+         *> pmap ((cells n).map ->*.∘*) (->*.compose-assoc (expandCells n) (collapseCells' n) (PointedEquiv.inverse (cells n)).map
+                                        *> pmap (->*.∘* (PointedEquiv.inverse (cells n)).map) (cells-expand-collapse n))
+         *> PointedEquiv.inverse-sec (cells n)
+
+    \func bouquet {C : RelCW} (n : Nat) : PointedEquiv (Quotient {C} n) (Bouquet n (C.count n)) \cowith
+      | map => collapse n
+      | map-isEquiv => inP \new QEquiv {
+        | ret => (expand n).1
+        | ret_f => ->*.happly (expand-collapse n)
+        | f_sec => ->*.happly (collapse-expand n)
+      }
+
+    \sfunc expand-include {C : RelCW} (n : Nat) (a : Fin (C.count n))
+      : expand {C} n ->*.∘* Bouquet.include a = (cells n).map ->*.∘* (collapseCells.expand (C.attach n) ->*.∘* sphereCells.petal a)
+      => inv (->*.compose-assoc (cells n).map (expandCells n) (Bouquet.include a))
+         *> pmap ((cells n).map ->*.∘*) (inv (->*.compose-assoc (collapseCells.expand (C.attach n)) sphereCells.expand (Bouquet.include a))
+                                        *> pmap (collapseCells.expand (C.attach n) ->*.∘*) (Bouquet.copairAll.include sphereCells.petal a))
+  }
