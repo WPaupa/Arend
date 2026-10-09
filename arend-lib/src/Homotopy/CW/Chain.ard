@@ -189,22 +189,30 @@
                           *> ->*.compose-assoc (quotientMap G) (quotientMap F) (Quotient.expand {C} n)))
   }
 
-\func chainStep {C D : RelCW} {n : Nat} (F : CellStep C D n) : AddGroupHom (ZFree (C.count n)) (ZFree (D.count n))
+\sfunc chainStep {C D : RelCW} {n : Nat} (F : CellStep C D n) : AddGroupHom (ZFree (C.count n)) (ZFree (D.count n))
   => degreeHom (Bouquet.suspend (bouquetMap F))
   \where {
+    \lemma eval {C D : RelCW} {n : Nat} (F : CellStep C D n) : chainStep F = degreeHom (Bouquet.suspend (bouquetMap F))
+      => \peval chainStep F
+
     \lemma comm {C D : RelCW} {n : Nat} (W : CellSteps C D n) (x : ZFree (C.count (suc n)))
       : degreeHom (boundaryMap {D} n) (chainStep (CellSteps.upper W) x) = chainStep (CellSteps.lower W) (degreeHom (boundaryMap {C} n) x)
-      => pmap (\lam (h : AddGroupHom (ZFree (C.count (suc n))) (ZFree (D.count (suc n)))) => degreeHom (boundaryMap {D} n) (h x)) (degreeHom.suspend (bouquetMap (CellSteps.upper W)))
+      => pmap (\lam (h : AddGroupHom (ZFree (C.count (suc n))) (ZFree (D.count (suc n)))) => degreeHom (boundaryMap {D} n) (h x))
+              (eval (CellSteps.upper W) *> degreeHom.suspend (bouquetMap (CellSteps.upper W)))
          *> inv (pmap (\lam (h : AddGroupHom (ZFree (C.count (suc n))) (ZFree (D.count n))) => h x) (degreeHom.comp (boundaryMap {D} n) (bouquetMap (CellSteps.upper W))))
          *> pmap (\lam f => degreeHom f x) (bouquetMap.boundary W)
          *> pmap (\lam (h : AddGroupHom (ZFree (C.count (suc n))) (ZFree (D.count n))) => h x) (degreeHom.comp (Bouquet.suspend (bouquetMap (CellSteps.lower W))) (boundaryMap {C} n))
+         *> inv (pmap (\lam (h : AddGroupHom (ZFree (C.count n)) (ZFree (D.count n))) => h (degreeHom (boundaryMap {C} n) x)) (eval (CellSteps.lower W)))
 
     \lemma id {C : RelCW} (n : Nat) : chainStep (CellStep.id {C} n) = AddGroupHom.id
-      => pmap (\lam f => degreeHom (Bouquet.suspend f)) (bouquetMap.id n) *> pmap degreeHom Bouquet.suspend.id *> degreeHom.id
+      => eval (CellStep.id n) *> pmap (\lam f => degreeHom (Bouquet.suspend f)) (bouquetMap.id n) *> pmap degreeHom Bouquet.suspend.id *> degreeHom.id
 
     \lemma comp {C D E : RelCW} {n : Nat} (G : CellStep D E n) (F : CellStep C D n) : chainStep (CellStep.comp G F) = chainStep G AddGroupHom.∘ chainStep F
-      => pmap (\lam f => degreeHom (Bouquet.suspend f)) (bouquetMap.comp G F) *> pmap degreeHom (Bouquet.suspend.comp (bouquetMap G) (bouquetMap F))
+      => eval (CellStep.comp G F) *> pmap (\lam f => degreeHom (Bouquet.suspend f)) (bouquetMap.comp G F)
+         *> pmap degreeHom (Bouquet.suspend.comp (bouquetMap G) (bouquetMap F))
          *> degreeHom.comp (Bouquet.suspend (bouquetMap G)) (Bouquet.suspend (bouquetMap F))
+         *> inv (pmap2 (\lam (a : AddGroupHom (ZFree (D.count n)) (ZFree (E.count n))) (b : AddGroupHom (ZFree (C.count n)) (ZFree (D.count n))) => a AddGroupHom.∘ b)
+                       (eval G) (eval F))
   }
 
 \func cellularMap {C D : RelCW} (F : SeqMap C.seq D.seq) : ChainMap (cellular C) (cellular D) \cowith

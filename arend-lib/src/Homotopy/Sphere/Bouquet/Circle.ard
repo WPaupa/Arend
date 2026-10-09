@@ -202,7 +202,7 @@
       => circleBouquet.generated (count h GroupHom.∘ piGroupMap 0 f) (AddGroupHom.toGroupHom (degreeHom f) GroupHom.∘ count g)
            (\lam a => exts (\lam b => pmap (sphereInt 0) (inv (pmap (piMap 1 (Bouquet.project {1} b)) (piMap-comp 1 f (Bouquet.include {1} a) (generator 0)))
                                                          *> inv (piMap-comp 1 (Bouquet.project {1} b) (f ->*.∘* Bouquet.include {1} a) (generator 0)))
-                                      *> inv (columnActionBasis (degreeMatrix f) a b))
+                                      *> inv (columnActionBasis (degreeMatrix f) a b *> degreeMatrix.eval f b a))
                       *> pmap (degreeHom f) (inv (basis-generator a))) x
 
     \lemma comp {g h k : Nat} (F : Bouquet 1 h ->* Bouquet 1 k) (f : Bouquet 1 g ->* Bouquet 1 h)
@@ -248,9 +248,10 @@
 
     \lemma matrix-sum {g h : Nat} (f k : Bouquet 1 g ->* Bouquet 1 h) (b : Fin h) (a : Fin g)
       : degreeMatrix (Bouquet.sum f k) b a = degreeMatrix f b a + degreeMatrix k b a
-      => pmap (\lam t => degree (Bouquet.project {1} b ->*.∘* t)) (Bouquet.copairAll.include _ a)
+      => degreeMatrix.eval (Bouquet.sum f k) b a *> pmap (\lam t => degree (Bouquet.project {1} b ->*.∘* t)) (Bouquet.copairAll.include _ a)
          *> pmap degree (sumTo.post {0} (Bouquet.project {1} b) (f ->*.∘* Bouquet.include {1} a) (k ->*.∘* Bouquet.include {1} a))
          *> degree-sum (Bouquet.project {1} b ->*.∘* (f ->*.∘* Bouquet.include {1} a)) (Bouquet.project {1} b ->*.∘* (k ->*.∘* Bouquet.include {1} a))
+         *> inv (pmap2 (+) (degreeMatrix.eval f b a) (degreeMatrix.eval k b a))
 
     \lemma sum {g h : Nat} (f k : Bouquet 1 g ->* Bouquet 1 h) : degreeHom (Bouquet.sum f k) = AddGroupHom.sum (degreeHom f) (degreeHom k)
       => pmap columnAction (matrixExt {_} {_} {_} {degreeMatrix (Bouquet.sum f k)} {mkMatrix \lam b a => degreeMatrix f b a + degreeMatrix k b a} (matrix-sum f k))

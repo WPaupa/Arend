@@ -43,8 +43,8 @@
 \lemma empty-isFinCW : IsFinCWUpTo 0 Empty
   => zero-dim.2 (inP (0, emptyEquiv (\lam x => x) (\lam (c : Fin 0) => \case c \with {})))
 
-\lemma unit-isFinCW : IsFinCWUpTo 0 (\Sigma)
-  => zero-dim.2 (inP (1, \new QEquiv {
+\lemma unit-isFinCW.{u} : IsFinCWUpTo.{u} 0 (\Sigma)
+  => zero-dim.{u}.2 (inP (1, \new QEquiv {
        | f _ => 0
        | ret _ => ()
        | ret_f _ => idp

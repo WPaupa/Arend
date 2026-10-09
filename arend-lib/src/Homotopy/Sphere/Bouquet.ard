@@ -227,11 +227,16 @@
       => exts \lam b => pmap (sphereInt (suc p)) (inv (piMap-comp (suc (suc p)) (Bouquet.project b) (Bouquet.include a) (generator (suc p)))) *> Bouquet.petal a b
   }
 
-\func degreeMatrix {m g h : Nat} (f : Bouquet (suc m) g ->* Bouquet (suc m) h) : Matrix Int h g
+\sfunc degreeMatrix {m g h : Nat} (f : Bouquet (suc m) g ->* Bouquet (suc m) h) : Matrix Int h g
   => mkMatrix \lam b a => degree {m} (Bouquet.project b ->*.∘* (f ->*.∘* Bouquet.include a))
   \where {
+    \lemma eval {m g h : Nat} (f : Bouquet (suc m) g ->* Bouquet (suc m) h) (b : Fin h) (a : Fin g)
+      : degreeMatrix f b a = degree {m} (Bouquet.project b ->*.∘* (f ->*.∘* Bouquet.include a))
+      => pmap (\lam (M : Matrix Int h g) => M b a) (\peval degreeMatrix f)
+
     \lemma suspend {m g h : Nat} (f : Bouquet (suc m) g ->* Bouquet (suc m) h) : degreeMatrix (Bouquet.suspend f) = degreeMatrix f
-      => matrixExt \lam b a => pmap degree (entry f b a) *> degree.susp (Bouquet.project b ->*.∘* (f ->*.∘* Bouquet.include a))
+      => matrixExt \lam b a => eval (Bouquet.suspend f) b a *> pmap degree (entry f b a) *> degree.susp (Bouquet.project b ->*.∘* (f ->*.∘* Bouquet.include a))
+                              *> inv (eval f b a)
       \where
         \sfunc entry {n g h : Nat} (f : Bouquet n g ->* Bouquet n h) (b : Fin h) (a : Fin g)
           : Bouquet.project b ->*.∘* (Bouquet.suspend f ->*.∘* Bouquet.include a) = Susp-Func (Bouquet.project b ->*.∘* (f ->*.∘* Bouquet.include a))
@@ -246,9 +251,10 @@
 
     \lemma sum {p g h : Nat} (f k : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h) (b : Fin h) (a : Fin g)
       : degreeMatrix (Bouquet.sum f k) b a = degreeMatrix f b a + degreeMatrix k b a
-      => pmap (\lam t => degree (Bouquet.project b ->*.∘* t)) (Bouquet.copairAll.include _ a)
+      => eval (Bouquet.sum f k) b a *> pmap (\lam t => degree (Bouquet.project b ->*.∘* t)) (Bouquet.copairAll.include _ a)
          *> pmap degree (sumTo.post {suc p} (Bouquet.project b) (f ->*.∘* Bouquet.include a) (k ->*.∘* Bouquet.include a))
          *> sumTo.degree-sum (Bouquet.project b ->*.∘* (f ->*.∘* Bouquet.include a)) (Bouquet.project b ->*.∘* (k ->*.∘* Bouquet.include a))
+         *> inv (pmap2 (+) (eval f b a) (eval k b a))
   }
 
 \func degreeHom {m g h : Nat} (f : Bouquet (suc m) g ->* Bouquet (suc m) h) : AddGroupHom (ZFree g) (ZFree h)
@@ -265,7 +271,7 @@
       => hom-ext (transfer f) (degreeHom f) \lam a => pmap (\lam y => bottom p h (piMap (suc (suc p)) f y)) (inverse-basis a)
            *> exts \lam b => pmap (sphereInt (suc p)) (inv (pmap (piMap (suc (suc p)) (Bouquet.project b)) (piMap-comp (suc (suc p)) f (Bouquet.include a) (generator (suc p))))
                                                  *> inv (piMap-comp (suc (suc p)) (Bouquet.project b) (f ->*.∘* Bouquet.include a) (generator (suc p))))
-                             *> inv (columnActionBasis (degreeMatrix f) a b)
+                             *> inv (columnActionBasis (degreeMatrix f) a b *> degreeMatrix.eval f b a)
 
     \lemma action {p g h : Nat} (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h) (x : pi (suc (suc p)) (Bouquet (suc (suc p)) g))
       : bottom p h (piMap (suc (suc p)) f x) = degreeHom f (bottom p g x)
@@ -273,7 +279,7 @@
          *> pmap {AddGroupHom (ZFree g) (ZFree h)} (__ (bottom p g x)) (transfer-eq f)
 
     \lemma id {m g : Nat} : degreeHom (->*.id {Bouquet (suc m) g}) = AddGroupHom.id
-      => pmap columnAction (matrixExt {_} {_} {_} {degreeMatrix (->*.id {Bouquet (suc m) g})} {MatrixRing.ide} \lam b a => Bouquet.petal {m} a b *> basis-symm)
+      => pmap columnAction (matrixExt {_} {_} {_} {degreeMatrix (->*.id {Bouquet (suc m) g})} {MatrixRing.ide} \lam b a => degreeMatrix.eval ->*.id b a *> Bouquet.petal {m} a b *> basis-symm)
          *> columnAction_ide
 
     \lemma comp {m g h k : Nat} (F : Bouquet (suc m) h ->* Bouquet (suc m) k) (f : Bouquet (suc m) g ->* Bouquet (suc m) h)
@@ -295,7 +301,7 @@
     \lemma zero {m g h : Nat} : degreeHom (->*.zero (Bouquet (suc m) g) (Bouquet (suc m) h)) = AddGroupHom.zero
       => hom-ext (degreeHom (->*.zero (Bouquet (suc m) g) (Bouquet (suc m) h))) AddGroupHom.zero
                  \lam a => exts \lam b => columnActionBasis (degreeMatrix (->*.zero (Bouquet (suc m) g) (Bouquet (suc m) h))) a b
-                                          *> pmap (degree {m}) (->*.compose-zero {Sphere.pointed (suc m)} (Bouquet.project {suc m} b)) *> degree.zero
+                                          *> degreeMatrix.eval _ b a *> pmap (degree {m}) (->*.compose-zero {Sphere.pointed (suc m)} (Bouquet.project {suc m} b)) *> degree.zero
 
     \lemma suspend {m g h : Nat} (f : Bouquet (suc m) g ->* Bouquet (suc m) h) : degreeHom (Bouquet.suspend f) = degreeHom f
       => pmap columnAction (degreeMatrix.suspend f)

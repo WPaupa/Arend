@@ -1,0 +1,74 @@
+-- | After `Cubical/CW/Homology/Base.agda` in the cubical library.
+
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Category (Iso, univalence)
+\import Equiv
+\import Equiv.Sigma
+\import Homotopy.CW
+\import Homotopy.CW.Chain
+\import Homotopy.CW.Homology.Map
+\import Logic
+\import Logic.Unique
+\import Paths
+\import Paths.Meta
+
+\func Datum.{u} (n : Nat) (X : \Type u)
+  => \Sigma (G : AbGroup.{0}) (c : \Pi (s : HasCWStructure X) -> Iso {AbGroupCat.{0}} {Homology (cellular s.1) n} {G})
+            (\Pi (s t : HasCWStructure X) (x : Homology (cellular s.1) n) -> Iso.f {c t} (structureMap n (\lam x => x) s t x) = Iso.f {c s} x)
+  \where {
+    \func at.{u} (n : Nat) {X : \Type u} (s0 : HasCWStructure X) => \Sigma (G : AbGroup.{0}) (Iso {AbGroupCat.{0}} {Homology (cellular s0.1) n} {G})
+
+    \lemma at-contr.{u} (n : Nat) {X : \Type u} (s0 : HasCWStructure X) : Contr (at n s0)
+      => Contr.Contr_QEquiv (sigma-right \lam (G : AbGroup.{0}) => IsEquiv.toQEquiv (univalence {AbGroupCat.{0}} {Homology (cellular s0.1) n} {G}))
+                            (lsigma (Homology (cellular s0.1) n))
+
+    \func spread.{u} (n : Nat) {X : \Type u} (s0 : HasCWStructure X) (a : at n s0) : Datum n X
+      => (a.1, \lam s => AbGroupCat.isoOfEquiv (Iso.f {a.2} AddGroupHom.∘ structureMap n (\lam x => x) s s0)
+                                              (transQEquiv (structureMap.equiv n s s0) (AbGroupCat.equivOfIso a.2)),
+          \lam s t x => pmap (Iso.f {a.2}) (structureMap.comp n (\lam x => x) (\lam x => x) s t s0 x))
+
+    \sfunc retract.{u} (n : Nat) {X : \Type u} (s0 : HasCWStructure X) (D : Datum n X) : spread n s0 (D.1, D.2 s0) = D
+      => ext (idp, ext \lam s => Iso.equals _ _ (exts \lam x => D.3 s s0 x))
+
+    \lemma contr.{u} (n : Nat) {X : \Type u} (cw : IsCW X) : Contr (Datum n X) \elim cw
+      | inP s0 => Contr.make (spread n s0 (Contr.center {at-contr n s0}))
+                             (\lam D => pmap (spread n s0) (Contr.contraction {at-contr n s0} (D.1, D.2 s0)) *> retract n s0 D)
+
+    \func canonical.{u} (n : Nat) {X : \Type u} (cw : IsCW X) : Datum n X
+      => Contr.center {contr n cw}
+
+    \lemma f-hinv.{u} {n : Nat} {X : \Type u} (D : Datum n X) (s : HasCWStructure X) (y : D.1) : Iso.f {D.2 s} (Iso.hinv {D.2 s} y) = y
+      => path (\lam i => (Iso.f_hinv {D.2 s} @ i) y)
+
+    \lemma hinv-f.{u} {n : Nat} {X : \Type u} (D : Datum n X) (s : HasCWStructure X) (x : Homology (cellular s.1) n) : Iso.hinv {D.2 s} (Iso.f {D.2 s} x) = x
+      => path (\lam i => (Iso.hinv_f {D.2 s} @ i) x)
+  }
+
+\func MapDatum.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y)
+  => \Sigma (u : AddGroupHom (Datum.canonical n cX).1 (Datum.canonical n cY).1)
+            (\Pi (s : HasCWStructure X) (t : HasCWStructure Y) (x : Homology (cellular s.1) n)
+              -> u (Iso.f {(Datum.canonical n cX).2 s} x) = Iso.f {(Datum.canonical n cY).2 t} (structureMap n f s t x))
+  \where {
+    \lemma prop.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y) : isProp (MapDatum n cX cY f)
+      => \lam D D' => ext (exts \lam y => \case cX, cY \with {
+        | inP s, inP t => pmap D.1 (inv (Datum.f-hinv (Datum.canonical n cX) s y)) *> D.2 s t _ *> inv (D'.2 s t _)
+                          *> pmap D'.1 (Datum.f-hinv (Datum.canonical n cX) s y)
+      })
+
+    \lemma inhabited.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y) : TruncP (MapDatum n cX cY f)
+      => \case cX, cY \with {
+        | inP s0, inP t0 => inP (Iso.f {(Datum.canonical n cY).2 t0} AddGroupHom.∘ structureMap n f s0 t0 AddGroupHom.∘ Iso.hinv {(Datum.canonical n cX).2 s0},
+                                 \lam s t x => pmap (\lam v => Iso.f {(Datum.canonical n cY).2 t0} (structureMap n f s0 t0 (Iso.hinv {(Datum.canonical n cX).2 s0} v)))
+                                                    (inv ((Datum.canonical n cX).3 s s0 x))
+                                               *> pmap (\lam v => Iso.f {(Datum.canonical n cY).2 t0} (structureMap n f s0 t0 v)) (Datum.hinv-f (Datum.canonical n cX) s0 _)
+                                               *> pmap (Iso.f {(Datum.canonical n cY).2 t0}) (structureMap.comp n f (\lam x => x) s s0 t0 x)
+                                               *> inv ((Datum.canonical n cY).3 t0 t _)
+                                               *> pmap (Iso.f {(Datum.canonical n cY).2 t}) (structureMap.comp n (\lam y => y) f s t0 t x))
+      }
+
+    \lemma contr.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y) : Contr (MapDatum n cX cY f)
+      => isProp'=>isContr (prop n cX cY f) (inhabited n cX cY f)
+  }

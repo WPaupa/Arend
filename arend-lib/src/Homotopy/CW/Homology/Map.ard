@@ -1,0 +1,146 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.Cokernel
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupHom
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Arith.Nat
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Approximation
+\import Homotopy.CW.Chain
+\import Homotopy.CW.ChainHomotopy (CellHtpyStep, CellHtpySteps, kappa)
+\import Homotopy.Sphere.Bouquet
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\func towerSteps.{u} {C D : CW.{u}} {n : Nat} (F : FiniteCellularMap C D (suc (suc n))) : CellSteps C D n \cowith
+  | map0 => F.2.2.1
+  | map1 => F.2.1
+  | map2 => F.1
+  | square0 => F.2.2.3
+  | square1 => F.2.3
+
+\func towerHomologyMap.{u} {C D : CW.{u}} {n : Nat} (F : FiniteCellularMap C D (suc (suc n)))
+  : AddGroupHom (Homology (cellular C) n) (Homology (cellular D) n)
+  => Coker.map (ChainComplex.boundary {cellular C} n) (ChainComplex.boundary {cellular D} n) (chainStep (CellSteps.upper (towerSteps F))) (cycles F)
+               \lam x => ext (inv (chainStep.comm (towerSteps F) x))
+  \where {
+    \func cycles.{u} {C D : CW.{u}} {n : Nat} (F : FiniteCellularMap C D (suc (suc n)))
+      : AddGroupHom (ChainComplex.Cycles {cellular C} n) (ChainComplex.Cycles {cellular D} n) \cowith
+      | func z => (chainStep (CellSteps.lower (towerSteps F)) z.1, out F z.1 z.2)
+      | func-+ => ext (chainStep (CellSteps.lower (towerSteps F))).func-+
+
+    \lemma out.{u} {C D : CW.{u}} {n : Nat} (F : FiniteCellularMap C D (suc (suc n)))
+                   (x : ZFree (C.count n)) (p : ChainComplex.dOut {cellular C} n x = AddMonoid.zro {ChainComplex.C {cellular C} (pred n)})
+      : ChainComplex.dOut {cellular D} n (chainStep (CellSteps.lower (towerSteps F)) x) = AddMonoid.zro {ChainComplex.C {cellular D} (pred n)} \elim n
+      | 0 => idp
+      | suc b => chainStep.comm (towerSteps (FiniteCellularMap.restrict F)) x *> pmap (chainStep (CellSteps.lower (towerSteps (FiniteCellularMap.restrict F)))) p
+                 *> AddMonoidHom.func-zro
+
+    \lemma homotopy0.{u} {C D : CW.{u}} (F G : FiniteCellularMap C D 2)
+                         (H : CellHtpyStep (CellSteps.lower (towerSteps F)) (CellSteps.lower (towerSteps G)))
+      : towerHomologyMap F = towerHomologyMap G
+      => Coker.hom-ext (towerHomologyMap F) (towerHomologyMap G) \lam z => Coker.proj-equality.2
+           (inP (degreeHom (kappa {C} {D} {0} {CellSteps.lower (towerSteps F)} {CellSteps.lower (towerSteps G)} H) z.1,
+                 ext (inv (kappa.htpy0 {C} {D} {CellSteps.lower (towerSteps F)} {CellSteps.lower (towerSteps G)} H C.empty z.1))))
+
+    \lemma homotopy-suc.{u} {C D : CW.{u}} {b : Nat} (F G : FiniteCellularMap C D (suc (suc (suc b))))
+                            (W : CellHtpySteps (towerSteps (FiniteCellularMap.restrict F)) (towerSteps (FiniteCellularMap.restrict G)))
+      : towerHomologyMap F = towerHomologyMap G
+      => Coker.hom-ext (towerHomologyMap F) (towerHomologyMap G) \lam z => Coker.proj-equality.2
+           (inP (degreeHom (kappa.up {C} {D} {b} {S {C} {D} {b} F} {S {C} {D} {b} G} W) z.1, ext (inv (cycle F G W z.1 z.2))))
+      \where {
+        \func S.{u} {C D : CW.{u}} {b : Nat} (F : FiniteCellularMap C D (suc (suc (suc b)))) => towerSteps {C} {D} {b} (FiniteCellularMap.restrict {C} {D} {suc (suc b)} F)
+
+        \sfunc cycle.{u} {C D : CW.{u}} {b : Nat} (F G : FiniteCellularMap C D (suc (suc (suc b)))) (W : CellHtpySteps (S {C} {D} {b} F) (S {C} {D} {b} G))
+                         (x : ZFree (C.count (suc b))) (p : degreeHom (boundaryMap {C} b) x = AddMonoid.zro {ZFree (C.count b)})
+          : kappa.minus (chainStep (CellSteps.lower (towerSteps F)) x) (chainStep (CellSteps.lower (towerSteps G)) x)
+            = degreeHom (boundaryMap {D} (suc b)) (degreeHom (kappa.up {C} {D} {b} {S {C} {D} {b} F} {S {C} {D} {b} G} W) x)
+          => kappa.htpy-suc {C} {D} {b} {S {C} {D} {b} F} {S {C} {D} {b} G} W x
+             *> pmap (kappa.plus (degreeHom (boundaryMap {D} (suc b)) (degreeHom (kappa.up {C} {D} {b} {S {C} {D} {b} F} {S {C} {D} {b} G} W) x)))
+                     (pmap (degreeHom (kappa.down {C} {D} {b} {S {C} {D} {b} F} {S {C} {D} {b} G} W)) p
+                      *> AddMonoidHom.func-zro {degreeHom (kappa.down {C} {D} {b} {S {C} {D} {b} F} {S {C} {D} {b} G} W)})
+             *> zro-right {ZFree (D.count (suc b))}
+      }
+
+    \lemma id.{u} {C : CW.{u}} (n : Nat) : towerHomologyMap (FiniteCellularMap.fromCellular (SeqMap.id C.seq) (suc (suc n))) = AddGroupHom.id
+      => Coker.hom-ext (towerHomologyMap (FiniteCellularMap.fromCellular (SeqMap.id C.seq) (suc (suc n)))) AddGroupHom.id \lam z => pmap in~ (ext (pmap (\lam (h : AddGroupHom (ZFree (C.count n)) (ZFree (C.count n))) => h z.1) (chainStep.id n)))
+
+    \lemma comp.{u} {C D E : CW.{u}} {n : Nat} (G : FiniteCellularMap D E (suc (suc n))) (F : FiniteCellularMap C D (suc (suc n)))
+      : towerHomologyMap (FiniteCellularMap.comp G F) = towerHomologyMap G AddGroupHom.∘ towerHomologyMap F
+      => Coker.hom-ext (towerHomologyMap (FiniteCellularMap.comp G F)) _ \lam z => pmap in~ (ext
+           (pmap (\lam (h : AddGroupHom (ZFree (C.count n)) (ZFree (E.count n))) => h z.1)
+                 (chainStep.comp (CellSteps.lower (towerSteps G)) (CellSteps.lower (towerSteps F)))))
+  }
+
+\func cellHomologyMap.{u} {C D : CW.{u}} (n : Nat) (f : C.Space -> D.Space) : AddGroupHom (Homology (cellular C) n) (Homology (cellular D) n)
+  => (TruncP.rec-set (approximateThrough (suc n) f) (\lam A => towerHomologyMap A.1) (independent n f)).1
+  \where {
+    \lemma independent.{u} {C D : CW.{u}} (n : Nat) (f : C.Space -> D.Space) (A A' : CellularApproximationThrough (suc n) f)
+      : towerHomologyMap A.1 = towerHomologyMap A'.1
+      => \case approximateFiniteHomotopy (suc (suc n)) A.1 A'.1 (\lam x => A.2 x *> inv (A'.2 x)) \with {
+        | inP (H, _, T) => fromHomotopy n A.1 A'.1 H T
+      }
+
+    \lemma fromHomotopy.{u} {C D : CW.{u}} (n : Nat) (F G : FiniteCellularMap C D (suc (suc n)))
+                            (H : \Pi (x : C.stage (suc (suc n))) -> D.inclusion (suc (suc n)) (F.1 x) = D.inclusion (suc (suc n)) (G.1 x))
+                            (T : FiniteHomotopy (suc (suc n)) F G H) : towerHomologyMap F = towerHomologyMap G \elim n
+      | 0 => towerHomologyMap.homotopy0 F G (\new CellHtpyStep {
+        | low => T.2.1
+        | high => T.1
+        | coh => T.2.3
+      })
+      | suc b => towerHomologyMap.homotopy-suc F G (\new CellHtpySteps {
+        | h0 => T.2.2.1
+        | h1 => T.2.1
+        | h2 => T.1
+        | coh0 => T.2.2.3
+        | coh1 => T.2.3
+      })
+
+    \lemma eval.{u} {C D : CW.{u}} {n : Nat} {f : C.Space -> D.Space} (A : CellularApproximationThrough (suc n) f) : cellHomologyMap n f = towerHomologyMap A.1
+      => \case (TruncP.rec-set (approximateThrough (suc n) f) (\lam A => towerHomologyMap A.1) (independent n f)).2 \with {
+        | inP (A', q) => inv q *> independent n f A' A
+      }
+
+    \lemma homotopy.{u} {C D : CW.{u}} (n : Nat) {f g : C.Space -> D.Space} (p : \Pi (z : C.Space) -> f z = g z) : cellHomologyMap n f = cellHomologyMap n g
+      => \case approximateThrough (suc n) f \with {
+        | inP A => eval A *> inv (eval {C} {D} {n} {g} (A.1, \lam x => A.2 x *> p (inSC x)))
+      }
+
+    \lemma id.{u} {C : CW.{u}} (n : Nat) : cellHomologyMap {C} n (\lam z => z) = AddGroupHom.id
+      => eval {C} {C} {n} {\lam z => z} (FiniteCellularMap.fromCellular (SeqMap.id C.seq) (suc (suc n)), \lam _ => idp) *> towerHomologyMap.id n
+
+    \lemma comp.{u} {C D E : CW.{u}} (n : Nat) (g : D.Space -> E.Space) (f : C.Space -> D.Space)
+      : cellHomologyMap n (\lam z => g (f z)) = cellHomologyMap n g AddGroupHom.∘ cellHomologyMap n f
+      => \case approximateThrough (suc n) f, approximateThrough (suc n) g \with {
+        | inP A, inP B => eval {C} {E} {n} {\lam z => g (f z)} (FiniteCellularMap.comp B.1 A.1, \lam x => B.2 (A.1.1 x) *> pmap g (A.2 x))
+                          *> towerHomologyMap.comp B.1 A.1 *> inv (pmap2 (AddGroupHom.∘) (eval B) (eval A))
+      }
+  }
+
+\func structureMap.{u} (n : Nat) {X Y : \Type u} (f : X -> Y) (s : HasCWStructure X) (t : HasCWStructure Y)
+  : AddGroupHom (Homology (cellular s.1) n) (Homology (cellular t.1) n)
+  => cellHomologyMap n (\lam z => t.2 (f (s.2.ret z)))
+  \where {
+    \lemma id.{u} (n : Nat) {X : \Type u} (s : HasCWStructure X) : structureMap n (\lam x => x) s s = AddGroupHom.id
+      => cellHomologyMap.homotopy n (\lam z => s.2.f_sec z) *> cellHomologyMap.id n
+
+    \lemma comp.{u} (n : Nat) {X Y Z : \Type u} (g : Y -> Z) (f : X -> Y) (s : HasCWStructure X) (t : HasCWStructure Y) (r : HasCWStructure Z)
+                    (x : Homology (cellular s.1) n)
+      : structureMap n g t r (structureMap n f s t x) = structureMap n (\lam x => g (f x)) s r x
+      => pmap (\lam (h : AddGroupHom (Homology (cellular s.1) n) (Homology (cellular r.1) n)) => h x)
+              (inv (cellHomologyMap.comp n (\lam w => r.2 (g (t.2.ret w))) (\lam z => t.2 (f (s.2.ret z))))
+               *> cellHomologyMap.homotopy n (\lam z => pmap (\lam v => r.2 (g v)) (t.2.ret_f (f (s.2.ret z)))))
+
+    \func equiv.{u} (n : Nat) {X : \Type u} (s t : HasCWStructure X) : QEquiv (structureMap n (\lam x => x) s t) \cowith
+      | ret => structureMap n (\lam x => x) t s
+      | ret_f x => comp n (\lam x => x) (\lam x => x) s t s x *> pmap (\lam (h : AddGroupHom (Homology (cellular s.1) n) (Homology (cellular s.1) n)) => h x) (id n s)
+      | f_sec y => comp n (\lam x => x) (\lam x => x) t s t y *> pmap (\lam (h : AddGroupHom (Homology (cellular t.1) n) (Homology (cellular t.1) n)) => h y) (id n t)
+  }

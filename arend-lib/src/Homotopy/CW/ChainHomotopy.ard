@@ -320,7 +320,8 @@
       : chainStep F x
         = plus (plus (degreeHom (boundaryMap {D} k) (degreeHom (kappa H) x)) (chainStep G x))
                (degreeHom (conj k (realize (\lam _ => pinr ()) (\lam _ => pinr ()) e3)) x)
-      => pmap (\lam f => degreeHom f x) (inv (conj.susp k (quotientMap F).1) *> inv (pmap (conj k) (realize.susp (quotientMap F).1))
+      => pmap (\lam (t : AddGroupHom (ZFree (C.count k)) (ZFree (D.count k))) => t x) (chainStep.eval F)
+         *> pmap (\lam f => degreeHom f x) (inv (conj.susp k (quotientMap F).1) *> inv (pmap (conj k) (realize.susp (quotientMap F).1))
                                          *> pmap (\lam e => conj k (realize (mF H) (cst H) e)) (inv (ext mm))
                                          *> conj.add k (mF H) (cst H) (cst H) (\lam y => eH H y *> eG H y) e3)
          *> pmap (\lam (t : AddGroupHom (ZFree (C.count k)) (ZFree (D.count k))) => t x)
@@ -330,15 +331,16 @@
                   *> pmap (\lam (t : AddGroupHom (ZFree (C.count k)) (ZFree (D.count k))) => t x) (degree-sum (conj k (prism.Bd H)) (conj k (realize (mG H) (cst H) (eG H))))
                   *> pmap2 plus (pmap (\lam f => degreeHom f x) (boundary H)
                                  *> pmap (\lam (t : AddGroupHom (ZFree (C.count k)) (ZFree (D.count k))) => t x) (degreeHom.comp (boundaryMap {D} k) (kappa H)))
-                                (pmap (\lam f => degreeHom f x) (pmap (conj k) (realize.susp (quotientMap G).1) *> conj.susp k (quotientMap G).1)))
+                                (pmap (\lam f => degreeHom f x) (pmap (conj k) (realize.susp (quotientMap G).1) *> conj.susp k (quotientMap G).1)
+                                 *> inv (pmap (\lam (t : AddGroupHom (ZFree (C.count k)) (ZFree (D.count k))) => t x) (chainStep.eval G))))
       \where {
-        \func mF {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (x : C.stage (suc k)) : Quotient {D} k
+        \func mF {C D : RelCW} {k : Nat} {F G : CellStep C D k} (_ : CellHtpyStep F G) (x : C.stage (suc k)) : Quotient {D} k
           => Quotient.inc {D} k (F.high x)
 
-        \func mG {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (x : C.stage (suc k)) : Quotient {D} k
+        \func mG {C D : RelCW} {k : Nat} {F G : CellStep C D k} (_ : CellHtpyStep F G) (x : C.stage (suc k)) : Quotient {D} k
           => Quotient.inc {D} k (G.high x)
 
-        \func cst {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (x : C.stage (suc k)) : Quotient {D} k
+        \func cst {C D : RelCW} {k : Nat} {F G : CellStep C D k} (_ : CellHtpyStep F G) (_ : C.stage (suc k)) : Quotient {D} k
           => pinr ()
 
         \func eH {C D : RelCW} {k : Nat} {F G : CellStep C D k} (H : CellHtpyStep F G) (y : C.stage k) : mF H (C.inclusion k y) = mG H (C.inclusion k y)

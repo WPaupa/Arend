@@ -29,6 +29,14 @@
 
     \func fromCellular.{u} {C D : CW.{u}} (F : CellularMap C D) (k : Nat) : FiniteCellularMap C D k
       => (F.func k, FiniteTower.fromCellular F k)
+
+    \func comp.{u} {C D E : CW.{u}} {k : Nat} (G : FiniteCellularMap D E k) (F : FiniteCellularMap C D k) : FiniteCellularMap C E k
+      => (\lam x => G.1 (F.1 x), tower k G.1 F.1 G.2 F.2)
+      \where
+        \func tower.{u} {C D E : CW.{u}} (k : Nat) (g : D.stage k -> E.stage k) (f : C.stage k -> D.stage k) (T' : FiniteTower k g) (T : FiniteTower k f)
+          : FiniteTower k (\lam x => g (f x)) \elim k
+          | 0 => ()
+          | suc k => (\lam x => T'.1 (T.1 x), tower k T'.1 T.1 T'.2 T.2, \lam x => T'.3 (T.1 x) *> pmap g (T.3 x))
   }
 
 \func CellularApproximationThrough.{u} {C D : CW.{u}} (d : Nat) (f : C.Space -> D.Space)
@@ -149,3 +157,47 @@
                    (FiniteCellularHomotopy F G (suc d) H)
                    (\Pi (x : C.stage (suc d)) -> pmap inSC (H x) = inv (SeqColimit.pquotSC (F.func (suc d) x)) *> h (inSC x) *> SeqColimit.pquotSC (G.func (suc d) x)))
   => TruncP.map (approximateHomotopy F G h (suc d)) \lam A => (\lam x => (A.1 x).1, HApproxTower.toFinite {C} {D} {F} {G} {h} {suc d} {A.1} A.2, \lam x => (A.1 x).2)
+
+\func FiniteHomotopy.{u} {C D : CW.{u}} (k : Nat) (F G : FiniteCellularMap C D k)
+                         (H : \Pi (x : C.stage k) -> D.inclusion k (F.1 x) = D.inclusion k (G.1 x)) : \Type u \elim k
+  | 0 => \Sigma
+  | suc k => \Sigma (H' : \Pi (x : C.stage k) -> D.inclusion k (F.2.1 x) = D.inclusion k (G.2.1 x))
+                    (FiniteHomotopy k (FiniteCellularMap.restrict F) (FiniteCellularMap.restrict G) H')
+                    (\Pi (x : C.stage k) -> H (C.inclusion k x) = pmap (D.inclusion (suc k)) (inv (F.2.3 x) *> H' x *> G.2.3 x))
+
+\lemma approximateFiniteHomotopy.{u} {C D : CW.{u}} (k : Nat) (F G : FiniteCellularMap C D k)
+                                     (R : \Pi (x : C.stage k) -> inSC {D.seq} {k} (F.1 x) = inSC (G.1 x))
+  : TruncP (\Sigma (H : \Pi (x : C.stage k) -> D.inclusion k (F.1 x) = D.inclusion k (G.1 x))
+                   (\Pi (x : C.stage k) -> pmap (inSC {D.seq} {suc k}) (H x) = inv (SeqColimit.pquotSC (F.1 x)) *> R x *> SeqColimit.pquotSC (G.1 x))
+                   (FiniteHomotopy k F G H)) \elim k
+  | 0 => inP (\lam x => absurd (C.empty x), \lam x => absurd (C.empty x), ())
+  | suc k => \case approximateFiniteHomotopy k (FiniteCellularMap.restrict F) (FiniteCellularMap.restrict G) (lower F G R) \with {
+    | inP (H', c', T') => TruncP.map (Extension.connected k (Fiber F G R) (\lam _ => nconnected-pmap (skeleton-nconnected D (suc k)) _ _ _)
+                                                          (\lam y => (pmap (D.inclusion (suc k)) (inv (F.2.3 y) *> H' y *> G.2.3 y), advance F G R H' c' y)))
+                                     (\lam E => (\lam x => (E.1 x).1, \lam x => (E.1 x).2, (H', T', \lam y => pmap __.1 (E.2 y))))
+  }
+  \where {
+    \func lower.{u} {C D : CW.{u}} {k : Nat} (F G : FiniteCellularMap C D (suc k)) (R : \Pi (x : C.stage (suc k)) -> inSC {D.seq} {suc k} (F.1 x) = inSC (G.1 x))
+                    (y : C.stage k) : inSC {D.seq} {k} (F.2.1 y) = inSC (G.2.1 y)
+      => SeqColimit.pquotSC (F.2.1 y) *> pmap inSC (F.2.3 y) *> R (C.inclusion k y) *> inv (pmap inSC (G.2.3 y)) *> inv (SeqColimit.pquotSC (G.2.1 y))
+
+    \func Fiber.{u} {C D : CW.{u}} {k : Nat} (F G : FiniteCellularMap C D (suc k)) (R : \Pi (x : C.stage (suc k)) -> inSC {D.seq} {suc k} (F.1 x) = inSC (G.1 x))
+                    (x : C.stage (suc k))
+      => Fib (pmap (inSC {D.seq} {suc (suc k)}) {D.inclusion (suc k) (F.1 x)} {D.inclusion (suc k) (G.1 x)})
+             (inv (SeqColimit.pquotSC (F.1 x)) *> R x *> SeqColimit.pquotSC (G.1 x))
+
+    \sfunc advance.{u} {C D : CW.{u}} {k : Nat} (F G : FiniteCellularMap C D (suc k)) (R : \Pi (x : C.stage (suc k)) -> inSC {D.seq} {suc k} (F.1 x) = inSC (G.1 x))
+                       (H' : \Pi (y : C.stage k) -> D.inclusion k (F.2.1 y) = D.inclusion k (G.2.1 y))
+                       (c' : \Pi (y : C.stage k) -> pmap (inSC {D.seq} {suc k}) (H' y) = inv (SeqColimit.pquotSC (F.2.1 y)) *> lower F G R y *> SeqColimit.pquotSC (G.2.1 y))
+                       (y : C.stage k)
+      : pmap (inSC {D.seq} {suc (suc k)}) (pmap (D.inclusion (suc k)) (inv (F.2.3 y) *> H' y *> G.2.3 y))
+        = inv (SeqColimit.pquotSC (F.1 (C.inclusion k y))) *> R (C.inclusion k y) *> SeqColimit.pquotSC (G.1 (C.inclusion k y))
+      => HomotopyFiber.conjugate {_} {_} {_} {inSC {D.seq} {suc k}} {inSC {D.seq} {suc (suc k)}} {D.inclusion (suc k)} SeqColimit.pquotSC (inv (F.2.3 y) *> H' y *> G.2.3 y)
+         *> pmap (\lam t => inv (SeqColimit.pquotSC _) *> t *> SeqColimit.pquotSC _)
+                 (cancel (inSC {D.seq} {suc k}) (F.2.3 y) (G.2.3 y) (H' y) (SeqColimit.pquotSC (F.2.1 y)) (SeqColimit.pquotSC (G.2.1 y)) (R (C.inclusion k y)) (c' y))
+
+    \sfunc cancel {Y T : \Type} (j : Y -> T) {u a v b : Y} (sF : u = a) (sG : v = b) (H : u = v) {e0 e1 : T} (qF : e0 = j u) (qG : e1 = j v) (R : j a = j b)
+                  (c : pmap j H = inv qF *> (qF *> pmap j sF *> R *> inv (pmap j sG) *> inv qG) *> qG)
+      : pmap j (inv sF *> H *> sG) = R \elim sF, sG, qF, qG
+      | idp, idp, idp, idp => pmap (pmap j) (idp_*> H) *> c *> idp_*> _ *> idp_*> _ *> idp_*> R
+  }
