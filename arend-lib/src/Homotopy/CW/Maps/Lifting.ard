@@ -29,47 +29,66 @@
       => TruncP.map p \lam q => (h south, PushoutData.homotopy {_} {_} {_} {_} {_} {_} {h} {\lam _ => h south}
                                                                (\lam _ => q.1) (\lam _ => idp) (\lam a => inv (q.2 a)))
 
-\func Extension {R : RelCW} (n : Nat) (Q : R.stage (suc n) -> \Type) (old : \Pi (x : R.stage n) -> Q (R.inclusion n x))
-  => \Sigma (s : \Pi (y : R.stage (suc n)) -> Q y) (\Pi (x : R.stage n) -> s (R.inclusion n x) = old x)
+\func CellExtension {n c : Nat} {Y Z : \Type} (att : \Sigma (Fin c) (boundary n) -> Y) (b : QEquiv {PushoutData att (\lam p => p.1)} {Z})
+                    (Q : Z -> \Type) (old : \Pi (y : Y) -> Q (b (pinl y)))
+  => \Sigma (s : \Pi (z : Z) -> Q z) (\Pi (y : Y) -> s (b (pinl y)) = old y)
   \where {
-    \func Fillers {R : RelCW} (n : Nat) (Q : R.stage (suc n) -> \Type) (old : \Pi (x : R.stage n) -> Q (R.inclusion n x)) (c : Fin (R.count n))
-      => \Sigma (z : Q (R.build n (pinr c)))
-                (\Pi (s : boundary n) -> transport (\lam y => Q (R.build n y)) (PushoutData.ppglue (c,s)) (old (R.attach n (c,s))) = z)
+    \func Fillers {n c : Nat} {Y Z : \Type} (att : \Sigma (Fin c) (boundary n) -> Y) (b : QEquiv {PushoutData att (\lam p => p.1)} {Z})
+                  (Q : Z -> \Type) (old : \Pi (y : Y) -> Q (b (pinl y))) (j : Fin c)
+      => \Sigma (z : Q (b (pinr j))) (\Pi (s : boundary n) -> transport (\lam y => Q (b y)) (PushoutData.ppglue (j,s)) (old (att (j,s))) = z)
 
-    \func fromFillers {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
-                      (F : \Pi (c : Fin (R.count n)) -> Fillers n Q old c) : Extension n Q old
-      => (equiv {R} {n} {Q} {old}).ret F
+    \func fromFillers {n c : Nat} {Y Z : \Type} {att : \Sigma (Fin c) (boundary n) -> Y} {b : QEquiv {PushoutData att (\lam p => p.1)} {Z}}
+                      {Q : Z -> \Type} {old : \Pi (y : Y) -> Q (b (pinl y))}
+                      (F : \Pi (j : Fin c) -> Fillers att b Q old j) : CellExtension att b Q old
+      => (equiv {n} {c} {Y} {Z} {att} {b} {Q} {old}).ret F
 
-    \func toFillers {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
-                    (E : Extension n Q old) (c : Fin (R.count n)) : Fillers n Q old c
-      => (E.1 (R.build n (pinr c)),
-          \lam s => pmap (transport (\lam y => Q (R.build n y)) (PushoutData.ppglue (c,s))) (inv (E.2 (R.attach n (c,s))))
-                    *> pmapd (\lam y => E.1 (R.build n y)) (PushoutData.ppglue (c,s)))
+    \func toFillers {n c : Nat} {Y Z : \Type} {att : \Sigma (Fin c) (boundary n) -> Y} {b : QEquiv {PushoutData att (\lam p => p.1)} {Z}}
+                    {Q : Z -> \Type} {old : \Pi (y : Y) -> Q (b (pinl y))}
+                    (E : CellExtension att b Q old) (j : Fin c) : Fillers att b Q old j
+      => (E.1 (b (pinr j)),
+          \lam s => pmap (transport (\lam y => Q (b y)) (PushoutData.ppglue (j,s))) (inv (E.2 (att (j,s))))
+                    *> pmapd (\lam y => E.1 (b y)) (PushoutData.ppglue (j,s)))
 
-    \func equiv {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
-      : QEquiv {Extension n Q old} {\Pi (c : Fin (R.count n)) -> Fillers n Q old c} (toFillers {R} {n} {Q} {old})
-      => sigma-left {_} {_} {\lam (t : \Pi (y : PushoutData (R.attach n) __.1) -> Q (R.build n y)) => \Pi (x : R.stage n) -> t (pinl x) = old x}
-                    (pi-left {_} {_} {Q} (R.build n))
-         `transQEquiv` PushoutData.dextension-equiv (R.attach n) __.1 (\lam y => Q (R.build n y)) old
-         `transQEquiv` curry {R} {n} {Q} {old}
+    \func equiv {n c : Nat} {Y Z : \Type} {att : \Sigma (Fin c) (boundary n) -> Y} {b : QEquiv {PushoutData att (\lam p => p.1)} {Z}}
+                {Q : Z -> \Type} {old : \Pi (y : Y) -> Q (b (pinl y))}
+      : QEquiv {CellExtension att b Q old} {\Pi (j : Fin c) -> Fillers att b Q old j} (toFillers {n} {c} {Y} {Z} {att} {b} {Q} {old})
+      => sigma-left {_} {_} {\lam (t : \Pi (y : PushoutData att __.1) -> Q (b y)) => \Pi (y : Y) -> t (pinl y) = old y}
+                    (pi-left {_} {_} {Q} b)
+         `transQEquiv` PushoutData.dextension-equiv att __.1 (\lam y => Q (b y)) old
+         `transQEquiv` curry {n} {c} {Y} {Z} {att} {b} {Q} {old}
       \where
-        \func curry {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
-          : QEquiv {\Sigma (rm : \Pi (c : Fin (R.count n)) -> Q (R.build n (pinr c)))
-                           (\Pi (a : \Sigma (Fin (R.count n)) (boundary n)) -> transport (\lam y => Q (R.build n y)) (PushoutData.ppglue a) (old (R.attach n a)) = rm a.1)}
-                   {\Pi (c : Fin (R.count n)) -> Fillers n Q old c} \cowith
-          | f p c => (p.1 c, \lam s => p.2 (c, s))
-          | ret F => (\lam c => (F c).1, \lam a => (F a.1).2 a.2)
+        \func curry {n c : Nat} {Y Z : \Type} {att : \Sigma (Fin c) (boundary n) -> Y} {b : QEquiv {PushoutData att (\lam p => p.1)} {Z}}
+                    {Q : Z -> \Type} {old : \Pi (y : Y) -> Q (b (pinl y))}
+          : QEquiv {\Sigma (rm : \Pi (j : Fin c) -> Q (b (pinr j)))
+                           (\Pi (a : \Sigma (Fin c) (boundary n)) -> transport (\lam y => Q (b y)) (PushoutData.ppglue a) (old (att a)) = rm a.1)}
+                   {\Pi (j : Fin c) -> Fillers att b Q old j} \cowith
+          | f p j => (p.1 j, \lam s => p.2 (j, s))
+          | ret F => (\lam j => (F j).1, \lam a => (F a.1).2 a.2)
           | ret_f _ => idp
           | f_sec _ => idp
 
-    \lemma criterion {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
-      : TruncP (Extension n Q old) <-> (\Pi (c : Fin (R.count n)) -> TruncP (Fillers n Q old c))
-      => (\lam t c => TruncP.map t (toFillers __ c), \lam h => TruncP.map (FinSet.finiteAC h) fromFillers)
+    \lemma criterion {n c : Nat} {Y Z : \Type} {att : \Sigma (Fin c) (boundary n) -> Y} {b : QEquiv {PushoutData att (\lam p => p.1)} {Z}}
+                     {Q : Z -> \Type} {old : \Pi (y : Y) -> Q (b (pinl y))}
+      : TruncP (CellExtension att b Q old) <-> (\Pi (j : Fin c) -> TruncP (Fillers att b Q old j))
+      => (\lam t j => TruncP.map t (toFillers __ j), \lam h => TruncP.map (FinSet.finiteAC h) fromFillers)
+
+    \lemma connected.{u} {n c : Nat} {Y Z : \Type u} (att : \Sigma (Fin c) (boundary n) -> Y) (b : QEquiv {PushoutData att (\lam p => p.1)} {Z})
+                         (Q : Z -> \Type u) (conn : \Pi (j : Fin c) -> isNConnectedType n (Q (b (pinr j))))
+                         (old : \Pi (y : Y) -> Q (b (pinl y))) : TruncP (CellExtension att b Q old)
+      => (criterion {n} {c} {Y} {Z} {att} {b} {Q} {old}).2 (\lam j => sphereFill n (conn j) _)
+  }
+
+\func Extension {R : RelCW} (n : Nat) (Q : R.stage (suc n) -> \Type) (old : \Pi (x : R.stage n) -> Q (R.inclusion n x))
+  => CellExtension (R.attach n) (R.build n) Q old
+  \where {
+    \func fromFillers {R : RelCW} {n : Nat} {Q : R.stage (suc n) -> \Type} {old : \Pi (x : R.stage n) -> Q (R.inclusion n x)}
+                      (F : \Pi (c : Fin (R.count n)) -> CellExtension.Fillers (R.attach n) (R.build n) Q old c) : Extension n Q old
+      => CellExtension.fromFillers F
 
     \lemma connected.{u} {R : RelCW.{u}} (n : Nat) (Q : R.stage (suc n) -> \Type u)
                          (conn : \Pi (c : Fin (R.count n)) -> isNConnectedType n (Q (R.build n (pinr c))))
                          (old : \Pi (x : R.stage n) -> Q (R.inclusion n x)) : TruncP (Extension n Q old)
-      => (criterion {R} {n} {Q} {old}).2 (\lam c => sphereFill n (conn c) _)
+      => CellExtension.connected (R.attach n) (R.build n) Q conn old
   }
 
 \lemma relativeLift.{u} {R : RelCW.{u}} {d : Nat} (b : R.Bound d) {Y Z : \Type u} (f : Y -> Z) (c : isNConnectedMap d f) (g : R.Space -> Z)

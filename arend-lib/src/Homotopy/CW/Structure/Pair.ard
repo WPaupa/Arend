@@ -1,0 +1,310 @@
+\import Data.Or
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Maps.Cellular
+\import Homotopy.CW.Structure.Attach (cellsCof, cellsSplit, unitContr)
+\import Homotopy.CW.Structure.Finite (discrete)
+\import Homotopy.CW.Structure.Span
+\import Homotopy.Cofiber
+\import Homotopy.Pushout
+\import Logic
+\import Logic.Unique
+\import Paths
+\import Paths.Meta
+\import Set.Fin
+
+\open PushoutData (ppglue, rec, congr, swap, collapse, homotopy)
+\open SeqColimit (pquotSC)
+
+\func pairBase {A X : CW} (i : CellularMap A X) (n : Nat) (q : PushoutData (i.func n) (A.inclusion n)) : X.stage (suc n)
+  => rec (X.inclusion n) (i.func (suc n)) (i.natural n) q
+
+\func pairGlue {A X : CW} (i : CellularMap A X) (n : Nat) {r : Nat} (att : \Sigma (Fin r) (boundary n) -> X.stage n)
+               (center : Fin r -> X.stage (suc n)) (glue : \Pi (p : \Sigma (Fin r) (boundary n)) -> X.inclusion n (att p) = center p.1)
+               (w : PushoutData (\lam p => pinl {_} {_} {_} {i.func n} {A.inclusion n} (att p)) (\lam p => p.1)) : X.stage (suc n)
+  => rec (pairBase i n) center glue w
+
+\record CWPair.{u} {
+  | sub : CW.{u}
+  | ambient : CW.{u}
+  | inc : CellularMap sub ambient
+  | rcount (n : Nat) : Nat
+  | rattach (n : Nat) : \Sigma (Fin (rcount n)) (boundary n) -> ambient.stage n
+  | rcenter (n : Nat) : Fin (rcount n) -> ambient.stage (suc n)
+  | rglue (n : Nat) (p : \Sigma (Fin (rcount n)) (boundary n)) : ambient.inclusion n (rattach n p) = rcenter n p.1
+  | rbuild-equiv (n : Nat) : IsEquiv (pairGlue inc n (rattach n) (rcenter n) (rglue n))
+
+  \func Base (n : Nat) => PushoutData (inc.func n) (sub.inclusion n)
+
+  \func rbuild (n : Nat) : QEquiv (pairGlue inc n (rattach n) (rcenter n) (rglue n))
+    => IsEquiv.toQEquiv (rbuild-equiv n)
+} \where {
+  \func empty.{u} (X : CW.{u}) : CWPair.{u} \cowith
+    | sub => discrete 0
+    | ambient => X
+    | inc => none X
+    | rcount => X.count
+    | rattach => X.attach
+    | rcenter n c => X.build n (pinr c)
+    | rglue n p => pmap (X.build n) (ppglue p)
+    | rbuild-equiv n => transport IsEquiv (ext (empty.hom X n))
+                                  (IsEquiv.trans (congr.isEquiv.{u} _ (\lam p => p.1) (X.attach n) (\lam p => p.1) idEquiv
+                                                                    (symQEquiv (PushoutData.pinl-equiv (none.empty (suc n)))) idEquiv
+                                                                    (\lam _ => idp) (\lam _ => idp))
+                                                 (inP (X.build n)))
+    \where {
+      \func none (X : CW) : CellularMap (discrete 0) X \cowith
+        | func n x => absurd (empty n x)
+        | natural n x => absurd (empty n x)
+        \where
+          \func empty (n : Nat) (x : discrete.stage 0 n) : Empty \elim n, x
+            | 0, x => x
+            | suc _, ()
+
+      \func hom (X : CW) (n : Nat) (w : PushoutData (\lam p => pinl {_} {_} {_} {SeqMap.func {none X} n} {RelCW.inclusion {discrete 0} n} (X.attach n p)) (\lam p => p.1))
+        : X.build n (congr _ (\lam p => p.1) (X.attach n) (\lam p => p.1) (\lam p => p) (PushoutData.pinl-equiv (none.empty (suc n))).ret (\lam c => c)
+                           (\lam _ => idp) (\lam _ => idp) w)
+          = pairGlue (none X) n (X.attach n) (\lam c => X.build n (pinr c)) (\lam p => pmap (X.build n) (ppglue p)) w
+        => PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+             {\lam w => X.build n (congr _ (\lam p => p.1) (X.attach n) (\lam p => p.1) (\lam p => p) (PushoutData.pinl-equiv (none.empty (suc n))).ret (\lam c => c)
+                                         (\lam _ => idp) (\lam _ => idp) w)}
+             {pairGlue (none X) n (X.attach n) (\lam c => X.build n (pinr c)) (\lam p => pmap (X.build n) (ppglue p))}
+             (PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+                {\lam q => X.build n (pinl ((PushoutData.pinl-equiv (none.empty (suc n))).ret q))} {pairBase (none X) n}
+                (\lam _ => idp) (\lam a => absurd (none.empty (suc n) a)) (\lam a => absurd (none.empty n a)))
+             (\lam _ => idp) (\lam p => inv (pmap_*>-comm (X.build n) idp (ppglue p))) w
+    }
+
+  \func full.{u} (X : CW.{u}) : CWPair.{u} \cowith
+    | sub => X
+    | ambient => X
+    | inc => SeqMap.id X.seq
+    | rcount _ => 0
+    | rattach => full.att X
+    | rcenter => full.cen X
+    | rglue => full.glu X
+    | rbuild-equiv n => transport IsEquiv (ext (\lam w => inv (full.hom X n w)))
+                                  (IsEquiv.trans (IsEquiv.trans (inP (symQEquiv (PushoutData.pinl-equiv (full.none0))))
+                                                                (inP (swap (\lam x => x) (X.inclusion n))))
+                                                 (inP (collapse (X.inclusion n))))
+    \where {
+      \func att (X : CW) (n : Nat) (p : \Sigma (Fin 0) (boundary n)) : X.stage n \elim p
+        | ((), _)
+
+      \func cen (X : CW) (n : Nat) (j : Fin 0) : X.stage (suc n) \elim j
+        | ()
+
+      \func none0 (j : Fin 0) : Empty \elim j
+        | ()
+
+      \func glu (X : CW) (n : Nat) (p : \Sigma (Fin 0) (boundary n)) : X.inclusion n (att X n p) = cen X n p.1 \elim p
+        | ((), _)
+
+      \func hom (X : CW) (n : Nat) (w : PushoutData (\lam p => pinl {_} {_} {_} {\lam x => x} {X.inclusion n} (att X n p)) (\lam p => p.1))
+        : pairGlue (SeqMap.id X.seq) n (att X n) (cen X n) (glu X n) w
+          = collapse.map (X.inclusion n) (swap.map (\lam x => x) (X.inclusion n) ((PushoutData.pinl-equiv (none0)).ret w))
+        => PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+             {pairGlue (SeqMap.id X.seq) n (att X n) (cen X n) (glu X n)}
+             {\lam w => collapse.map (X.inclusion n) (swap.map (\lam x => x) (X.inclusion n) ((PushoutData.pinl-equiv (none0)).ret w))}
+             (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {pairBase (SeqMap.id X.seq) n}
+                {\lam q => collapse.map (X.inclusion n) (swap.map (\lam x => x) (X.inclusion n) q)}
+                (\lam _ => idp) (\lam _ => idp) (\lam a => idp_*> _ *> pmap_inv-comm (collapse.map (X.inclusion n)) (ppglue a)))
+             (\lam j => \case j \with {}) (\lam p => \case p.1 \with {}) w
+    }
+
+  \func comp.{u} (P : CWPair.{u}) (Q : CWPair.{u} { | sub => P.ambient }) : CWPair.{u} \cowith
+    | sub => P.sub
+    | ambient => Q.ambient
+    | inc => SeqMap.comp Q.inc P.inc
+    | rcount n => P.rcount n Nat.+ Q.rcount n
+    | rattach n p => Nested.att {\new Nested P Q n} (OrFin.aux p.1) p.2
+    | rcenter n j => Nested.cen {\new Nested P Q n} (OrFin.aux j)
+    | rglue n p => Nested.glu {\new Nested P Q n} (OrFin.aux p.1) p.2
+    | rbuild-equiv n => transport IsEquiv (ext (Nested.hom {\new Nested P Q n})) (inP (Nested.chain {\new Nested P Q n}))
+
+  \record Nested.{u} (P : CWPair.{u}) (Q : CWPair.{u} { | sub => P.ambient }) (n : Nat) {
+    \func Cells => Or (Fin (P.rcount n)) (Fin (Q.rcount n))
+
+    \func att (o : Cells) (s : boundary n) : Q.ambient.stage n \elim o
+      | inl c => Q.inc.func n (P.rattach n (c, s))
+      | inr c => Q.rattach n (c, s)
+
+    \func cen (o : Cells) : Q.ambient.stage (suc n) \elim o
+      | inl c => Q.inc.func (suc n) (P.rcenter n c)
+      | inr c => Q.rcenter n c
+
+    \func glu (o : Cells) (s : boundary n) : Q.ambient.inclusion n (att o s) = cen o \elim o
+      | inl c => Q.inc.natural n (P.rattach n (c, s)) *> pmap (Q.inc.func (suc n)) (P.rglue n (c, s))
+      | inr c => Q.rglue n (c, s)
+
+    \func BaseAX => PushoutData (\lam a => Q.inc.func n (P.inc.func n a)) (P.sub.inclusion n)
+
+    \func u1 (p : \Sigma (Fin (P.rcount n)) (boundary n)) : BaseAX => pinl (Q.inc.func n (P.rattach n p))
+
+    \func u2 (p : \Sigma (Fin (Q.rcount n)) (boundary n)) : BaseAX => pinl (Q.rattach n p)
+
+    \func M => PushoutData u1 (\lam p => p.1)
+
+    \func WP => PushoutData (\lam p => pinl {_} {_} {_} {P.inc.func n} {P.sub.inclusion n} (P.rattach n p)) (\lam p => p.1)
+
+    \func T0 => PushoutData {P.ambient.stage n} {Q.ambient.stage n} {WP} (Q.inc.func n) (\lam b => pinl (pinl b))
+
+    \func glueT0 (b : P.ambient.stage n) : pinl (Q.inc.func n b) = {T0} pinr (pinl (pinl b))
+      => ppglue {_} {_} {_} {Q.inc.func n} {\lam b => pinl (pinl b)} b
+
+    \func glueAX (a : P.sub.stage n) : pinl (Q.inc.func n (P.inc.func n a)) = {BaseAX} pinr (P.sub.inclusion n a)
+      => ppglue {_} {_} {_} {\lam a => Q.inc.func n (P.inc.func n a)} {P.sub.inclusion n} a
+
+    \func lift (q : P.Base n) : T0 => pinr (pinl q)
+
+    \func kappa (q : BaseAX) : T0
+      => rec (\lam x => pinl x) (\lam a' => lift (pinr a')) (\lam a => glueT0 (P.inc.func n a) *> pmap lift (ppglue a)) q
+
+    \func psi0 (m : M) : T0
+      => rec kappa (\lam c => pinr (pinr c)) (\lam p => glueT0 (P.rattach n p) *> pmap pinr (ppglue p)) m
+
+    \func mu (q : P.Base n) : M
+      => rec (\lam b => pinl (pinl (Q.inc.func n b))) (\lam a' => pinl (pinr a')) (\lam a => pmap pinl (glueAX a)) q
+
+    \func nu (w : WP) : M
+      => rec mu pinr ppglue w
+
+    \func psi0inv (t : T0) : M
+      => rec (\lam x => pinl (pinl x)) nu (\lam _ => idp) t
+
+    \func backBase (q : BaseAX) : psi0inv (kappa q) = pinl q
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam q => psi0inv (kappa q)} {pinl} (\lam _ => idp) (\lam _ => idp)
+                  (\lam a => inv (pmap_*>-comm psi0inv (glueT0 (P.inc.func n a)) (pmap lift (ppglue a)))) q
+
+    \func back (m : M) : psi0inv (psi0 m) = m
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam m => psi0inv (psi0 m)} {\lam m => m} backBase (\lam _ => idp)
+                  (\lam p => inv (pmap_*>-comm psi0inv (glueT0 (P.rattach n p)) (pmap pinr (ppglue p)))) m
+
+    \func secBase (q : P.Base n) : psi0 (mu q) = lift q
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam q => psi0 (mu q)} {lift} glueT0 (\lam _ => idp) (\lam _ => idp) q
+
+    \func secW (w : WP) : psi0 (nu w) = pinr w
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam w => psi0 (nu w)} {pinr} secBase (\lam _ => idp) (\lam _ => idp) w
+
+    \func sec (t : T0) : psi0 (psi0inv t) = t
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam t => psi0 (psi0inv t)} {\lam t => t} (\lam _ => idp) secW (\lam _ => idp) t
+
+    \func psi0Equiv : QEquiv {M} {T0} \cowith
+      | f => psi0
+      | ret => psi0inv
+      | ret_f => back
+      | f_sec => sec
+
+    \func E1 : QEquiv {T0} {Q.Base n}
+      => IsEquiv.toQEquiv (congr.isEquiv.{u} (Q.inc.func n) (\lam b => pinl (pinl b)) (Q.inc.func n) (P.ambient.inclusion n)
+                                             idEquiv idEquiv (P.rbuild n) (\lam _ => idp) (\lam _ => idp))
+
+    \func Psi : QEquiv {M} {Q.Base n} => psi0Equiv `transQEquiv` E1
+
+    \func Rat (p : \Sigma (Fin (P.rcount n Nat.+ Q.rcount n)) (boundary n)) : Q.ambient.stage n => att (OrFin.aux p.1) p.2
+
+    \func WAX => PushoutData (\lam p => pinl {_} {_} {_} {\lam a => Q.inc.func n (P.inc.func n a)} {P.sub.inclusion n} (Rat p)) (\lam p => p.1)
+
+    \func alphaJ (o : Cells) (s : boundary n) : cellsSplit.join u1 u2 (o, s) = pinl (att o s) \elim o
+      | inl _ => idp
+      | inr _ => idp
+
+    \func Aq : QEquiv {WAX} {PushoutData (cellsSplit.join u1 u2) (\lam p => p.1)}
+      => IsEquiv.toQEquiv (congr.isEquiv.{u} (\lam p => pinl (Rat p)) (\lam p => p.1) (cellsSplit.join u1 u2) (\lam p => p.1)
+                                             (span.sigmaMap {boundary n} OrFin.aux) idEquiv OrFin.aux (\lam p => alphaJ (OrFin.aux p.1) p.2) (\lam _ => idp))
+
+    \func Cq : QEquiv {PushoutData (\lam p => pinl {_} {_} {_} {u1} {\lam p => p.1} (u2 p)) (\lam p => p.1)}
+                      {PushoutData (\lam p => pinl {_} {_} {_} {Q.inc.func n} {P.ambient.inclusion n} (Q.rattach n p)) (\lam p => p.1)}
+      => IsEquiv.toQEquiv (congr.isEquiv.{u} (\lam p => pinl (u2 p)) (\lam p => p.1) (\lam p => pinl (Q.rattach n p)) (\lam p => p.1)
+                                             idEquiv Psi idEquiv (\lam _ => idp) (\lam _ => idp))
+
+    \func chain : QEquiv {WAX} {Q.ambient.stage (suc n)}
+      => Aq `transQEquiv` cellsSplit u1 u2 `transQEquiv` Cq `transQEquiv` Q.rbuild n
+
+    \func DCB (w : PushoutData (cellsSplit.join u1 u2) (\lam p => p.1)) : Q.ambient.stage (suc n)
+      => Q.rbuild n (Cq (cellsSplit.to u1 u2 w))
+
+    \func homBase (q : BaseAX) : chain (pinl q) = pairBase (SeqMap.comp Q.inc P.inc) n q
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam q => chain (pinl q)} {pairBase (SeqMap.comp Q.inc P.inc) n} (\lam _ => idp) (\lam _ => idp)
+                  (\lam a => idp_*> _ *> inv (pmap_*>-comm (\lam t => pairBase Q.inc n (E1 t)) (glueT0 (P.inc.func n a)) (pmap lift (ppglue a))
+                                              *> pmap (`*> _) (pmap_*>-comm (pairBase Q.inc n) idp (ppglue {_} {_} {_} {Q.inc.func n} {P.ambient.inclusion n} (P.inc.func n a))
+                                                                 *> idp_*> _))) q
+
+    \func hrO (o : Cells) : Q.rbuild n (Cq (cellsSplit.toRight u1 u2 o)) = cen o \elim o
+      | inl _ => idp
+      | inr _ => idp
+
+    \func hgO (o : Cells) (s : boundary n)
+      : idp *> glu o s = pmap DCB (pmap pinl (inv (alphaJ o s)) *> ppglue {_} {_} {_} {cellsSplit.join u1 u2} {\lam p => p.1} (o, s)) *> hrO o \elim o
+      | inl c => idp_*> _ *> inv (pmap_*>-comm DCB idp (ppglue {_} {_} {_} {cellsSplit.join u1 u2} {\lam p => p.1} (inl c, s)) *> idp_*> _
+                                  *> pmap_*>-comm (\lam t => pairBase Q.inc n (E1 t)) (glueT0 (P.rattach n (c, s))) (pmap pinr (ppglue (c, s)))
+                                  *> pmap (`*> _) (pmap_*>-comm (pairBase Q.inc n) idp (ppglue {_} {_} {_} {Q.inc.func n} {P.ambient.inclusion n} (P.rattach n (c, s)))
+                                                     *> idp_*> _))
+      | inr c => idp_*> _ *> inv (pmap_*>-comm DCB idp (ppglue {_} {_} {_} {cellsSplit.join u1 u2} {\lam p => p.1} (inr c, s)) *> idp_*> _
+                                  *> pmap_*>-comm (Q.rbuild n) idp (ppglue (c, s)) *> idp_*> _)
+
+    \func hom (w : WAX) : chain w = pairGlue (SeqMap.comp Q.inc P.inc) n Rat (\lam j => cen (OrFin.aux j)) (\lam p => glu (OrFin.aux p.1) p.2) w
+      => homotopy {_} {_} {_} {_} {_} {_} {chain} {pairGlue (SeqMap.comp Q.inc P.inc) n Rat (\lam j => cen (OrFin.aux j)) (\lam p => glu (OrFin.aux p.1) p.2)}
+                  homBase (\lam j => hrO (OrFin.aux j)) (\lam p => hgO (OrFin.aux p.1) p.2) w
+  }
+}
+
+\func PairMap.{u} (P Q : CWPair.{u})
+  => \Sigma (F : CellularMap P.sub Q.sub) (G : CellularMap P.ambient Q.ambient) (SeqMap.Homotopy (SeqMap.comp G P.inc) (SeqMap.comp Q.inc F))
+
+\func PairHomotopy.{u} {P Q : CWPair.{u}} (M N : PairMap P Q)
+  => \Sigma (hF : CellularHomotopy M.1 N.1) (hG : CellularHomotopy M.2 N.2)
+            (\Pi (n : Nat) (a : P.sub.stage n)
+              -> hG.1 n (P.inc.func n a) *> pmap (Q.ambient.inclusion n) (N.3.1 n a)
+               = pmap (Q.ambient.inclusion n) (M.3.1 n a) *> Q.inc.natural n (M.1.func n a) *> pmap (Q.inc.func (suc n)) (hF.1 n a)
+                 *> inv (Q.inc.natural n (N.1.func n a)))
+
+\func constRel.{u} (A : \Type u) : RelCW.{u} \cowith
+  | stage _ => A
+  | count _ => 0
+  | attach _ p => \case p.1 \with {}
+  | build _ => symQEquiv (PushoutData.pinl-equiv (\lam (j : Fin 0) => \case j \with {}))
+
+\func cofiberStructure.{u} {A X : \Type u} {i : A -> X} (s : RelativeStructure i) : RelativeStructure {\Sigma} {Cof i} (\lam _ => pinr ())
+  => (span (cofiberStructure.lift s) (cofiberStructure.point A), cofiberStructure.base s, cofiberStructure.space s, cofiberStructure.triangle s)
+  \where {
+    \func lift.{u} {A X : \Type u} {i : A -> X} (s : RelativeStructure i) : SeqMap (constRel A).seq s.1.seq \cowith
+      | func n a => iter s.1.seq 0 n (s.2 a)
+      | natural _ _ => idp
+
+    \func point.{u} (A : \Type u) : SeqMap (constRel A).seq (constRel.{u} (\Sigma)).seq \cowith
+      | func _ _ => ()
+      | natural _ _ => idp
+
+    \lemma contr.{u} {A X : \Type u} {i : A -> X} (s : RelativeStructure i) : Contr (Cof (\lam a => s.2 a))
+      => Contr.Contr_QEquiv (swap (\lam _ => ()) (\lam a => a)
+                              `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{u} (\lam a => a) (\lam _ => ()) (\lam a => s.2 a) (\lam _ => ())
+                                                                               idEquiv s.2 idEquiv (\lam _ => idp) (\lam _ => idp)))
+                            (cellsCof.point-contr A)
+
+    \func base.{u} {A X : \Type u} {i : A -> X} (s : RelativeStructure i) : QEquiv {\Sigma} {Cof (\lam a => s.2 a)}
+      => symQEquiv (IsEquiv.toQEquiv (contr-equiv (contr s) unitContr {\lam _ => ()}))
+
+    \func square {Z W : \Type} (e : W -> Z) {w0 w1 w2 : W} {z : Z} (t : e w0 = z) (P : w1 = w0) (q : w1 = w2)
+      : (inv t *> pmap e (inv P)) *> pmap e q = idp *> (inv t *> pmap e (inv (inv q *> P))) \elim t, P, q
+      | idp, idp, idp => idp
+
+    \func alpha.{u} {A X : \Type u} {i : A -> X} (s : RelativeStructure i) (c : SeqColimit (constRel A).seq)
+      : i (const.collapse c) = s.3 (realize (lift s) c)
+      => SeqColimit.homotopy {(constRel A).seq} {X} {\lam c => i (const.collapse c)} {\lam c => s.3 (realize (lift s) c)}
+                             (\lam n a => inv (s.4 a) *> pmap s.3 (inv (iter.path s.1.seq 0 n (s.2 a))))
+                             (\lam n a => square s.3 (s.4 a) (iter.path s.1.seq 0 n (s.2 a)) (pquotSC (iter s.1.seq 0 n (s.2 a)))) c
+
+    \func compare.{u} {A X : \Type u} {i : A -> X} (s : RelativeStructure i) : QEquiv {PushoutData (realize (lift s)) (realize (point A))} {Cof i}
+      => IsEquiv.toQEquiv (congr.isEquiv.{u} (realize (lift s)) (realize (point A)) i (\lam _ => ()) (symQEquiv (const.equiv A)) s.3
+                                             (symQEquiv (const.equiv (\Sigma))) (alpha s) (\lam _ => idp))
+
+    \func space.{u} {A X : \Type u} {i : A -> X} (s : RelativeStructure i) : QEquiv {RelCW.Space {span (lift s) (point A)}} {Cof i}
+      => span.realization (lift s) (point A) `transQEquiv` compare s
+
+    \func triangle.{u} {A X : \Type u} {i : A -> X} (s : RelativeStructure i) (u : \Sigma) : space s (inSC (base s u)) = pinr ()
+      => pmap (\lam w => space s (inSC {RelCW.seq {span (lift s) (point A)}} {0} w)) (isContr=>isProp (contr s) (base s u) (pinr ()))
+         *> pmap (compare s) (span.realization.right (lift s) (point A) {0} ())
+  }

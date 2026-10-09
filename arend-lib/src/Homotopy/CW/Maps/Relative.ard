@@ -1,0 +1,125 @@
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Maps.Approximation
+\import Homotopy.CW.Maps.Cellular
+\import Homotopy.CW.Maps.Lifting
+\import Homotopy.CW.Structure.Connectivity (skeleton-nconnected)
+\import Homotopy.CW.Structure.Pair
+\import Homotopy.Connectivity
+\import Homotopy.Fibration
+\import Homotopy.Pushout
+\import Logic
+\import Paths
+
+\open PushoutData (ppglue, drec)
+\open SeqColimit (pquotSC)
+
+\record RelativeFamily.{u} (P : CWPair.{u}) {
+  | Fam (k : Nat) : P.ambient.stage k -> \Type u
+  | adv (k : Nat) (x : P.ambient.stage k) : Fam k x -> Fam (suc k) (P.ambient.inclusion k x)
+  | pre (k : Nat) (a : P.sub.stage k) : Fam k (P.inc.func k a)
+  | pre-adv (k : Nat) (a : P.sub.stage k)
+    : transport (Fam (suc k)) (P.inc.natural k a) (adv k (P.inc.func k a) (pre k a)) = pre (suc k) (P.sub.inclusion k a)
+  | conn (k : Nat) (x : P.ambient.stage (suc k)) : isNConnectedType k (Fam (suc k) x)
+
+  \func Tower (k : Nat) (s : \Pi (x : P.ambient.stage k) -> Fam k x) : \Type u \elim k
+    | 0 => \Sigma
+    | suc k => \Sigma (s' : \Pi (x : P.ambient.stage k) -> Fam k x) (Tower k s')
+                      (\Pi (x : P.ambient.stage k) -> s (P.ambient.inclusion k x) = adv k x (s' x))
+                      (\Pi (a : P.sub.stage k) -> s' (P.inc.func k a) = pre k a)
+
+  \func Section (k : Nat)
+    => \Sigma (s : \Pi (x : P.ambient.stage k) -> Fam k x) (Tower k s) (\Pi (a : P.sub.stage k) -> s (P.inc.func k a) = pre k a)
+
+  \func baseGlue {k : Nat} (s : \Pi (x : P.ambient.stage k) -> Fam k x) (r : \Pi (a : P.sub.stage k) -> s (P.inc.func k a) = pre k a) (a : P.sub.stage k)
+    : transport (\lam q => Fam (suc k) (pairBase P.inc k q)) (ppglue a) (adv k (P.inc.func k a) (s (P.inc.func k a))) = pre (suc k) (P.sub.inclusion k a)
+    => inv (transport_pmap (Fam (suc k)) (pairBase P.inc k) (ppglue a) _)
+       *> pmap (\lam w => transport (Fam (suc k)) (P.inc.natural k a) (adv k (P.inc.func k a) w)) (r a) *> pre-adv k a
+
+  \func base {k : Nat} (s : \Pi (x : P.ambient.stage k) -> Fam k x) (r : \Pi (a : P.sub.stage k) -> s (P.inc.func k a) = pre k a)
+             (q : P.Base k) : Fam (suc k) (pairBase P.inc k q)
+    => drec (\lam q => Fam (suc k) (pairBase P.inc k q)) (\lam x => adv k x (s x)) (pre (suc k)) (\lam a => pathOver (baseGlue s r a)) q
+
+  \lemma section (k : Nat) : TruncP (Section k) \elim k
+    | 0 => inP (\lam x => absurd (P.ambient.empty x), (), \lam a => absurd (P.sub.empty a))
+    | suc k => \case section k \with {
+      | inP S => TruncP.map (CellExtension.connected (\lam p => pinl (P.rattach k p)) (P.rbuild k) (Fam (suc k)) (\lam _ => conn k _) (base S.1 S.3))
+                            \lam E => (E.1, (S.1, S.2, \lam x => E.2 (pinl x), S.3), \lam a => E.2 (pinr a))
+    }
+}
+
+\func approxFamily.{u} {P : CWPair.{u}} {Y : CW.{u}} (f : P.ambient.Space -> Y.Space) (FA : CellularMap P.sub Y)
+                   (hA : \Pi (z : P.sub.Space) -> realize FA z = f (realize P.inc z)) : RelativeFamily P \cowith
+  | Fam => ApproxFiber f
+  | adv _ => ApproxFiber.advanceAt f
+  | pre k a => (FA.func k a, hA (inSC a))
+  | pre-adv k a => fibTransport {_} {_} {_} {inSC {Y.seq} {suc k}} {\lam x => f (inSC x)} (P.inc.natural k a) _
+                     *> fibExt (FA.natural k a)
+                          (alg (pquotSC (FA.func k a)) (hA (inSC a)) (pmap f (pquotSC (P.inc.func k a)))
+                               (pmap (\lam x => f (inSC x)) (P.inc.natural k a))
+                               (pmap (hA (inSC a) *>) (inv (pmap_*>-comm f (pquotSC (P.inc.func k a)) (pmap inSC (P.inc.natural k a))))
+                                 *> inv (homotopy-isNatural (realize FA) (\lam z => f (realize P.inc z)) hA (pquotSC a))))
+  | conn k _ => skeleton-nconnected Y k _
+  \where {
+    \func fibTransport {X Y Z : \Type} {g : Y -> Z} {h : X -> Z} {x x' : X} (p : x = x') (w : Fib g (h x))
+      : transport (\lam x => Fib g (h x)) p w = (w.1, w.2 *> pmap h p) \elim p
+      | idp => idp
+
+    \func fibExt {Y Z : \Type} {g : Y -> Z} {z : Z} {y y' : Y} (e : y = y') {p : g y = z} {p' : g y' = z} (c : p = pmap g e *> p')
+      : ((y, p) : Fib g z) = (y', p') \elim e
+      | idp => pmap (\lam (t : g y = z) => ((y, t) : Fib g z)) (c *> idp_*> p')
+
+    \func alg {Z : \Type} {y0 y1 y2 z0 z1 z2 : Z} (q : y0 = y1) {m : y1 = y2} (H0 : y0 = z0) (U : z0 = z1) (W : z1 = z2) {H1 : y2 = z2}
+              (nat : H0 *> (U *> W) = (q *> m) *> H1) : (inv q *> H0 *> U) *> W = m *> H1 \elim q, m, H1
+      | idp, idp, idp => pmap (`*> W) (idp_*> _) *> *>-assoc _ _ _ *> nat
+
+    \func toApprox.{u} {P : CWPair.{u}} {Y : CW.{u}} {f : P.ambient.Space -> Y.Space} {FA : CellularMap P.sub Y}
+                   {hA : \Pi (z : P.sub.Space) -> realize FA z = f (realize P.inc z)} {k : Nat} {s : \Pi (x : P.ambient.stage k) -> ApproxFiber f k x}
+                   (T : RelativeFamily.Tower {approxFamily f FA hA} k s) : ApproxTower f k s \elim k, T
+      | 0, _ => ()
+      | suc k, (s', T', q, _) => (s', toApprox T', q)
+  }
+
+\lemma relativeApproximationThrough.{u} {P : CWPair.{u}} {Y : CW.{u}} (d : Nat) (f : P.ambient.Space -> Y.Space) (FA : CellularMap P.sub Y)
+                                    (hA : \Pi (z : P.sub.Space) -> realize FA z = f (realize P.inc z))
+  : TruncP (\Sigma (A : CellularApproximationThrough d f)
+                   (\Pi (a : P.sub.stage (suc d)) -> ((A.1.1 (P.inc.func (suc d) a), A.2 (P.inc.func (suc d) a)) : ApproxFiber f (suc d) _)
+                                                     = (FA.func (suc d) a, hA (inSC a))))
+  => TruncP.map (RelativeFamily.section {approxFamily f FA hA} (suc d))
+       \lam S => (((\lam x => (S.1 x).1, ApproxTower.toFinite f {suc d} {S.1} (approxFamily.toApprox {P} {Y} {f} {FA} {hA} {suc d} {S.1} S.2)),
+                   \lam x => (S.1 x).2), S.3)
+
+\func homotopyFamily.{u} {P : CWPair.{u}} {Y : CW.{u}} (F G : CellularMap P.ambient Y) (h : \Pi (z : P.ambient.Space) -> realize F z = realize G z)
+                     (pre : \Pi (k : Nat) (a : P.sub.stage k) -> HomotopyFiber F G h k (P.inc.func k a))
+                     (pre-adv : \Pi (k : Nat) (a : P.sub.stage k)
+                       -> transport (HomotopyFiber F G h (suc k)) (P.inc.natural k a) (HomotopyFiber.advanceAt F G h (P.inc.func k a) (pre k a))
+                        = pre (suc k) (P.sub.inclusion k a)) : RelativeFamily P \cowith
+  | Fam => HomotopyFiber F G h
+  | adv _ => HomotopyFiber.advanceAt F G h
+  | pre => pre
+  | pre-adv => pre-adv
+  | conn k _ => nconnected-pmap (skeleton-nconnected Y (suc k)) _ _ _
+  \where
+    \func toApprox.{u} {P : CWPair.{u}} {Y : CW.{u}} {F G : CellularMap P.ambient Y} {h : \Pi (z : P.ambient.Space) -> realize F z = realize G z}
+                   {pre : \Pi (k : Nat) (a : P.sub.stage k) -> HomotopyFiber F G h k (P.inc.func k a)}
+                   {pre-adv : \Pi (k : Nat) (a : P.sub.stage k)
+                     -> transport (HomotopyFiber F G h (suc k)) (P.inc.natural k a) (HomotopyFiber.advanceAt F G h (P.inc.func k a) (pre k a))
+                      = pre (suc k) (P.sub.inclusion k a)}
+                   {k : Nat} {s : \Pi (x : P.ambient.stage k) -> HomotopyFiber F G h k x}
+                   (T : RelativeFamily.Tower {homotopyFamily F G h pre pre-adv} k s) : HApproxTower F G h k s \elim k, T
+      | 0, _ => ()
+      | suc k, (s', T', q, _) => (s', toApprox T', q)
+
+\lemma relativeHomotopyThrough.{u} {P : CWPair.{u}} {Y : CW.{u}} (d : Nat) (F G : CellularMap P.ambient Y) (h : \Pi (z : P.ambient.Space) -> realize F z = realize G z)
+                               (pre : \Pi (k : Nat) (a : P.sub.stage k) -> HomotopyFiber F G h k (P.inc.func k a))
+                               (pre-adv : \Pi (k : Nat) (a : P.sub.stage k)
+                                 -> transport (HomotopyFiber F G h (suc k)) (P.inc.natural k a) (HomotopyFiber.advanceAt F G h (P.inc.func k a) (pre k a))
+                                  = pre (suc k) (P.sub.inclusion k a))
+  : TruncP (\Sigma (s : \Pi (x : P.ambient.stage (suc d)) -> HomotopyFiber F G h (suc d) x)
+                   (FiniteCellularHomotopy F G (suc d) (\lam x => (s x).1))
+                   (\Pi (a : P.sub.stage (suc d)) -> s (P.inc.func (suc d) a) = pre (suc d) a))
+  => TruncP.map (RelativeFamily.section {homotopyFamily F G h pre pre-adv} (suc d))
+       \lam S => (S.1, HApproxTower.toFinite {P.ambient} {Y} {F} {G} {h} {suc d} {S.1}
+                         (homotopyFamily.toApprox {P} {Y} {F} {G} {h} {pre} {pre-adv} {suc d} {S.1} S.2), S.3)

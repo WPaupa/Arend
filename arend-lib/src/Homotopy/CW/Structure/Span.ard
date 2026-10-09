@@ -1,0 +1,449 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Data.Or
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Data.SeqColimit.Pushout
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Maps.Approximation
+\import Homotopy.CW.Maps.Cellular
+\import Homotopy.CW.Structure.Finite (unit-isFinCW)
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Pushout.Grid
+\import Homotopy.Suspension
+\import Homotopy.Wedge
+\import Order.Biordered
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Logic
+\import Paths
+\import Set.Fin
+
+\open PushoutData (ppglue, rec, homotopy, congr)
+\open Grid (transpose, Pcols)
+\open SeqColimit (pquotSC)
+
+\func span.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) : RelCW.{u} \cowith
+  | stage n => SpanStep.Old {step F G n}
+  | count n => srcCount S n Nat.+ (T.count n Nat.+ U.count n)
+  | attach n p => Grid.r0 {SpanStep.grid {step F G n}} (SpanStep.cellsTo {step F G n} (cellIndex p.1, p.2))
+  | build n => IsEquiv.toQEquiv (congr.isEquiv.{u} _ (\lam p => p.1) (Grid.r0 {SpanStep.grid {step F G n}}) (Grid.r2 {SpanStep.grid {step F G n}})
+                                                   (sigmaMap cellIndex `transQEquiv` SpanStep.cellsEquiv {step F G n}) idEquiv
+                                                   (cellIndex `transQEquiv` SpanStep.centersEquiv {step F G n})
+                                                   (\lam _ => idp) (\lam p => SpanStep.cellsBeta {step F G n} (cellIndex p.1, p.2)))
+                 `transQEquiv` Grid.comparison (SpanStep.grid {step F G n})
+                 `transQEquiv` final F G n
+  \where {
+    \record SpanStep {
+      | Y : \Type
+      | B : \Type
+      | D : \Type
+      | JA : \Type
+      | SA : \Type
+      | JB : \Type
+      | JD : \Type
+      | Bd : \Type
+      | attA : \Sigma JA SA -> Y
+      | fA : PushoutData attA (\lam p => p.1) -> B
+      | gA : PushoutData attA (\lam p => p.1) -> D
+      | attB : \Sigma JB Bd -> B
+      | attD : \Sigma JD Bd -> D
+      | sb (a : JA) : QEquiv {Bd} {Susp SA}
+
+      \func Old => PushoutData (\lam y => fA (pinl y)) (\lam y => gA (pinl y))
+
+      \func Cells => Or JA (Or JB JD)
+
+      \func grid : Grid \cowith
+        | A00 => B
+        | A01 => Y
+        | A02 => D
+        | A10 => Or (\Sigma JB Bd) JA
+        | A11 => \Sigma JA SA
+        | A12 => Or (\Sigma JD Bd) JA
+        | A20 => Or JB JA
+        | A21 => JA
+        | A22 => Or JD JA
+        | f01 y => fA (pinl y)
+        | f03 y => gA (pinl y)
+        | f11 c => inr c.1
+        | f13 c => inr c.1
+        | f21 => inr
+        | f23 => inr
+        | g10 => Or.rec attB (\lam a => fA (pinr a))
+        | g30 o => Or.map o (\lam p => p.1) (\lam a => a)
+        | g11 => attA
+        | g31 c => c.1
+        | g12 => Or.rec attD (\lam a => gA (pinr a))
+        | g32 o => Or.map o (\lam p => p.1) (\lam a => a)
+        | s00 c => pmap fA (ppglue c)
+        | s02 c => pmap gA (ppglue c)
+        | s20 _ => idp
+        | s22 _ => idp
+
+      \func R1 => Grid.R1 {grid}
+
+      \func R2 => Grid.R2 {grid}
+
+      \func prism (a : JA) (y : Susp SA) : R1
+        => Susp.rec (pinr (inr a)) (pinl (inr a)) (\lam s => inv (ppglue {_} {_} {_} {Grid.f11 {grid}} {Grid.f13 {grid}} (a, s))) y
+
+      \func cellAt (a : JA) (x : Bd) : \Sigma Cells Bd => (inl a, x)
+
+      \func cellsTo (p : \Sigma Cells Bd) : R1 \elim p
+        | (inl a, x) => prism a (sb a x)
+        | (inr (inl b), x) => pinl (inl (b, x))
+        | (inr (inr d), x) => pinr (inl (d, x))
+
+      \func fromL (o : Or (\Sigma JB Bd) JA) : \Sigma Cells Bd \elim o
+        | inl p => (inr (inl p.1), p.2)
+        | inr a => cellAt a ((sb a).ret south)
+
+      \func fromR (o : Or (\Sigma JD Bd) JA) : \Sigma Cells Bd \elim o
+        | inl q => (inr (inr q.1), q.2)
+        | inr a => cellAt a ((sb a).ret north)
+
+      \func cellsFrom (w : R1) : \Sigma Cells Bd
+        => rec fromL fromR (\lam c => pmap (\lam y => cellAt c.1 ((sb c.1).ret y)) (inv (pmerid c.2))) w
+
+      \func prismBack (a : JA) (y : Susp SA) : cellsFrom (prism a y) = cellAt a ((sb a).ret y)
+        => homotopy {_} {_} {_} {_} {_} {_} {\lam y => cellsFrom (prism a y)} {\lam y => cellAt a ((sb a).ret y)} (\lam _ => idp) (\lam _ => idp)
+                    (\lam s => idp_*> _ *> inv (pmap_inv-comm cellsFrom (ppglue {_} {_} {_} {Grid.f11 {grid}} {Grid.f13 {grid}} (a, s))
+                                               *> pmap inv (pmap_inv-comm (\lam y => cellAt a ((sb a).ret y)) (pmerid s)) *> inv_inv _)) y
+
+      \func cellsBack (p : \Sigma Cells Bd) : cellsFrom (cellsTo p) = p \elim p
+        | (inl a, x) => prismBack a (sb a x) *> pmap (cellAt a) ((sb a).ret_f x)
+        | (inr (inl b), x) => idp
+        | (inr (inr d), x) => idp
+
+      \func secL (o : Or (\Sigma JB Bd) JA) : cellsTo (cellsFrom (pinl o)) = pinl o \elim o
+        | inl p => idp
+        | inr a => pmap (prism a) ((sb a).f_ret south)
+
+      \func secR (o : Or (\Sigma JD Bd) JA) : cellsTo (cellsFrom (pinr o)) = pinr o \elim o
+        | inl q => idp
+        | inr a => pmap (prism a) ((sb a).f_ret north)
+
+      \func secG (c : \Sigma JA SA) : secL (inr c.1) *> ppglue c = pmap (\lam w => cellsTo (cellsFrom w)) (ppglue c) *> secR (inr c.1)
+        => pmap (_ *>) (inv (pmap_inv-comm (prism c.1) (pmerid c.2) *> inv_inv (ppglue c)))
+           *> natural (prism c.1) (\lam y => (sb c.1).f ((sb c.1).ret y)) (sb c.1).f_ret (inv (pmerid c.2))
+
+      \func cellsEquiv : QEquiv {\Sigma Cells Bd} {R1} \cowith
+        | f => cellsTo
+        | ret => cellsFrom
+        | ret_f => cellsBack
+        | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam w => cellsTo (cellsFrom w)} {\lam w => w} secL secR secG
+
+      \func centersTo (o : Cells) : R2 \elim o
+        | inl a => pinl (inr a)
+        | inr (inl b) => pinl (inl b)
+        | inr (inr d) => pinr (inl d)
+
+      \func cenL (o : Or JB JA) : Cells \elim o
+        | inl b => inr (inl b)
+        | inr a => inl a
+
+      \func cenR (o : Or JD JA) : Cells \elim o
+        | inl d => inr (inr d)
+        | inr a => inl a
+
+      \func centersFrom (w : R2) : Cells
+        => rec cenL cenR (\lam _ => idp) w
+
+      \func cenBack (o : Cells) : centersFrom (centersTo o) = o \elim o
+        | inl a => idp
+        | inr (inl b) => idp
+        | inr (inr d) => idp
+
+      \func cenSecL (o : Or JB JA) : centersTo (centersFrom (pinl o)) = pinl o \elim o
+        | inl b => idp
+        | inr a => idp
+
+      \func cenSecR (o : Or JD JA) : centersTo (centersFrom (pinr o)) = pinr o \elim o
+        | inl d => idp
+        | inr a => ppglue a
+
+      \func centersEquiv : QEquiv {Cells} {R2} \cowith
+        | f => centersTo
+        | ret => centersFrom
+        | ret_f => cenBack
+        | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam w => centersTo (centersFrom w)} {\lam w => w} cenSecL cenSecR (\lam _ => idp)
+
+      \func prismBeta (a : JA) (y : Susp SA) : Grid.r2 {grid} (prism a y) = pinl (inr a)
+        => homotopy {_} {_} {_} {_} {_} {_} {\lam y => Grid.r2 {grid} (prism a y)} {\lam _ => pinl (inr a)}
+                    (\lam _ => inv (ppglue a)) (\lam _ => idp)
+                    (\lam s => pmap inv (inv (idp_*> (ppglue a))) *> inv (pmap_inv-comm (Grid.r2 {grid}) (ppglue {_} {_} {_} {Grid.f11 {grid}} {Grid.f13 {grid}} (a, s)))) y
+
+      \func cellsBeta (p : \Sigma Cells Bd) : Grid.r2 {grid} (cellsTo p) = centersTo p.1 \elim p
+        | (inl a, x) => prismBeta a (sb a x)
+        | (inr (inl b), x) => idp
+        | (inr (inr d), x) => idp
+
+      \func c0 => Grid.r0 {transpose grid}
+
+      \func c2 => Grid.r2 {transpose grid}
+
+      \func absorbB => absorb attB (\lam a => fA (pinr a))
+
+      \func absorbD => absorb attD (\lam a => gA (pinr a))
+
+      \func lowerGlueF {a : JA} {x : B} (h : x = fA (pinr a))
+        : idp *> pmap pinl h = pmap absorbB (pmap pinl (inv (inv h)) *> ppglue {_} {_} {_} {Grid.g10 {grid}} {Grid.g30 {grid}} (inr a)) \elim h
+        | idp => inv (pmap_*>-comm absorbB idp (ppglue {_} {_} {_} {Grid.g10 {grid}} {Grid.g30 {grid}} (inr a)))
+
+      \func lowerGlueG {a : JA} {x : D} (h : x = gA (pinr a))
+        : idp *> pmap pinl h = pmap absorbD (pmap pinl (inv (inv h)) *> ppglue {_} {_} {_} {Grid.g12 {grid}} {Grid.g32 {grid}} (inr a)) \elim h
+        | idp => inv (pmap_*>-comm absorbD idp (ppglue {_} {_} {_} {Grid.g12 {grid}} {Grid.g32 {grid}} (inr a)))
+
+      \func lowerF (c : PushoutData attA (\lam p => p.1)) : absorbB (c0 c) = pinl (fA c)
+        => homotopy {_} {_} {_} {_} {_} {_} {\lam c => absorbB (c0 c)} {\lam c => pinl (fA c)} (\lam _ => idp) (\lam _ => idp)
+                    (\lam c => lowerGlueF (pmap fA (ppglue c))) c
+
+      \func lowerG (c : PushoutData attA (\lam p => p.1)) : absorbD (c2 c) = pinl (gA c)
+        => homotopy {_} {_} {_} {_} {_} {_} {\lam c => absorbD (c2 c)} {\lam c => pinl (gA c)} (\lam _ => idp) (\lam _ => idp)
+                    (\lam c => lowerGlueG (pmap gA (ppglue c))) c
+
+      \func cornerMap (x : Old) : Pcols grid
+        => rec (\lam b => pinl (pinl b)) (\lam d => pinr (pinl d)) (\lam y => ppglue {_} {_} {_} {c0} {c2} (pinl y)) x
+
+      \func cornerHom (x : Old) : Grid.comparison grid (pinl x) = cornerMap x
+        => homotopy {_} {_} {_} {_} {_} {_} {\lam x => Grid.comparison grid (pinl x)} {cornerMap}
+                    (Grid.comparison.corner00 grid) (Grid.comparison.corner02 grid)
+                    (\lam y => rearr _ _ _ *> inv (pmap (`*> _) (Grid.comparison.edge01 grid y))) x
+    }
+
+    \func natural {X Z : \Type} (h : X -> Z) (k : X -> X) (K : \Pi (x : X) -> k x = x) {x y : X} (p : x = y)
+      : pmap h (K x) *> pmap h p = pmap (\lam z => h (k z)) p *> pmap h (K y) \elim p
+      | idp => inv (idp_*> _)
+
+    \func rearr {X : \Type} {a b c d : X} (p : a = b) (e : b = c) (q : d = c) : p *> e = (p *> e *> inv q) *> q \elim e, q
+      | idp, idp => idp
+
+    \func absorb {J K X Z : \Type} (att : \Sigma J X -> Z) (c : K -> Z)
+      : QEquiv {PushoutData (Or.rec att c) (\lam o => Or.map o (\lam p => p.1) (\lam k => k))} {PushoutData att (\lam p => p.1)} \cowith
+      | f => to
+      | ret => from
+      | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam x => from (to x)} {\lam x => x} (\lam _ => idp) backR backG
+      | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam y => to (from y)} {\lam y => y} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _)
+      \where {
+        \func right (o : Or J K) : PushoutData att (\lam p => p.1) \elim o
+          | inl j => pinr j
+          | inr k => pinl (c k)
+
+        \func glue (o : Or (\Sigma J X) K) : pinl (Or.rec att c o) = right (Or.map o (\lam p => p.1) (\lam k => k)) \elim o
+          | inl p => ppglue p
+          | inr k => idp
+
+        \func to (x : PushoutData (Or.rec att c) (\lam o => Or.map o (\lam p => p.1) (\lam k => k))) : PushoutData att (\lam p => p.1)
+          => rec pinl right glue x
+
+        \func from (y : PushoutData att (\lam p => p.1)) : PushoutData (Or.rec att c) (\lam o => Or.map o (\lam p => p.1) (\lam k => k))
+          => rec pinl (\lam j => pinr (inl j)) (\lam p => ppglue (inl p)) y
+
+        \func backR (o : Or J K) : from (to (pinr o)) = pinr o \elim o
+          | inl j => idp
+          | inr k => ppglue (inr k)
+
+        \func backG (o : Or (\Sigma J X) K) : idp *> ppglue o = pmap (\lam x => from (to x)) (ppglue o) *> backR (Or.map o (\lam p => p.1) (\lam k => k)) \elim o
+          | inl p => idp_*> _
+          | inr k => idp
+      }
+
+    \func sigmaMap {X J J' : \Type} (e : QEquiv {J} {J'}) : QEquiv {\Sigma J X} {\Sigma J' X} \cowith
+      | f p => (e p.1, p.2)
+      | ret q => (e.ret q.1, q.2)
+      | ret_f p => pmap (\lam j => (j, p.2)) (e.ret_f p.1)
+      | f_sec q => pmap (\lam j => (j, q.2)) (e.f_sec q.1)
+
+    \func cellIndex {a b c : Nat} : QEquiv {Fin (a Nat.+ (b Nat.+ c))} {Or (Fin a) (Or (Fin b) (Fin c))}
+      => OrFin.aux `transQEquiv` Or.Or_QEquiv (idEquiv {Fin a}) (OrFin.aux {b} {c})
+
+    \func src.{u} (S : RelCW.{u}) (n : Nat) : \Type u \elim n
+      | 0 => S.stage 0
+      | suc k => S.stage k
+
+    \func srcCount (S : RelCW) (n : Nat) : Nat \elim n
+      | 0 => 0
+      | suc k => S.count k
+
+    \func srcBd (n : Nat) : \Type0 \elim n
+      | 0 => Empty
+      | suc k => boundary k
+
+    \func srcAttach.{u} (S : RelCW.{u}) (n : Nat) (p : \Sigma (Fin (srcCount S n)) (srcBd n)) : src S n \elim n, p
+      | 0, (j, _) => \case j \with {}
+      | suc k, p => S.attach k p
+
+    \func srcBuild.{u} (S : RelCW.{u}) (n : Nat) : QEquiv {PushoutData (srcAttach S n) (\lam p => p.1)} {S.stage n} \elim n
+      | 0 => symQEquiv (PushoutData.pinl-equiv (\lam (j : Fin 0) => \case j \with {}))
+      | suc k => S.build k
+
+    \func suspBoundary (k : Nat) : QEquiv {boundary (suc k)} {Susp (boundary k)} \elim k
+      | 0 => idEquiv
+      | suc k => idEquiv
+
+    \func suspBd.{u} (S : RelCW.{u}) (n : Nat) (a : Fin (srcCount S n)) : QEquiv {boundary n} {Susp (srcBd n)} \elim n
+      | 0 => \case a \with {}
+      | suc k => suspBoundary k
+
+    \func step.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat) : SpanStep.{u} \cowith
+      | Y => src S n
+      | B => T.stage n
+      | D => U.stage n
+      | JA => Fin (srcCount S n)
+      | SA => srcBd n
+      | JB => Fin (T.count n)
+      | JD => Fin (U.count n)
+      | Bd => boundary n
+      | attA => srcAttach S n
+      | fA c => F.func n (srcBuild S n c)
+      | gA c => G.func n (srcBuild S n c)
+      | attB => T.attach n
+      | attD => U.attach n
+      | sb => suspBd S n
+
+    \func alphaF.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat) (c : PushoutData (srcAttach S n) (\lam p => p.1))
+      : F.func (suc n) (S.build n (pinl (srcBuild S n c))) = T.build n (SpanStep.absorbB {step F G n} (SpanStep.c0 {step F G n} c))
+      => inv (F.natural n (srcBuild S n c)) *> pmap (T.build n) (inv (SpanStep.lowerF {step F G n} c))
+
+    \func alphaG.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat) (c : PushoutData (srcAttach S n) (\lam p => p.1))
+      : G.func (suc n) (S.build n (pinl (srcBuild S n c))) = U.build n (SpanStep.absorbD {step F G n} (SpanStep.c2 {step F G n} c))
+      => inv (G.natural n (srcBuild S n c)) *> pmap (U.build n) (inv (SpanStep.lowerG {step F G n} c))
+
+    \func final.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat)
+      : QEquiv {Pcols (SpanStep.grid {step F G n})} {SpanStep.Old {step F G (suc n)}}
+      => IsEquiv.toQEquiv (congr.isEquiv.{u} (SpanStep.c0 {step F G n}) (SpanStep.c2 {step F G n})
+                                             (\lam y => F.func (suc n) (S.build n (pinl y))) (\lam y => G.func (suc n) (S.build n (pinl y)))
+                                             (srcBuild S n) (SpanStep.absorbB {step F G n} `transQEquiv` T.build n)
+                                             (SpanStep.absorbD {step F G n} `transQEquiv` U.build n) (alphaF F G n) (alphaG F G n))
+
+    \func srcSeq.{u} (S : RelCW.{u}) : Seq.{u} \cowith
+      | A => src S
+      | f {n} y => srcBuild S n (pinl y)
+
+    \func srcMap.{u} {S T : RelCW.{u}} (F : SeqMap S.seq T.seq) : SeqMap (srcSeq S) T.seq \cowith
+      | func n y => F.func n (srcBuild S n (pinl y))
+      | natural n y => F.natural n (srcBuild S n (pinl y))
+
+    \func finalCorner.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat) (x : SpanStep.Old {step F G n})
+      : Seq.f {spanSeq (srcMap F) (srcMap G)} x = final F G n (SpanStep.cornerMap {step F G n} x)
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam x => Seq.f {spanSeq (srcMap F) (srcMap G)} x} {\lam x => final F G n (SpanStep.cornerMap {step F G n} x)}
+                  (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _) x
+
+    \func toSpanSeq.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) : SeqMap (RelCW.seq {span F G}) (spanSeq (srcMap F) (srcMap G)) \cowith
+      | func _ x => x
+      | natural n x => finalCorner F G n x *> inv (pmap (final F G n) (SpanStep.cornerHom {step F G n} x))
+
+    \func srcSq.{u} {S T : RelCW.{u}} (F : SeqMap S.seq T.seq) (z : SeqColimit S.seq) : realize (srcMap F) (tail (srcSeq S) 1 z) = realize F z
+      => SeqColimit.homotopy {S.seq} {_} {\lam z => realize (srcMap F) (tail (srcSeq S) 1 z)} {realize F}
+                             (\lam n x => inv (pquotSC (F.func n x) *> pmap inSC (F.natural n x)))
+                             (\lam _ _ => inv_*> _ *> inv (*>_inv _)) z
+
+    \func realization.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq)
+      : QEquiv {RelCW.Space {span F G}} {PushoutData (realize F) (realize G)}
+      => IsEquiv.toQEquiv (realize.isEquiv (toSpanSeq F G) (\lam _ => inP idEquiv))
+           `transQEquiv` colimitPushout (srcMap F) (srcMap G)
+           `transQEquiv` symQEquiv (back F G)
+      \where {
+        \func back.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq)
+          : QEquiv {PushoutData (realize F) (realize G)} {PushoutData (realize (srcMap F)) (realize (srcMap G))}
+          => IsEquiv.toQEquiv (congr.isEquiv.{u} (realize F) (realize G) (realize (srcMap F)) (realize (srcMap G))
+                                                 (IsEquiv.toQEquiv (tail.isEquiv (srcSeq S) 1)) idEquiv idEquiv (srcSq F) (srcSq G))
+
+        \func left.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) {n : Nat} (b : T.stage n)
+          : realization F G (inSC (pinl b)) = pinl (inSC b)
+          => pmap (back F G).ret (colimitPushout.left (srcMap F) (srcMap G) b) *> (back F G).ret_f (pinl (inSC b))
+
+        \func right.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) {n : Nat} (d : U.stage n)
+          : realization F G (inSC (pinr d)) = pinr (inSC d)
+          => pmap (back F G).ret (colimitPushout.right (srcMap F) (srcMap G) d) *> (back F G).ret_f (pinr (inSC d))
+      }
+
+    \lemma srcBound.{u} {S : RelCW.{u}} {a d : Nat} (bS : S.Bound a) (p : a < d) (k : Nat) (q : d < k) : srcCount S k = 0 \elim k
+      | 0 => absurd linarith
+      | suc k => bS k (p <∘l <_suc_<= q)
+
+    \lemma bound.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) {a d : Nat}
+                     (bS : S.Bound a) (bT : T.Bound d) (bU : U.Bound d) (p : a < d) : RelCW.Bound {span F G} d
+      => \lam k q => pmap2 (Nat.+) (srcBound bS p k q) (pmap2 (Nat.+) (bT k q) (bU k q))
+  }
+
+\func spanCW.{u} {S T U : CW.{u}} (F : CellularMap S T) (G : CellularMap S U) : CW.{u} \cowith
+  | stage => RelCW.stage {span F G}
+  | count => RelCW.count {span F G}
+  | attach => RelCW.attach {span F G}
+  | build => RelCW.build {span F G}
+  | empty x => rec T.empty U.empty (\lam a => absurd (S.empty a)) x
+  \where
+    \func model.{u} {X Y Z : \Type u} (f : X -> Y) (g : X -> Z) {S T U : CW.{u}}
+                    (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {T.Space}) (eZ : QEquiv {Z} {U.Space})
+                    (F : CellularMap S T) (hF : \Pi (z : S.Space) -> realize F z = eY (f (eX.ret z)))
+                    (G : CellularMap S U) (hG : \Pi (z : S.Space) -> realize G z = eZ (g (eX.ret z)))
+      : QEquiv {PushoutData f g} {CW.Space {spanCW F G}}
+      => IsEquiv.toQEquiv (congr.isEquiv.{u} f g (realize F) (realize G) eX eY eZ
+                                             (\lam x => hF (eX x) *> pmap (\lam x' => eY (f x')) (eX.ret_f x))
+                                             (\lam x => hG (eX x) *> pmap (\lam x' => eZ (g x')) (eX.ret_f x)))
+         `transQEquiv` symQEquiv (span.realization F G)
+
+\lemma pushout-isCW.{u} {X Y Z : \Type u} (f : X -> Y) (g : X -> Z) {a : Nat} (cX : IsFinCWUpTo a X) (cY : IsCW Y) (cZ : IsCW Z)
+  : IsCW (PushoutData f g) \elim cX, cY, cZ
+  | inP ((S, bS), eX), inP (T, eY), inP (U, eZ) =>
+    \case approximateBounded bS (\lam z => eY (f (eX.ret z))), approximateBounded bS (\lam z => eZ (g (eX.ret z))) \with {
+      | inP (F, hF), inP (G, hG) => inP (spanCW F G, spanCW.model f g eX eY eZ F hF G hG)
+    }
+
+\lemma pushout-isFinCW.{u} {X Y Z : \Type u} (f : X -> Y) (g : X -> Z) {a d : Nat}
+                           (cX : IsFinCWUpTo a X) (cY : IsFinCWUpTo d Y) (cZ : IsFinCWUpTo d Z) (p : a < d)
+  : IsFinCWUpTo d (PushoutData f g) \elim cX, cY, cZ
+  | inP ((S, bS), eX), inP ((T, bT), eY), inP ((U, bU), eZ) =>
+    \case approximateBounded bS (\lam z => eY (f (eX.ret z))), approximateBounded bS (\lam z => eZ (g (eX.ret z))) \with {
+      | inP (F, hF), inP (G, hG) => inP ((spanCW F G, span.bound F G bS bT bU p), spanCW.model f g eX eY eZ F hF G hG)
+    }
+
+\lemma cofiber-isCW.{u} {X Y : \Type u} (f : X -> Y) {a : Nat} (cX : IsFinCWUpTo a X) (cY : IsCW Y) : IsCW (Cof f)
+  => pushout-isCW f (\lam _ => ()) cX cY (IsFinCW.toCW (IsFinCWUpTo.toFinCW unit-isFinCW.{u}))
+
+\lemma cofiber-isFinCW.{u} {X Y : \Type u} (f : X -> Y) {a d : Nat} (cX : IsFinCWUpTo a X) (cY : IsFinCWUpTo d Y) (p : a < d)
+  : IsFinCWUpTo d (Cof f)
+  => pushout-isFinCW f (\lam _ => ()) cX cY (IsFinCWUpTo.raise zero<=_ unit-isFinCW.{u}) p
+
+\lemma susp-isFinCW.{u} {X : \Type u} {a : Nat} (cX : IsFinCWUpTo a X) : IsFinCWUpTo (suc a) (Susp X)
+  => pushout-isFinCW (\lam _ => ()) (\lam _ => ()) cX (IsFinCWUpTo.raise zero<=_ unit-isFinCW.{u}) (IsFinCWUpTo.raise zero<=_ unit-isFinCW.{u}) id<suc
+
+\lemma wedge-isCW.{u} {A B : Pointed.{u}} (cA : IsCW A) (cB : IsCW B) : IsCW (Wedge A B)
+  => pushout-isCW (\lam _ => base) (\lam _ => base) unit-isFinCW.{u} cA cB
+
+\lemma wedge-isFinCW.{u} {A B : Pointed.{u}} {d : Nat} (cA : IsFinCWUpTo (suc d) A) (cB : IsFinCWUpTo (suc d) B) : IsFinCWUpTo (suc d) (Wedge A B)
+  => pushout-isFinCW (\lam _ => base) (\lam _ => base) unit-isFinCW.{u} cA cB (<=_<_suc zero<=_)
+
+\func cylinder.{u} {S T : CW.{u}} (F : CellularMap S T) : CW.{u} => spanCW (SeqMap.id S.seq) F
+  \where {
+    \func model.{u} {S T : CW.{u}} (F : CellularMap S T) : QEquiv {CW.Space {cylinder F}} {PushoutData (\lam z => z) (realize F)}
+      => span.realization (SeqMap.id S.seq) F
+           `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{u} (realize (SeqMap.id S.seq)) (realize F) (\lam z => z) (realize F) idEquiv idEquiv idEquiv
+                                                             (\lam z => inv (realize.id-law z)) (\lam _ => idp))
+
+    \func source.{u} {S T : CW.{u}} (F : CellularMap S T) (z : S.Space) : CW.Space {cylinder F}
+      => (model F).ret (pinl z)
+
+    \func target.{u} {S T : CW.{u}} (F : CellularMap S T) (t : T.Space) : CW.Space {cylinder F}
+      => (model F).ret (pinr t)
+
+    \func collapse.{u} {S T : CW.{u}} (F : CellularMap S T) : QEquiv {CW.Space {cylinder F}} {T.Space}
+      => model F `transQEquiv` PushoutData.swap (\lam z => z) (realize F) `transQEquiv` PushoutData.collapse (realize F)
+
+    \func collapse-source.{u} {S T : CW.{u}} (F : CellularMap S T) (z : S.Space) : collapse F (source F z) = realize F z
+      => pmap (\lam w => PushoutData.collapse.map (realize F) (PushoutData.swap.map (\lam z => z) (realize F) w)) ((model F).f_ret (pinl z))
+
+    \func collapse-target.{u} {S T : CW.{u}} (F : CellularMap S T) (t : T.Space) : collapse F (target F t) = t
+      => pmap (\lam w => PushoutData.collapse.map (realize F) (PushoutData.swap.map (\lam z => z) (realize F) w)) ((model F).f_ret (pinr t))
+
+    \func cofiber.{u} {S T : CW.{u}} (F : CellularMap S T) : QEquiv {Cof (source F)} {Cof (realize F)}
+      => IsEquiv.toQEquiv (congr.isEquiv.{u} (source F) (\lam _ => ()) pinr (\lam _ => ()) idEquiv
+                                             (model F `transQEquiv` PushoutData.swap (\lam z => z) (realize F)) idEquiv
+                                             (\lam z => inv (pmap (PushoutData.swap.map (\lam z => z) (realize F)) ((model F).f_ret (pinl z)))) (\lam _ => idp))
+         `transQEquiv` PushoutData.paste (realize F) (\lam z => z) (\lam _ => ())
+  }

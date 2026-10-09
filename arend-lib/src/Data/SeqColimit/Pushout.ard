@@ -1,0 +1,244 @@
+\import Data.Or
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.Pushout
+\import Homotopy.Pushout.Grid
+\import Paths
+
+\open PushoutData (ppglue, rec, homotopy, congr)
+\open SeqColimit (pquotSC)
+\open Grid (transpose, Pcols)
+
+\func spanSeq {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) : Seq \cowith
+  | A n => PushoutData (F.func n) (G.func n)
+  | f {n} => congr (F.func n) (G.func n) (F.func (suc n)) (G.func (suc n)) S.f T.f U.f (\lam a => inv (F.natural n a)) (\lam a => inv (G.natural n a))
+
+\func colimitPushout.{u} {S T U : Seq.{u}} (F : SeqMap S T) (G : SeqMap S U)
+  : QEquiv {SeqColimit (spanSeq F G)} {PushoutData (realize F) (realize G)}
+  => coeq (spanSeq F G) `transQEquiv` symQEquiv (cols F G) `transQEquiv` symQEquiv (Grid.comparison (grid F G)) `transQEquiv` rows F G
+  \where {
+    \func left.{u} {S T U : Seq.{u}} (F : SeqMap S T) (G : SeqMap S U) {n : Nat} (b : T.A n)
+      : colimitPushout F G (inSC (pinl b)) = pinl (inSC b)
+      => pmap (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)) ((cols F G).ret_f (pinl (pinl (at n b))))
+         *> pmap (rows F G) (inv (pmap (Grid.comparison (grid F G)).ret (Grid.comparison.corner00 (grid F G) (at n b)))
+                             *> (Grid.comparison (grid F G)).ret_f (pinl (pinl (at n b))))
+
+    \func right.{u} {S T U : Seq.{u}} (F : SeqMap S T) (G : SeqMap S U) {n : Nat} (d : U.A n)
+      : colimitPushout F G (inSC (pinr d)) = pinr (inSC d)
+      => pmap (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)) ((cols F G).ret_f (pinl (pinr (at n d))))
+         *> pmap (rows F G) (inv (pmap (Grid.comparison (grid F G)).ret (Grid.comparison.corner20 (grid F G) (at n d)))
+                             *> (Grid.comparison (grid F G)).ret_f (pinr (pinl (at n d))))
+
+    \func Total (S : Seq) => \Sigma (n : Nat) (S.A n)
+
+    \func at {S : Seq} (n : Nat) (x : S.A n) : Total S => (n, x)
+
+    \func step {S : Seq} (t : Total S) : Total S => (suc t.1, S.f t.2)
+
+    \func fwd {S : Seq} (o : Or (Total S) (Total S)) : Total S \elim o
+      | inl t => t
+      | inr t => step t
+
+    \func fold {X : \Type} (o : Or X X) : X \elim o
+      | inl x => x
+      | inr x => x
+
+    \func omap {X Y X' Y' : \Type} (h : X -> Y) (h' : X' -> Y') (o : Or X X') : Or Y Y' \elim o
+      | inl x => inl (h x)
+      | inr x => inr (h' x)
+
+    \func tmap {I : \Type} {A B : I -> \Type} (F : \Pi (i : I) -> A i -> B i) (p : \Sigma (i : I) (A i)) : \Sigma (i : I) (B i)
+      => (p.1, F p.1 p.2)
+
+    \func Coeq (S : Seq) => PushoutData (fwd {S}) fold
+
+    \func pmapIdp {X Y : \Type} (h : X -> Y) {x y : X} (q : x = y) : pmap h (idp *> q) = pmap h q \elim q
+      | idp => idp
+
+    \func coeq (S : Seq) : QEquiv {SeqColimit S} {Coeq S} \cowith
+      | f => to
+      | ret => from
+      | ret_f => SeqColimit.homotopy {S} {_} {\lam z => from (to z)} {\lam z => z} (\lam _ _ => idp)
+                   (\lam n x => idp_*> _ *> inv (pmap_*>-comm from _ _ *> idp_*> _ *> pmap_inv-comm from (ppglue {_} {_} {_} {fwd {S}} {fold} (inr (at n x))) *> inv_inv _))
+      | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam w => to (from w)} {\lam w => w} (\lam _ => idp) (\lam t => ppglue (inl t)) sec
+      \where {
+        \func to (z : SeqColimit S) : Coeq S
+          => SeqColimit.rec (\lam n x => pinl (at n x), \lam n x => ppglue (inl (at n x)) *> inv (ppglue (inr (at n x)))) z
+
+        \func glue (o : Or (Total S) (Total S)) : inSC (fwd o).2 = {SeqColimit S} inSC (fold o).2 \elim o
+          | inl t => idp
+          | inr t => inv (pquotSC t.2)
+
+        \func from (w : Coeq S) : SeqColimit S
+          => rec {_} {_} {_} {fwd {S}} {fold} (\lam t => inSC t.2) (\lam t => inSC t.2) glue w
+
+        \func coh {X : \Type} {a b c : X} (l : a = b) (r : c = b) : idp *> r = inv (l *> inv r) *> l \elim l, r
+          | idp, idp => idp
+
+        \func sec (o : Or (Total S) (Total S)) : idp *> ppglue o = pmap (\lam w => to (from w)) (ppglue o) *> ppglue (inl (fold o)) \elim o
+          | inl t => idp
+          | inr t => coh (ppglue (inl t)) (ppglue (inr t)) *> inv (pmap (`*> ppglue (inl t)) (pmap_inv-comm to (pquotSC t.2)))
+      }
+
+    \func sigmaPushout {I : \Type} {A B D : I -> \Type} (F : \Pi (i : I) -> A i -> B i) (G : \Pi (i : I) -> A i -> D i)
+      : QEquiv {PushoutData (tmap F) (tmap G)} {\Sigma (i : I) (PushoutData (F i) (G i))} \cowith
+      | f => to
+      | ret => from
+      | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam x => from (to x)} {\lam x => x} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _)
+      | f_sec p => homotopy {_} {_} {_} {_} {_} {_} {\lam w => to (from (pin p.1 w))} {pin p.1} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _) p.2
+      \where {
+        \func pin (i : I) (w : PushoutData (F i) (G i)) : \Sigma (i : I) (PushoutData (F i) (G i)) => (i, w)
+
+        \func to (x : PushoutData (tmap F) (tmap G)) : \Sigma (i : I) (PushoutData (F i) (G i))
+          => rec (\lam p => pin p.1 (pinl p.2)) (\lam p => pin p.1 (pinr p.2)) (\lam p => pmap (pin p.1) (ppglue p.2)) x
+
+        \func from (p : \Sigma (i : I) (PushoutData (F i) (G i))) : PushoutData (tmap F) (tmap G) \elim p
+          | (i, w) => rec {_} {_} {_} {_} {_} {PushoutData (tmap F) (tmap G)} (\lam b => pinl (i, b)) (\lam d => pinr (i, d)) (\lam a => ppglue {_} {_} {_} {tmap F} {tmap G} (i, a)) w
+      }
+
+    \func orPushout {X B D X' B' D' : \Type} (f : X -> B) (g : X -> D) (f' : X' -> B') (g' : X' -> D')
+      : QEquiv {PushoutData (omap f f') (omap g g')} {Or (PushoutData f g) (PushoutData f' g')} \cowith
+      | f => to
+      | ret => from
+      | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam x => from (to x)} {\lam x => x} backL backR backG
+      | f_sec => sec
+      \where {
+        \func glue (o : Or X X') : omap (pinl {_} {_} {_} {f} {g}) (pinl {_} {_} {_} {f'} {g'}) (omap f f' o)
+                                    = omap (pinr {_} {_} {_} {f} {g}) (pinr {_} {_} {_} {f'} {g'}) (omap g g' o) \elim o
+          | inl x => pmap inl (ppglue x)
+          | inr x => pmap inr (ppglue x)
+
+        \func to (x : PushoutData (omap f f') (omap g g')) : Or (PushoutData f g) (PushoutData f' g')
+          => rec (omap pinl pinl) (omap pinr pinr) glue x
+
+        \func from (o : Or (PushoutData f g) (PushoutData f' g')) : PushoutData (omap f f') (omap g g') \elim o
+          | inl w => rec {_} {_} {_} {_} {_} {PushoutData (omap f f') (omap g g')} (\lam b => pinl (inl b)) (\lam d => pinr (inl d)) (\lam x => ppglue (inl x)) w
+          | inr w => rec {_} {_} {_} {_} {_} {PushoutData (omap f f') (omap g g')} (\lam b => pinl (inr b)) (\lam d => pinr (inr d)) (\lam x => ppglue (inr x)) w
+
+        \func backL (o : Or B B') : from (to (pinl o)) = pinl o \elim o
+          | inl _ => idp
+          | inr _ => idp
+
+        \func backR (o : Or D D') : from (to (pinr o)) = pinr o \elim o
+          | inl _ => idp
+          | inr _ => idp
+
+        \func backG (o : Or X X') : backL (omap f f' o) *> ppglue o = pmap (\lam x => from (to x)) (ppglue o) *> backR (omap g g' o) \elim o
+          | inl _ => idp_*> _
+          | inr _ => idp_*> _
+
+        \func sec (o : Or (PushoutData f g) (PushoutData f' g')) : to (from o) = o \elim o
+          | inl w => homotopy {_} {_} {_} {_} {_} {_} {\lam w => to (from (inl w))} {inl} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _) w
+          | inr w => homotopy {_} {_} {_} {_} {_} {_} {\lam w => to (from (inr w))} {inr} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _) w
+      }
+
+    \func natSq {S T : Seq} (F : SeqMap S T) (o : Or (Total S) (Total S)) : fwd (omap (tmap F.func) (tmap F.func) o) = tmap F.func (fwd o) \elim o
+      | inl t => idp
+      | inr t => pmap (at (suc t.1)) (F.natural t.1 t.2)
+
+    \func foldSq {X Y : \Type} (h : X -> Y) (o : Or X X) : fold (omap h h o) = h (fold o) \elim o
+      | inl _ => idp
+      | inr _ => idp
+
+    \func grid {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) : Grid \cowith
+      | A00 => Total T
+      | A01 => Or (Total T) (Total T)
+      | A02 => Total T
+      | A10 => Total S
+      | A11 => Or (Total S) (Total S)
+      | A12 => Total S
+      | A20 => Total U
+      | A21 => Or (Total U) (Total U)
+      | A22 => Total U
+      | f01 => fwd {T}
+      | f03 => fold
+      | f11 => fwd {S}
+      | f13 => fold
+      | f21 => fwd {U}
+      | f23 => fold
+      | g10 => tmap F.func
+      | g30 => tmap G.func
+      | g11 => omap (tmap F.func) (tmap F.func)
+      | g31 => omap (tmap G.func) (tmap G.func)
+      | g12 => tmap F.func
+      | g32 => tmap G.func
+      | s00 => natSq F
+      | s02 => foldSq (tmap F.func)
+      | s20 => natSq G
+      | s22 => foldSq (tmap G.func)
+
+    \func rowMap {S T : Seq} (F : SeqMap S T) (c : Coeq S) : Coeq T
+      => congr (fwd {S}) fold (fwd {T}) fold (omap (tmap F.func) (tmap F.func)) (tmap F.func) (tmap F.func) (natSq F) (foldSq (tmap F.func)) c
+
+    \func rowInr {T : Seq} {n : Nat} (b : T.A n) {y : T.A (suc n)} (p : T.f b = y)
+      : idp *> pmap (coeq.from {T}) (pmap pinl (inv (pmap (at (suc n)) p)) *> ppglue (inr (at n b))) = inv (pquotSC b *> pmap inSC p) \elim p
+      | idp => idp_*> _ *> pmapIdp (coeq.from {T}) (ppglue {_} {_} {_} {fwd {T}} {fold} (inr (at n b)))
+
+    \func rowGlue {S T : Seq} (F : SeqMap S T) (o : Or (Total S) (Total S))
+      : idp *> pmap (\lam c => coeq.from {T} (rowMap F c)) (ppglue o) = pmap (\lam c => realize F (coeq.from {S} c)) (ppglue o) \elim o
+      | inl t => idp_*> _ *> pmapIdp (coeq.from {T}) (ppglue {_} {_} {_} {fwd {T}} {fold} (inl (tmap F.func t)))
+      | inr t => rowInr (F.func t.1 t.2) (F.natural t.1 t.2) *> inv (pmap_inv-comm (realize F) (pquotSC t.2))
+
+    \func rowSq {S T : Seq} (F : SeqMap S T) (c : Coeq S) : realize F (coeq.from {S} c) = coeq.from {T} (rowMap F c)
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam c => realize F (coeq.from {S} c)} {\lam c => coeq.from {T} (rowMap F c)}
+                  (\lam _ => idp) (\lam _ => idp) (rowGlue F) c
+
+    \func rows.{v} {S T U : Seq.{v}} (F : SeqMap S T) (G : SeqMap S U) : QEquiv {Grid.Prows {grid F G}} {PushoutData (realize F) (realize G)}
+      => IsEquiv.toQEquiv (congr.isEquiv.{v} (rowMap F) (rowMap G) (realize F) (realize G) (symQEquiv (coeq S)) (symQEquiv (coeq T)) (symQEquiv (coeq U))
+                                             (rowSq F) (rowSq G))
+
+    \func TP {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) => Total (spanSeq F G)
+
+    \func L1 {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) : QEquiv {PushoutData (tmap F.func) (tmap G.func)} {TP F G}
+      => sigmaPushout F.func G.func
+
+    \func colMap {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) : QEquiv {PushoutData (omap (tmap F.func) (tmap F.func)) (omap (tmap G.func) (tmap G.func))} {Or (TP F G) (TP F G)}
+      => orPushout (tmap F.func) (tmap G.func) (tmap F.func) (tmap G.func) `transQEquiv` Or.Or_QEquiv (L1 F G) (L1 F G)
+
+    \func colL {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) (o : Or (Total T) (Total T))
+      : fwd {spanSeq F G} (colMap F G (pinl o)) = L1 F G (pinl (fwd o)) \elim o
+      | inl _ => idp
+      | inr _ => idp
+
+    \func colR {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) (o : Or (Total U) (Total U))
+      : fwd {spanSeq F G} (colMap F G (pinr o)) = L1 F G (pinr (fwd o)) \elim o
+      | inl _ => idp
+      | inr _ => idp
+
+    \func colInr {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) {n : Nat} (a : S.A (suc n))
+                 {b : T.A (suc n)} (p : b = F.func (suc n) a) {d : U.A (suc n)} (r : d = G.func (suc n) a)
+      : idp *> pmap (L1 F G) ((pmap pinl (inv (inv (pmap (at (suc n)) p))) *> ppglue (at (suc n) a)) *> pmap pinr (inv (pmap (at (suc n)) r)))
+          = pmap (sigmaPushout.pin {_} {_} {_} {_} {F.func} {G.func} (suc n)) ((pmap pinl (inv (inv p)) *> ppglue a) *> pmap pinr (inv r)) \elim p, r
+      | idp, idp => idp_*> _ *> pmapIdp (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} (at (suc n) a))
+                    *> inv (pmapIdp (sigmaPushout.pin {_} {_} {_} {_} {F.func} {G.func} (suc n)) (ppglue a))
+
+    \func colGlue {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) (o : Or (Total S) (Total S))
+      : colL F G (omap (tmap F.func) (tmap F.func) o) *> pmap (\lam c => L1 F G (Grid.r0 {transpose (grid F G)} c)) (ppglue o)
+          = pmap (\lam c => fwd (colMap F G c)) (ppglue o) *> colR F G (omap (tmap G.func) (tmap G.func) o) \elim o
+      | inl t => idp_*> _ *> pmapIdp (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} t)
+      | inr t => colInr F G (S.f t.2) (F.natural t.1 t.2) (G.natural t.1 t.2)
+
+    \func colFoldL {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) (o : Or (Total T) (Total T))
+      : fold (colMap F G (pinl o)) = L1 F G (pinl (fold o)) \elim o
+      | inl _ => idp
+      | inr _ => idp
+
+    \func colFoldR {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) (o : Or (Total U) (Total U))
+      : fold (colMap F G (pinr o)) = L1 F G (pinr (fold o)) \elim o
+      | inl _ => idp
+      | inr _ => idp
+
+    \func colFoldGlue {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) (o : Or (Total S) (Total S))
+      : colFoldL F G (omap (tmap F.func) (tmap F.func) o) *> pmap (\lam c => L1 F G (Grid.r2 {transpose (grid F G)} c)) (ppglue o)
+          = pmap (\lam c => fold (colMap F G c)) (ppglue o) *> colFoldR F G (omap (tmap G.func) (tmap G.func) o) \elim o
+      | inl t => idp_*> _ *> pmapIdp (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} t)
+      | inr t => idp_*> _ *> pmapIdp (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} t)
+
+    \func cols.{v} {S T U : Seq.{v}} (F : SeqMap S T) (G : SeqMap S U) : QEquiv {Pcols (grid F G)} {Coeq (spanSeq F G)}
+      => IsEquiv.toQEquiv (congr.isEquiv.{v} (Grid.r0 {transpose (grid F G)}) (Grid.r2 {transpose (grid F G)}) fwd fold (colMap F G) (L1 F G) (L1 F G)
+                                             (homotopy {_} {_} {_} {_} {_} {_} {\lam c => fwd (colMap F G c)} {\lam c => L1 F G (Grid.r0 {transpose (grid F G)} c)}
+                                                       (colL F G) (colR F G) (colGlue F G))
+                                             (homotopy {_} {_} {_} {_} {_} {_} {\lam c => fold (colMap F G c)} {\lam c => L1 F G (Grid.r2 {transpose (grid F G)} c)}
+                                                       (colFoldL F G) (colFoldR F G) (colFoldGlue F G)))
+  }

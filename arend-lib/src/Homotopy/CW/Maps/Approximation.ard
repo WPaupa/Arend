@@ -43,10 +43,15 @@
   => \Sigma (F : FiniteCellularMap C D (suc d)) (\Pi (x : C.stage (suc d)) -> inSC (F.1 x) = f (inSC x))
 
 \func ApproxFiber.{u} {C D : CW.{u}} (f : C.Space -> D.Space) (k : Nat) (x : C.stage k) => Fib (inSC {D.seq} {k}) (f (inSC x))
-  \where
+  \where {
     \func advance.{u} {C D : CW.{u}} (f : C.Space -> D.Space) {k : Nat} (s : \Pi (x : C.stage k) -> ApproxFiber f k x) (x : C.stage k)
       : ApproxFiber f (suc k) (C.inclusion k x)
-      => (D.inclusion k (s x).1, inv (SeqColimit.pquotSC (s x).1) *> (s x).2 *> pmap f (SeqColimit.pquotSC x))
+      => advanceAt f x (s x)
+
+    \func advanceAt.{u} {C D : CW.{u}} (f : C.Space -> D.Space) {k : Nat} (x : C.stage k) (w : ApproxFiber f k x)
+      : ApproxFiber f (suc k) (C.inclusion k x)
+      => (D.inclusion k w.1, inv (SeqColimit.pquotSC w.1) *> w.2 *> pmap f (SeqColimit.pquotSC x))
+  }
 
 \func ApproxTower.{u} {C D : CW.{u}} (f : C.Space -> D.Space) (k : Nat) (s : \Pi (x : C.stage k) -> ApproxFiber f k x) : \Type u \elim k
   | 0 => \Sigma
@@ -115,11 +120,15 @@
   \where {
     \func advance.{u} {C D : CW.{u}} (F G : CellularMap C D) (h : \Pi (z : C.Space) -> realize F z = realize G z) {k : Nat}
                       (s : \Pi (x : C.stage k) -> HomotopyFiber F G h k x) (x : C.stage k) : HomotopyFiber F G h (suc k) (C.inclusion k x)
-      => (pmap (D.inclusion (suc k)) (inv (F.natural k x) *> (s x).1 *> G.natural k x),
+      => advanceAt F G h x (s x)
+
+    \func advanceAt.{u} {C D : CW.{u}} (F G : CellularMap C D) (h : \Pi (z : C.Space) -> realize F z = realize G z) {k : Nat}
+                        (x : C.stage k) (w : HomotopyFiber F G h k x) : HomotopyFiber F G h (suc k) (C.inclusion k x)
+      => (pmap (D.inclusion (suc k)) (inv (F.natural k x) *> w.1 *> G.natural k x),
           conjugate {_} {_} {_} {inSC {D.seq} {suc k}} {inSC {D.seq} {suc (suc k)}} {D.inclusion (suc k)} SeqColimit.pquotSC
-                    (inv (F.natural k x) *> (s x).1 *> G.natural k x)
+                    (inv (F.natural k x) *> w.1 *> G.natural k x)
           *> pmap (\lam t => inv (SeqColimit.pquotSC _) *> t *> SeqColimit.pquotSC _)
-                  (compare (inSC {D.seq} {suc k}) (s x).1 (F.natural k x) (G.natural k x) (s x).2 (inv (homotopy-isNatural (realize F) (realize G) h (SeqColimit.pquotSC x)))))
+                  (compare (inSC {D.seq} {suc k}) w.1 (F.natural k x) (G.natural k x) w.2 (inv (homotopy-isNatural (realize F) (realize G) h (SeqColimit.pquotSC x)))))
 
     \func conjugate {Y Y' T : \Type} {j : Y -> T} {j' : Y' -> T} {i : Y -> Y'} (K : \Pi (y : Y) -> j y = j' (i y)) {a b : Y} (r : a = b)
       : pmap j' (pmap i r) = inv (K a) *> pmap j r *> K b \elim r
