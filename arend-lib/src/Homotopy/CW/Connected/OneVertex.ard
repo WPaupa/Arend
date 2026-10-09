@@ -1,0 +1,284 @@
+\import Arith.Nat
+\import Data.Or
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Structure.Attach (cellsSplit, unitContr)
+\import Homotopy.CW.Structure.Connectivity
+\import Homotopy.Connectivity
+\import Homotopy.Pushout
+\import Homotopy.Sphere
+\import Homotopy.Suspension
+\import Logic
+\import Logic.Unique
+\import Meta
+\import Paths
+\import Set
+\import Set.Fin
+
+\open PushoutData (ppglue, rec, drec, homotopy, congr)
+
+\func Graph {c e : Nat} (att : \Sigma (Fin e) (Sphere 0) -> Fin c) => PushoutData att (\lam p => p.1)
+
+\func Petals (g : Nat) => PushoutData {\Sigma (Fin g) (Sphere 0)} {\Sigma} {Fin g} (\lam _ => ()) (\lam p => p.1)
+
+\func oneVertexCW.{u} (C : CW.{u}) (g : Nat) (e : QEquiv {Petals g} {C.stage 2}) : CW.{u} \cowith
+  | stage n => vStage C n
+  | count n => vCount C g n
+  | attach n => vAttach C g n
+  | build n => vBuild C g e n
+  | empty x => x
+  \where {
+    \func vStage.{v} (C : CW.{v}) (n : Nat) : \Type v \elim n
+      | 0 => Empty
+      | 1 => \Sigma
+      | suc (suc n) => C.stage (suc (suc n))
+
+    \func vCount.{v} (C : CW.{v}) (g n : Nat) : Nat \elim n
+      | 0 => 1
+      | 1 => g
+      | suc (suc n) => C.count (suc (suc n))
+
+    \func vAttach.{v} (C : CW.{v}) (g n : Nat) : \Sigma (Fin (vCount C g n)) (boundary n) -> vStage C n \elim n
+      | 0 => \lam p => p.2
+      | 1 => \lam _ => ()
+      | suc (suc n) => C.attach (suc (suc n))
+
+    \func vBuild.{v} (C : CW.{v}) (g : Nat) (e : QEquiv {Petals g} {C.stage 2}) (n : Nat)
+      : QEquiv {PushoutData (vAttach C g n) (\lam p => p.1)} {vStage C (suc n)} \elim n
+      | 0 => symQEquiv (PushoutData.pinr-equiv (\lam x => x)) `transQEquiv` unit
+      | 1 => e
+      | suc (suc n) => C.build (suc (suc n))
+
+    \func unit : QEquiv {Fin 1} {\Sigma} \cowith
+      | f _ => ()
+      | ret _ => 0
+      | ret_f x => \case \elim x \with { | 0 => idp }
+      | f_sec _ => idp
+
+    \func space.{v} (C : CW.{v}) (g : Nat) (e : QEquiv {Petals g} {C.stage 2}) : QEquiv {CW.Space {oneVertexCW C g e}} {C.Space}
+      => symQEquiv (IsEquiv.toQEquiv (tail.isEquiv (RelCW.seq {oneVertexCW C g e}) 2)) `transQEquiv` IsEquiv.toQEquiv (tail.isEquiv C.seq 2)
+  }
+
+\lemma oneVertex.{u} {C : CW.{u}} (cX : isNConnectedType 1 C.Space)
+  : TruncP (\Sigma (C' : CW.{u}) (C'.count 0 = 1) (QEquiv {C'.Space} {C.Space}))
+  => \case nconnected1-inhabited (stage-connected cX) \with {
+    | inP x0 => TruncP.map (graphPetals (C.count 0) (edges C) ((graph C).ret x0)
+                                        \lam x y => TruncP.map (nconnected1-path (stage-connected cX) (graph C x) (graph C y))
+                                                               \lam p => inv ((graph C).ret_f x) *> pmap (graph C).ret p *> (graph C).ret_f y)
+                           \lam s => (oneVertexCW C s.1 (symQEquiv s.2 `transQEquiv` graph C), idp, oneVertexCW.space C s.1 (symQEquiv s.2 `transQEquiv` graph C))
+  }
+  \where {
+    \lemma stage-connected.{v} {C : CW.{v}} (cX : isNConnectedType 1 C.Space) : isNConnectedType 1 (C.stage 2)
+      => (nconnected-unit {1}).2 (nconnected-map-comp {1} {_} {_} {_} {inSC {C.seq} {2}} {\lam _ => ()} (skeleton-nconnected C 1) ((nconnected-unit {1}).1 cX))
+
+    \func edges.{v} (C : CW.{v}) (p : \Sigma (Fin (C.count 1)) (Sphere 0)) : Fin (C.count 0)
+      => C.vertices.ret (C.attach 1 p)
+
+    \func graph.{v} (C : CW.{v}) : QEquiv {Graph (edges C)} {C.stage 2}
+      => IsEquiv.toQEquiv (congr.isEquiv.{v} (edges C) (\lam p => p.1) (C.attach 1) (\lam p => p.1) idEquiv C.vertices idEquiv
+                                             (\lam _ => inv (C.vertices.f_sec _)) (\lam _ => idp))
+         `transQEquiv` C.build 1
+  }
+
+\lemma graphPetals (c : Nat) : \Pi {e : Nat} (att : \Sigma (Fin e) (Sphere 0) -> Fin c) (x0 : Graph att)
+                                (conn : \Pi (x y : Graph att) -> TruncP (x = y)) -> TruncP (\Sigma (g : Nat) (QEquiv {Graph att} {Petals g})) \elim c
+  | 0 => \lam att x0 _ => absurd (empty att x0)
+  | 1 => \lam {e} att _ _ => inP (e, IsEquiv.toQEquiv (congr.isEquiv att (\lam p => p.1) (\lam _ => ()) (\lam p => p.1) idEquiv
+                                                                    (IsEquiv.toQEquiv (contr-equiv one unitContr {\lam _ => ()})) idEquiv
+                                                                    (\lam _ => idp) (\lam _ => idp)))
+  | suc (suc c) => \lam att x0 conn => \case FinSet.searchFin (\lam i => Not (att (i, north) = att (i, south)))
+                                                                 (\lam i => \case decideEq (att (i, north)) (att (i, south)) \with {
+                                                                   | yes p => no (\lam f => f p)
+                                                                   | no q => yes q
+                                                                 }) \with {
+    | inl (i0, d, _) => \let s => step att i0 d \in
+        TruncP.map (graphPetals (suc c) s.2 (s.3 x0) (\lam x y => TruncP.map (conn (s.3.ret x) (s.3.ret y)) \lam p => inv (s.3.f_sec x) *> pmap s.3 p *> s.3.f_sec y))
+                   \lam t => (t.1, s.3 `transQEquiv` t.2)
+    | inr loops => absurd (noLoops att conn (\lam i => \case decideEq (att (i, north)) (att (i, south)) \with {
+      | yes p => p
+      | no q => absurd (loops i q)
+    }))
+  }
+  \where {
+    \func empty {e : Nat} (att : \Sigma (Fin e) (Sphere 0) -> Fin 0) (x : Graph {0} att) : Empty
+      => rec {_} {_} {_} {_} {_} {Empty} (\lam (v : Fin 0) => \case v \with {}) (\lam i => \case att (i, north) \with {}) (\lam p => \case att p \with {}) x
+
+    \lemma one : Contr (Fin 1)
+      => \new Contr (Fin 1) 0 (\lam x => \case \elim x \with { | 0 => idp })
+
+    \lemma noLoops {c e : Nat} (att : \Sigma (Fin e) (Sphere 0) -> Fin (suc (suc c))) (conn : \Pi (x y : Graph att) -> TruncP (x = y))
+                   (loop : \Pi (i : Fin e) -> att (i, north) = att (i, south)) : Empty
+      => \case conn (pinl 0) (pinl 1) \with {
+        | inP p => suc/=0 (inv (pmap (\lam x => (project att loop x : Nat)) p))
+      }
+      \where {
+        \func project {c e : Nat} (att : \Sigma (Fin e) (Sphere 0) -> Fin c) (loop : \Pi (i : Fin e) -> att (i, north) = att (i, south))
+                      (x : Graph att) : Fin c
+          => rec (\lam v => v) (\lam i => att (i, north)) (\lam p => back att loop p.1 p.2) x
+
+        \lemma back {c e : Nat} (att : \Sigma (Fin e) (Sphere 0) -> Fin c) (loop : \Pi (i : Fin e) -> att (i, north) = att (i, south))
+                    (i : Fin e) (x : Sphere 0) : att (i, x) = att (i, north) \elim x
+          | pinl _ => idp
+          | pinr _ => inv (loop i)
+      }
+
+    \func step {c e : Nat} (att : \Sigma (Fin e) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin e) (d : Not (att (i0, north) = att (i0, south)))
+      : \Sigma (e' : Nat) (att' : \Sigma (Fin e') (Sphere 0) -> Fin (suc c)) (QEquiv {Graph att} {Graph att'}) \elim e, i0
+      | suc e, i0 => (e, smaller att i0 d, shrink att i0 d)
+
+    \func smaller {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (d : Not (att (i0, north) = att (i0, south)))
+                  (p : \Sigma (Fin e) (Sphere 0)) : Fin (suc c)
+      => merge (att (i0, north)) (att (i0, south)) (\lam q => d (inv q)) (att (sface i0 p.1, p.2))
+
+    \func merge {n : Nat} (u v : Fin (suc n)) (d : v /= u) (w : Fin (suc n)) : Fin n
+      => mergeD u v d w (decideEq v w)
+
+    \func mergeD {n : Nat} (u v : Fin (suc n)) (d : v /= u) (w : Fin (suc n)) (r : Dec (v = w)) : Fin n \elim r
+      | yes _ => FinSet.skip v u d
+      | no e => FinSet.skip v w e
+
+    \lemma merge-sface {n : Nat} (u v : Fin (suc n)) (d : v /= u) (k : Fin n) : merge u v d (sface v k) = k
+      => \case decideEq v (sface v k) \as r \return mergeD u v d (sface v k) r = k \with {
+        | yes p => absurd (sface-skip (inv p))
+        | no e => FinSet.skip_sface
+      }
+
+    \lemma sface-merge {n : Nat} (u v : Fin (suc n)) (d : v /= u) (w : Fin (suc n)) (e : v /= w) : sface v (merge u v d w) = w
+      => \case decideEq v w \as r \return sface v (mergeD u v d w r) = w \with {
+        | yes p => absurd (e p)
+        | no e' => FinSet.sface_skip
+      }
+
+    \lemma merge-both {n : Nat} (u v : Fin (suc n)) (d : v /= u) : merge u v d v = merge u v d u
+      => \case decideEq v v \as r, decideEq v u \as r' \return mergeD u v d v r = mergeD u v d u r' \with {
+        | yes _, no _ => idp
+        | no e, _ => absurd (e idp)
+        | _, yes p => absurd (d p)
+      }
+
+    \func split {e : Nat} (i0 : Fin (suc e)) : QEquiv {Fin (suc e)} {Or (Fin 1) (Fin e)} \cowith
+      | f i => splitD i0 i (decideEq i0 i)
+      | ret o => \case o \with { | inl _ => i0 | inr k => sface i0 k }
+      | ret_f i => \case decideEq i0 i \as r \return (\case splitD i0 i r \with { | inl _ => i0 | inr k => sface i0 k }) = i \with {
+        | yes p => p
+        | no e => FinSet.sface_skip
+      }
+      | f_sec o => \case \elim o \with {
+        | inl j => \case decideEq i0 i0 \as r \return splitD i0 i0 r = inl j \with {
+          | yes _ => pmap inl (isContr=>isProp one 0 j)
+          | no e => absurd (e idp)
+        }
+        | inr k => \case decideEq i0 (sface i0 k) \as r \return splitD i0 (sface i0 k) r = inr k \with {
+          | yes p => absurd (sface-skip (inv p))
+          | no e => pmap inr FinSet.skip_sface
+        }
+      }
+
+    \func splitD {e : Nat} (i0 i : Fin (suc e)) (r : Dec (i0 = i)) : Or (Fin 1) (Fin e) \elim r
+      | yes _ => inl 0
+      | no e' => inr (FinSet.skip i0 i e')
+
+    \func head {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (p : \Sigma (Fin 1) (Sphere 0)) : Fin (suc (suc c))
+      => att (i0, p.2)
+
+    \func tail {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (p : \Sigma (Fin e) (Sphere 0)) : Fin (suc (suc c))
+      => att (sface i0 p.1, p.2)
+
+    \lemma join-split {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (p : \Sigma (Fin (suc e)) (Sphere 0))
+      : cellsSplit.join (head att i0) (tail att i0) ((split i0).f p.1, p.2) = att p
+      => \case decideEq i0 p.1 \as r \return cellsSplit.join (head att i0) (tail att i0) (splitD i0 p.1 r, p.2) = att p \with {
+        | yes q => pmap (\lam i => att (i, p.2)) q
+        | no e => pmap (\lam i => att (i, p.2)) FinSet.sface_skip
+      }
+
+    \func reindex {S : \Type} {e : Nat} (i0 : Fin (suc e)) : QEquiv {\Sigma (Fin (suc e)) S} {\Sigma (Or (Fin 1) (Fin e)) S} \cowith
+      | f p => ((split i0).f p.1, p.2)
+      | ret q => ((split i0).ret q.1, q.2)
+      | ret_f p => pmap (\lam i => (i, p.2)) ((split i0).ret_f p.1)
+      | f_sec q => pmap (\lam o => (o, q.2)) ((split i0).f_sec q.1)
+
+    \func Edge {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) => PushoutData (head att i0) (\lam p => p.1)
+
+    \func collapseEdge {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (d : Not (att (i0, north) = att (i0, south)))
+      : QEquiv {Edge att i0} {Fin (suc c)} \cowith
+      | f => toFin att i0 d
+      | ret k => pinl (sface (att (i0, south)) k)
+      | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam x => pinl (sface (att (i0, south)) (toFin att i0 d x))} {\lam x => x}
+                          (left att i0 d) (right att i0 d) (\lam p => coh att i0 d p.1 p.2)
+      | f_sec k => merge-sface (att (i0, north)) (att (i0, south)) (\lam q => d (inv q)) k
+      \where {
+        \func toFin {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (d : Not (att (i0, north) = att (i0, south)))
+                    (x : Edge att i0) : Fin (suc c)
+          => rec (merge (att (i0, north)) (att (i0, south)) (\lam q => d (inv q))) (\lam _ => merge (att (i0, north)) (att (i0, south)) (\lam q => d (inv q)) (att (i0, north)))
+                 (\lam p => glue p.2) x
+          \where
+            \func glue (x : Sphere 0) : merge (att (i0, north)) (att (i0, south)) (\lam q => d (inv q)) (att (i0, x))
+                                        = merge (att (i0, north)) (att (i0, south)) (\lam q => d (inv q)) (att (i0, north)) \elim x
+              | pinl _ => idp
+              | pinr _ => merge-both (att (i0, north)) (att (i0, south)) (\lam q => d (inv q))
+
+        \func glueAt {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (x : Sphere 0)
+          : pinl (att (i0, x)) = {Edge att i0} pinr 0
+          => ppglue {_} {_} {_} {head att i0} {\lam p => p.1} (0, x)
+
+        \func north0 {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e))
+          : pinl (att (i0, north)) = {Edge att i0} pinr 0
+          => ppglue {_} {_} {_} {head att i0} {\lam p => p.1} (0, north)
+
+        \func south0 {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e))
+          : pinl (att (i0, south)) = {Edge att i0} pinr 0
+          => ppglue {_} {_} {_} {head att i0} {\lam p => p.1} (0, south)
+
+        \func leftD {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (d : Not (att (i0, north) = att (i0, south)))
+                    (w : Fin (suc (suc c))) (r : Dec (att (i0, south) = w))
+          : pinl (sface (att (i0, south)) (mergeD (att (i0, north)) (att (i0, south)) (\lam q => d (inv q)) w r)) = {Edge att i0} pinl w \elim r
+          | yes p => pmap pinl FinSet.sface_skip *> north0 att i0 *> inv (south0 att i0) *> pmap pinl p
+          | no e => pmap pinl FinSet.sface_skip
+
+        \func left {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (d : Not (att (i0, north) = att (i0, south)))
+                   (w : Fin (suc (suc c))) : pinl (sface (att (i0, south)) (toFin att i0 d (pinl w))) = {Edge att i0} pinl w
+          => leftD att i0 d w (decideEq (att (i0, south)) w)
+
+        \func right {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (d : Not (att (i0, north) = att (i0, south)))
+                    (j : Fin 1) : pinl (sface (att (i0, south)) (toFin att i0 d (pinr j))) = {Edge att i0} pinr j \elim j
+          | 0 => left att i0 d (att (i0, north)) *> north0 att i0
+
+        \func coh {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (d : Not (att (i0, north) = att (i0, south)))
+                  (j : Fin 1) (x : Sphere 0)
+          : left att i0 d (att (i0, x)) *> pmap (\lam y => y) (ppglue (j, x))
+            = pmap (\lam y => pinl (sface (att (i0, south)) (toFin att i0 d y))) (ppglue (j, x)) *> right att i0 d j \elim j
+          | 0 => drec (\lam x => left att i0 d (att (i0, x)) *> pmap (\lam y => y) (glueAt att i0 x)
+                                 = pmap (\lam (y : Edge att i0) => pinl (sface (att (i0, south)) (toFin att i0 d y))) (glueAt att i0 x) *> right att i0 d 0)
+                      (\lam _ => inv (idp_*> (left att i0 d (att (i0, north)) *> north0 att i0)))
+                      (\lam _ => southCase att i0 d (decideEq (att (i0, south)) (att (i0, south))) (decideEq (att (i0, south)) (att (i0, north)))
+                                           (pmap (sface (att (i0, south))) (merge-both (att (i0, north)) (att (i0, south)) (\lam q => d (inv q)))))
+                      (\lam a => \case a \with {}) x
+
+        \func southCase {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (d : Not (att (i0, north) = att (i0, south)))
+                        (r : Dec (att (i0, south) = att (i0, south))) (r' : Dec (att (i0, south) = att (i0, north)))
+                        (Z : sface (att (i0, south)) (mergeD (att (i0, north)) (att (i0, south)) (\lam q => d (inv q)) (att (i0, south)) r)
+                             = sface (att (i0, south)) (mergeD (att (i0, north)) (att (i0, south)) (\lam q => d (inv q)) (att (i0, north)) r'))
+          : leftD att i0 d (att (i0, south)) r *> south0 att i0 = pmap pinl Z *> (leftD att i0 d (att (i0, north)) r' *> north0 att i0) \elim r, r'
+          | yes p, no _ => pmap (\lam t => (pmap pinl FinSet.sface_skip *> north0 att i0 *> inv (south0 att i0) *> pmap pinl t) *> south0 att i0) (setFin p idp)
+                           *> alg (pmap pinl FinSet.sface_skip) (north0 att i0) (south0 att i0)
+                           *> inv (pmap (\lam t => pmap pinl t *> (pmap pinl FinSet.sface_skip *> north0 att i0)) (setFin Z idp))
+          | no e, _ => absurd (e idp)
+          | _, yes q => absurd (d (inv q))
+
+        \lemma setFin {n : Nat} {a b : Fin n} (p q : a = b) : p = q
+          => prop-isProp p q
+
+        \func alg {A : \Type} {x y z w : A} (a : x = y) (n : y = z) (s : w = z) : (a *> n *> inv s *> idp) *> s = idp *> (a *> n) \elim a, n, s
+          | idp, idp, idp => idp
+      }
+
+    \func shrink {c e : Nat} (att : \Sigma (Fin (suc e)) (Sphere 0) -> Fin (suc (suc c))) (i0 : Fin (suc e)) (d : Not (att (i0, north) = att (i0, south)))
+      : QEquiv {Graph att} {Graph (smaller att i0 d)}
+      => IsEquiv.toQEquiv (congr.isEquiv att (\lam p => p.1) (cellsSplit.join (head att i0) (tail att i0)) (\lam p => p.1) (reindex i0) idEquiv (split i0)
+                                         (\lam p => join-split att i0 p) (\lam _ => idp))
+         `transQEquiv` cellsSplit (head att i0) (tail att i0)
+         `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv (\lam p => pinl (tail att i0 p)) (\lam p => p.1) (smaller att i0 d) (\lam p => p.1)
+                                          idEquiv (collapseEdge att i0 d) idEquiv (\lam _ => idp) (\lam _ => idp))
+  }

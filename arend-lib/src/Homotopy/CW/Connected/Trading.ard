@@ -1,0 +1,184 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Data.Or
+\import Data.SeqColimit
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Maps.Lifting
+\import Homotopy.CW.Structure.Attach
+\import Homotopy.CW.Structure.Connectivity
+\import Homotopy.CW.Structure.Quotient
+\import Homotopy.CW.Structure.Skeleton
+\import Homotopy.CW.Structure.Splice (Tower, bouquetCW, insert3, insertCW)
+\import Homotopy.Cofiber
+\import Homotopy.Connectivity
+\import Homotopy.Fibration
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Suspension
+\import Logic
+\import Logic.Unique
+\import Order.LinearOrder
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+\import Set.Fin
+
+\open PushoutData (ppglue, congr, swap, paste, assoc, collapse)
+
+\func Low.{u} (m : Nat) (C : CW.{u}) => \Sigma (C.count 0 = 1) (\Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+
+\lemma trade.{u} {C : CW.{u}} {m : Nat} (L : Low m C) (cX : isNConnectedType (suc (suc m)) C.Space)
+  : TruncP (\Sigma (C' : CW.{u}) (Low (suc m) C') (QEquiv {C'.Space} {C.Space}))
+  => \case finiteLiftProperty {suc m} (isFiniteSkeleton C (suc m)) (\lam (_ : \Sigma) => apex L) (apex-connected L cX) (jmap {C} {m}) \with {
+    | inP (_, H) => \case finiteLiftProperty {suc (suc m)} (finiteSusp L) pinl (pinl-connected {C} {m})
+                                            (\lam z => (Phi L H).ret (pinl {\Sigma} {Susp (S1 C m)} {S3 C m} z)) \with {
+      | inP (F, Fh) => inP (newCW L H F Fh, newLow L H F Fh, newSpace L H F Fh)
+    }
+  }
+  \where {
+    \func A1.{v} (C : CW.{v}) (m : Nat) => C.count (suc (suc m))
+
+    \func A2.{v} (C : CW.{v}) (m : Nat) => C.count (suc (suc (suc m))) Nat.+ C.count (suc m)
+
+    \func newCW.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (H : \Pi (x : S1 C m) -> apex L = jmap x) (F : Susp (S1 C m) -> QP C m)
+                    (Fh : \Pi (z : Susp (S1 C m)) -> pinl (F z) = (Phi L H).ret (pinl z)) : CW.{v}
+      => insertCW (suc m) C (A1 C m) (att1 L) (A2 C m) (att2 L H F) (final L H F Fh)
+
+    \func newSpace.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (H : \Pi (x : S1 C m) -> apex L = jmap x) (F : Susp (S1 C m) -> QP C m)
+                       (Fh : \Pi (z : Susp (S1 C m)) -> pinl (F z) = (Phi L H).ret (pinl z)) : QEquiv {CW.Space {newCW L H F Fh}} {C.Space}
+      => insertCW.space (suc m) C (A1 C m) (att1 L) (A2 C m) (att2 L H F) (final L H F Fh)
+
+    \lemma newLow.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (H : \Pi (x : S1 C m) -> apex L = jmap x) (F : Susp (S1 C m) -> QP C m)
+                      (Fh : \Pi (z : Susp (S1 C m)) -> pinl (F z) = (Phi L H).ret (pinl z)) : Low (suc m) (newCW L H F Fh)
+      => (L.1, \lam k p => \case LinearOrder.dec<_<= (suc k) (suc m) \with {
+        | inl q => insert3.count-below (suc m) (suc k) (Tower.of C) (A1 C m) (A2 C m) q *> L.2 k q
+        | inr q => pmap (\lam i => insert3.iCount (suc m) i (Tower.of C) (A1 C m) (A2 C m)) (<=-antisymmetric (<_suc_<= p) q)
+                   *> insert3.count-at (suc m) (Tower.of C) (A1 C m) (A2 C m)
+      })
+
+    \func S1.{v} (C : CW.{v}) (m : Nat) => C.stage (suc (suc m))
+
+    \func S2.{v} (C : CW.{v}) (m : Nat) => C.stage (suc (suc (suc m)))
+
+    \func S3.{v} (C : CW.{v}) (m : Nat) => C.stage (suc (suc (suc (suc m))))
+
+    \func jmap.{v} {C : CW.{v}} {m : Nat} (x : S1 C m) : S3 C m
+      => C.inclusion (suc (suc (suc m))) (C.inclusion (suc (suc m)) x)
+
+    \func apex.{v} {C : CW.{v}} {m : Nat} (L : Low m C) : S3 C m
+      => jmap ((bouquetStage L.1 L.2).ret base)
+
+    \lemma apex-connected.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (cX : isNConnectedType (suc (suc m)) C.Space)
+      : isNConnectedMap (suc m) (\lam (_ : \Sigma) => apex L)
+      => \lam t => nconnected-equiv (suc m) (pathFib (apex L) t) (nconnected-path {suc m} (top-connected cX) (apex L) t)
+      \where {
+        \func pathFib {T : \Type} (t0 t : T) : QEquiv {t0 = t} {Fib (\lam (_ : \Sigma) => t0) t} \cowith
+          | f q => ((), q)
+          | ret p => p.2
+          | ret_f _ => idp
+          | f_sec _ => idp
+
+        \lemma top-connected.{w} {C : CW.{w}} {m : Nat} (cX : isNConnectedType (suc (suc m)) C.Space) : isNConnectedType (suc (suc m)) (S3 C m)
+          => (nconnected-unit {suc (suc m)}).2 (nconnected-map-comp {suc (suc m)} {_} {_} {_} {inSC {C.seq} {suc (suc (suc (suc m)))}} {\lam _ => ()}
+               (nconnected-map-mono {suc (suc m)} {suc (suc (suc m))} linarith (skeleton-nconnected C (suc (suc (suc m)))))
+               ((nconnected-unit {suc (suc m)}).1 cX))
+      }
+
+    \func QP.{v} (C : CW.{v}) (m : Nat) => Cof (C.inclusion (suc (suc m)))
+
+    \func beta.{v} {C : CW.{v}} {m : Nat} (w : \Sigma (Fin (C.count (suc (suc (suc m))))) (Sphere (suc (suc m)))) : QP C m
+      => pinl (C.attach (suc (suc (suc m))) w)
+
+    \func R.{v} (C : CW.{v}) (m : Nat) => PushoutData (beta {C} {m}) (\lam p => p.1)
+
+    \lemma pinl-connected.{v} {C : CW.{v}} {m : Nat} : isNConnectedMap (suc (suc m)) (pinl {_} {QP C m} {_} {beta {C} {m}} {\lam p => p.1})
+      => nconnected-pinl {suc (suc m)} beta (nconnected-proj {suc (suc m)} (\lam _ => Sphere (suc (suc m))) (\lam _ => sphere-nconnected (suc (suc m))))
+
+    \sfunc toCofJ.{v} {C : CW.{v}} {m : Nat} : QEquiv {R C m} {Cof (jmap {C} {m})}
+      => IsEquiv.toQEquiv (congr.isEquiv.{v} beta (\lam p => p.1) (\lam w => pinr (C.attach (suc (suc (suc m))) w)) (\lam p => p.1)
+                                             idEquiv (swap (C.inclusion (suc (suc m))) (\lam _ => ())) idEquiv (\lam _ => idp) (\lam _ => idp))
+         `transQEquiv` symQEquiv (assoc (\lam (_ : S1 C m) => ()) (C.inclusion (suc (suc m))) (C.attach (suc (suc (suc m)))) (\lam p => p.1))
+         `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{v} (\lam _ => ()) (\lam x => pinl (C.inclusion (suc (suc m)) x)) (\lam _ => ()) jmap
+                                          idEquiv idEquiv (C.build (suc (suc (suc m)))) (\lam _ => idp) (\lam _ => idp))
+         `transQEquiv` swap (\lam _ => ()) jmap
+
+    \func V.{v} {C : CW.{v}} {m : Nat} (L : Low m C) => PushoutData {\Sigma} {Susp (S1 C m)} {S3 C m} pinr (\lam _ => apex L)
+
+    \sfunc toWedge.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (H : \Pi (x : S1 C m) -> apex L = jmap x) : QEquiv {Cof (jmap {C} {m})} {V L}
+      => IsEquiv.toQEquiv (congr.isEquiv.{v} jmap (\lam _ => ()) (\lam _ => apex L) (\lam _ => ()) idEquiv idEquiv idEquiv H (\lam _ => idp))
+         `transQEquiv` swap (\lam _ => apex L) (\lam _ => ())
+         `transQEquiv` symQEquiv (paste (\lam (_ : S1 C m) => ()) (\lam _ => ()) (\lam _ => apex L))
+
+    \sfunc Phi.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (H : \Pi (x : S1 C m) -> apex L = jmap x) : QEquiv {R C m} {V L}
+      => toCofJ `transQEquiv` toWedge L H
+
+    \sfunc es.{v} {C : CW.{v}} {m : Nat} (L : Low m C) : QEquiv {Susp (S1 C m)} {Cof (proj {Fin (C.count (suc m))} {boundary (suc (suc m))})}
+      => Susp.mapEquiv (bouquetStage L.1 L.2)
+         `transQEquiv` IsEquiv.toQEquiv (Bouquet.suspEquiv (suc m) (C.count (suc m))).map-isEquiv
+         `transQEquiv` symQEquiv cellsEquiv
+
+    \lemma finiteSusp.{v} {C : CW.{v}} {m : Nat} (L : Low m C) : IsFinCWUpTo (suc (suc m)) (Susp (S1 C m))
+      => IsFinCWUpTo.transport (symQEquiv (es L)) (bouquetCW.finite (suc m) (C.count (suc m)))
+
+    \func sigma.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (p : \Sigma (Fin (C.count (suc m))) (Sphere (suc (suc m)))) : Susp (S1 C m)
+      => (es L).ret (cellsCof.petals p)
+
+    \func cone.{v} {C : CW.{v}} {m : Nat} (L : Low m C) => PushoutData (sigma L) (\lam p => p.1)
+
+    \lemma cone-contr.{v} {C : CW.{v}} {m : Nat} (L : Low m C) : Contr (cone L)
+      => Contr.Contr_QEquiv (symQEquiv (swap (sigma L) (\lam p => p.1)
+                                         `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{v} (\lam p => p.1) (sigma L) (\lam p => p.1) cellsCof.petals
+                                                                                         idEquiv idEquiv (es L) (\lam _ => idp) (\lam _ => inv ((es L).f_sec _)))))
+                            (cellsCof.cone-contr (Fin (C.count (suc m))) (boundary (suc (suc m))))
+
+    \func att1.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (_ : \Sigma (Fin (C.count (suc (suc m)))) (boundary (suc (suc m)))) : C.stage (suc m)
+      => Contr.center {lowContr L.1 L.2 m id<suc}
+
+    \sfunc cells.{v} {C : CW.{v}} {m : Nat} (L : Low m C) : QEquiv {PushoutData (att1 L) (\lam p => p.1)} {QP C m}
+      => IsEquiv.toQEquiv (congr.isEquiv.{v} (att1 L) (\lam p => p.1) (\lam _ => ()) (\lam p => p.1) idEquiv
+                                             (IsEquiv.toQEquiv (contr-equiv (lowContr L.1 L.2 m id<suc) unitContr {\lam _ => ()})) idEquiv
+                                             (\lam _ => idp) (\lam _ => idp))
+         `transQEquiv` swap (\lam _ => ()) (\lam p => p.1)
+         `transQEquiv` expand
+         `transQEquiv` IsEquiv.toQEquiv (Quotient.cells {C} (suc (suc m))).map-isEquiv
+      \where
+        \func expand : QEquiv {Cof (proj {Fin (C.count (suc (suc m)))} {boundary (suc (suc m))})} {Cof (pinl {_} {C.stage (suc (suc m))} {_} {C.attach (suc (suc m))} {proj})} \cowith
+          | f => (collapseCells.expand (C.attach (suc (suc m)))).1
+          | ret => (collapseCells (C.attach (suc (suc m)))).1
+          | ret_f => ->*.happly (collapseCells.collapse-expand (C.attach (suc (suc m))))
+          | f_sec => ->*.happly (collapseCells.expand-collapse (C.attach (suc (suc m))))
+
+    \func fam.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (F : Susp (S1 C m) -> QP C m)
+      : \Sigma (Or (Fin (C.count (suc (suc (suc m))))) (Fin (C.count (suc m)))) (Sphere (suc (suc m))) -> QP C m
+      => cellsSplit.join beta (\lam p => F (sigma L p))
+
+    \func att2.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (_ : \Pi (x : S1 C m) -> apex L = jmap x) (F : Susp (S1 C m) -> QP C m)
+                   (p : \Sigma (Fin (C.count (suc (suc (suc m))) Nat.+ C.count (suc m))) (boundary (suc (suc (suc m)))))
+      : PushoutData (att1 L) (\lam p => p.1)
+      => (cells L).ret (fam L F (OrFin.aux p.1, p.2))
+
+    \func index {S : \Type} {n k : Nat} : QEquiv {\Sigma (Fin (n Nat.+ k)) S} {\Sigma (Or (Fin n) (Fin k)) S} \cowith
+      | f p => (OrFin.aux p.1, p.2)
+      | ret q => (OrFin.aux.ret q.1, q.2)
+      | ret_f p => pmap (\lam i => (i, p.2)) (OrFin.aux.ret_f p.1)
+      | f_sec q => pmap (\lam i => (i, q.2)) (OrFin.aux.f_sec q.1)
+
+    \sfunc final.{v} {C : CW.{v}} {m : Nat} (L : Low m C) (H : \Pi (x : S1 C m) -> apex L = jmap x) (F : Susp (S1 C m) -> QP C m)
+                    (Fh : \Pi (z : Susp (S1 C m)) -> pinl (F z) = (Phi L H).ret (pinl z))
+      : QEquiv {PushoutData (att2 L H F) (\lam p => p.1)} {S3 C m}
+      => IsEquiv.toQEquiv (congr.isEquiv.{v} (att2 L H F) (\lam p => p.1) (fam L F) (\lam p => p.1) index (cells L) OrFin.aux
+                                             (\lam _ => inv ((cells L).f_sec _)) (\lam _ => idp))
+         `transQEquiv` cellsSplit beta (\lam p => F (sigma L p))
+         `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{v} (\lam p => pinl (F (sigma L p))) (\lam p => p.1) (\lam p => pinl (sigma L p)) (\lam p => p.1)
+                                          idEquiv (Phi L H) idEquiv (\lam _ => inv (pmap (Phi L H) (Fh _) *> (Phi L H).f_sec _)) (\lam _ => idp))
+         `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{v} (\lam p => pinl (sigma L p)) (\lam p => p.1) (\lam p => pinr (sigma L p)) (\lam p => p.1)
+                                          idEquiv (swap pinr (\lam _ => apex L)) idEquiv (\lam _ => idp) (\lam _ => idp))
+         `transQEquiv` symQEquiv (assoc (\lam (_ : \Sigma) => apex L) pinr (sigma L) (\lam p => p.1))
+         `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{v} (\lam _ => apex L) (\lam p => pinl (pinr p)) (\lam _ => apex L) (\lam c => c)
+                                          idEquiv idEquiv (IsEquiv.toQEquiv (contr-equiv (cone-contr L) unitContr {\lam _ => ()}))
+                                          (\lam _ => idp) (\lam _ => idp))
+         `transQEquiv` collapse (\lam _ => apex L)
+  }

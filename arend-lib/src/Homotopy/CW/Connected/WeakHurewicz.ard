@@ -1,0 +1,125 @@
+\import Algebra.Group
+\import Algebra.Group.Abelianization
+\import Algebra.Meta
+\import Algebra.Group.Cokernel
+\import Algebra.Group.FinitePresentation
+\import Algebra.Group.GroupHom
+\import Arith.Nat
+\import Data.SeqColimit
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Connected
+\import Homotopy.CW.Structure.Attach
+\import Homotopy.CW.Structure.Connectivity
+\import Homotopy.Cofiber
+\import Homotopy.Connectivity
+\import Homotopy.FiberSequence.Connectivity
+\import Homotopy.HomotopyGroup
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Sphere.Bouquet.Cofiber
+\import Logic
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+\import Set
+
+\lemma weakHurewicz.{u} (p : Nat) (X : Pointed.{u}) (cw : IsCW X) (c : isNConnectedType (suc (suc p)) X)
+  : IsFP (AbGroup.fromCGroup (PiCGroup p X))
+  => \case connectedPresentation.{u} (suc p) cw c \with {
+    | inP (C, one, gap, e) => \case top {C} {suc p} one gap \with {
+      | inP (f, s, compat) => \case nconnected1-path (nconnected-mono {1} {suc (suc p)} linarith c) base (e.ret (inSC (start.{u} one gap))) \with {
+        | inP q => IsFP.transport {AbGroup.fromCGroup (PiCGroup.{u} p (Colimit.{u} one gap))} {AbGroup.fromCGroup (PiCGroup.{u} p X)}
+                     (AddGroupHom.fromGroupHom (piGroupMap.{u} (suc p) (realization.{u} e q)))
+                     (piMap-isEquiv.{u} (suc (suc p)) (realization.{u} e q) (inP e))
+                     (IsFP.transport {AbGroup.fromCGroup (PiCGroup.{u} p (Start.{u} one gap))} {AbGroup.fromCGroup (PiCGroup.{u} p (Colimit.{u} one gap))}
+                       (AddGroupHom.inverse (AddGroupHom.fromGroupHom (piGroupMap.{u} (suc p) (inclusion.{u} one gap))) (skeleton.{u} one gap))
+                       (inP (symQEquiv (skeleton.{u} one gap)))
+                       (IsFP.transport {AbGroup.fromCGroup (PiCGroup.{u} p (Cof.pointed f))} {AbGroup.fromCGroup (PiCGroup.{u} p (Start.{u} one gap))}
+                         (AddGroupHom.fromGroupHom (piGroupMap.{u} (suc p) (cofiber.{u} s compat)))
+                         (piMap-isEquiv.{u} (suc (suc p)) (cofiber.{u} s compat) (inP s))
+                         (relevel.{u} p (Cof.pointed f)
+                           (IsFP.transport (AddGroupHom.inverse (cofiberBottom f) (IsEquiv.toQEquiv (cofiberBottom.isEquiv f)))
+                             (inP (symQEquiv (IsEquiv.toQEquiv (cofiberBottom.isEquiv f))))
+                             (inP (_, _, degreeHom f, AddGroupHom.id, inP idEquiv))))))
+      }
+    }
+  }
+  \where {
+    \func lift.{u} (n : Nat) (Y : Pointed.{0}) : Omega^.{0} n Y ->* Omega^.{u} n Y \elim n
+      | 0 => ->*.id
+      | suc n => Loop-Func (lift n Y)
+
+    \func lift-equiv.{u} (n : Nat) (Y : Pointed.{0}) : QEquiv (lift.{u} n Y).1 \elim n
+      | 0 => idEquiv
+      | suc n => IsEquiv.toQEquiv (Loop-Func.isEquiv (lift n Y) (inP (lift-equiv n Y)))
+
+    \func relevelHom.{u} (n : Nat) (Y : Pointed.{0}) : GroupHom (PiGroup.{0} n Y) (PiGroup.{u} n Y) \cowith
+      | func t => Trunc0.map t (lift.{u} (suc n) Y).1
+      | func-* {x} {y} => \case \elim x, \elim y \with {
+        | in0 a, in0 b => pmap in0 (Loop-Func_*> (lift.{u} n Y) a b)
+      }
+
+    \func relevel-equiv.{u} (n : Nat) (Y : Pointed.{0}) : QEquiv (relevelHom.{u} n Y)
+      => Trunc0.mapEquiv (lift-equiv.{u} (suc n) Y)
+
+    \lemma relevel.{u} (p : Nat) (Y : Pointed.{0}) (h : IsFP (AbGroup.fromCGroup (PiCGroup.{0} p Y)))
+      : IsFP (AbGroup.fromCGroup (PiCGroup.{u} p Y))
+      => IsFP.transport {AbGroup.fromCGroup (PiCGroup.{0} p Y)} {AbGroup.fromCGroup (PiCGroup.{u} p Y)}
+                        (AddGroupHom.inverse (AddGroupHom.fromGroupHom (relevelHom.{u} (suc p) Y)) (relevel-equiv.{u} (suc p) Y))
+                        (inP (symQEquiv (relevel-equiv.{u} (suc p) Y))) h
+
+    \lemma relevel1.{u} (Y : Pointed.{0}) (h : IsFP (Ab (PiGroup.{0} 0 Y))) : IsFP (Ab (PiGroup.{u} 0 Y))
+      => IsFP.transport (AddGroupHom.inverse (Ab.map (relevelHom.{u} 0 Y)) (Ab.map.equiv _ (relevel-equiv.{u} 0 Y)))
+                        (inP (symQEquiv (Ab.map.equiv _ (relevel-equiv.{u} 0 Y)))) h
+
+    \func start.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+      : C.stage (suc (suc (suc m)))
+      => C.inclusion (suc (suc m)) ((bouquetStage one gap).ret base)
+
+    \func Start.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0) : Pointed.{u}
+      => Pointed.make (start.{u} one gap)
+
+    \func Colimit.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0) : Pointed.{u}
+      => Pointed.make {C.Space} (inSC (start.{u} one gap))
+
+    \func inclusion.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+      : Start.{u} one gap ->* Colimit.{u} one gap
+      => (inSC, idp)
+
+    \func skeleton.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+      : QEquiv (piMap (suc m) (inclusion.{u} one gap))
+      => IsEquiv.toQEquiv (nconnected-piMap-isEquiv {suc (suc m)} {suc m} (inclusion.{u} one gap) (skeleton-nconnected C (suc (suc m))) id<suc)
+
+    \func realization.{u} {X : Pointed.{u}} {C : CW.{u}} {m : Nat} {one : C.count 0 = 1} {gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0}
+                      (e : QEquiv {X} {C.Space}) (q : base = e.ret (inSC (start.{u} one gap))) : X ->* Colimit.{u} one gap
+      => (e.f, pmap e.f q *> e.f_sec _)
+
+    \func cofiber.{u} {C : CW.{u}} {m : Nat} {one : C.count 0 = 1} {gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0}
+                  {f : Bouquet (suc m) (C.count (suc (suc m))) ->* Bouquet (suc m) (C.count (suc m))} (s : QEquiv {C.stage (suc (suc (suc m)))} {Cof f.1})
+                  (compat : \Pi (y : C.stage (suc (suc m))) -> s (C.inclusion (suc (suc m)) y) = pinl (bouquetStage one gap y))
+      : Start.{u} one gap ->* Cof.pointed f
+      => (s.f, compat _ *> pmap pinl ((bouquetStage one gap).f_sec base))
+  }
+
+\lemma weakHurewicz1.{u} (X : Pointed.{u}) (cw : IsCW X) (c : isNConnectedType 1 X)
+  : IsFP (Ab (PiGroup 0 X))
+  => \case connectedPresentation.{u} 0 cw c \with {
+    | inP (C, one, gap, e) => \case top {C} {0} one gap \with {
+      | inP (f, s, compat) => \case nconnected1-path c base (e.ret (inSC (weakHurewicz.start.{u} one gap))) \with {
+        | inP q => IsFP.transport (Ab.map (piGroupMap 0 (weakHurewicz.realization.{u} e q)))
+                     (inP (Ab.map.equiv _ (IsEquiv.toQEquiv (piMap-isEquiv 1 (weakHurewicz.realization.{u} e q) (inP e)))))
+                     (IsFP.transport (AddGroupHom.inverse (Ab.map (piGroupMap 0 (weakHurewicz.inclusion.{u} one gap)))
+                                                          (Ab.map.equiv _ (weakHurewicz.skeleton.{u} one gap)))
+                       (inP (symQEquiv (Ab.map.equiv _ (weakHurewicz.skeleton.{u} one gap))))
+                       (IsFP.transport (Ab.map (piGroupMap 0 (weakHurewicz.cofiber.{u} s compat)))
+                         (inP (Ab.map.equiv _ (IsEquiv.toQEquiv (piMap-isEquiv 1 (weakHurewicz.cofiber.{u} s compat) (inP s)))))
+                         (weakHurewicz.relevel1.{u} (Cof.pointed f)
+                           (IsFP.transport (AddGroupHom.inverse (cofiberBottom1 f) (cofiberBottom1.isEquiv f))
+                             (inP (symQEquiv (cofiberBottom1.isEquiv f)))
+                             (inP (_, _, degreeHom f, AddGroupHom.id, inP idEquiv))))))
+      }
+    }
+  }

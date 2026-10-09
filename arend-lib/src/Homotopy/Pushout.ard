@@ -154,7 +154,7 @@
       | ret_f x => homotopy {_} {_} {_} {_} {_} {_} {\lam x => from u v w (to u v w x)} {\lam x => x}
                             (\lam p => homotopy {_} {_} {_} {_} {_} {_} {\lam p => from u v w (inner u v w p)} {pinl}
                                                 (\lam _ => idp) (\lam c => inv (ppglue c))
-                                                (\lam a => idp_*> _ *> inv (*>-assoc _ _ _ *> pmap (_ *>) (*>_inv _))) p)
+                                                (\lam _ => idp_*> _ *> inv (*>-assoc _ _ _ *> pmap (_ *>) (*>_inv _))) p)
                             (\lam _ => idp) (\lam c => inv_*> (ppglue c)) x
       | f_sec y => homotopy {_} {_} {_} {_} {_} {_} {\lam y => to u v w (from u v w y)} {\lam y => y}
                             (\lam _ => idp) (\lam _ => idp) (\lam a => idp_*> _ *> inv (pmap_*>-comm (to u v w) (pmap pinl (ppglue a)) (ppglue (v a)))) y
@@ -180,6 +180,59 @@
       | ret_f _ => idp
       | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam x => pinr (rec (\lam b => absurd (e b)) (\lam c => c) (\lam a => absurd (e (f a))) x)} {\lam x => x}
                           (\lam b => absurd (e b)) (\lam _ => idp) (\lam a => absurd (e (f a)))
+
+    \func swap {A B C : \Type} (u : A -> B) (v : A -> C) : QEquiv {PushoutData u v} {PushoutData v u} \cowith
+      | f => swap.map u v
+      | ret => swap.map v u
+      | ret_f => swap.back u v
+      | f_sec => swap.back v u
+      \where {
+        \func map {A B C : \Type} (u : A -> B) (v : A -> C) (x : PushoutData u v) : PushoutData v u
+          => rec pinr pinl (\lam a => inv (ppglue a)) x
+
+        \func back {A B C : \Type} (u : A -> B) (v : A -> C) (x : PushoutData u v) : map v u (map u v x) = x
+          => homotopy {_} {_} {_} {_} {_} {_} {\lam x => map v u (map u v x)} {\lam x => x} (\lam _ => idp) (\lam _ => idp)
+                      (\lam a => idp_*> _ *> inv (inv_inv (ppglue a)) *> inv (pmap_inv-comm (map v u) (ppglue a))) x
+      }
+
+    \func collapse {B C : \Type} (w : C -> B) : QEquiv {PushoutData {C} {B} {C} w (\lam c => c)} {B} \cowith
+      | f => collapse.map w
+      | ret => pinl
+      | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam x => pinl (collapse.map w x)} {\lam x => x} (\lam _ => idp) ppglue (\lam _ => idp)
+      | f_sec _ => idp
+      \where
+        \func map {B C : \Type} (w : C -> B) (x : PushoutData {C} {B} {C} w (\lam c => c)) : B
+          => rec (\lam b => b) w (\lam _ => idp) x
+
+    \func assoc {P W Q E V : \Type} (u : P -> W) (v : P -> Q) (g : E -> Q) (h : E -> V)
+      : QEquiv {PushoutData {P} {W} {PushoutData g h} u (\lam p => pinl (v p))} {PushoutData {E} {PushoutData u v} {V} (\lam e => pinr (g e)) h} \cowith
+      | f => assoc.to u v g h
+      | ret => assoc.from u v g h
+      | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam x => assoc.from u v g h (assoc.to u v g h x)} {\lam x => x} (\lam _ => idp)
+                          (homotopy {_} {_} {_} {_} {_} {_} {\lam r => assoc.from u v g h (assoc.right u v g h r)} {pinr} (\lam _ => idp) (\lam _ => idp)
+                                    (\lam _ => idp_*> _))
+                          (\lam _ => idp_*> _)
+      | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam y => assoc.to u v g h (assoc.from u v g h y)} {\lam y => y}
+                          (homotopy {_} {_} {_} {_} {_} {_} {\lam l => assoc.to u v g h (assoc.left u v g h l)} {pinl} (\lam _ => idp) (\lam _ => idp)
+                                    (\lam _ => idp_*> _))
+                          (\lam _ => idp) (\lam _ => idp_*> _)
+      \where {
+        \func right {P W Q E V : \Type} (u : P -> W) (v : P -> Q) (g : E -> Q) (h : E -> V) (r : PushoutData g h)
+          : PushoutData {E} {PushoutData u v} {V} (\lam e => pinr (g e)) h
+          => rec (\lam q => pinl (pinr q)) pinr ppglue r
+
+        \func left {P W Q E V : \Type} (u : P -> W) (v : P -> Q) (g : E -> Q) (h : E -> V) (l : PushoutData u v)
+          : PushoutData {P} {W} {PushoutData g h} u (\lam p => pinl (v p))
+          => rec pinl (\lam q => pinr (pinl q)) ppglue l
+
+        \func to {P W Q E V : \Type} (u : P -> W) (v : P -> Q) (g : E -> Q) (h : E -> V) (x : PushoutData {P} {W} {PushoutData g h} u (\lam p => pinl (v p)))
+          : PushoutData {E} {PushoutData u v} {V} (\lam e => pinr (g e)) h
+          => rec (\lam w => pinl (pinl w)) (right u v g h) (\lam p => pmap pinl (ppglue p)) x
+
+        \func from {P W Q E V : \Type} (u : P -> W) (v : P -> Q) (g : E -> Q) (h : E -> V) (y : PushoutData {E} {PushoutData u v} {V} (\lam e => pinr (g e)) h)
+          : PushoutData {P} {W} {PushoutData g h} u (\lam p => pinl (v p))
+          => rec (left u v g h) (\lam x => pinr (pinr x)) (\lam e => pmap pinr (ppglue e)) y
+      }
 
     -- | Congruence of pushouts along an equivalence of spans.
     \func congr {J A B J' A' B' : \Type} (u : J -> A) (v : J -> B) (u' : J' -> A') (v' : J' -> B')

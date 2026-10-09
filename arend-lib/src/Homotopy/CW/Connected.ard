@@ -1,0 +1,24 @@
+-- | After `Cubical/CW/Connected.agda` in the cubical library.
+
+\import Algebra.Meta
+\import Arith.Nat
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Connected.OneVertex (oneVertex)
+\import Homotopy.CW.Connected.Trading (trade)
+\import Homotopy.Connectivity
+\import Logic
+\import Order.PartialOrder
+\import Order.StrictOrder
+
+\func ConnectedCW.{u} (n : Nat) (X : \Type u)
+  => \Sigma (C : CW.{u}) (C.count 0 = 1) (\Pi (k : Nat) -> suc k < n -> C.count (suc k) = 0) (QEquiv {X} {C.Space})
+
+\lemma connectedPresentation.{u} (n : Nat) {X : \Type u} (cw : IsCW X) (c : isNConnectedType (suc n) X) : TruncP (ConnectedCW (suc n) X) \elim n
+  | 0 => \case cw \with {
+    | inP (C, e) => TruncP.map (oneVertex (nconnected-equiv 1 e c)) \lam s => (s.1, s.2, \lam _ _ => absurd linarith, e `transQEquiv` symQEquiv s.3)
+  }
+  | suc r => \case connectedPresentation r cw (nconnected-mono {suc r} {suc (suc r)} linarith c) \with {
+    | inP (C, one, gap, e) => TruncP.map (trade {C} {r} (one, gap) (nconnected-equiv (suc (suc r)) e c))
+                                         \lam s => (s.1, s.2.1, s.2.2, e `transQEquiv` symQEquiv s.3)
+  }

@@ -174,6 +174,10 @@
   => Trunc_-1+.elim (\lam _ => \new Truncated_-1+ 0 (TruncP (a = a')) (toProp (\lam _ _ => prop-pi))) inP
        (Trunc_-1+.equality {0} a a' (isContr=>isProp (propExt.dir (nconnected-iff-trunc-contr 1 A) c) (inT a) (inT a')))
 
+\lemma nconnected1-inhabited.{u} {A : \Type u} (c : isNConnectedType 1 A) : TruncP A
+  => Trunc_-1+.elim (\lam _ => \new Truncated_-1+ 1 (TruncP A) (HLevel_-1_suc {_} {0} (toProp (\lam _ _ => prop-pi)))) inP
+       (Contr.center {propExt.dir (nconnected-iff-trunc-contr 1 A) c})
+
 \lemma nconnected-trunc.{u} {k l : Nat} {A : \Type u} (p : k <= l) (c : isNConnectedType k A)
   : isNConnectedType k (Trunc_-1+ l A)
   => propExt.conv (nconnected-iff-trunc-contr k (Trunc_-1+ l A))

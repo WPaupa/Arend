@@ -1,0 +1,200 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Structure.Quotient (proj)
+\import Homotopy.CW.Structure.Skeleton (isFiniteSkeleton)
+\import Homotopy.Cofiber
+\import Homotopy.Pushout
+\import Logic
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+
+\record Tower (bd : Nat -> \Type) {
+  | stage : Nat -> \Type
+  | count : Nat -> Nat
+  | attach (n : Nat) : \Sigma (Fin (count n)) (bd n) -> stage n
+  | build (n : Nat) : QEquiv {PushoutData (attach n) (\lam p => p.1)} {stage (suc n)}
+
+  \func seq : Seq \cowith
+    | A => stage
+    | f {n} x => build n (pinl x)
+
+  \func Space => SeqColimit seq
+} \where {
+  \func shift.{u} {bd : Nat -> \Type u} (T : Tower.{u} bd) : Tower.{u} (\lam n => bd (suc n)) \cowith
+    | stage n => T.stage (suc n)
+    | count n => T.count (suc n)
+    | attach n => T.attach (suc n)
+    | build n => T.build (suc n)
+
+  \func of.{u} (C : RelCW.{u}) : Tower.{u} boundary \cowith
+    | stage => C.stage
+    | count => C.count
+    | attach => C.attach
+    | build => C.build
+
+  \func shiftSpace.{u} {bd : Nat -> \Type u} (T : Tower.{u} bd) : QEquiv {Tower.Space {shift T}} {T.Space}
+    => IsEquiv.toQEquiv (tail.isEquiv T.seq 1)
+
+  \func dropSpace.{u} {bd : Nat -> \Type u} (T : Tower.{u} bd) : QEquiv {SeqColimit (Data.SeqColimit.Map.shift T.seq 3)} {T.Space}
+    => IsEquiv.toQEquiv (tail.isEquiv T.seq 3)
+}
+
+\func bouquetCW (d a : Nat) : CW.{0} \cowith
+  | stage n => cStage d a n
+  | count n => cCount d a n
+  | attach n => cAttach d a n
+  | build n => cBuild d a n
+  | empty x => x
+  \where {
+    \func bqStage (n d : Nat) {bd : Nat -> \Type0} (a : Nat) : \Type0 \elim n, d
+      | 0, _ => \Sigma
+      | suc n, 0 => PushoutData {\Sigma (Fin a) (bd 0)} {\Sigma} {Fin a} (\lam _ => ()) (\lam p => p.1)
+      | suc n, suc d => bqStage n d {\lam i => bd (suc i)} a
+
+    \func bqCount (d n a : Nat) : Nat \elim d, n
+      | 0, 0 => a
+      | 0, suc n => 0
+      | suc d, 0 => 0
+      | suc d, suc n => bqCount d n a
+
+    \func bqAttach (d n : Nat) {bd : Nat -> \Type0} (a : Nat) : \Sigma (Fin (bqCount d n a)) (bd n) -> bqStage n d {bd} a \elim d, n
+      | 0, 0 => \lam _ => ()
+      | 0, suc n => \lam p => \case p.1 \with {}
+      | suc d, 0 => \lam p => \case p.1 \with {}
+      | suc d, suc n => bqAttach d n {\lam i => bd (suc i)} a
+
+    \func bqBuild (d n : Nat) {bd : Nat -> \Type0} (a : Nat)
+      : QEquiv {PushoutData (bqAttach d n {bd} a) (\lam p => p.1)} {bqStage (suc n) d {bd} a} \elim d, n
+      | 0, 0 => idEquiv
+      | 0, suc n => symQEquiv (PushoutData.pinl-equiv (\lam (j : Fin 0) => \case j \with {}))
+      | suc d, 0 => symQEquiv (PushoutData.pinl-equiv (\lam (j : Fin 0) => \case j \with {}))
+      | suc d, suc n => bqBuild d n {\lam i => bd (suc i)} a
+
+    \func cStage (d a n : Nat) : \Type0 \elim n
+      | 0 => Empty
+      | suc n => bqStage n d {\lam i => boundary (suc i)} a
+
+    \func cCount (d a n : Nat) : Nat \elim n
+      | 0 => 1
+      | suc n => bqCount d n a
+
+    \func cAttach (d a n : Nat) : \Sigma (Fin (cCount d a n)) (boundary n) -> cStage d a n \elim n
+      | 0 => \lam p => p.2
+      | suc n => bqAttach d n {\lam i => boundary (suc i)} a
+
+    \func cBuild (d a n : Nat) : QEquiv {PushoutData (cAttach d a n) (\lam p => p.1)} {cStage d a (suc n)} \elim n
+      | 0 => symQEquiv (PushoutData.pinr-equiv (\lam x => x)) `transQEquiv` unit
+      | suc n => bqBuild d n {\lam i => boundary (suc i)} a
+
+    \func unit : QEquiv {Fin 1} {\Sigma} \cowith
+      | f _ => ()
+      | ret _ => 0
+      | ret_f x => \case \elim x \with { | 0 => idp }
+      | f_sec _ => idp
+
+    \func topStage (d : Nat) {bd : Nat -> \Type0} (a : Nat) : QEquiv {bqStage (suc d) d {bd} a} {Cof (proj {Fin a} {bd d})} \elim d
+      | 0 => PushoutData.swap (\lam _ => ()) (\lam p => p.1)
+      | suc d => topStage d {\lam i => bd (suc i)} a
+
+    \lemma finite (d a : Nat) : IsFinCWUpTo (suc d) (Cof (proj {Fin a} {boundary (suc d)}))
+      => IsFinCWUpTo.transport (topStage d {\lam i => boundary (suc i)} a) (isFiniteSkeleton (bouquetCW d a) (suc d))
+  }
+
+\func insertCW.{u} (d : Nat) (C : CW.{u}) (a : Nat) (att1 : \Sigma (Fin a) (boundary (suc d)) -> C.stage d)
+                   (c : Nat) (att2 : \Sigma (Fin c) (boundary (suc (suc d))) -> PushoutData att1 (\lam p => p.1))
+                   (e : QEquiv {PushoutData att2 (\lam p => p.1)} {C.stage (suc (suc (suc d)))}) : CW.{u} \cowith
+  | stage n => insert3.iStage n d (Tower.of C) att1 att2
+  | count n => insert3.iCount d n (Tower.of C) a c
+  | attach n => insert3.iAttach d n (Tower.of C) att1 att2
+  | build n => insert3.iBuild d n (Tower.of C) att1 att2 e
+  | empty => C.empty
+  \where
+    \func space.{v} (d : Nat) (C : CW.{v}) (a : Nat) (att1 : \Sigma (Fin a) (boundary (suc d)) -> C.stage d)
+                    (c : Nat) (att2 : \Sigma (Fin c) (boundary (suc (suc d))) -> PushoutData att1 (\lam p => p.1))
+                    (e : QEquiv {PushoutData att2 (\lam p => p.1)} {C.stage (suc (suc (suc d)))})
+      : QEquiv {CW.Space {insertCW d C a att1 c att2 e}} {C.Space}
+      => insert3.space d (Tower.of C) att1 att2 e
+
+\func insert3.{u} {bd : Nat -> \Type u} (d : Nat) (T : Tower.{u} bd) (a : Nat) (att1 : \Sigma (Fin a) (bd (suc d)) -> T.stage d)
+                  (c : Nat) (att2 : \Sigma (Fin c) (bd (suc (suc d))) -> PushoutData att1 (\lam p => p.1))
+                  (e : QEquiv {PushoutData att2 (\lam p => p.1)} {T.stage (suc (suc (suc d)))}) : Tower.{u} bd \cowith
+  | stage n => iStage n d T att1 att2
+  | count n => iCount d n T a c
+  | attach n => iAttach d n T att1 att2
+  | build n => iBuild d n T att1 att2 e
+  \where {
+    \func iStage.{v} {bd : Nat -> \Type v} (n d : Nat) (T : Tower.{v} bd) {a : Nat} (att1 : \Sigma (Fin a) (bd (suc d)) -> T.stage d)
+                     {c : Nat} (att2 : \Sigma (Fin c) (bd (suc (suc d))) -> PushoutData att1 (\lam p => p.1)) : \Type v \elim n, d
+      | 0, _ => T.stage 0
+      | suc n, 0 => stage0 n T att1
+      | suc n, suc d => iStage n d (Tower.shift.{v} T) att1 att2
+
+    \func stage0.{v} {bd : Nat -> \Type v} (n : Nat) (T : Tower.{v} bd) {a : Nat} (att1 : \Sigma (Fin a) (bd 1) -> T.stage 0) : \Type v \elim n
+      | 0 => T.stage 0
+      | 1 => PushoutData att1 (\lam p => p.1)
+      | suc (suc n) => T.stage (suc (suc (suc n)))
+
+    \func iCount.{v} {bd : Nat -> \Type v} (d n : Nat) (T : Tower.{v} bd) (a c : Nat) : Nat \elim d, n
+      | 0, n => count0 n T a c
+      | suc d, 0 => T.count 0
+      | suc d, suc n => iCount d n (Tower.shift.{v} T) a c
+
+    \func count0.{v} {bd : Nat -> \Type v} (n : Nat) (T : Tower.{v} bd) (a c : Nat) : Nat \elim n
+      | 0 => 0
+      | 1 => a
+      | 2 => c
+      | suc (suc (suc n)) => T.count (suc (suc (suc n)))
+
+    \func iAttach.{v} {bd : Nat -> \Type v} (d n : Nat) (T : Tower.{v} bd) {a : Nat} (att1 : \Sigma (Fin a) (bd (suc d)) -> T.stage d)
+                      {c : Nat} (att2 : \Sigma (Fin c) (bd (suc (suc d))) -> PushoutData att1 (\lam p => p.1))
+      : \Sigma (Fin (iCount d n T a c)) (bd n) -> iStage n d T att1 att2 \elim d, n
+      | 0, n => attach0 n T att1 att2
+      | suc d, 0 => T.attach 0
+      | suc d, suc n => iAttach d n (Tower.shift.{v} T) att1 att2
+
+    \func attach0.{v} {bd : Nat -> \Type v} (n : Nat) (T : Tower.{v} bd) {a : Nat} (att1 : \Sigma (Fin a) (bd 1) -> T.stage 0)
+                      {c : Nat} (att2 : \Sigma (Fin c) (bd 2) -> PushoutData att1 (\lam p => p.1))
+      : \Sigma (Fin (count0 n T a c)) (bd n) -> iStage n 0 T att1 att2 \elim n
+      | 0 => \lam p => \case p.1 \with {}
+      | 1 => att1
+      | 2 => att2
+      | suc (suc (suc n)) => T.attach (suc (suc (suc n)))
+
+    \func iBuild.{v} {bd : Nat -> \Type v} (d n : Nat) (T : Tower.{v} bd) {a : Nat} (att1 : \Sigma (Fin a) (bd (suc d)) -> T.stage d)
+                     {c : Nat} (att2 : \Sigma (Fin c) (bd (suc (suc d))) -> PushoutData att1 (\lam p => p.1))
+                     (e : QEquiv {PushoutData att2 (\lam p => p.1)} {T.stage (suc (suc (suc d)))})
+      : QEquiv {PushoutData (iAttach d n T att1 att2) (\lam p => p.1)} {iStage (suc n) d T att1 att2} \elim d, n
+      | 0, n => build0 n T att1 att2 e
+      | suc d, 0 => T.build 0
+      | suc d, suc n => iBuild d n (Tower.shift.{v} T) att1 att2 e
+
+    \func build0.{v} {bd : Nat -> \Type v} (n : Nat) (T : Tower.{v} bd) {a : Nat} (att1 : \Sigma (Fin a) (bd 1) -> T.stage 0)
+                     {c : Nat} (att2 : \Sigma (Fin c) (bd 2) -> PushoutData att1 (\lam p => p.1))
+                     (e : QEquiv {PushoutData att2 (\lam p => p.1)} {T.stage 3})
+      : QEquiv {PushoutData (attach0 n T att1 att2) (\lam p => p.1)} {iStage (suc n) 0 T att1 att2} \elim n
+      | 0 => symQEquiv (PushoutData.pinl-equiv (\lam (j : Fin 0) => \case j \with {}))
+      | 1 => idEquiv
+      | 2 => e
+      | suc (suc (suc n)) => T.build (suc (suc (suc n)))
+
+    \lemma count-below.{v} {bd : Nat -> \Type v} (d k : Nat) (T : Tower.{v} bd) (a c : Nat) (_ : k < d) : iCount d k T a c = T.count k \elim d, k
+      | suc d, 0 => idp
+      | suc d, suc k => count-below d k (Tower.shift.{v} T) a c linarith
+
+    \lemma count-at.{v} {bd : Nat -> \Type v} (d : Nat) (T : Tower.{v} bd) (a c : Nat) : iCount d d T a c = 0 \elim d
+      | 0 => idp
+      | suc d => count-at d (Tower.shift.{v} T) a c
+
+    \func space.{v} {bd : Nat -> \Type v} (d : Nat) (T : Tower.{v} bd) {a : Nat} (att1 : \Sigma (Fin a) (bd (suc d)) -> T.stage d)
+                    {c : Nat} (att2 : \Sigma (Fin c) (bd (suc (suc d))) -> PushoutData att1 (\lam p => p.1))
+                    (e : QEquiv {PushoutData att2 (\lam p => p.1)} {T.stage (suc (suc (suc d)))})
+      : QEquiv {Tower.Space {insert3 d T a att1 c att2 e}} {T.Space} \elim d
+      | 0 => symQEquiv (Tower.dropSpace (insert3 0 T a att1 c att2 e)) `transQEquiv` Tower.dropSpace T
+      | suc d => symQEquiv (Tower.shiftSpace (insert3 (suc d) T a att1 c att2 e))
+                   `transQEquiv` space d (Tower.shift.{v} T) att1 att2 e `transQEquiv` Tower.shiftSpace T
+  }

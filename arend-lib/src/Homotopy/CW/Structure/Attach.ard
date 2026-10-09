@@ -1,0 +1,234 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Data.Or
+\import Equiv
+\import Function.Iterate
+\import Homotopy.CW
+\import Homotopy.CW.Structure.Quotient (cell, cellDesc, proj, sphereCells)
+\import Homotopy.Cofiber
+\import Homotopy.Connectivity
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Suspension
+\import Logic
+\import Logic.Unique
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+\import Set.Fin
+
+\open PushoutData (ppglue, rec, homotopy, paste, congr, swap)
+
+\func attachAlong {J S : \Type} {Y : Pointed} (phi : Cof.based (proj {J} {S}) ->* Y) (p : \Sigma J (Susp S)) : Y
+  => phi.1 ((cell p.1).1 p.2)
+
+\func cellsCof.{u} {J S : \Type u} {Y : Pointed.{u}} (phi : Cof.based (proj {J} {S}) ->* Y)
+  : QEquiv {PushoutData (attachAlong phi) (proj {J} {Susp S})} {Cof phi.1}
+  => swap (attachAlong phi) proj
+       `transQEquiv` symQEquiv (paste (proj {J} {Susp S}) (petals {J} {S}) phi.1)
+       `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{u} pinr phi.1 (\lam _ => ()) phi.1 idEquiv (collapse {J} {S}) idEquiv (\lam _ => idp) (\lam _ => idp))
+       `transQEquiv` swap (\lam _ => ()) phi.1
+  \where {
+    \func petals {J S : \Type} (p : \Sigma J (Susp S)) : Cof.based (proj {J} {S})
+      => (cell p.1).1 p.2
+
+    \func Cone (J S : \Type) => PushoutData (proj {J} {Susp S}) (petals {J} {S})
+
+    \func collapse.{u} {J S : \Type u} : QEquiv {Cone J S} {\Sigma}
+      => IsEquiv.toQEquiv (contr-equiv (cone-contr J S) (\new Contr (\Sigma) () (\lam _ => idp)) {\lam _ => ()})
+
+    \func Fibers (J S : \Type) => PushoutData (proj {J} {S}) (proj {J} {S})
+
+    \func fiberSusp {J S : \Type} : QEquiv {\Sigma J (Susp S)} {Fibers J S} \cowith
+      | f p => toFibers p
+      | ret => fromFibers
+      | ret_f p => \case \elim p \with {
+        | (j, x) => homotopy {_} {_} {_} {_} {_} {_} {\lam x => fromFibers (toFibers (j, x))} {\lam x => (j, x)} (\lam _ => idp) (\lam _ => idp)
+                             (\lam s => idp_*> (pmap (\lam x => (j, x)) (pmerid s)) *> inv (inv_inv (pmap (\lam x => (j, x)) (pmerid s)))
+                                        *> pmap inv (inv (pmap_inv-comm (\lam x => (j, x)) (pmerid s)))
+                                        *> inv (pmap_inv-comm fromFibers (ppglue (j, s)))) x
+      }
+      | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam w => toFibers (fromFibers w)} {\lam w => w} (\lam _ => idp) (\lam _ => idp)
+                          (\lam e => idp_*> (ppglue e) *> inv (inv_inv (ppglue e))
+                                     *> inv (pmap_inv-comm (\lam x => toFibers (e.1, x)) (pmerid e.2)))
+      \where {
+        \func toFibers {J S : \Type} (p : \Sigma J (Susp S)) : Fibers J S
+          => Susp.rec (pinr p.1) (pinl p.1) (\lam s => inv (ppglue (p.1, s))) p.2
+
+        \func fromFibers {J S : \Type} (w : Fibers J S) : \Sigma J (Susp S)
+          => rec (\lam j => (j, south)) (\lam j => (j, north)) (\lam e => pmap (\lam x => (e.1, x)) (inv (pmerid e.2))) w
+      }
+
+    \func fiberProj {J S : \Type} (w : Fibers J S) : J
+      => rec (\lam j => j) (\lam j => j) (\lam _ => idp) w
+
+    \func fiberPetals {J S : \Type} (w : Fibers J S) : Cof.based (proj {J} {S})
+      => rec pinl (\lam _ => pinr ()) ppglue w
+
+    \func Pinched (J S : \Type) => PushoutData {J} {\Sigma} {Fibers J S} (\lam _ => ()) pinr
+
+    \func pinched {J S : \Type} : QEquiv {Pinched J S} {Cof.based (proj {J} {S})} \cowith
+      | f => down
+      | ret => up
+      | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam x => up {J} {S} (down x)} {\lam x => x} (\lam _ => idp)
+                          (homotopy {_} {_} {_} {_} {_} {_} {\lam w => up {J} {S} (fiberPetals w)} {pinr} (\lam _ => idp) (\lam j => ppglue j)
+                                    (\lam e => idp_*> _ *> inv (cancel (pmap pinr (ppglue e)) (ppglue e.1))))
+                          (\lam _ => idp)
+      | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam x => down {J} {S} (up x)} {\lam x => x} (\lam _ => idp) (\lam _ => idp)
+                          (\lam e => idp_*> _ *> inv (pmap_*>-comm (down {J} {S}) (pmap pinr (ppglue e)) (inv (ppglue e.1))
+                                                      *> pmap (_ *>) (pmap_inv-comm (down {J} {S}) (ppglue e.1))))
+      \where {
+        \func down {J S : \Type} (x : Pinched J S) : Cof.based (proj {J} {S})
+          => rec (\lam _ => pinr ()) fiberPetals (\lam _ => idp) x
+
+        \func up {J S : \Type} (b : Cof.based (proj {J} {S})) : Pinched J S
+          => rec (\lam j => pinr (pinl j)) (\lam _ => pinl ()) (\lam e => pmap pinr (ppglue e) *> inv (ppglue e.1)) b
+
+        \func cancel {A : \Type} {a b c : A} (p : a = b) (q : c = b) : (p *> inv q) *> q = p \elim q
+          | idp => idp
+      }
+
+    \func Point (J : \Type) => PushoutData {J} {\Sigma} {J} (\lam _ => ()) (\lam j => j)
+
+    \lemma point-contr (J : \Type) : Contr (Point J)
+      => Contr.make (pinl ()) (homotopy {_} {_} {_} {_} {_} {_} {\lam _ => pinl ()} {\lam x => x} (\lam _ => idp) ppglue (\lam _ => idp))
+
+    \lemma cone-contr.{u} (J S : \Type u) : Contr (Cone J S)
+      => Contr.Contr_QEquiv (symQEquiv (toPoint J S)) (point-contr J)
+
+    \func toPoint.{u} (J S : \Type u) : QEquiv {Cone J S} {Point J}
+      => IsEquiv.toQEquiv (congr.isEquiv.{u} (proj {J} {Susp S}) petals fiberProj fiberPetals fiberSusp idEquiv idEquiv
+                                             (\lam p => fiber-proj p) (\lam p => fiber-petals p))
+         `transQEquiv` swap fiberProj fiberPetals
+         `transQEquiv` symQEquiv (IsEquiv.toQEquiv (congr.isEquiv.{u} pinr fiberProj fiberPetals fiberProj idEquiv pinched idEquiv
+                                                                 (\lam _ => idp) (\lam _ => idp)))
+         `transQEquiv` paste (\lam _ => ()) pinr fiberProj
+
+    \func fiber-proj {J S : \Type} (p : \Sigma J (Susp S)) : fiberProj (fiberSusp.toFibers p) = p.1 \elim p
+      | (j, x) => homotopy {_} {_} {_} {_} {_} {_} {\lam x => fiberProj (fiberSusp.toFibers (j, x))} {\lam _ => j} (\lam _ => idp) (\lam _ => idp)
+                           (\lam s => inv (pmap_inv-comm fiberProj (ppglue (j, s)))) x
+
+    \func fiber-petals {J S : \Type} (p : \Sigma J (Susp S)) : fiberPetals (fiberSusp.toFibers p) = petals p \elim p
+      | (j, x) => homotopy {_} {_} {_} {_} {_} {_} {\lam x => fiberPetals (fiberSusp.toFibers (j, x))} {\lam x => petals (j, x)} (\lam _ => idp) (\lam _ => idp)
+                           (\lam s => idp_*> _ *> inv (pmap_inv-comm fiberPetals (ppglue (j, s)))) x
+  }
+
+\func cellsSplit {J1 J2 S Y : \Type} (u1 : \Sigma J1 S -> Y) (u2 : \Sigma J2 S -> Y)
+  : QEquiv {PushoutData (cellsSplit.join u1 u2) (\lam p => p.1)}
+           {PushoutData {\Sigma J2 S} {PushoutData u1 (\lam p => p.1)} {J2} (\lam p => pinl (u2 p)) (\lam p => p.1)} \cowith
+  | f => to u1 u2
+  | ret => from u1 u2
+  | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam x => from u1 u2 (to u1 u2 x)} {\lam x => x} (\lam _ => idp)
+                      (rightBack u1 u2) (\lam p => back p)
+  | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam y => to u1 u2 (from u1 u2 y)} {\lam y => y}
+                      (homotopy {_} {_} {_} {_} {_} {_} {\lam r => to u1 u2 (fromLeft u1 u2 r)} {pinl} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _))
+                      (\lam _ => idp) (\lam _ => idp_*> _)
+  \where {
+    \func join {J1 J2 S Y : \Type} (u1 : \Sigma J1 S -> Y) (u2 : \Sigma J2 S -> Y) (p : \Sigma (Or J1 J2) S) : Y \elim p
+      | (inl j, s) => u1 (j, s)
+      | (inr j, s) => u2 (j, s)
+
+    \func toRight {J1 J2 S Y : \Type} (u1 : \Sigma J1 S -> Y) (u2 : \Sigma J2 S -> Y) (o : Or J1 J2)
+      : PushoutData {\Sigma J2 S} {PushoutData u1 (\lam p => p.1)} {J2} (\lam p => pinl (u2 p)) (\lam p => p.1) \elim o
+      | inl j => pinl (pinr j)
+      | inr j => pinr j
+
+    \func toGlue {J1 J2 S Y : \Type} (u1 : \Sigma J1 S -> Y) (u2 : \Sigma J2 S -> Y) (p : \Sigma (Or J1 J2) S)
+      : pinl (pinl (join u1 u2 p)) = toRight u1 u2 p.1 \elim p
+      | (inl j, s) => pmap pinl (ppglue (j, s))
+      | (inr j, s) => ppglue (j, s)
+
+    \func to {J1 J2 S Y : \Type} (u1 : \Sigma J1 S -> Y) (u2 : \Sigma J2 S -> Y) (x : PushoutData (join u1 u2) (\lam p => p.1))
+      : PushoutData {\Sigma J2 S} {PushoutData u1 (\lam p => p.1)} {J2} (\lam p => pinl (u2 p)) (\lam p => p.1)
+      => rec (\lam y => pinl (pinl y)) (toRight u1 u2) (toGlue u1 u2) x
+
+    \func fromLeft {J1 J2 S Y : \Type} (u1 : \Sigma J1 S -> Y) (u2 : \Sigma J2 S -> Y) (r : PushoutData u1 (\lam p => p.1))
+      : PushoutData (join u1 u2) (\lam p => p.1)
+      => rec pinl (\lam j => pinr (inl j)) (\lam p => ppglue (inl p.1, p.2)) r
+
+    \func from {J1 J2 S Y : \Type} (u1 : \Sigma J1 S -> Y) (u2 : \Sigma J2 S -> Y)
+               (y : PushoutData {\Sigma J2 S} {PushoutData u1 (\lam p => p.1)} {J2} (\lam p => pinl (u2 p)) (\lam p => p.1))
+      : PushoutData (join u1 u2) (\lam p => p.1)
+      => rec (fromLeft u1 u2) (\lam j => pinr (inr j)) (\lam p => ppglue (inr p.1, p.2)) y
+
+    \func rightBack {J1 J2 S Y : \Type} (u1 : \Sigma J1 S -> Y) (u2 : \Sigma J2 S -> Y) (o : Or J1 J2)
+      : from u1 u2 (toRight u1 u2 o) = pinr o \elim o
+      | inl _ => idp
+      | inr _ => idp
+
+    \func back {J1 J2 S Y : \Type} {u1 : \Sigma J1 S -> Y} {u2 : \Sigma J2 S -> Y} (p : \Sigma (Or J1 J2) S)
+      : idp *> ppglue p = pmap (\lam x => from u1 u2 (to u1 u2 x)) (ppglue p) *> rightBack u1 u2 p.1 \elim p
+      | (inl j, s) => idp_*> _
+      | (inr j, s) => idp_*> _
+  }
+
+\func unitContr : Contr (\Sigma)
+  => \new Contr (\Sigma) () (\lam _ => idp)
+
+\lemma lowContr.{u} {C : CW.{u}} {n : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < n -> C.count (suc k) = 0)
+                    (k : Nat) (p : k < n) : Contr (C.stage (suc k)) \elim k
+  | 0 => Contr.Contr_QEquiv C.vertices (transport (\lam c => Contr (Fin c)) (inv one) finOne)
+  | suc k => Contr.Contr_QEquiv (IsEquiv.toQEquiv (C.zeroCells (gap k p))) (lowContr one gap k linarith)
+  \where
+    \lemma finOne : Contr (Fin 1)
+      => \new Contr (Fin 1) 0 (\lam x => \case \elim x \with { | 0 => idp })
+
+\func cellsEquiv {n g : Nat} : QEquiv {Cof (proj {Fin g} {boundary n})} {Bouquet n g} \cowith
+  | f => (sphereCells {n} {g}).1
+  | ret => (sphereCells.expand {n} {g}).1
+  | ret_f => ->*.happly sphereCells.expand-collapse
+  | f_sec => ->*.happly sphereCells.collapse-expand
+
+\func bouquetStage.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+  : QEquiv {C.stage (suc (suc m))} {Bouquet (suc m) (C.count (suc m))}
+  => symQEquiv (C.build (suc m))
+       `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{u} (C.attach (suc m)) proj (\lam _ => ()) proj idEquiv
+                                        (IsEquiv.toQEquiv (contr-equiv (lowContr one gap m linarith) unitContr {\lam _ => ()})) idEquiv
+                                        (\lam _ => idp) (\lam _ => idp))
+       `transQEquiv` swap (\lam _ => ()) proj
+       `transQEquiv` cellsEquiv
+
+\lemma top.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+  : TruncP (\Sigma (f : Bouquet (suc m) (C.count (suc (suc m))) ->* Bouquet (suc m) (C.count (suc m)))
+                   (e : QEquiv {C.stage (suc (suc (suc m)))} {Cof f.1})
+                   (\Pi (y : C.stage (suc (suc m))) -> e (C.inclusion (suc (suc m)) y) = pinl (bouquetStage one gap y)))
+  => TruncP.map (FinSet.choice {FinFin (C.count (suc (suc m)))} {\lam i => C.attach (suc (suc m)) (i, north) = (bouquetStage one gap).ret base}
+                  \lam i => TruncP.map (nconnected1-path (nconnected-mono {1} {suc m} linarith (Bouquet.connected m (C.count (suc m))))
+                                                         (bouquetStage one gap (C.attach (suc (suc m)) (i, north))) base)
+                                       \lam q => inv ((bouquetStage one gap).ret_f _) *> pmap (bouquetStage one gap).ret q)
+       \lam ps => (map one gap ps, symQEquiv (C.build (suc (suc m))) `transQEquiv` rest one gap ps,
+                   \lam y => pmap (rest one gap ps) ((C.build (suc (suc m))).ret_f (pinl y)))
+  \where {
+    \func Base.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0) : Pointed
+      => Pointed.make ((bouquetStage one gap).ret base)
+
+    \func petal.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+                (ps : \Pi (i : Fin (C.count (suc (suc m)))) -> C.attach (suc (suc m)) (i, north) = (bouquetStage one gap).ret base)
+                (i : Fin (C.count (suc (suc m)))) : Susp.pointed (iterr {\Type0} (Susp __) (suc m) Empty) ->* Base one gap
+      => (\lam x => C.attach (suc (suc m)) (i, x), ps i)
+
+    \func phi.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+              (ps : \Pi (i : Fin (C.count (suc (suc m)))) -> C.attach (suc (suc m)) (i, north) = (bouquetStage one gap).ret base)
+      : Cof.based (proj {Fin (C.count (suc (suc m)))} {iterr {\Type0} (Susp __) (suc m) Empty}) ->* Base one gap
+      => cellDesc (petal one gap ps)
+
+    \func toBouquet.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+      : Base one gap ->* Bouquet (suc m) (C.count (suc m))
+      => ((bouquetStage one gap).f, (bouquetStage one gap).f_sec base)
+
+    \func map.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+              (ps : \Pi (i : Fin (C.count (suc (suc m)))) -> C.attach (suc (suc m)) (i, north) = (bouquetStage one gap).ret base)
+      : Bouquet (suc m) (C.count (suc (suc m))) ->* Bouquet (suc m) (C.count (suc m))
+      => toBouquet one gap ->*.∘* (phi one gap ps ->*.∘* sphereCells.expand)
+
+    \func rest.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+               (ps : \Pi (i : Fin (C.count (suc (suc m)))) -> C.attach (suc (suc m)) (i, north) = (bouquetStage one gap).ret base)
+      : QEquiv {PushoutData (C.attach (suc (suc m))) (\lam p => p.1)} {Cof (map one gap ps).1}
+      => IsEquiv.toQEquiv (congr.isEquiv.{u} (C.attach (suc (suc m))) proj (attachAlong (phi one gap ps)) proj idEquiv idEquiv idEquiv
+                                             (\lam c => ->*.happly (cellDesc.on-cell (petal one gap ps) c.1) c.2) (\lam _ => idp))
+         `transQEquiv` cellsCof (phi one gap ps)
+         `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{u} (phi one gap ps).1 (\lam _ => ()) (map one gap ps).1 (\lam _ => ()) cellsEquiv (bouquetStage one gap) idEquiv
+                                          (\lam c => pmap (\lam z => (bouquetStage one gap).f ((phi one gap ps).1 z)) (->*.happly sphereCells.expand-collapse c))
+                                          (\lam _ => idp))
+  }

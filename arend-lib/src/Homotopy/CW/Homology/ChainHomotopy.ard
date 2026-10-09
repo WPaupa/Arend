@@ -8,8 +8,8 @@
 \import Data.SeqColimit.Map
 \import Equiv
 \import Homotopy.CW
-\import Homotopy.CW.Chain
-\import Homotopy.CW.Quotient
+\import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Structure.Quotient
 \import Homotopy.Cofiber
 \import Homotopy.Loop
 \import Homotopy.Pointed

@@ -10,8 +10,8 @@
 \import Category (Iso)
 \import Equiv
 \import Homotopy.CW
-\import Homotopy.CW.Chain
-\import Homotopy.CW.Finite (unit-isFinCW)
+\import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Structure.Finite (unit-isFinCW)
 \import Homotopy.CW.Homology.Descent
 \import Homotopy.CW.Homology.Map
 \import Logic

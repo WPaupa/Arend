@@ -1,16 +1,22 @@
 \import Algebra.Group
+\import Algebra.Group.Abelianization
+\import Algebra.Group.Aut
 \import Algebra.Group.Cokernel
 \import Algebra.Group.FreeAbelian
 \import Algebra.Group.GroupHom
+\import Algebra.Group.Pushout
+\import Algebra.Group.QuotientProperties (//)
 \import Algebra.Meta
 \import Algebra.Monoid
 \import Algebra.Pointed (ide)
 \import Arith.Nat
+\import Category (Iso)
 \import Equiv
 \import Equiv.Path
 \import Equiv.Sigma
 \import Function
 \import Homotopy.Cofiber
+\import Homotopy.Connected
 \import Homotopy.Connectivity
 \import Homotopy.FiberSequence
 \import Homotopy.FiberSequence.Connectivity
@@ -18,12 +24,17 @@
 \import Homotopy.Fibration
 \import Homotopy.HomotopyGroup
 \import Homotopy.HomotopyGroup.Connectivity
+\import Homotopy.HomotopyGroup.FundamentalGroupoid
 \import Homotopy.Pointed
 \import Homotopy.Pushout \hiding (PushoutPointed)
 \import Homotopy.Sphere.Bouquet
+\import Homotopy.Sphere.Bouquet.Circle (bottom1, circleBouquet)
+\import Homotopy.VanKampen.FundamentalGroups (PiGroup_Cof)
 \import Logic
 \import Logic.Meta
 \import Paths
+\import Relation.Equivalence
+\import Set
 
 \open PushoutData (ppglue)
 
@@ -96,4 +107,102 @@
                                                          *> degreeHom.action f s)
                         *> Coker.proj-kills (bottom p g s)
       }
+  }
+
+\func cofiberBottom1 {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) : AddGroupHom (Coker (degreeHom f)) (Ab (PiGroup 0 (Cof.pointed f)))
+  => Coker.desc (Ab.map (piGroupMap 0 (Cof.inc f)) AddGroupHom.∘ bottom1.back h) (kills f)
+  \where {
+    \lemma back-count (h : Nat) (y : PiGroup 0 (Bouquet 1 h)) : bottom1.back h (bottom1.count h y) = in~ y
+      => (bottom1.isEquiv h).ret_f (in~ y)
+
+    \lemma kills {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) (r : ZFree g)
+      : Ab.map (piGroupMap 0 (Cof.inc f)) (bottom1.back h (degreeHom f r)) = AddMonoid.zro {Ab (PiGroup 0 (Cof.pointed f))}
+      => pmap (\lam (u : AddGroupHom (ZFree g) (Ab (PiGroup 0 (Cof.pointed f)))) => u r)
+           (ZFree.hom-ext (Ab.map (piGroupMap 0 (Cof.inc f)) AddGroupHom.∘ bottom1.back h AddGroupHom.∘ degreeHom f) AddGroupHom.zero \lam a =>
+              pmap (\lam y => Ab.map (piGroupMap 0 (Cof.inc f)) (bottom1.back h (degreeHom f y))) (inv (bottom1.basis-generator a))
+              *> pmap (\lam y => Ab.map (piGroupMap 0 (Cof.inc f)) (bottom1.back h y)) (inv (bottom1.action f (circleBouquet.gen a)))
+              *> pmap (Ab.map (piGroupMap 0 (Cof.inc f))) (back-count h (piMap 1 f (circleBouquet.gen a)))
+              *> pmap in~ (inv (piMap-comp 1 (Cof.inc f) f (circleBouquet.gen a))
+                           *> pmap (\lam (m : Bouquet 1 g ->* Cof.pointed f) => piMap 1 m (circleBouquet.gen a)) (Cof.inc-null f)
+                           *> piMap-zero 0 {Bouquet 1 g} {Cof.pointed f} (circleBouquet.gen a)))
+
+    \func source (g : Nat) : Connected0 (Bouquet 1 g)
+      => \new Connected0 (Bouquet 1 g) (inP base) (nconnected1-path (Bouquet.connected 0 g))
+
+    \func shift.{u} (X : Pointed.{u}) {x : X} (p : x = base) : Pointed.make x ->* X
+      => (\lam y => y, p)
+
+    \func unshift.{u} (X : Pointed.{u}) {x : X} (p : x = base) : X ->* Pointed.make x
+      => (\lam y => y, inv p)
+
+    \lemma shift-unshift.{u} (X : Pointed.{u}) {x : X} (p : x = base) (t : PiGroup 0 X)
+      : piMap 1 {Pointed.make x} {X} (shift X p) (piMap 1 {X} {Pointed.make x} (unshift X p) t) = t
+      => inv (piMap-comp 1 {X} {Pointed.make x} {X} (shift X p) (unshift X p) t)
+         *> pmap (\lam (m : X ->* X) => piMap 1 m t)
+                 (->*.ext {X} {X} { ->*.compose {X} {Pointed.make x} {X} (shift X p) (unshift X p)} { ->*.id} (\lam _ => idp) (idp_*> idp *> inv (inv_*> p)))
+         *> piMap-id 1 t
+
+    \lemma loop-pinl.{u} {A B : \Type u} (k : A -> B) {a : A} (t : a =0 a) : piMap 1 {Pointed.make a} {Pointed.make (k a)} (k, idp) t = map0 k t \elim t
+      | in0 l => pmap in0 (idp_*> _)
+
+    \func hom {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h)
+      => PiGroup_Cof.hom {source g} {Bouquet 1 h} {f.1} {base}
+
+    \func iso {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h)
+      => PiGroup_Cof.iso {source g} {Bouquet 1 h} {f.1} {base}
+
+    \lemma key {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) (l : f.1 base =0 f.1 base)
+      : piMap 1 (unshift (Cof.pointed f) (pmap pinl f.2)) (piMap 1 (Cof.inc f) (piMap 1 (shift (Bouquet 1 h) f.2) l)) = hom f (in~ l)
+      => inv (piMap-comp 1 (unshift (Cof.pointed f) (pmap pinl f.2)) (Cof.inc f) _)
+         *> inv (piMap-comp 1 (unshift (Cof.pointed f) (pmap pinl f.2) ->*.∘* Cof.inc f) (shift (Bouquet 1 h) f.2) l)
+         *> pmap (\lam (m : Pointed.make (f.1 base) ->* Pointed.make {Cof f.1} (pinl (f.1 base)))
+                    => piMap 1 {Pointed.make (f.1 base)} {Pointed.make {Cof f.1} (pinl (f.1 base))} m l)
+                 (->*.ext {_} {_} { ->*.compose (unshift (Cof.pointed f) (pmap pinl f.2) ->*.∘* Cof.inc f) (shift (Bouquet 1 h) f.2)} {pinl, idp}
+                          (\lam _ => idp) (cancel pinl f.2))
+         *> loop-pinl pinl l *> inv (PiGroup_Cof.hom-in {source g} {Bouquet 1 h} {f.1} {base} l)
+      \where
+        \sfunc cancel {A B : \Type} (k : A -> B) {a a' : A} (p : a = a') : idp *> idp = pmap k p *> (idp *> inv (pmap k p)) \elim p
+          | idp => idp
+
+    \func unhom {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) : GroupHom (Aut (f.1 base)) (Coker (degreeHom f))
+      => AddGroupHom.toGroupHom (Coker.proj (degreeHom f)) GroupHom.∘ (bottom1.count h GroupHom.∘ piGroupMap 0 (shift (Bouquet 1 h) f.2))
+
+    \lemma unhom-kills {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) {r : Aut (f.1 base)} (c : imageClosure.Image (map0Hom f.1 base) r)
+      : unhom f r = ide {Coker (degreeHom f)} \elim c
+      | inP (a, e) => pmap (unhom f) (inv e) *> pmap (\lam y => Coker.proj (degreeHom f) (bottom1.count h y)) (shift-map0 f a)
+                      *> pmap (Coker.proj (degreeHom f)) (bottom1.action f a) *> Coker.proj-kills (bottom1.count g a)
+      \where
+        \lemma shift-map0 {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) (a : PiGroup 0 (Bouquet 1 g)) : piMap 1 (shift (Bouquet 1 h) f.2) (map0 f.1 a) = piMap 1 f a \elim a
+          | in0 l => idp
+
+    \func quotient {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h)
+      => normalClosure.lift {Aut (f.1 base)} {Coker (degreeHom f)} {imageClosure.Image (map0Hom f.1 base)} (unhom f) (unhom-kills f)
+
+    \func inverse {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) : AddGroupHom (Ab (PiGroup 0 (Cof.pointed f))) (Coker (degreeHom f))
+      => Ab.desc (quotient f GroupHom.∘ Iso.hinv {iso f} GroupHom.∘ piGroupMap 0 (unshift (Cof.pointed f) (pmap pinl f.2)))
+
+    \lemma inverse-inc {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) (y : PiGroup 0 (Bouquet 1 h))
+      : inverse f (in~ (piMap 1 (Cof.inc f) y)) = Coker.proj (degreeHom f) (bottom1.count h y)
+      => pmap (\lam z => quotient f (Iso.hinv {iso f} (piMap 1 (unshift (Cof.pointed f) (pmap pinl f.2)) (piMap 1 (Cof.inc f) z))))
+              (inv (shift-unshift (Bouquet 1 h) f.2 y))
+         *> pmap (\lam z => quotient f (Iso.hinv {iso f} z)) (key f (piMap 1 (unshift (Bouquet 1 h) f.2) y))
+         *> pmap (quotient f) (path (\lam i => (Iso.hinv_f {iso f} @ i) (in~ (piMap 1 (unshift (Bouquet 1 h) f.2) y))))
+         *> pmap (\lam z => Coker.proj (degreeHom f) (bottom1.count h z)) (shift-unshift (Bouquet 1 h) f.2 y)
+
+    \lemma forward {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) (z : Aut (f.1 base) // imageClosure (map0Hom f.1 base))
+      : cofiberBottom1 f (quotient f z) = in~ (piMap 1 (shift (Cof.pointed f) (pmap pinl f.2)) (hom f z)) \elim z
+      | in~ l => pmap (Ab.map (piGroupMap 0 (Cof.inc f))) (back-count h (piMap 1 (shift (Bouquet 1 h) f.2) l))
+                 *> pmap in~ (inv (shift-unshift (Cof.pointed f) (pmap pinl f.2) _) *> pmap (piMap 1 (shift (Cof.pointed f) (pmap pinl f.2))) (key f l))
+
+    \func isEquiv {g h : Nat} (f : Bouquet 1 g ->* Bouquet 1 h) : QEquiv (cofiberBottom1 f) \cowith
+      | ret => inverse f
+      | ret_f x => pmap {AddGroupHom (Coker (degreeHom f)) (Coker (degreeHom f))} (__ x)
+                     (Coker.hom-ext (inverse f AddGroupHom.∘ cofiberBottom1 f) AddGroupHom.id \lam y => pmap {AddGroupHom (ZFree h) (Coker (degreeHom f))} (__ y)
+                       (ZFree.hom-ext (inverse f AddGroupHom.∘ cofiberBottom1 f AddGroupHom.∘ Coker.proj (degreeHom f)) (Coker.proj (degreeHom f)) \lam b =>
+                         pmap (\lam z => inverse f (Ab.map (piGroupMap 0 (Cof.inc f)) z)) (ZFree.extend-basis {Ab (PiGroup 0 (Bouquet 1 h))} (\lam a => in~ (circleBouquet.gen a)) b)
+                         *> inverse-inc f (circleBouquet.gen b) *> pmap (Coker.proj (degreeHom f)) (bottom1.basis-generator b)))
+      | f_sec y => pmap {AddGroupHom (Ab (PiGroup 0 (Cof.pointed f))) (Ab (PiGroup 0 (Cof.pointed f)))} (__ y)
+                     (Ab.hom-ext {PiGroup 0 (Cof.pointed f)} {Ab (PiGroup 0 (Cof.pointed f))} (cofiberBottom1 f AddGroupHom.∘ inverse f) AddGroupHom.id \lam t =>
+                       forward f _ *> pmap (\lam w => in~ (piMap 1 (shift (Cof.pointed f) (pmap pinl f.2)) w)) (path (\lam i => (Iso.f_hinv {iso f} @ i) _))
+                       *> pmap in~ (shift-unshift (Cof.pointed f) (pmap pinl f.2) t))
   }

@@ -4,7 +4,7 @@
 \import Data.SeqColimit.Map
 \import Equiv
 \import Homotopy.CW
-\import Homotopy.CW.Quotient
+\import Homotopy.CW.Structure.Quotient
 \import Homotopy.Cofiber
 \import Homotopy.Pointed
 \import Homotopy.Pushout \hiding (PushoutPointed)

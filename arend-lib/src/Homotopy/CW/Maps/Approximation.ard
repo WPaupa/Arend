@@ -6,9 +6,9 @@
 \import Data.SeqColimit.Map
 \import Equiv
 \import Homotopy.CW
-\import Homotopy.CW.Cellular
-\import Homotopy.CW.Connectivity
-\import Homotopy.CW.Lifting
+\import Homotopy.CW.Maps.Cellular
+\import Homotopy.CW.Maps.Lifting
+\import Homotopy.CW.Structure.Connectivity
 \import Homotopy.Connectivity
 \import Homotopy.Fibration
 \import Logic

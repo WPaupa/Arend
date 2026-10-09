@@ -71,6 +71,19 @@
         | in~ a => p a
       }
 
+    \func map {G H : Group} (f : GroupHom G H) : AddGroupHom (Ab G) (Ab H)
+      => desc (proj H GroupHom.∘ f)
+      \where {
+        \func inverse {G H : Group} (f : GroupHom G H) (e : QEquiv f) : GroupHom H G \cowith
+          | func => e.ret
+          | func-* => e.isInj (e.f_ret _ *> inv (f.func-* *> pmap2 (*) (e.f_ret _) (e.f_ret _)))
+
+        \func equiv {G H : Group} (f : GroupHom G H) (e : QEquiv f) : QEquiv (map f) \cowith
+          | ret => map (inverse f e)
+          | ret_f x => pmap {AddGroupHom (Ab G) (Ab G)} (__ x) (hom-ext (map (inverse f e) AddGroupHom.∘ map f) AddGroupHom.id \lam a => pmap in~ (e.ret_f a))
+          | f_sec y => pmap {AddGroupHom (Ab H) (Ab H)} (__ y) (hom-ext (map f AddGroupHom.∘ map (inverse f e)) AddGroupHom.id \lam b => pmap in~ (e.f_ret b))
+      }
+
     \func universal {G : Group} {T : AbGroup} : QEquiv {AddGroupHom (Ab G) T} {GroupHom G T} \cowith
       | f h => AddGroupHom.toGroupHom h GroupHom.∘ proj G
       | ret => desc

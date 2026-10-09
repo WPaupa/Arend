@@ -10,9 +10,9 @@
 \import Data.SeqColimit.Map
 \import Equiv
 \import Homotopy.CW
-\import Homotopy.CW.Approximation
-\import Homotopy.CW.Chain
-\import Homotopy.CW.ChainHomotopy (CellHtpyStep, CellHtpySteps, kappa)
+\import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Homology.ChainHomotopy (CellHtpyStep, CellHtpySteps, kappa)
+\import Homotopy.CW.Maps.Approximation
 \import Homotopy.Sphere.Bouquet
 \import Logic
 \import Paths
