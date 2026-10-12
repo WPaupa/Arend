@@ -1,0 +1,86 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupHom
+\import Arith.Int
+\import Category (Iso)
+\import Equiv
+\import Function
+\import Homotopy.Cofiber
+\import Homotopy.Homology.Theory
+\import Homotopy.Pointed
+\import Homotopy.Suspension
+\import Logic
+\import Paths
+
+\open ->* (∘*)
+
+\func delta.{u} (T : HomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+  : AddGroupHom (T.E (isuc n) (Cof.pointed f)) (T.E n X)
+  => Iso.hinv {T.susp n X} AddGroupHom.∘ T.push (isuc n) (Cof.quotient f)
+
+\lemma delta-exact-cof.{u} (T : HomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+  : AbExactAt (T.push (isuc n) (Cof.inc f)) (delta T n f)
+  => AbExactAt.transport (T.push (isuc n) (Cof.inc f)) (T.push (isuc n) (Cof.inc (Cof.inc f)))
+                         (T.push (isuc n) (Cof.inc f)) (delta T n f)
+                         AddGroupHom.id (\lam u => inP (u, idp)) AddGroupHom.id (\lam u => inP (u, idp)) (\lam p => p)
+                         (rotateHom T n f) (AbGroupCat.equivOfIso (rotateIso T n f)).isInj
+                         (\lam _ => idp) (delta-rotate T n f) (T.exact (isuc n) (Cof.inc f))
+  \where {
+    \func rotateIso.{u} (T : HomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+      : Iso {AbGroupCat.{u}} {T.E (isuc n) (Cof.pointed (Cof.inc f))} {T.E n X}
+      => Category.oIso (T.pushIso (isuc n) (Cof.rotate f)) (Iso.reverse {T.susp n X})
+
+    \func rotateHom.{u} (T : HomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+      : AddGroupHom (T.E (isuc n) (Cof.pointed (Cof.inc f))) (T.E n X)
+      => Iso.f {rotateIso T n f}
+
+    \lemma delta-rotate.{u} (T : HomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y) (v : T.E (isuc n) (Cof.pointed f))
+      : delta T n f v = rotateHom T n f (T.push (isuc n) (Cof.inc (Cof.inc f)) v)
+      => pmap (Iso.hinv {T.susp n X}) (pmap (\lam (h : AddGroupHom _ _) => h v) (T.push-comp (isuc n) (Cof.inc (Cof.inc f)) (Cof.rotate f).map))
+  }
+
+\lemma delta-exact.{u} (T : HomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+  : AbExactAt (delta T n f) (T.push n f)
+  => AbExactAt.transport (T.push (isuc n) (Cof.inc (Cof.inc f))) (T.push (isuc n) (Cof.inc (Cof.inc (Cof.inc f))))
+                         (delta T n f) (T.push n f)
+                         AddGroupHom.id (\lam u => inP (u, idp))
+                         (delta-exact-cof.rotateHom T n f) (AbGroupCat.equivOfIso (delta-exact-cof.rotateIso T n f)).isSurj
+                         (AbGroupCat.equivOfIso (delta-exact-cof.rotateIso T n f)).isInj
+                         (flipHom T n f) (AbGroupCat.equivOfIso (flipIso T n f)).isInj
+                         (delta-exact-cof.delta-rotate T n f) (square T n f) (T.exact (isuc n) (Cof.inc (Cof.inc f)))
+  \where {
+    \func flipEquiv (Y : Pointed) : PointedEquiv (Susp.pointed Y) (Susp.pointed Y) \cowith
+      | map => Susp.flip Y
+      | map-isEquiv => inP \new QEquiv {
+        | ret => (Susp.flip Y).1
+        | ret_f => ->*.happly (Susp.flip-flip Y)
+        | f_sec => ->*.happly (Susp.flip-flip Y)
+      }
+
+    \func flipIso.{u} (T : HomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+      : Iso {AbGroupCat.{u}} {T.E (isuc n) (Cof.pointed (Cof.inc (Cof.inc f)))} {T.E n Y}
+      => Category.oIso (T.pushIso (isuc n) (flipEquiv Y PointedEquiv.∘~ Cof.rotate (Cof.inc f))) (Iso.reverse {T.susp n Y})
+
+    \func flipHom.{u} (T : HomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+      : AddGroupHom (T.E (isuc n) (Cof.pointed (Cof.inc (Cof.inc f)))) (T.E n Y)
+      => Iso.f {flipIso T n f}
+
+    \func rotate-square {X Y : Pointed} (f : X ->* Y)
+      : (flipEquiv Y PointedEquiv.∘~ Cof.rotate (Cof.inc f)).map ∘* Cof.inc (Cof.inc (Cof.inc f)) = Susp-Func f ∘* (Cof.rotate f).map
+      => inv (->*.compose-assoc (Susp.flip Y) (Cof.rotate (Cof.inc f)).map (Cof.inc (Cof.inc (Cof.inc f))))
+         *> pmap (Susp.flip Y ∘*) (Cof.rotate-inc f)
+         *> ->*.compose-assoc (Susp.flip Y) (Susp.flip Y ∘* Susp-Func f) (Cof.rotate f).map
+         *> pmap (`∘* (Cof.rotate f).map) (->*.compose-assoc (Susp.flip Y) (Susp.flip Y) (Susp-Func f))
+         *> pmap (\lam h => h ∘* Susp-Func f ∘* (Cof.rotate f).map) (Susp.flip-flip Y)
+
+    \lemma square.{u} (T : HomologyTheory.{u}) (n : Int) {X Y : Pointed.{u}} (f : X ->* Y) (v : T.E (isuc n) (Cof.pointed (Cof.inc f)))
+      : T.push n f (delta-exact-cof.rotateHom T n f v) = flipHom T n f (T.push (isuc n) (Cof.inc (Cof.inc (Cof.inc f))) v)
+      => \let s => T.push (isuc n) (Cof.rotate f).map v
+         \in inv (pmap (\lam (h : AddGroupHom (T.E n Y) (T.E n Y)) => h (T.push n f (Iso.hinv {T.susp n X} s))) (Iso.hinv_f {T.susp n Y}))
+             *> pmap (Iso.hinv {T.susp n Y}) (pmap (\lam (h : AddGroupHom _ _) => h (Iso.hinv {T.susp n X} s)) (T.susp-natural n f)
+                                               *> pmap (T.push (isuc n) (Susp-Func f))
+                                                       (pmap (\lam (h : AddGroupHom (T.E (isuc n) (Susp.pointed X)) (T.E (isuc n) (Susp.pointed X))) => h s) (Iso.f_hinv {T.susp n X})))
+             *> pmap (Iso.hinv {T.susp n Y}) (inv (pmap (\lam (h : AddGroupHom _ _) => h v)
+                                                        (inv (T.push-comp (isuc n) _ _) *> pmap (T.push (isuc n)) (rotate-square f) *> T.push-comp (isuc n) _ _)))
+  }

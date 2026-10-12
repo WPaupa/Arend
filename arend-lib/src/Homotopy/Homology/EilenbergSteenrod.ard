@@ -1,0 +1,5 @@
+\import Homotopy.Homology
+\import Homotopy.Homology.Theory
+
+\func stableHomology.{u} : HomologyTheory.{u}
+  => connective StablePi StablePi.map StablePi.map-id StablePi.map-comp stableSusp.iso stableSusp.natural stableExact stableBottom

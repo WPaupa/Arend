@@ -1,0 +1,18 @@
+\import Algebra.Group
+\import Arith.Nat
+\import Homotopy.Connectivity
+\import Homotopy.Connectivity.Map
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.Freudenthal
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Suspension
+
+\lemma K-susp-nconnected.{u} {G : CGroup.{u}} (r : Nat) : isNConnectedMap (suc (suc (r Nat.+ r))) (K-susp {G} (suc r)).1
+  => nconnected-loop {suc (r Nat.+ r)} {Susp.pointed (K G (suc r))} {K G (suc (suc r))} (K-susp {G} (suc r))
+       (nconnected-mono {1} {suc (suc r)} (suc<=suc zero<=_) (susp-nconnected {suc r} (K-connected {G} r)))
+       (nconnected-mono {1} {suc (suc r)} (suc<=suc zero<=_) (K-connected {G} (suc r)))
+       (nconnected-map-cancel {suc (r Nat.+ r)} {K G (suc r)} {Loop (Susp.pointed (K G (suc r)))} {Loop (K G (suc (suc r)))}
+                              {(SuspLoopEquiv.unit (K G (suc r))).1} {(Loop-Func {Susp.pointed (K G (suc r))} {K G (suc (suc r))} (K-susp {G} (suc r))).1}
+          (nconnected-map-equiv (suc (r Nat.+ r)) (K-loopUnit-isEquiv {G} (suc r))) (freudenthal-connected r (K G (suc r)) (K-connected {G} r)))

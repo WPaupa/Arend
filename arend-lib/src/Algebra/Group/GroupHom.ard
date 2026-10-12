@@ -7,6 +7,7 @@
 \import Function
 \import Function.Meta
 \import Paths
+\import Paths.Meta
 
 \record GroupHom \extends MonoidHom {
   \override Dom : Group
@@ -57,6 +58,9 @@
     | pos n => func-*n
     | neg n => func-*n *> pmap (n AddMonoid.*n) func-negative
 } \where {
+  \lemma equals {G H : AddGroup} {f g : AddGroupHom G H} (p : \Pi (x : G) -> f x = g x) : f = g
+    => exts p
+
   \func toGroupHom {G H : AddGroup} (f : AddGroupHom G H) : GroupHom (AddGroup.toGroup G) (AddGroup.toGroup H) \cowith
     | func x => f x
     | func-* => f.func-+

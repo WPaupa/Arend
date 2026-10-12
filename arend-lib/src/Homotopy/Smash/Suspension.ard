@@ -1,0 +1,126 @@
+\import Data.Bool
+\import Data.Or
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Pushout
+\import Homotopy.Suspension
+\import Paths
+
+\open PushoutData (ppglue, rec)
+\open SuspLoopEquiv (toSusp)
+\open ->* (∘*)
+
+\func smashUnsusp.{u} (X K : Pointed.{u}) : SmashPushout (Susp.pointed X) K ->* Susp.pointed (SmashPushout X K)
+  => (rec {Or (Susp X) K} {Bool} {\Sigma (Susp X) K} {SmashPushout.side (Susp.pointed X) K} {SmashPushout.corner (Susp.pointed X) K}
+          (\lam _ => north) (\lam t => Susp.map (\lam x => pinr (x, t.2)) t.1) (\case \elim __ \with {
+       | inl s => inv (Smash.suspNull (\lam x => inv (ppglue (inl x))) s)
+       | inr _ => idp
+     }), idp)
+
+\func smashSusp.{u} (X K : Pointed.{u}) : Susp.pointed (SmashPushout X K) ->* SmashPushout (Susp.pointed X) K
+  => toSusp (loops X K)
+  \where {
+    \func conj.{u} (X K : Pointed.{u}) (k : K) : pinr (north, base) = {SmashPushout (Susp.pointed X) K} pinr (north, k)
+      => inv (ppglue (inr base)) *> ppglue (inr k)
+
+    \func loop.{u} (X K : Pointed.{u}) (x : X) (k : K) : pinr (north, base) = {SmashPushout (Susp.pointed X) K} pinr (north, base)
+      => conj X K k *> pmap (\lam s => pinr (s, k)) (pmerid x *> inv (pmerid base)) *> inv (conj X K k)
+
+    \func loops.{u} (X K : Pointed.{u}) : SmashPushout X K ->* Loop (SmashPushout (Susp.pointed X) K)
+      => (rec {Or X K} {Bool} {\Sigma X K} {SmashPushout.side X K} {SmashPushout.corner X K} (\lam _ => idp) (\lam t => loop X K t.1 t.2) (\case \elim __ \with {
+           | inl x => null-loop (conj X K base) (pmerid x *> inv (pmerid base)) (\lam s => ppglue (inl s))
+           | inr k => null-idp (conj X K k) (pmap (pmap (\lam s => pinr (s, k))) (*>_inv (pmerid base)))
+         }), inv (null-idp (conj X K base) (pmap (pmap (\lam s => pinr (s, base))) (*>_inv (pmerid base)))))
+
+    \func null-idp {T : \Type} {t b : T} (c : t = b) {m : b = b} (q : m = idp) : idp = c *> m *> inv c \elim c, q
+      | idp, idp => idp
+
+    \func null-loop {S T : \Type} {F : S -> T} {a t : T} {s0 : S} (c : t = F s0) (l : s0 = s0) (G : \Pi (s : S) -> a = F s)
+      : idp = c *> pmap F l *> inv c
+      => null-idp c (nat F G l *> inv_*> (G s0))
+
+    \func nat {S T : \Type} (F : S -> T) {a : T} (G : \Pi (s : S) -> a = F s) {s0 s1 : S} (l : s0 = s1) : pmap F l = inv (G s0) *> G s1 \elim l
+      | idp => inv (inv_*> (G s0))
+
+    \sfunc unsusp-proj.{u} (X K : Pointed.{u})
+      : smashSusp X K ∘* (smashUnsusp X K ∘* SmashPushout.proj) = SmashPushout.proj {Susp.pointed X} {K}
+      => ->*.ext (\lam t => PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+                              {\lam s => (smashSusp X K).1 ((smashUnsusp X K).1 (pinr (s, t.2)))} {\lam s => pinr (s, t.2)}
+                              (\lam _ => conj X K t.2) (\lam _ => conj X K t.2 *> pmap (\lam s => pinr (s, t.2)) (pmerid base))
+                              (\lam x => unsusp-square (\lam s => pinr (s, t.2)) (pmerid x) (pmerid base) (conj X K t.2)) t.1)
+                 (inv_*> (ppglue (inr base)))
+
+    \sfunc unsusp-square {S T : \Type} (P : S -> T) {n s : S} (mx mb : n = s) {t : T} (c : t = P n)
+      : c *> pmap P mx = (c *> pmap P (mx *> inv mb) *> inv c) *> (c *> pmap P mb) \elim mb, c
+      | idp, idp => idp
+
+    \sfunc susp-proj.{u} (X K : Pointed.{u})
+      : smashUnsusp X K ∘* (smashSusp X K ∘* Susp-Func (SmashPushout.proj {X} {K})) = Susp-Func (SmashPushout.proj {X} {K})
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+                   {\lam u => (smashUnsusp X K).1 ((smashSusp X K).1 (Susp.map pinr u))} {Susp.map pinr}
+                   (\lam _ => idp) (\lam _ => pmerid (pinr (base, base)))
+                   (\lam t => susp-fin (pmerid (pinr t)) (pmerid (pinr (base, base)))
+                                       (pmap pmerid (inv (ppglue (inr t.2)) *> ppglue (inr base)))
+                              *> inv (pmap (`*> pmerid (pinr (base, base))) (unsusp-loop X K t.1 t.2))))
+                 idp
+
+    \sfunc unsusp-loop.{u} (X K : Pointed.{u}) (x : X) (k : K)
+      : pmap (smashUnsusp X K).1 (loop X K x k) = idp *> (pmerid (pinr (x, k)) *> inv (pmerid (pinr (base, k))))
+      => dist3 (smashUnsusp X K).1 (conj X K k) (pmap (\lam s => pinr (s, k)) (pmerid x *> inv (pmerid base)))
+         *> pmap (\lam z => z *> pmap (smashUnsusp X K).1 (pmap (\lam s => pinr (s, k)) (pmerid x *> inv (pmerid base))) *> inv z)
+                 (pmap_*>-comm (smashUnsusp X K).1 (inv (ppglue (inr base))) (ppglue (inr k))
+                  *> pmap (`*> idp) (pmap_inv-comm (smashUnsusp X K).1 (ppglue (inr base))))
+         *> pmap (idp *>) (merid-loop (\lam x' => pinr (x', k)) x base)
+
+    \func merid-loop {A B : \Type} (h : A -> B) (x x0 : A)
+      : pmap (Susp.map h) (pmerid x *> inv (pmerid x0)) = pmerid (h x) *> inv (pmerid (h x0))
+      => pmap_*>-comm (Susp.map h) (pmerid x) (inv (pmerid x0)) *> pmap (pmerid (h x) *>) (pmap_inv-comm (Susp.map h) (pmerid x0))
+
+    \sfunc dist3 {S T : \Type} (A : S -> T) {a b : S} (c : a = b) (m : b = b) : pmap A (c *> m *> inv c) = pmap A c *> pmap A m *> inv (pmap A c) \elim c
+      | idp => pmap_*>-comm A idp m
+
+    \sfunc susp-fin {T : \Type} {n s : T} (mA mC : n = s) {mB : n = s} (Q : mB = mC) : idp *> mA = (idp *> (mA *> inv mB)) *> mC \elim Q
+      | idp => susp-fin' mA mC
+
+    \sfunc susp-fin' {T : \Type} {n s : T} (mA mC : n = s) : idp *> mA = (idp *> (mA *> inv mC)) *> mC \elim mC
+      | idp => idp
+
+    \sfunc natural-proj.{u} {X Y K L : Pointed.{u}} (f : X ->* Y) (g : K ->* L)
+      : smashSusp.{u} Y L ∘* (Susp-Func (SmashPushout.map.{u} f g) ∘* Susp-Func (SmashPushout.proj.{u} {X} {K}))
+        = SmashPushout.map.{u} (Susp-Func f) g ∘* (smashSusp.{u} X K ∘* Susp-Func (SmashPushout.proj.{u} {X} {K}))
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+                   {\lam u => (smashSusp Y L).1 (Susp.map (SmashPushout.map f g).1 (Susp.map pinr u))}
+                   {\lam u => (SmashPushout.map (Susp-Func f) g).1 ((smashSusp X K).1 (Susp.map pinr u))}
+                   (\lam _ => pmap (north-row.{u} Y L) (inv g.2)) (\lam _ => pmap (north-row.{u} Y L) (inv g.2))
+                   (\lam t => natural-square f g t.1 t.2))
+                 (natural-base (north-row.{u} Y L) g.2)
+
+    \func north-row.{u} (Y L : Pointed.{u}) (l : L) : SmashPushout.{u} (Susp.pointed Y) L
+      => pinr (north, l)
+
+    \sfunc natural-base {L T : \Type} (Q : L -> T) {l0 l1 : L} (p : l0 = l1) : pmap Q (inv p) *> (idp *> pmap Q p) = idp \elim p
+      | idp => idp
+
+    \sfunc natural-square.{u} {X Y K L : Pointed.{u}} (f : X ->* Y) (g : K ->* L) (x : X) (k : K)
+      : pmap (north-row.{u} Y L) (inv g.2) *> pmap (SmashPushout.map (Susp-Func f) g).1 (loop X K x k)
+        = loop Y L (f.1 x) (g.1 k) *> pmap (north-row.{u} Y L) (inv g.2)
+      => pmap (pmap (north-row.{u} Y L) (inv g.2) *>)
+              (dist3 (SmashPushout.map (Susp-Func f) g).1 (conj X K k) (pmap (\lam s => pinr (s, k)) (pmerid x *> inv (pmerid base)))
+               *> pmap (\lam z => z *> pmap (\lam s => pinr (Susp.map f.1 s, g.1 k)) (pmerid x *> inv (pmerid base)) *> inv z)
+                       (pmap_*>-comm (SmashPushout.map (Susp-Func f) g).1 (inv (ppglue (inr base))) (ppglue (inr k))
+                        *> pmap (`*> _) (pmap_inv-comm (SmashPushout.map (Susp-Func f) g).1 (ppglue (inr base))))
+               *> pmap (\lam w => _ *> w *> inv _) (pmap (pmap (\lam s => pinr (s, g.1 k))) (merid-loop f.1 x base)))
+         *> natural-gen {L} {Susp Y} {SmashPushout (Susp.pointed Y) L} (\lam s l => pinr (s, l)) (\lam l => ppglue (inr l)) g.2 (pmerid (f.1 x)) (pmap pmerid f.2)
+
+    \sfunc natural-gen {L S T : \Type} (R : S -> L -> T) {n s : S} {a : T} (gr : \Pi (l : L) -> a = R n l) {l0 bL gk : L} (gp : l0 = bL)
+                       (mx : n = s) {m0 my0 : n = s} (fp : m0 = my0)
+      : pmap (R n) (inv gp) *> ((inv (idp *> gr l0) *> (idp *> gr gk)) *> (pmap (R __ gk) (mx *> inv m0) *> inv (inv (idp *> gr l0) *> (idp *> gr gk))))
+        = ((inv (gr bL) *> gr gk) *> (pmap (R __ gk) (mx *> inv my0) *> inv (inv (gr bL) *> gr gk))) *> pmap (R n) (inv gp) \elim gp, fp
+      | idp, idp => natural-gen' (gr bL) (gr gk) (pmap (R __ gk) (mx *> inv m0))
+
+    \sfunc natural-gen' {T : \Type} {a b c : T} (r : a = b) (r' : a = c) (M : c = c)
+      : idp *> ((inv (idp *> r) *> (idp *> r')) *> (M *> inv (inv (idp *> r) *> (idp *> r')))) = (inv r *> r') *> (M *> inv (inv r *> r')) \elim r, r'
+      | idp, idp => pmap (idp *>) (idp_*> M)
+  }

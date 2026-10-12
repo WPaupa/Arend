@@ -1,0 +1,107 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Pointed (AddPointed, zro)
+\import Arith.Int
+\import Category (Iso, idIso)
+\import Equiv
+\import Equiv.Sigma
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
+\import Homotopy.Suspension
+\import Logic
+\import Logic.Unique
+\import Paths
+\import Paths.Meta
+
+\open ->* (∘*)
+
+\record HomologyTheory.{u} {
+  | E : Int -> Pointed.{u} -> AbGroup.{u}
+  | push (n : Int) {X Y : Pointed.{u}} (f : X ->* Y) : AddGroupHom (E n X) (E n Y)
+  | push-id (n : Int) (X : Pointed.{u}) : push n (->*.id {X}) = AddGroupHom.id
+  | push-comp (n : Int) {X Y Z : Pointed.{u}} (f : X ->* Y) (g : Y ->* Z) : push n (g ∘* f) = push n g AddGroupHom.∘ push n f
+  | susp (n : Int) (X : Pointed.{u}) : Iso {AbGroupCat.{u}} {E n X} {E (isuc n) (Susp.pointed X)}
+  | susp-natural (n : Int) {X Y : Pointed.{u}} (f : X ->* Y)
+    : Iso.f {susp n Y} AddGroupHom.∘ push n f = push (isuc n) (Susp-Func f) AddGroupHom.∘ Iso.f {susp n X}
+  | exact (n : Int) {X Y : Pointed.{u}} (f : X ->* Y) : AbExactAt (push n f) (push n (Cof.inc f))
+
+  \func pushIso (n : Int) {X Y : Pointed.{u}} (e : PointedEquiv X Y) : Iso {AbGroupCat.{u}} (push n e.map) \cowith
+    | hinv => push n (PointedEquiv.inverse e).map
+    | hinv_f => inv (push-comp n _ _) *> pmap (push n) (PointedEquiv.inverse-ret e) *> push-id n X
+    | f_hinv => inv (push-comp n _ _) *> pmap (push n) (PointedEquiv.inverse-sec e) *> push-id n Y
+
+  \lemma push-square (n : Int) {X Y Y' Z : Pointed.{u}} {a : X ->* Y} {b : Y ->* Z} {a' : X ->* Y'} {b' : Y' ->* Z}
+                     (s : b ∘* a = b' ∘* a') (x : E n X) : push n b (push n a x) = push n b' (push n a' x)
+    => inv (pmap (\lam (h : AddGroupHom _ _) => h x) (push-comp n a b)) *> pmap (\lam h => push n h x) s
+       *> pmap (\lam (h : AddGroupHom _ _) => h x) (push-comp n a' b')
+
+  \lemma contr-zero (n : Int) {X : Pointed.{u}} (c : Contr X) (x : E n X) : x = 0
+    => \let e : PointedEquiv X (Cof.pointed (->*.id {X})) => \new PointedEquiv {
+              | map => Cof.inc ->*.id
+              | map-isEquiv => contr-equiv c (Contr.Contr_QEquiv (symQEquiv (cone X)) unit-isContr)
+            }
+       \in inv (pmap (\lam (g : AddGroupHom (E n X) (E n X)) => g x) (Iso.hinv_f {pushIso n e}))
+           *> pmap (push n (PointedEquiv.inverse e).map)
+                   (pmap (push n e.map) (inv (pmap (\lam (g : AddGroupHom (E n X) (E n X)) => g x) (push-id n X)))
+                    *> AbExactAt.zero (exact n ->*.id) x)
+           *> AddGroupHom.func-zro
+    \where
+      \func cone.{v} (X : Pointed.{v}) : QEquiv {Cof (\lam (x : X) => x)} {\Sigma}
+        => transQEquiv (PushoutData.swap _ _) (PushoutData.collapse (\lam _ => ()))
+}
+
+\func connective.{u} (E : Nat -> Pointed.{u} -> AbGroup.{u})
+                     (push : \Pi (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) -> AddGroupHom (E n X) (E n Y))
+                     (push-id : \Pi (n : Nat) (X : Pointed.{u}) -> push n (->*.id {X}) = AddGroupHom.id)
+                     (push-comp : \Pi (n : Nat) {X Y Z : Pointed.{u}} (f : X ->* Y) (g : Y ->* Z) -> push n (g ∘* f) = push n g AddGroupHom.∘ push n f)
+                     (susp : \Pi (n : Nat) (X : Pointed.{u}) -> Iso {AbGroupCat.{u}} {E n X} {E (suc n) (Susp.pointed X)})
+                     (susp-natural : \Pi (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y)
+                                       -> Iso.f {susp n Y} AddGroupHom.∘ push n f = push (suc n) (Susp-Func f) AddGroupHom.∘ Iso.f {susp n X})
+                     (exact : \Pi (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) -> AbExactAt (push n f) (push n (Cof.inc f)))
+                     (bottom : \Pi (X : Pointed.{u}) (x : E 0 (Susp.pointed X)) -> x = 0)
+  : HomologyTheory.{u} \cowith
+  | E => intE E
+  | push => intPush E push
+  | push-id d X => \case \elim d \with {
+    | pos n => push-id n X
+    | neg (suc _) => idp
+  }
+  | push-comp d f g => \case \elim d \with {
+    | pos n => push-comp n f g
+    | neg (suc _) => idp
+  }
+  | susp => intSusp E susp bottom
+  | susp-natural d f => \case \elim d \with {
+    | pos n => susp-natural n f
+    | neg 1 => exts \lam _ => bottom _ _ *> inv (bottom _ _)
+    | neg (suc (suc _)) => idp
+  }
+  | exact d f => \case \elim d \with {
+    | pos n => exact n f
+    | neg (suc _) => \lam _ => (\lam _ => inP ((), idp), \lam _ => idp)
+  }
+  \where {
+    \func intE.{u} (E : Nat -> Pointed.{u} -> AbGroup.{u}) (d : Int) (X : Pointed.{u}) : AbGroup.{u} \elim d
+      | pos n => E n X
+      | neg (suc _) => TrivialAbGroup
+
+    \func intPush.{u} (E : Nat -> Pointed.{u} -> AbGroup.{u}) (push : \Pi (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) -> AddGroupHom (E n X) (E n Y))
+                      (d : Int) {X Y : Pointed.{u}} (f : X ->* Y) : AddGroupHom (intE E d X) (intE E d Y) \elim d
+      | pos n => push n f
+      | neg (suc _) => AddGroupHom.id
+
+    \func intSusp.{u} (E : Nat -> Pointed.{u} -> AbGroup.{u}) (susp : \Pi (n : Nat) (X : Pointed.{u}) -> Iso {AbGroupCat.{u}} {E n X} {E (suc n) (Susp.pointed X)})
+                      (bottom : \Pi (X : Pointed.{u}) (x : E 0 (Susp.pointed X)) -> x = 0)
+                      (d : Int) (X : Pointed.{u}) : Iso {AbGroupCat.{u}} {intE E d X} {intE E (isuc d) (Susp.pointed X)} \elim d
+      | pos n => susp n X
+      | neg 1 => Iso.reverse {TrivialAbGroup.trivialIso (E 0 (Susp.pointed X)) (bottom X)}
+      | neg (suc (suc _)) => idIso
+  }
+
+\record OrdinaryHomologyTheory \extends HomologyTheory
+  | dimension (n : Int) (n/=0 : n /= 0) (x : E n (Sphere.pointed 0)) : x = 0

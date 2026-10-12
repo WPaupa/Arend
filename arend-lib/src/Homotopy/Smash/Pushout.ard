@@ -1,0 +1,196 @@
+{- | The smash product as the pushout of ``Bool <- X + Y -> X * Y``, after van Doorn's thesis, and its equivalence with {Smash}. -}
+
+\import Data.Bool
+\import Data.Or
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Sphere
+\import Homotopy.Suspension
+\import Homotopy.Wedge
+\import Logic
+\import Logic.Unique
+\import Paths
+
+\open PushoutData (ppglue, congr)
+\open ->* (∘*)
+
+\func SmashPushout.{l} (X Y : Pointed.{l}) : Pointed.{l}
+  => \new Pointed (PushoutData {Or X Y} (side X Y) (corner X Y)) (pinr (base, base))
+  \where {
+    \func side.{l} (X Y : Pointed.{l}) (w : Or X Y) : Bool \elim w
+      | inl _ => true
+      | inr _ => false
+
+    \func corner.{l} (X Y : Pointed.{l}) (w : Or X Y) : \Sigma X Y \elim w
+      | inl x => (x, base)
+      | inr y => (base, y)
+
+    \func proj.{l} {X Y : Pointed.{l}} : PointedProduct X Y ->* SmashPushout X Y
+      => (pinr, idp)
+
+    \func map.{l} {X X' Y Y' : Pointed.{l}} (f : X ->* X') (g : Y ->* Y') : SmashPushout X Y ->* SmashPushout X' Y'
+      => (congr (side X Y) (corner X Y) (side X' Y') (corner X' Y') (Or.map __ f.1 g.1) (\lam b => b) (\lam t => (f.1 t.1, g.1 t.2))
+                (alpha f.1 g.1) (beta f g), pmap2 (\lam x y => pinr (x, y)) f.2 g.2)
+      \where {
+        \func alpha.{l} {X X' Y Y' : Pointed.{l}} (f : X -> X') (g : Y -> Y') (w : Or X Y) : side X' Y' (Or.map w f g) = side X Y w \elim w
+          | inl _ => idp
+          | inr _ => idp
+
+        \func beta.{l} {X X' Y Y' : Pointed.{l}} (f : X ->* X') (g : Y ->* Y') (w : Or X Y)
+          : corner X' Y' (Or.map w f.1 g.1) = (f.1 (corner X Y w).1, g.1 (corner X Y w).2) \elim w
+          | inl x => pmap (\lam y => (f.1 x, y)) (inv g.2)
+          | inr y => pmap (\lam x => (x, g.1 y)) (inv f.2)
+
+        \sfunc id.{l} {X Y : Pointed.{l}} : map (->*.id {X}) (->*.id {Y}) = ->*.id
+          => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(map ->*.id ->*.id).1} {\lam s => s} (\lam _ => idp) (\lam _ => idp)
+                                           (\case \elim __ \with {
+                                             | inl _ => idp
+                                             | inr _ => idp
+                                           })) idp
+
+        \sfunc comp.{l} {X X' X'' Y Y' Y'' : Pointed.{l}} (f : X ->* X') (f' : X' ->* X'') (g : Y ->* Y') (g' : Y' ->* Y'')
+          : map (f' ∘* f) (g' ∘* g) = map f' g' ∘* map f g
+          => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(map (f' ∘* f) (g' ∘* g)).1} {\lam s => (map f' g').1 ((map f g).1 s)}
+                                           (\lam _ => idp) (\lam _ => idp)
+                                           (\case \elim __ \with {
+                                             | inl x => dist (map f' g').1 (ppglue (inl (f.1 x))) _
+                                                        *> inv (comp-glue (\lam y => pinr (f'.1 (f.1 x), y)) g'.1 g.2 g'.2 (ppglue (inl (f'.1 (f.1 x)))))
+                                             | inr y => dist (map f' g').1 (ppglue (inr (g.1 y))) _
+                                                        *> inv (comp-glue (\lam x => pinr (x, g'.1 (g.1 y))) f'.1 f.2 f'.2 (ppglue (inr (g'.1 (g.1 y)))))
+                                           }))
+                     (comp-base (\lam x y => pinr (x, y)) f'.1 g'.1 f.2 g.2 f'.2 g'.2)
+
+        \sfunc dist {S T : \Type} (k : S -> T) {a b c : S} (P : a = b) (Q : b = c)
+          : idp *> pmap k ((idp *> P) *> Q) = idp *> ((idp *> pmap k P) *> pmap k Q) \elim P, Q
+          | idp, idp => idp
+
+        \sfunc comp-glue {A B T : \Type} (R : B -> T) (h : A -> B) {t : T} {a0 a1 : A} {b2 : B} (e : a0 = a1) (e' : h a1 = b2) (G : t = R b2)
+          : ((idp *> G) *> pmap R (inv (pmap h e *> e'))) *> idp = idp *> ((idp *> ((idp *> G) *> pmap R (inv e'))) *> pmap R (pmap h (inv e)))
+          \elim e, e', G
+          | idp, idp, idp => idp
+
+        \sfunc comp-base {A B A' B' T : \Type} (P : A' -> B' -> T) (h : A -> A') (k : B -> B') {a0 a1 : A} {b0 b1 : B} {a2 : A'} {b2 : B'}
+                         (e1 : a0 = a1) (e2 : b0 = b1) (e3 : h a1 = a2) (e4 : k b1 = b2)
+          : idp *> (pmap2 (\lam x y => P (h x) (k y)) e1 e2 *> pmap2 P e3 e4) = pmap2 P (pmap h e1 *> e3) (pmap k e2 *> e4) \elim e1, e2, e3, e4
+          | idp, idp, idp, idp => idp
+      }
+
+    \func swap.{l} (X Y : Pointed.{l}) : SmashPushout X Y ->* SmashPushout Y X
+      => (congr (side X Y) (corner X Y) (side Y X) (corner Y X) (Or.rec inr inl) not (\lam t => (t.2, t.1))
+                (\case \elim __ \with {
+                  | inl _ => idp
+                  | inr _ => idp
+                })
+                (\case \elim __ \with {
+                  | inl _ => idp
+                  | inr _ => idp
+                }), idp)
+
+    \func unit-right.{l} (X : Pointed.{l}) : Contr (SmashPushout X UnitPointed)
+      => Contr.make (pinl true) (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam _ => pinl true} {\lam s => s}
+                                                     (\case \elim __ \with {
+                                                       | true => idp
+                                                       | false => ppglue (inl base) *> inv (ppglue (inr ()))
+                                                     })
+                                                     (\lam t => ppglue (inl t.1))
+                                                     (\case \elim __ \with {
+                                                       | inl _ => idp
+                                                       | inr _ => contr-coh _ _
+                                                     }))
+
+    \func unit-left.{l} (Y : Pointed.{l}) : Contr (SmashPushout UnitPointed Y)
+      => Contr.make (pinl false) (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam _ => pinl false} {\lam s => s}
+                                                      (\case \elim __ \with {
+                                                        | true => ppglue (inr base) *> inv (ppglue (inl ()))
+                                                        | false => idp
+                                                      })
+                                                      (\lam t => ppglue (inr t.2))
+                                                      (\case \elim __ \with {
+                                                        | inl _ => contr-coh _ _
+                                                        | inr _ => idp
+                                                      }))
+
+    \func contr-coh {T : \Type} {a b c : T} (P : a = c) (Q : b = c) : (P *> inv Q) *> Q = idp *> P \elim P, Q
+      | idp, idp => idp
+
+    \func sphere.{l} (Y : Pointed.{l}) : SmashPushout (Sphere.pointed 0) Y ->* Y
+      => (PushoutData.rec (\lam _ => base) (\lam t => pick base t.1 t.2) (glue Y), idp)
+      \where {
+        \func pick {A : \Type} (a : A) (s : Sphere 0) (y : A) : A
+          => Susp.rec a y (\lam e => absurd e) s
+
+        \func pick-base {A : \Type} (a : A) (s : Sphere 0) : pick a s a = a \elim s
+          | north => idp
+          | south => idp
+          | pglue () _
+
+        \func glue.{l} (Y : Pointed.{l}) (w : Or (Sphere 0) Y) : base = pick base (corner (Sphere.pointed 0) Y w).1 (corner (Sphere.pointed 0) Y w).2 \elim w
+          | inl s => inv (pick-base base s)
+          | inr _ => idp
+
+        \func back.{l} (Y : Pointed.{l}) : Y ->* SmashPushout (Sphere.pointed 0) Y
+          => (\lam y => pinr (south, y), inv (ppglue (inl south)) *> ppglue (inl north))
+
+        \func retract.{l} {Y : Pointed.{l}} (t : \Sigma (Sphere 0) Y) : (back Y).1 ((sphere Y).1 (pinr t)) = pinr t
+          => retract' t.1 t.2
+
+        \func retract'.{l} {Y : Pointed.{l}} (s : Sphere 0) (y : Y) : (back Y).1 ((sphere Y).1 (pinr (s, y))) = pinr (s, y) \elim s
+          | north => inv (ppglue (inl south)) *> ppglue (inl north) *> inv (ppglue (inr base)) *> ppglue (inr y)
+          | south => idp
+          | pglue () _
+      }
+
+    \func incl.{l} (X Y : Pointed.{l}) (w : Or X Y) : Wedge X Y \elim w
+      | inl x => pinl x
+      | inr y => pinr y
+
+    \func Aux.{l} (X Y : Pointed.{l}) => PushoutData {Or X Y} {Bool} {Wedge X Y} (side X Y) (incl X Y)
+
+    \func auxEquiv.{l} (X Y : Pointed.{l}) : QEquiv {Aux X Y} {\Sigma} \cowith
+      | f _ => ()
+      | ret _ => pinl true
+      | ret_f => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam _ => pinl true} {\lam q => q}
+                   (\case \elim __ \with {
+                     | true => idp
+                     | false => auxPath X Y
+                   })
+                   (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam _ => pinl true} {pinr}
+                      (\lam x => ppglue (inl x)) (\lam y => auxPath X Y *> ppglue (inr y)) (\lam _ => aux-coh _ _ _))
+                   (\case \elim __ \with {
+                     | inl _ => idp
+                     | inr _ => inv (idp_*> _)
+                   })
+      | f_sec _ => idp
+      \where {
+        \func auxPath.{l} (X Y : Pointed.{l}) : pinl true = {Aux X Y} pinl false
+          => ppglue (inl base) *> pmap pinr (ppglue ()) *> inv (ppglue (inr base))
+
+        \func aux-coh {A : \Type} {a b c d : A} (p : a = b) (q : b = c) (r : d = c) : p *> q = idp *> ((p *> q *> inv r) *> r) \elim d, r
+          | _, idp => inv (idp_*> _)
+      }
+
+    \func toSmash.{l} (X Y : Pointed.{l}) : PointedEquiv (SmashPushout X Y) (Smash X Y) \cowith
+      | map => (\lam s => PushoutData.swap.map _ _ (collapse X Y (PushoutData.paste.from (side X Y) (incl X Y) (wedgeToProduct X Y) (flat X Y s))), idp)
+      | map-isEquiv => IsEquiv.trans (congr.isEquiv _ _ _ _ idEquiv idEquiv idEquiv (\lam _ => idp) flat-coh)
+                         (IsEquiv.trans (inP (symQEquiv (PushoutData.paste (side X Y) (incl X Y) (wedgeToProduct X Y))))
+                                        (IsEquiv.trans (congr.isEquiv _ _ _ _ idEquiv (auxEquiv X Y) idEquiv (\lam _ => idp) (\lam _ => idp))
+                                                       (inP (PushoutData.swap _ _))))
+      \where {
+        \func flat-coh.{l} {X Y : Pointed.{l}} (w : Or X Y) : wedgeToProduct X Y (incl X Y w) = corner X Y w \elim w
+          | inl _ => idp
+          | inr _ => idp
+
+        \func flat.{l} (X Y : Pointed.{l}) (s : SmashPushout X Y) : PushoutData {Or X Y} (side X Y) (\lam w => wedgeToProduct X Y (incl X Y w))
+          => congr _ _ _ _ (\lam w => w) (\lam b => b) (\lam t => t) (\lam _ => idp) flat-coh s
+
+        \func collapse.{l} (X Y : Pointed.{l}) (s : PushoutData {Wedge X Y} {Aux X Y} {\Sigma X Y} pinr (wedgeToProduct X Y))
+          : PushoutData {Wedge X Y} {\Sigma} {\Sigma X Y} (\lam _ => ()) (wedgeToProduct X Y)
+          => congr _ _ _ _ (\lam w => w) (\lam _ => ()) (\lam t => t) (\lam _ => idp) (\lam _ => idp) s
+
+        \func proj.{l} {X Y : Pointed.{l}} : (toSmash X Y).map ∘* SmashPushout.proj = Smash.proj
+          => idp
+      }
+  }

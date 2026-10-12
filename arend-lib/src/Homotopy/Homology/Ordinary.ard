@@ -1,0 +1,138 @@
+{- | Reduced ordinary homology, after Graham, "Synthetic Homology in Homotopy Type Theory", Section 4,
+     taken in the stable range: ``H_n(X; A) = pi^s_{2n+3}(X ∧ K(A, n+3))``. -}
+
+\import Algebra.Group
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Meta
+\import Algebra.Pointed (AddPointed, zro)
+\import Arith.Int
+\import Arith.Nat
+\import Category (Iso)
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Connectivity
+\import Homotopy.EilenbergMacLane.Connectivity
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.Homology
+\import Homotopy.Homology.Smash
+\import Homotopy.Homology.Theory
+\import Homotopy.Pointed
+\import Homotopy.Pushout.Connectivity
+\import Homotopy.Smash.Connectivity
+\import Homotopy.Smash.Pushout
+\import Homotopy.Sphere
+\import Homotopy.Suspension
+\import Logic
+\import Order.PartialOrder
+\import Paths
+
+\open ->* (∘*)
+
+\func ordinaryHomology.{u} (A : AbGroup.{u}) : OrdinaryHomologyTheory.{u} \cowith
+  | HomologyTheory => connective (RedHom A) (RedHom.push A) (RedHom.push-id A) (RedHom.push-comp A) (RedHom.susp-iso A) (RedHom.susp-natural A)
+                                 (RedHom.exact A) (RedHom.bottom A)
+  | dimension => RedHom.dimension A
+
+\func RedHom.{u} (A : AbGroup.{u}) (n : Nat) (X : Pointed.{u}) : AbGroup.{u}
+  => StablePi.{u} (deg n) (SmashPushout.{u} X (K A (lev n)))
+  \where {
+    \func deg (n : Nat) : Nat \elim n
+      | 0 => 3
+      | suc n => suc (suc (deg n))
+      \where
+        \lemma eval (n : Nat) : deg n = n Nat.+ n Nat.+ 3 \elim n
+          | 0 => idp
+          | suc n => \have e => eval n \in linarith
+
+    \func lev (n : Nat) : Nat => suc (suc (suc n))
+
+    \func push.{u} (A : AbGroup.{u}) (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) : AddGroupHom (RedHom A n X) (RedHom A n Y)
+      => StablePi.map.{u} (deg n) (SmashPushout.map.{u} f (->*.id {K A (lev n)}))
+
+    \lemma push-id.{u} (A : AbGroup.{u}) (n : Nat) (X : Pointed.{u}) : push A n (->*.id {X}) = AddGroupHom.id
+      => pmap (StablePi.map.{u} (deg n)) (SmashPushout.map.id.{u} {X} {K.{u} A (lev n)}) *> StablePi.map-id.{u} (deg n) (SmashPushout.{u} X (K.{u} A (lev n)))
+
+    \lemma push-comp.{u} (A : AbGroup.{u}) (n : Nat) {X Y Z : Pointed.{u}} (f : X ->* Y) (g : Y ->* Z)
+      : push A n (g ∘* f) = push A n g AddGroupHom.∘ push A n f
+      => pmap (StablePi.map.{u} (deg n)) (SmashPushout.map.comp.{u} f g (->*.id {K.{u} A (lev n)}) (->*.id {K.{u} A (lev n)}))
+         *> StablePi.map-comp.{u} (deg n) (SmashPushout.map.{u} f (->*.id {K.{u} A (lev n)})) (SmashPushout.map.{u} g (->*.id {K.{u} A (lev n)}))
+
+    \lemma exact.{u} (A : AbGroup.{u}) (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y) : AbExactAt (push A n f) (push A n (Cof.inc f))
+      => smashExact (deg n) f (K A (lev n))
+
+    \func kap.{u} (A : AbGroup.{u}) (n : Nat) (X : Pointed.{u})
+      : AddGroupHom (StablePi.{u} (suc (suc (deg n))) (SmashPushout X (Susp.pointed (K A (lev n))))) (RedHom A (suc n) X)
+      => StablePi.map.{u} (suc (suc (deg n))) (SmashPushout.map.{u} (->*.id {X}) (K-susp {A} (lev n)))
+
+    \lemma kap-isEquiv.{u} (A : AbGroup.{u}) (n : Nat) (X : Pointed.{u}) : IsEquiv (kap A n X)
+      => \have e => deg.eval n
+         \in StablePi.map-isEquiv.{u} (suc (suc (deg n))) {suc (suc (suc (suc n) Nat.+ suc (suc n)))} _
+               (map-nconnected.{u} {suc (suc (suc n) Nat.+ suc (suc n))} ->*.id (K-susp {A} (lev n))
+                                   (nconnected-map-equiv.{u} (suc (suc (suc (suc n) Nat.+ suc (suc n)))) (inP idEquiv)) (K-susp-nconnected.{u} (suc (suc n)))) linarith
+
+    \func susp.{u} (A : AbGroup.{u}) (n : Nat) (X : Pointed.{u}) : AddGroupHom (RedHom A n X) (RedHom A (suc n) (Susp.pointed X))
+      => kap.{u} A n (Susp.pointed X) AddGroupHom.∘ tau.{u} (suc (deg n)) (Susp.pointed X) (K.{u} A (lev n)) AddGroupHom.∘ theta.{u} (deg n) X (K.{u} A (lev n))
+
+    \func susp-iso.{u} (A : AbGroup.{u}) (n : Nat) (X : Pointed.{u}) : Iso {AbGroupCat.{u}} {RedHom A n X} {RedHom A (suc n) (Susp.pointed X)} (susp A n X)
+      => AbGroupCat.isoOfEquiv (susp.{u} A n X)
+           (IsEquiv.toQEquiv (IsEquiv.trans (inP (AbGroupCat.equivOfIso (theta.iso.{u} (deg n) X (K.{u} A (lev n)))))
+                                            (IsEquiv.trans (tau.isEquiv.{u} (suc (deg n)) (Susp.pointed X) (K.{u} A (lev n))) (kap-isEquiv.{u} A n (Susp.pointed X)))))
+
+    \lemma susp-natural.{u} (A : AbGroup.{u}) (n : Nat) {X Y : Pointed.{u}} (f : X ->* Y)
+      : susp A n Y AddGroupHom.∘ push A n f = {AddGroupHom (RedHom A n X) (RedHom A (suc n) (Susp.pointed Y))} push A (suc n) (Susp-Func f) AddGroupHom.∘ susp A n X
+      => AddGroupHom.equals {_} {_} {susp.{u} A n Y AddGroupHom.∘ push.{u} A n f} {push.{u} A (suc n) (Susp-Func f) AddGroupHom.∘ susp.{u} A n X} \lam t =>
+           pmap (\lam (z : StablePi.{u} (suc (deg n)) (SmashPushout.{u} (Susp.pointed Y) (K.{u} A (lev n))))
+                   => kap.{u} A n (Susp.pointed Y) (tau.{u} (suc (deg n)) (Susp.pointed Y) (K.{u} A (lev n)) z))
+                (theta.natural.{u} (deg n) f (->*.id {K.{u} A (lev n)}) t)
+           *> pmap (kap.{u} A n (Susp.pointed Y)) (tau.natural.{u} (suc (deg n)) (Susp-Func f) (K.{u} A (lev n)) (theta.{u} (deg n) X (K.{u} A (lev n)) t))
+           *> proj-square.{u} (suc (suc (deg n))) {_} {_} {_} {_} {_}
+                          {SmashPushout.map.{u} (Susp-Func f) (->*.id {Susp.pointed (K.{u} A (lev n))})}
+                          {SmashPushout.map.{u} (->*.id {Susp.pointed Y}) (K-susp.{u} {A} (lev n))}
+                          {SmashPushout.map.{u} (->*.id {Susp.pointed X}) (K-susp.{u} {A} (lev n))}
+                          {SmashPushout.map.{u} (Susp-Func f) (->*.id {K.{u} A (lev (suc n))})}
+                          (\lam _ => idp) (tau.{u} (suc (deg n)) (Susp.pointed X) (K.{u} A (lev n)) (theta.{u} (deg n) X (K.{u} A (lev n)) t))
+
+    \lemma bottom.{u} (A : AbGroup.{u}) (X : Pointed.{u}) (x : RedHom A 0 (Susp.pointed X)) : x = zro {RedHom A 0 (Susp.pointed X)}
+      => inv (pmap (\lam (h : AddGroupHom (RedHom A 0 (Susp.pointed X)) (RedHom A 0 (Susp.pointed X))) => h x) (Iso.f_hinv {theta.iso 2 X (K A 3)}))
+         *> pmap (theta 2 X (K A 3)) (StablePi.vanish.{u} 2 (smash-nconnected.{u} {2} X (K-connected {A} 2)) _) *> AddGroupHom.func-zro
+
+    \lemma dimension.{u} (A : AbGroup.{u}) (n : Int) (n/=0 : n /= 0) (x : connective.intE (RedHom A) n (Sphere.pointed 0))
+      : x = zro {connective.intE (RedHom A) n (Sphere.pointed 0)} \elim n
+      | pos 0 => absurd (n/=0 idp)
+      | pos (suc n) => dim A n x
+      | neg (suc _) => idp
+
+    \lemma dim.{u} (A : AbGroup.{u}) (n : Nat) (x : RedHom A (suc n) (Sphere.pointed 0)) : x = zro {RedHom A (suc n) (Sphere.pointed 0)}
+      => \have e => deg.eval (suc n)
+         \in inv (pmap (\lam (h : AddGroupHom (RedHom A (suc n) (Sphere.pointed 0)) (RedHom A (suc n) (Sphere.pointed 0))) => h x)
+                       (StablePi.map-id (deg (suc n)) (SmashPushout (Sphere.pointed 0) (K A (lev (suc n))))))
+             *> inv (proj-ext (deg (suc n)) {_} {_} {_}
+                              { ->*.compose {SmashPushout (Sphere.pointed 0) (K A (lev (suc n)))} {K A (lev (suc n))} {SmashPushout (Sphere.pointed 0) (K A (lev (suc n)))}
+                                           (SmashPushout.sphere.back (K A (lev (suc n)))) (SmashPushout.sphere (K A (lev (suc n))))}
+                              { ->*.id {SmashPushout (Sphere.pointed 0) (K A (lev (suc n)))}}
+                              SmashPushout.sphere.retract x)
+             *> suspIso.comp (deg (suc n)) (SmashPushout.sphere (K A (lev (suc n)))) (SmashPushout.sphere.back (K A (lev (suc n)))) x
+             *> pmap (StablePi.map (deg (suc n)) (SmashPushout.sphere.back (K A (lev (suc n)))))
+                     (vanish-K {A} (suc (suc (suc n))) (deg (suc n)) linarith linarith (StablePi.map (deg (suc n)) (SmashPushout.sphere (K A (lev (suc n)))) x))
+             *> AddGroupHom.func-zro
+  }
+
+\func kappa^.{u} {G : CGroup.{u}} (r j : Nat) : Susp^ j (K G (suc r)) ->* K G (suc (r Nat.+ j)) \elim j
+  | 0 => ->*.id
+  | suc j => ->*.compose {Susp^ (suc j) (K G (suc r))} {Susp.pointed (K G (suc (r Nat.+ j)))} {K G (suc (suc (r Nat.+ j)))}
+                         (K-susp (suc (r Nat.+ j))) (Susp-Func (kappa^ r j))
+  \where
+    \lemma nconnected.{u} {G : CGroup.{u}} (r j : Nat) : isNConnectedMap (suc (r Nat.+ r Nat.+ j)) (kappa^ {G} r j).1 \elim j
+      | 0 => nconnected-map-equiv (suc (r Nat.+ r)) (inP idEquiv)
+      | suc j => nconnected-map-comp {suc (suc (r Nat.+ r Nat.+ j))} (susp-map-nconnected {suc (r Nat.+ r Nat.+ j)} (nconnected r j))
+                                     (nconnected-map-mono {suc (suc (r Nat.+ r Nat.+ j))} {suc (suc ((r Nat.+ j) Nat.+ (r Nat.+ j)))} linarith
+                                                          (K-susp-nconnected {G} (r Nat.+ j)))
+
+\lemma vanish-K.{u} {G : CGroup.{u}} (r m : Nat) (_ : suc (suc r) <= m) (_ : m <= r Nat.+ r) (t : StablePi.{u} m (K G (suc r)))
+  : t = zro {StablePi.{u} m (K G (suc r))}
+  => StablePi.vanish-truncated.{u} m {suc (r Nat.+ r Nat.+ suc (suc m))} {suc (suc (r Nat.+ suc (suc m)))} {K G (suc r)} {K G (suc (r Nat.+ suc (suc m)))}
+                               (kappa^ {G} r (suc (suc m)))
+                               (kappa^.nconnected r (suc (suc m))) (K-level {G} (suc (r Nat.+ suc (suc m)))) linarith linarith t

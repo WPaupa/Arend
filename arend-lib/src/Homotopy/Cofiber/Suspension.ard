@@ -1,0 +1,73 @@
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Pushout.Grid
+\import Homotopy.Suspension
+\import Logic
+\import Paths
+
+\open PushoutData (ppglue, congr)
+
+\func cofSusp.{u} {X Y : Pointed.{u}} (f : X ->* Y) : PointedEquiv (Cof.pointed (Susp-Func f)) (Susp.pointed (Cof f.1)) \cowith
+  | map => (\lam c => cols f.1 (Grid.comparison (grid f.1) (rows f.1 c)), pmap (cols f.1) (Grid.comparison.corner00 (grid f.1) ()))
+  | map-isEquiv => IsEquiv.trans (congr.isEquiv _ _ _ _ idEquiv idEquiv Susp.unit (r0-eq f.1) (r2-eq f.1))
+                     (IsEquiv.trans (inP (Grid.comparison (grid f.1)))
+                                    (congr.isEquiv _ _ _ _ idEquiv (symQEquiv Susp.unit) (symQEquiv Susp.unit) (\lam _ => idp) (\lam _ => idp)))
+  \where {
+    \func grid {A B : \Type} (f : A -> B) : Grid \cowith
+      | A00 => \Sigma
+      | A01 => B
+      | A02 => \Sigma
+      | A10 => \Sigma
+      | A11 => A
+      | A12 => \Sigma
+      | A20 => \Sigma
+      | A21 => \Sigma
+      | A22 => \Sigma
+      | f01 _ => ()
+      | f03 _ => ()
+      | f11 _ => ()
+      | f13 _ => ()
+      | f21 _ => ()
+      | f23 _ => ()
+      | g10 _ => ()
+      | g30 _ => ()
+      | g11 => f
+      | g31 _ => ()
+      | g12 _ => ()
+      | g32 _ => ()
+      | s00 _ => idp
+      | s02 _ => idp
+      | s20 _ => idp
+      | s22 _ => idp
+
+    \func r0-eq {A B : \Type} (f : A -> B) (s : Susp A) : Grid.r0 {grid f} s = Susp.map f s
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Grid.r0 {grid f}} {Susp.map f} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp) s
+
+    \func r2-eq {A B : \Type} (f : A -> B) (s : Susp A) : Grid.r2 {grid f} s = north
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Grid.r2 {grid f}} {\lam _ => north} (\lam _ => idp) (\lam _ => inv (pmerid ()))
+           (\lam _ => cancel (pmerid ())) s
+
+    \func cancel {T : \Type} {a b : T} (p : a = b) : idp = (idp *> p) *> inv p \elim p
+      | idp => idp
+
+    \func rows {A B : \Type} (f : A -> B) (c : Cof (Susp.map f)) : Grid.Prows {grid f}
+      => congr _ _ (Grid.r0 {grid f}) (Grid.r2 {grid f}) (\lam s => s) (\lam s => s) (\lam _ => north) (r0-eq f) (r2-eq f) c
+
+    \func cols {A B : \Type} (f : A -> B) (z : Grid.Pcols (grid f)) : Susp (Cof f)
+      => congr (Grid.r0 {Grid.transpose (grid f)}) (Grid.r2 {Grid.transpose (grid f)}) (\lam _ => ()) (\lam _ => ())
+               (\lam c => c) (\lam _ => ()) (\lam _ => ()) (\lam _ => idp) (\lam _ => idp) z
+
+    \sfunc inc.{u} {X Y : Pointed.{u}} (f : X ->* Y) : (cofSusp f).map ->*.∘* Cof.inc (Susp-Func f) = Susp-Func (Cof.inc f)
+      => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam s => (cofSusp f).map.1 (pinl s)} {Susp.map pinl}
+                   (\lam _ => pmap (cols f.1) (Grid.comparison.corner00 (grid f.1) ())) (\lam _ => pmap (cols f.1) (Grid.comparison.corner02 (grid f.1) ()))
+                   (\lam y => pmap (pmap (cols f.1) (Grid.comparison.corner00 (grid f.1) ()) *>) (inv (idp_*> (pmerid (pinl y))))
+                              *> glue-square (cols f.1) (Grid.comparison.corner00 (grid f.1) ()) (ppglue (pinl y)) (Grid.comparison.corner02 (grid f.1) ())
+                              *> inv (pmap (\lam t => pmap (cols f.1) t *> pmap (cols f.1) (Grid.comparison.corner02 (grid f.1) ())) (Grid.comparison.edge01 (grid f.1) y))))
+                 (inv (idp_*> _))
+
+    \sfunc glue-square {Y W : \Type} (k : Y -> W) {y0 z0 z1 y1 : Y} (a : y0 = z0) (q : z0 = z1) (b : y1 = z1)
+      : pmap k a *> pmap k q = pmap k (a *> q *> inv b) *> pmap k b \elim a, q, b
+      | idp, idp, idp => idp
+  }

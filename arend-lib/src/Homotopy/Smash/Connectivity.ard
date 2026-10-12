@@ -1,0 +1,28 @@
+\import Arith.Nat
+\import Equiv
+\import Equiv.Sigma
+\import Homotopy.Connectivity
+\import Homotopy.Connectivity.Map
+\import Homotopy.Pointed
+\import Homotopy.Pushout.Connectivity
+\import Homotopy.Smash.Pushout
+\import Logic
+\import Logic.Unique
+
+\lemma map-nconnected.{u} {n : Nat} {X X' Y Y' : Pointed.{u}} (f : X ->* X') (g : Y ->* Y')
+                          (cf : isNConnectedMap (suc n) f.1) (cg : isNConnectedMap (suc n) g.1)
+  : isNConnectedMap (suc n) (SmashPushout.map f g).1
+  => congr-nconnected _ _ _ _ _ _ _ _ _ (nconnected-map-mono id<=suc (or-nconnected {suc n} cf cg)) (nconnected-map-equiv.{u} (suc n) (inP idEquiv))
+                      (product-nconnected {suc n} cf cg)
+
+\lemma smash-nconnected.{u} {n : Nat} (X : Pointed.{u}) {Y : Pointed.{u}} (c : isNConnectedType (suc n) Y)
+  : isNConnectedType (suc n) (SmashPushout X Y)
+  => (nconnected-unit.{u} {suc n} {SmashPushout X Y}).2
+       (nconnected-map-comp {suc n} {SmashPushout X Y} {SmashPushout X UnitPointed} {\Sigma}
+                            {(SmashPushout.map ->*.id (unit Y)).1} {\lam _ => ()}
+                            (map-nconnected ->*.id (unit Y) (nconnected-map-equiv.{u} (suc n) (inP idEquiv)) ((nconnected-unit.{u} {suc n} {Y}).1 c))
+                            (nconnected-map-equiv.{u} (suc n) {SmashPushout X UnitPointed} {\Sigma} {\lam _ => ()}
+                                                  (contr-equiv (SmashPushout.unit-right X) unit-isContr)))
+  \where
+    \func unit.{v} (Y : Pointed.{v}) : Y ->* UnitPointed
+      => (\lam _ => (), idp)

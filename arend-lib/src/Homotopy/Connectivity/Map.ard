@@ -1,0 +1,71 @@
+\import Data.Or
+\import Equiv
+\import Equiv.Path
+\import Equiv.Sigma
+\import Homotopy.Connectivity
+\import Homotopy.Fibration
+\import Homotopy.HLevel
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Truncation
+\import Logic
+\import Logic.Unique
+\import Paths
+\import Paths.Meta
+
+\lemma nconnected-map-cancel.{u} {n : Nat} {A B C : \Type u} {f : A -> B} {g : B -> C}
+                                 (cgf : isNConnectedMap n (\lam a => g (f a))) (cf : isNConnectedMap n f) : isNConnectedMap n g
+  => section=>nconnected n g \lam P lv s =>
+      \let | r => IsEquiv.splitSurj (nconnected-ext cgf P lv) (\lam a => s (f a))
+           | q => IsEquiv.isInj (nconnected-ext cf (\lam b => P (g b)) (\lam b => lv (g b))) {\lam b => r.1 (g b)} {s} r.2
+      \in (r.1, \lam b => path ((q @ __) b))
+
+\lemma paths=>nconnected.{u} {n : Nat} {A : \Type u} (a : A) (c : \Pi (x y : A) -> isNConnectedType n (x = y)) : isNConnectedType (suc n) A
+  => propExt.conv (nconnected-iff-trunc-contr (suc n) A)
+      (Contr.make (inT a) (Trunc_-1+.elim (\lam y => \new Truncated_-1+ (suc n) (inT a = y) (HLevel_-1_suc (isTruncated {Trunc_-1+.level (suc n) A} (inT a) y)))
+                                          (\lam x => (Trunc_-1+.equality a x).ret (Contr.center {propExt.dir (nconnected-iff-trunc-contr n (a = x)) (c a x)}))))
+
+\lemma nconnected-loop.{u} {n : Nat} {X Y : Pointed.{u}} (f : X ->* Y) (cX : isNConnectedType 1 X) (cY : isNConnectedType 1 Y)
+                           (c : isNConnectedMap n (Loop-Func f).1) : isNConnectedMap (suc n) f.1
+  => \lam y => \case nconnected1-path cY base y \with {
+       | inP q => transport (\lam y => isNConnectedType (suc n) (Fib f.1 y)) q
+                    (paths=>nconnected.{u} {n} {Fib f.1 base} (base, f.2) \lam z z' => nconnected-equiv.{u} n (symQEquiv (Fib.equiv base z z'))
+                       (nconnected-map-comp-left n (pathConcatEquiv-right z'.2) (paths f cX c z.1 z'.1) z.2))
+     }
+  \where {
+    \lemma paths.{v} {n : Nat} {X Y : Pointed.{v}} (f : X ->* Y) (cX : isNConnectedType 1 X) (c : isNConnectedMap n (Loop-Func f).1) (x x' : X)
+      : isNConnectedMap n (pmap f.1 {x} {x'})
+      => \case nconnected1-path cX base x, nconnected1-path cX base x' \with {
+           | inP p, inP p' => transport (\lam x => isNConnectedMap n (pmap f.1 {x} {x'})) p
+                                (transport (\lam x' => isNConnectedMap n (pmap f.1 {base} {x'})) p' (loop f.1 f.2 c))
+         }
+
+    \lemma loop.{v} {n : Nat} {A B : \Type v} (h : A -> B) {a : A} {b : B} (q : h a = b) (c : isNConnectedMap n (loopMap h q))
+      : isNConnectedMap n (pmap h {a} {a}) \elim b, q
+      | _, idp => transport (\lam (k : a = a -> h a = h a) => isNConnectedMap n k) (ext \lam z => idp_*> (pmap h z)) c
+  }
+
+\lemma or-nconnected.{u} {n : Nat} {A A' B B' : \Type u} {f : A -> A'} {g : B -> B'} (cf : isNConnectedMap n f) (cg : isNConnectedMap n g)
+  : isNConnectedMap n (Or.map __ f g)
+  => section=>nconnected n _ \lam P lv s =>
+      \let | r => IsEquiv.splitSurj (nconnected-ext cf (\lam a => P (inl a)) (\lam a => lv (inl a))) (\lam a => s (inl a))
+           | r' => IsEquiv.splitSurj (nconnected-ext cg (\lam b => P (inr b)) (\lam b => lv (inr b))) (\lam b => s (inr b))
+      \in (\lam w => \case \elim w \return P w \with {
+             | inl a => r.1 a
+             | inr b => r'.1 b
+           }, \case \elim __ \with {
+             | inl a => path ((r.2 @ __) a)
+             | inr b => path ((r'.2 @ __) b)
+           })
+
+\lemma product-nconnected.{u} {n : Nat} {A A' B B' : \Type u} {f : A -> A'} {g : B -> B'} (cf : isNConnectedMap n f) (cg : isNConnectedMap n g)
+  : isNConnectedMap n (\lam (t : \Sigma A B) => (f t.1, g t.2))
+  => nconnected-map-comp {n} {\Sigma A B} {\Sigma A B'} {\Sigma A' B'} {totalEquiv.total (\lam _ => g)} {\lam t => (f t.1, t.2)}
+                         (nconnected-total (\lam _ => g) (\lam _ => cg))
+                         (nconnected-map-comp-right n swap (nconnected-map-comp-left n swap (nconnected-total {n} {B'} {\lam _ => A} {\lam _ => A'} (\lam _ => f) (\lam _ => cf))))
+  \where
+    \func swap {S T : \Type} : QEquiv {\Sigma S T} {\Sigma T S} \cowith
+      | f t => (t.2, t.1)
+      | ret t => (t.2, t.1)
+      | ret_f _ => idp
+      | f_sec _ => idp

@@ -1,0 +1,176 @@
+\import Data.Bool
+\import Data.Or
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Pushout.Grid
+\import Homotopy.Smash.Pushout
+\import Logic
+\import Logic.Unique
+\import Paths
+
+\open PushoutData (ppglue, congr, rec, homotopy)
+\open SmashPushout (side, corner)
+
+\func cofSmash.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u})
+  : Cof.pointed (SmashPushout.map f (->*.id {K})) ->* SmashPushout (Cof.pointed f) K
+  => (\lam c => cols f K (Grid.comparison (grid f K) (rows f K c)), pmap (cols f K) (Grid.comparison.corner02 (grid f K) (base, base)))
+  \where {
+    \func unit.{v} (X : Pointed.{v}) : X ->* UnitPointed
+      => (\lam _ => (), idp)
+
+    \func grid.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) : Grid \cowith
+      | A00 => Bool
+      | A01 => Or Y K
+      | A02 => \Sigma Y K
+      | A10 => Bool
+      | A11 => Or X K
+      | A12 => \Sigma X K
+      | A20 => Bool
+      | A21 => Or (\Sigma) K
+      | A22 => \Sigma (\Sigma) K
+      | f01 => side Y K
+      | f03 => corner Y K
+      | f11 => side X K
+      | f13 => corner X K
+      | f21 => side UnitPointed K
+      | f23 => corner UnitPointed K
+      | g10 b => b
+      | g30 b => b
+      | g11 => Or.map __ f.1 (->*.id {K}).1
+      | g31 => Or.map __ (unit X).1 (->*.id {K}).1
+      | g12 t => (f.1 t.1, (->*.id {K}).1 t.2)
+      | g32 t => ((unit X).1 t.1, (->*.id {K}).1 t.2)
+      | s00 => SmashPushout.map.alpha f.1 (->*.id {K}).1
+      | s02 => SmashPushout.map.beta f ->*.id
+      | s20 => SmashPushout.map.alpha (unit X).1 (->*.id {K}).1
+      | s22 => SmashPushout.map.beta (unit X) ->*.id
+
+    \func center.{u} (K : Pointed.{u}) : SmashPushout UnitPointed K
+      => Contr.center {SmashPushout.unit-left K}
+
+    \func centerEquiv.{u} (K : Pointed.{u}) : QEquiv {\Sigma} {SmashPushout UnitPointed K} \cowith
+      | f _ => center K
+      | ret _ => ()
+      | ret_f _ => idp
+      | f_sec => Contr.contraction {SmashPushout.unit-left K}
+
+    \func rows.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (c : Cof (SmashPushout.map f (->*.id {K})).1) : Grid.Prows {grid f K}
+      => congr _ _ (Grid.r0 {grid f K}) (Grid.r2 {grid f K}) (\lam s => s) (\lam s => s) (centerEquiv K) (\lam _ => idp)
+               (\lam s => inv (Contr.contraction {SmashPushout.unit-left K} (Grid.r2 {grid f K} s))) c
+
+    \lemma rows-isEquiv.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) : IsEquiv (rows f K)
+      => congr.isEquiv _ _ _ _ idEquiv idEquiv (centerEquiv K) (\lam _ => idp)
+                       (\lam s => inv (Contr.contraction {SmashPushout.unit-left K} (Grid.r2 {grid f K} s)))
+
+    \func cols.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (z : Grid.Pcols (grid f K)) : SmashPushout (Cof.pointed f) K
+      => congr (Grid.r0 {Grid.transpose (grid f K)}) (Grid.r2 {Grid.transpose (grid f K)}) (side (Cof.pointed f) K) (corner (Cof.pointed f) K)
+               (jTo f.1) (PushoutData.collapse (\lam (b : Bool) => b)) (bTo f.1) (alpha f K) (beta f K) z
+
+    \lemma cols-isEquiv.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) : IsEquiv (cols f K)
+      => congr.isEquiv _ _ _ _ (jEquiv f.1) (PushoutData.collapse (\lam (b : Bool) => b)) (bEquiv f.1) (alpha f K) (beta f K)
+
+    \lemma isEquiv.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) : IsEquiv (cofSmash f K).1
+      => IsEquiv.trans (rows-isEquiv f K) (IsEquiv.trans (inP (Grid.comparison (grid f K))) (cols-isEquiv f K))
+
+    \func inc.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (t : \Sigma Y K)
+      : (cofSmash f K).1 (pinl (pinr t)) = pinr ((Cof.inc f).1 t.1, t.2)
+      => pmap (cols f K) (Grid.comparison.corner02 (grid f K) t)
+
+    \func jTo {X Y K : \Type} (f : X -> Y)
+              (z : PushoutData {Or X K} {Or Y K} {Or (\Sigma) K} (Or.map __ f (\lam k => k)) (Or.map __ (\lam _ => ()) (\lam k => k))) : Or (Cof f) K
+      => rec (Or.map __ pinl (\lam k => k)) (Or.map __ (\lam _ => apex f) (\lam k => k)) (jglue f) z
+
+    \func jglue {X Y K : \Type} (f : X -> Y) (w : Or X K)
+      : Or.map (Or.map w f (\lam k => k)) pinl (\lam k => k) = Or.map (Or.map w (\lam _ => ()) (\lam k => k)) (\lam _ => apex f) (\lam k => k) \elim w
+      | inl x => pmap inl (ppglue x)
+      | inr _ => idp
+
+    \func apex {X Y : \Type} (f : X -> Y) : Cof f
+      => pinr ()
+
+    \func jFrom {X Y K : \Type} (f : X -> Y) (o : Or (Cof f) K)
+      : PushoutData {Or X K} {Or Y K} {Or (\Sigma) K} (Or.map __ f (\lam k => k)) (Or.map __ (\lam _ => ()) (\lam k => k)) \elim o
+      | inl c => rec (\lam y => pinl (inl y)) (\lam _ => pinr (inl ())) (\lam x => ppglue (inl x)) c
+      | inr k => pinl (inr k)
+
+    \func jEquiv {X Y K : \Type} (f : X -> Y) : QEquiv (jTo {X} {Y} {K} f) \cowith
+      | ret => jFrom f
+      | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam z => jFrom f (jTo f z)} {\lam z => z} jl jr
+                          (\case \elim __ \with {
+                            | inl _ => idp_*> _
+                            | inr _ => idp
+                          })
+      | f_sec o => \case \elim o \with {
+        | inl c => homotopy {_} {_} {_} {_} {_} {_} {\lam c => jTo f (jFrom f (inl c))} {inl} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _) c
+        | inr _ => idp
+      }
+      \where {
+        \func jl {X Y K : \Type} {f : X -> Y} (w : Or Y K) : jFrom {X} {Y} {K} f (jTo f (pinl w)) = pinl w \elim w
+          | inl _ => idp
+          | inr _ => idp
+
+        \func jr {X Y K : \Type} {f : X -> Y} (w : Or (\Sigma) K) : jFrom {X} {Y} {K} f (jTo f (pinr w)) = pinr w \elim w
+          | inl _ => idp
+          | inr k => ppglue (inr k)
+      }
+
+    \func bTo {X Y K : \Type} (f : X -> Y) (z : PushoutData {\Sigma X K} {\Sigma Y K} {\Sigma (\Sigma) K} (\lam t => (f t.1, t.2)) (\lam t => ((), t.2)))
+      : \Sigma (Cof f) K
+      => rec (\lam t => (pinl t.1, t.2)) (\lam t => (pinr (), t.2)) (\lam t => pmap (\lam c => (c, t.2)) (ppglue t.1)) z
+
+    \func bFrom {X Y K : \Type} (f : X -> Y) (k : K) (c : Cof f)
+      : PushoutData {\Sigma X K} {\Sigma Y K} {\Sigma (\Sigma) K} (\lam t => (f t.1, t.2)) (\lam t => ((), t.2))
+      => rec (\lam y => pinl (y, k)) (\lam _ => pinr ((), k)) (\lam x => ppglue (x, k)) c
+
+    \func bEquiv {X Y K : \Type} (f : X -> Y) : QEquiv (bTo {X} {Y} {K} f) \cowith
+      | ret t => bFrom f t.2 t.1
+      | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam z => bFrom f (bTo f z).2 (bTo f z).1} {\lam z => z} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _)
+      | f_sec t => homotopy {_} {_} {_} {_} {_} {_} {\lam c => bTo f (bFrom f t.2 c)} {\lam c => (c, t.2)} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _) t.1
+
+    \func alpha.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (z : Grid.R1 {Grid.transpose (grid f K)})
+      : side (Cof.pointed f) K (jTo f.1 z) = PushoutData.collapse.map (\lam (b : Bool) => b) (Grid.r0 {Grid.transpose (grid f K)} z)
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam z => side (Cof.pointed f) K (jTo f.1 z)} {\lam z => PushoutData.collapse.map (\lam (b : Bool) => b) (Grid.r0 {Grid.transpose (grid f K)} z)}
+                  (al f K) (ar f K) (\lam _ => set-pi) z
+      \where {
+        \func al.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (w : Or Y K) : side (Cof.pointed f) K (Or.map w pinl (\lam k => k)) = side Y K w \elim w
+          | inl _ => idp
+          | inr _ => idp
+
+        \func ar.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (w : Or (\Sigma) K)
+          : side (Cof.pointed f) K (Or.map w (\lam _ => pinr ()) (\lam k => k)) = side UnitPointed K w \elim w
+          | inl _ => idp
+          | inr _ => idp
+      }
+
+    \func beta.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (z : Grid.R1 {Grid.transpose (grid f K)})
+      : corner (Cof.pointed f) K (jTo f.1 z) = bTo f.1 (Grid.r2 {Grid.transpose (grid f K)} z)
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam z => corner (Cof.pointed f) K (jTo f.1 z)} {\lam z => bTo f.1 (Grid.r2 {Grid.transpose (grid f K)} z)}
+                  (bl f K) (br f K) (\case \elim __ \with {
+                    | inl x => trim (bTo f.1) (ppglue (x, base))
+                    | inr k => base-glue f.1 k f.2
+                  }) z
+      \where {
+        \func bl.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (w : Or Y K)
+          : corner (Cof.pointed f) K (Or.map w pinl (\lam k => k)) = (pinl (corner Y K w).1, (corner Y K w).2) \elim w
+          | inl _ => idp
+          | inr _ => idp
+
+        \func br.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (w : Or (\Sigma) K)
+          : corner (Cof.pointed f) K (Or.map w (\lam _ => pinr ()) (\lam k => k)) = (pinr (), (corner UnitPointed K w).2) \elim w
+          | inl _ => idp
+          | inr k => pmap (\lam c => (c, k)) (pmap pinl (inv f.2) *> ppglue base)
+
+        \func trim {S T : \Type} (E : S -> T) {s s' : S} (Q : s = s') : idp *> pmap E (idp *> Q) = pmap E Q \elim Q
+          | idp => idp
+
+        \func lift {S T : \Type} (E : S -> T) {s s' : S} (Q : s = s') : pmap E (idp *> Q) = idp *> pmap E Q \elim Q
+          | idp => idp
+
+        \func base-glue {X Y K : \Type} (f : X -> Y) (k : K) {x0 : X} {y0 : Y} (e : f x0 = y0)
+          : idp *> pmap (bTo f) (pmap pinl (inv (inv (pmap (\lam y => (y, k)) (inv e)))) *> ppglue (x0, k))
+            = idp *> pmap (\lam c => (c, k)) (pmap pinl (inv e) *> ppglue x0) \elim e
+          | idp => pmap (idp *>) (lift (bTo f) (ppglue (x0, k)) *> inv (lift (\lam c => (c, k)) (ppglue x0)))
+      }
+  }

@@ -1,0 +1,298 @@
+{- | Stable homotopy groups, after Graham, "Synthetic Homology in Homotopy Type Theory", Section 2.
+     By the stability theorem there, the stage ``pi_{2m+2}(Susp^{m+2} X)`` is the colimit. -}
+
+\import Algebra.Group
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Meta
+\import Algebra.Pointed (AddPointed, zro)
+\import Arith.Nat
+\import Category (Iso)
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Cofiber.Suspension
+\import Homotopy.Connectivity
+\import Homotopy.FiberSequence.Connectivity
+\import Homotopy.HLevel
+\import Homotopy.HomotopyGroup
+\import Homotopy.HomotopyGroup.Connectivity
+\import Homotopy.HomotopyGroup.Stabilization
+\import Homotopy.Pointed
+\import Homotopy.Pushout.Connectivity
+\import Homotopy.Sphere.Bouquet.Cofiber (cofiber-exact, gap)
+\import Homotopy.Suspension
+\import Logic
+\import Logic.Unique
+\import Order.PartialOrder
+\import Paths
+\import Paths.Meta
+
+\open ->* (∘*)
+
+\func Susp^.{u} (k : Nat) (X : Pointed.{u}) : Pointed.{u} \elim k
+  | 0 => X
+  | suc k => Susp.pointed (Susp^ k X)
+  \where {
+    \func map.{u} (k : Nat) {X Y : Pointed.{u}} (f : X ->* Y) : Susp^ k X ->* Susp^ k Y \elim k
+      | 0 => f
+      | suc k => Susp-Func (map k f)
+
+    \sfunc map-id.{u} (k : Nat) {X : Pointed.{u}} : map k (->*.id {X}) = ->*.id \elim k
+      | 0 => idp
+      | suc k => pmap Susp-Func (map-id k) *> Susp-Func.id
+
+    \sfunc map-comp.{u} (k : Nat) {X Y Z : Pointed.{u}} (g : Y ->* Z) (f : X ->* Y) : map k (g ∘* f) = map k g ∘* map k f \elim k
+      | 0 => idp
+      | suc k => pmap Susp-Func (map-comp k g f) *> Susp-Func.comp (map k g) (map k f)
+
+    \func shift.{u} (k : Nat) (X : Pointed.{u}) : Susp^ (suc k) X ->* Susp^ k (Susp.pointed X) \elim k
+      | 0 => ->*.id {Susp.pointed X}
+      | suc k => Susp-Func {Susp^ (suc k) X} {Susp^ k (Susp.pointed X)} (shift k X)
+
+    \lemma shift-isEquiv.{u} (k : Nat) (X : Pointed.{u}) : IsEquiv (shift k X).1 \elim k
+      | 0 => inP (idEquiv {Susp X})
+      | suc k => inP (Susp.mapEquiv (IsEquiv.toQEquiv (shift-isEquiv k X)))
+
+    \sfunc shift-natural.{u} (k : Nat) {X Y : Pointed.{u}} (f : X ->* Y)
+      : ->*.compose {Susp^ (suc k) X} {Susp^ (suc k) Y} {Susp^ k (Susp.pointed Y)} (shift k Y) (map (suc k) f)
+        = ->*.compose {Susp^ (suc k) X} {Susp^ k (Susp.pointed X)} {Susp^ k (Susp.pointed Y)} (map k (Susp-Func f)) (shift k X) \elim k
+      | 0 => idp
+      | suc k => inv (Susp-Func.comp {Susp^ (suc k) X} {Susp^ (suc k) Y} {Susp^ k (Susp.pointed Y)} (shift k Y) (map (suc k) f))
+                 *> pmap (Susp-Func {Susp^ (suc k) X} {Susp^ k (Susp.pointed Y)}) (shift-natural k f)
+                 *> Susp-Func.comp {Susp^ (suc k) X} {Susp^ k (Susp.pointed X)} {Susp^ k (Susp.pointed Y)} (map k (Susp-Func f)) (shift k X)
+
+    \lemma connected.{u} (k : Nat) (X : Pointed.{u}) : isNConnectedType k (Susp^ k X) \elim k
+      | 0 => inhabited=>nconnected0 base
+      | suc k => susp-nconnected (connected k X)
+
+    \lemma connected'.{u} {n : Nat} (k : Nat) {X : Pointed.{u}} (c : isNConnectedType n X) : isNConnectedType (n Nat.+ k) (Susp^ k X) \elim k
+      | 0 => c
+      | suc k => susp-nconnected (connected' k c)
+
+    \lemma map-nconnected.{u} {n : Nat} (k : Nat) {X Y : Pointed.{u}} {f : X ->* Y} (c : isNConnectedMap n f.1)
+      : isNConnectedMap (n Nat.+ k) (map k f).1 \elim k
+      | 0 => c
+      | suc k => susp-map-nconnected (map-nconnected k c)
+
+    \sfunc map-fun.{u} (k : Nat) {X Y : Pointed.{u}} {f g : X ->* Y} (p : \Pi (x : X) -> f.1 x = g.1 x) : map (suc k) f = map (suc k) g \elim k
+      | 0 => pmap {X -> Y} {Susp.pointed X ->* Susp.pointed Y} (\lam h => (Susp.map h, idp)) (ext p)
+      | suc k => pmap (Susp-Func {Susp^ (suc k) X} {Susp^ (suc k) Y}) (map-fun k p)
+  }
+
+\func PiAb.{u} (d : Nat) (X : Pointed.{u}) : AbGroup.{u}
+  => AbGroup.fromCGroup (PiCGroup d X)
+  \where {
+    \sfunc map.{u} (d : Nat) {X Y : Pointed.{u}} (f : X ->* Y) : AddGroupHom (PiAb.{u} d X) (PiAb.{u} d Y)
+      => AddGroupHom.fromGroupHom (piGroupMap.{u} (suc d) f)
+      \where {
+        \lemma eval.{u} (d : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (t : PiAb.{u} d X) : map.{u} d f t = piMap.{u} (suc (suc d)) f t
+          => pmap (\lam (h : AddGroupHom (PiAb.{u} d X) (PiAb.{u} d Y)) => h t) (\peval map.{u} d f)
+
+        \lemma id.{u} (d : Nat) {X : Pointed.{u}} (t : PiAb.{u} d X) : map.{u} d (->*.id {X}) t = t
+          => eval.{u} d ->*.id t *> piMap-id.{u} (suc (suc d)) t
+
+        \lemma comp.{u} (d : Nat) {X Y Z : Pointed.{u}} (g : Y ->* Z) (f : X ->* Y) (t : PiAb.{u} d X)
+          : map.{u} d (g ∘* f) t = map.{u} d g (map.{u} d f t)
+          => eval.{u} d (g ∘* f) t *> piMap-comp.{u} (suc (suc d)) g f t
+             *> inv (eval.{u} d g (map.{u} d f t) *> pmap (piMap.{u} (suc (suc d)) g) (eval.{u} d f t))
+
+        \lemma path.{u} (d : Nat) {X Y : Pointed.{u}} {f g : X ->* Y} (p : f = g) (t : PiAb.{u} d X) : map.{u} d f t = map.{u} d g t
+          => pmap (map.{u} d __ t) p
+
+        \lemma isEquiv.{u} (d : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (e : IsEquiv f.1) : IsEquiv (map.{u} d f)
+          => pi-isEquiv.{u} d f (piMap-isEquiv.{u} (suc (suc d)) f e)
+
+        \lemma pi-isEquiv.{u} (d : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (e : IsEquiv (piMap.{u} (suc (suc d)) f)) : IsEquiv (map.{u} d f)
+          => transport IsEquiv (ext \lam t => inv (eval.{u} d f t)) e
+      }
+
+    \func cast.{u} {d d' : Nat} (p : d = d') (X : Pointed.{u}) : AddGroupHom (PiAb d X) (PiAb d' X) \elim d', p
+      | _, idp => AddGroupHom.id
+
+    \lemma cast-isEquiv.{u} {d d' : Nat} (p : d = d') (X : Pointed.{u}) : IsEquiv (cast p X) \elim d', p
+      | _, idp => inP idEquiv
+
+    \lemma cast-natural.{u} {d d' : Nat} (p : d = d') {X Y : Pointed.{u}} (f : X ->* Y) (t : PiAb d X)
+      : map d' f (cast p X t) = cast p Y (map d f t) \elim d', p
+      | _, idp => idp
+
+    \sfunc stab.{u} (d : Nat) (X : Pointed.{u}) : AddGroupHom (PiAb.{u} d X) (PiAb.{u} (suc d) (Susp.pointed X))
+      => AddGroupHom.fromGroupHom (piStabilization.hom.{u} (suc d) X)
+      \where
+        \lemma eval.{u} (d : Nat) (X : Pointed.{u}) (t : PiAb.{u} d X) : stab.{u} d X t = piStabilization.{u} (suc (suc d)) X t
+          => pmap (\lam (h : AddGroupHom (PiAb.{u} d X) (PiAb.{u} (suc d) (Susp.pointed X))) => h t) (\peval stab.{u} d X)
+
+    \lemma stab-natural.{u} (d : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (t : PiAb.{u} d X)
+      : map.{u} (suc d) (Susp-Func f) (stab.{u} d X t) = stab.{u} d Y (map.{u} d f t)
+      => map.eval.{u} (suc d) (Susp-Func f) (stab.{u} d X t) *> pmap (piMap.{u} (suc (suc (suc d))) (Susp-Func f)) (stab.eval.{u} d X t)
+         *> piStabilization.natural.{u} (suc (suc d)) f t
+         *> inv (stab.eval.{u} d Y (map.{u} d f t) *> pmap (piStabilization.{u} (suc (suc d)) Y) (map.eval.{u} d f t))
+
+    \lemma stab-isEquiv.{u} (r d : Nat) (X : Pointed.{u}) (c : isNConnectedType (suc r) X) (h : suc (suc d) <= r Nat.+ r)
+      : IsEquiv (stab.{u} d X)
+      => transport IsEquiv (ext \lam t => inv (stab.eval.{u} d X t)) (piStabilization.isEquiv.{u} r (suc (suc d)) X c h)
+  }
+
+\private \sfunc dbl (m : Nat) : Nat => m Nat.+ m
+  \where {
+    \lemma eval (m : Nat) : dbl m = m Nat.+ m
+      => \peval dbl m
+
+    \sfunc odd (m : Nat) : Nat => suc (m Nat.+ m)
+
+    \lemma step (m : Nat) : suc (dbl m) = odd m
+      => \have | e => eval m
+               | e' => \peval odd m
+         \in linarith
+
+    \lemma step' (m : Nat) : suc (odd m) = dbl (suc m)
+      => \have | e => eval (suc m)
+               | e' => \peval odd m
+         \in linarith
+  }
+
+\func StablePi.{u} (m : Nat) (X : Pointed.{u}) : AbGroup.{u}
+  => PiAb.{u} (dbl m) (Susp^.{u} (suc (suc m)) X)
+  \where {
+    \func map.{u} (m : Nat) {X Y : Pointed.{u}} (f : X ->* Y) : AddGroupHom (StablePi.{u} m X) (StablePi.{u} m Y)
+      => PiAb.map.{u} (dbl m) (Susp^.map.{u} (suc (suc m)) f)
+
+    \lemma map-id.{u} (m : Nat) (X : Pointed.{u}) : map.{u} m (->*.id {X}) = AddGroupHom.id
+      => AddGroupHom.equals {_} {_} {map.{u} m (->*.id {X})} {AddGroupHom.id} \lam t =>
+           PiAb.map.path.{u} (dbl m) (Susp^.map-id.{u} (suc (suc m))) t *> PiAb.map.id.{u} (dbl m) t
+
+    \lemma map-comp.{u} (m : Nat) {X Y Z : Pointed.{u}} (f : X ->* Y) (g : Y ->* Z) : map.{u} m (g ∘* f) = map.{u} m g AddGroupHom.∘ map.{u} m f
+      => AddGroupHom.equals {_} {_} {map.{u} m (g ∘* f)} {map.{u} m g AddGroupHom.∘ map.{u} m f} \lam t =>
+           PiAb.map.path.{u} (dbl m) (Susp^.map-comp.{u} (suc (suc m)) g f) t
+           *> PiAb.map.comp.{u} (dbl m) (Susp^.map.{u} (suc (suc m)) g) (Susp^.map.{u} (suc (suc m)) f) t
+
+    \lemma map-fun.{u} (m : Nat) {X Y : Pointed.{u}} {f g : X ->* Y} (p : \Pi (x : X) -> f.1 x = g.1 x) (t : StablePi.{u} m X)
+      : map.{u} m f t = map.{u} m g t
+      => PiAb.map.path.{u} (dbl m) (Susp^.map-fun.{u} (suc m) p) t
+
+    \lemma map-isEquiv.{u} (m : Nat) {N : Nat} {X Y : Pointed.{u}} (f : X ->* Y) (c : isNConnectedMap N f.1) (_ : m NatOrder.< N)
+      : IsEquiv (map.{u} m f)
+      => \have e => dbl.eval m
+         \in PiAb.map.pi-isEquiv.{u} (dbl m) (Susp^.map.{u} (suc (suc m)) f)
+               (nconnected-piMap-isEquiv {N Nat.+ suc (suc m)} {suc (suc (dbl m))} {Susp^ (suc (suc m)) X} {Susp^ (suc (suc m)) Y}
+                                         (Susp^.map.{u} (suc (suc m)) f) (Susp^.map-nconnected (suc (suc m)) c) linarith)
+
+    \lemma vanish.{u} (m : Nat) {X : Pointed.{u}} (c : isNConnectedType (suc m) X) (t : StablePi.{u} m X) : t = 0
+      => \have e => dbl.eval m
+         \in isContr=>isProp (pi-vanishes-below {suc m Nat.+ suc (suc m)} {suc (suc (dbl m))} {Susp^ (suc (suc m)) X}
+                                                (Susp^.connected' {suc m} (suc (suc m)) c) linarith) t (zro {StablePi.{u} m X})
+
+    \lemma vanish-truncated.{u} (m : Nat) {N L : Nat} {X Y : Pointed.{u}} (g : Susp^.{u} (suc (suc m)) X ->* Y) (c : isNConnectedMap N g.1)
+                                (lv : Y ofHLevel_-1+ L) (_ : suc (suc (m Nat.+ m)) NatOrder.< N) (_ : L <= suc (suc (m Nat.+ m)))
+                                (t : StablePi.{u} m X) : t = zro {StablePi.{u} m X}
+      => \have e => dbl.eval m
+         \in IsEquiv.isInj (PiAb.map.pi-isEquiv.{u} (dbl m) g (nconnected-piMap-isEquiv {N} {suc (suc (dbl m))} {Susp^ (suc (suc m)) X} {Y} g c linarith))
+                           (isContr=>isProp (pi-vanishes-above {L} {suc (suc (dbl m))} {Y} lv linarith) _ _)
+  }
+
+\func stableSusp.{u} (m : Nat) (X : Pointed.{u}) : AddGroupHom (StablePi m X) (StablePi (suc m) (Susp.pointed X))
+  => PiAb.map.{u} (dbl (suc m)) (Susp^.shift.{u} (suc (suc (suc m))) X)
+       AddGroupHom.∘ PiAb.cast.{u} (dbl.step' m) (Susp^.{u} (suc (suc (suc (suc m)))) X)
+       AddGroupHom.∘ PiAb.stab.{u} (dbl.odd m) (Susp^.{u} (suc (suc (suc m))) X)
+       AddGroupHom.∘ PiAb.cast.{u} (dbl.step m) (Susp^.{u} (suc (suc (suc m))) X)
+       AddGroupHom.∘ PiAb.stab.{u} (dbl m) (Susp^.{u} (suc (suc m)) X)
+  \where {
+    \lemma isEquiv.{u} (m : Nat) (X : Pointed.{u}) : IsEquiv (stableSusp.{u} m X)
+      => \have | e => dbl.eval m
+               | o => \peval dbl.odd m
+         \in IsEquiv.trans (PiAb.stab-isEquiv.{u} (suc m) (dbl m) (Susp^.{u} (suc (suc m)) X) (Susp^.connected.{u} (suc (suc m)) X) linarith)
+               (IsEquiv.trans (PiAb.cast-isEquiv.{u} (dbl.step m) (Susp^.{u} (suc (suc (suc m))) X))
+                 (IsEquiv.trans (PiAb.stab-isEquiv.{u} (suc (suc m)) (dbl.odd m) (Susp^.{u} (suc (suc (suc m))) X) (Susp^.connected.{u} (suc (suc (suc m))) X) linarith)
+                   (IsEquiv.trans (PiAb.cast-isEquiv.{u} (dbl.step' m) (Susp^.{u} (suc (suc (suc (suc m)))) X))
+                                  (PiAb.map.isEquiv.{u} (dbl (suc m)) (Susp^.shift.{u} (suc (suc (suc m))) X) (Susp^.shift-isEquiv.{u} (suc (suc (suc m))) X)))))
+
+    \func iso.{u} (m : Nat) (X : Pointed.{u}) : Iso {AbGroupCat.{u}} {StablePi.{u} m X} {StablePi.{u} (suc m) (Susp.pointed X)} (stableSusp.{u} m X)
+      => AbGroupCat.isoOfEquiv (stableSusp.{u} m X) (IsEquiv.toQEquiv (isEquiv.{u} m X))
+
+    \lemma natural.{u} (m : Nat) {X Y : Pointed.{u}} (f : X ->* Y)
+      : stableSusp.{u} m Y AddGroupHom.∘ StablePi.map.{u} m f
+        = {AddGroupHom (StablePi.{u} m X) (StablePi.{u} (suc m) (Susp.pointed Y))} StablePi.map.{u} (suc m) (Susp-Func f) AddGroupHom.∘ stableSusp.{u} m X
+      => AddGroupHom.equals {_} {_} {stableSusp.{u} m Y AddGroupHom.∘ StablePi.map.{u} m f}
+                            {StablePi.map.{u} (suc m) (Susp-Func f) AddGroupHom.∘ stableSusp.{u} m X} (at m f)
+
+    \lemma at.{u} (m : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (t : StablePi.{u} m X)
+      : stableSusp.{u} m Y (StablePi.map.{u} m f t) = StablePi.map.{u} (suc m) (Susp-Func f) (stableSusp.{u} m X t)
+      => pmap (\lam (z : PiAb.{u} (suc (dbl m)) (Susp^.{u} (suc (suc (suc m))) Y))
+                  => PiAb.map.{u} (dbl (suc m)) (Susp^.shift.{u} (suc (suc (suc m))) Y) (PiAb.cast.{u} (dbl.step' m) (Susp^.{u} (suc (suc (suc (suc m)))) Y)
+                       (PiAb.stab.{u} (dbl.odd m) (Susp^.{u} (suc (suc (suc m))) Y) (PiAb.cast.{u} (dbl.step m) (Susp^.{u} (suc (suc (suc m))) Y) z))))
+              (inv (PiAb.stab-natural.{u} (dbl m) (Susp^.map.{u} (suc (suc m)) f) t))
+         *> pmap (\lam (z : PiAb.{u} (dbl.odd m) (Susp^.{u} (suc (suc (suc m))) Y))
+                     => PiAb.map.{u} (dbl (suc m)) (Susp^.shift.{u} (suc (suc (suc m))) Y) (PiAb.cast.{u} (dbl.step' m) (Susp^.{u} (suc (suc (suc (suc m)))) Y)
+                          (PiAb.stab.{u} (dbl.odd m) (Susp^.{u} (suc (suc (suc m))) Y) z)))
+                 (inv (PiAb.cast-natural.{u} (dbl.step m) (Susp^.map.{u} (suc (suc (suc m))) f) (s1 m X t)))
+         *> pmap (\lam (z : PiAb.{u} (suc (dbl.odd m)) (Susp^.{u} (suc (suc (suc (suc m)))) Y))
+                     => PiAb.map.{u} (dbl (suc m)) (Susp^.shift.{u} (suc (suc (suc m))) Y) (PiAb.cast.{u} (dbl.step' m) (Susp^.{u} (suc (suc (suc (suc m)))) Y) z))
+                 (inv (PiAb.stab-natural.{u} (dbl.odd m) (Susp^.map.{u} (suc (suc (suc m))) f) (PiAb.cast.{u} (dbl.step m) (Susp^.{u} (suc (suc (suc m))) X) (s1 m X t))))
+         *> pmap (PiAb.map.{u} (dbl (suc m)) (Susp^.shift.{u} (suc (suc (suc m))) Y))
+                 (inv (PiAb.cast-natural.{u} (dbl.step' m) (Susp^.map.{u} (suc (suc (suc (suc m)))) f) (s2 m X t)))
+         *> inv (PiAb.map.comp.{u} (dbl (suc m)) (Susp^.shift.{u} (suc (suc (suc m))) Y) (Susp^.map.{u} (suc (suc (suc (suc m)))) f) (s3 m X t))
+         *> PiAb.map.path.{u} (dbl (suc m)) (Susp^.shift-natural.{u} (suc (suc (suc m))) f) (s3 m X t)
+         *> PiAb.map.comp.{u} (dbl (suc m)) (Susp^.map.{u} (suc (suc (suc m))) (Susp-Func f)) (Susp^.shift.{u} (suc (suc (suc m))) X) (s3 m X t)
+
+    \func s1.{u} (m : Nat) (X : Pointed.{u}) (t : StablePi.{u} m X) : PiAb.{u} (suc (dbl m)) (Susp^.{u} (suc (suc (suc m))) X)
+      => PiAb.stab.{u} (dbl m) (Susp^.{u} (suc (suc m)) X) t
+
+    \func s2.{u} (m : Nat) (X : Pointed.{u}) (t : StablePi.{u} m X) : PiAb.{u} (suc (dbl.odd m)) (Susp^.{u} (suc (suc (suc (suc m)))) X)
+      => PiAb.stab.{u} (dbl.odd m) (Susp^.{u} (suc (suc (suc m))) X) (PiAb.cast.{u} (dbl.step m) (Susp^.{u} (suc (suc (suc m))) X) (s1 m X t))
+
+    \func s3.{u} (m : Nat) (X : Pointed.{u}) (t : StablePi.{u} m X) : PiAb.{u} (dbl (suc m)) (Susp^.{u} (suc (suc (suc (suc m)))) X)
+      => PiAb.cast.{u} (dbl.step' m) (Susp^.{u} (suc (suc (suc (suc m)))) X) (s2 m X t)
+  }
+
+\func cofSusp^.{u} (k : Nat) {X Y : Pointed.{u}} (f : X ->* Y) : Cof.pointed (Susp^.map k f) ->* Susp^ k (Cof.pointed f) \elim k
+  | 0 => ->*.id
+  | suc k => ->*.compose {Cof.pointed (Susp^.map (suc k) f)} {Susp.pointed (Cof.pointed (Susp^.map k f))} {Susp^ (suc k) (Cof.pointed f)}
+               (Susp-Func (cofSusp^ k f)) (cofSusp.{u} (Susp^.map k f)).map
+  \where {
+    \lemma isEquiv.{u} (k : Nat) {X Y : Pointed.{u}} (f : X ->* Y) : IsEquiv (cofSusp^ k f).1 \elim k
+      | 0 => inP idEquiv
+      | suc k => IsEquiv.trans (PointedEquiv.map-isEquiv {cofSusp (Susp^.map k f)}) (inP (Susp.mapEquiv (IsEquiv.toQEquiv (isEquiv k f))))
+
+    \sfunc inc.{u} (k : Nat) {X Y : Pointed.{u}} (f : X ->* Y)
+      : cofSusp^ k f ∘* Cof.inc (Susp^.map k f) = Susp^.map k (Cof.inc f) \elim k
+      | 0 => idp
+      | suc k => inv (->*.compose-assoc {Susp^ (suc k) Y} {Cof.pointed (Susp^.map (suc k) f)} {Susp.pointed (Cof.pointed (Susp^.map k f))} {Susp^ (suc k) (Cof.pointed f)}
+                                   (Susp-Func (cofSusp^.{u} k f)) (cofSusp.{u} (Susp^.map.{u} k f)).map (Cof.inc (Susp^.map (suc k) f)))
+                 *> pmap (->*.compose {Susp^ (suc k) Y} {Susp.pointed (Cof.pointed (Susp^.map k f))} {Susp^ (suc k) (Cof.pointed f)} (Susp-Func (cofSusp^.{u} k f)))
+                         (cofSusp.inc.{u} (Susp^.map k f))
+                 *> inv (Susp-Func.comp {Susp^ k Y} {Cof.pointed (Susp^.map k f)} {Susp^ k (Cof.pointed f)} (cofSusp^.{u} k f) (Cof.inc (Susp^.map k f)))
+                 *> pmap (Susp-Func {Susp^ k Y} {Susp^ k (Cof.pointed f)}) (inc k f)
+  }
+
+\lemma cofExact.{u} (d : Nat) {X Y : Pointed.{u}} (g : X ->* Y) (c : isNConnectedMap (suc (suc d)) (gap g).1)
+  : AbExactAt {PiAb d X} {PiAb d Y} {PiAb d (Cof.pointed g)} (PiAb.map d g) (PiAb.map d (Cof.inc g))
+  => \lam v => (\lam q => TruncP.map (cofiber-exact (suc d) g c v (inv (PiAb.map.eval d (Cof.inc g) v) *> q))
+                                     (\lam s => (s.1, PiAb.map.eval d g s.1 *> s.2)),
+                \lam (inP (u, p)) => inv (pmap (PiAb.map d (Cof.inc g)) p) *> inv (PiAb.map.comp d (Cof.inc g) g u)
+                                     *> PiAb.map.path d (Cof.inc-null g) u *> PiAb.map.eval d (->*.zero X (Cof.pointed g)) u *> piMap-zero (suc d) u)
+
+\lemma stableBottom.{u} (X : Pointed.{u}) (x : StablePi 0 (Susp.pointed X)) : x = 0
+  => \have e => dbl.eval 0
+     \in isContr=>isProp (pi-vanishes-below {3} {suc (suc (dbl 0))} {Susp^ 2 (Susp.pointed X)}
+                           (susp-nconnected {2} (susp-nconnected {1} (susp-nconnected {0} (inhabited=>nconnected0 base)))) linarith) x (zro {StablePi 0 (Susp.pointed X)})
+
+\lemma stableExact.{u} (m : Nat) {X Y : Pointed.{u}} (f : X ->* Y)
+  : AbExactAt {StablePi m X} {StablePi m Y} {StablePi m (Cof.pointed f)} (StablePi.map m f) (StablePi.map m (Cof.inc f))
+  => suspExact (dbl m) (suc (suc m)) f
+       (transport (\lam k => isNConnectedMap (suc (suc k)) (gap {Susp^ (suc (suc m)) X} {Susp^ (suc (suc m)) Y} (Susp^.map (suc (suc m)) f)).1) (inv (dbl.eval m))
+         (gap.nconnected m (suc m) {Susp^ (suc (suc m)) X} {Susp^ (suc (suc m)) Y} (Susp^.map (suc (suc m)) f)
+                         (nconnected-map-between {suc m} (Susp^.map.{u} (suc (suc m)) f).1 (Susp^.connected (suc (suc m)) X) (Susp^.connected (suc (suc m)) Y))
+                         (Susp^.connected (suc (suc m)) X)))
+
+\lemma suspExact.{u} (d j : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (c : isNConnectedMap (suc (suc d)) (gap (Susp^.map j f)).1)
+  : AbExactAt {PiAb d (Susp^ j X)} {PiAb d (Susp^ j Y)} {PiAb d (Susp^ j (Cof.pointed f))} (PiAb.map d (Susp^.map j f)) (PiAb.map d (Susp^.map j (Cof.inc f)))
+  => AbExactAt.transport {PiAb d (Susp^ j X)} {PiAb d (Susp^ j X)} {PiAb d (Susp^ j Y)} {PiAb d (Susp^ j Y)}
+                         {PiAb d (Cof.pointed (Susp^.map j f))} {PiAb d (Susp^ j (Cof.pointed f))}
+                         (PiAb.map d (Susp^.map j f)) (PiAb.map d (Cof.inc (Susp^.map j f)))
+                         (PiAb.map d (Susp^.map j f)) (PiAb.map d (Susp^.map j (Cof.inc f)))
+                         AddGroupHom.id (\lam u => inP (u, idp)) AddGroupHom.id (\lam u => inP (u, idp)) (\lam p => p)
+                         (PiAb.map d (cofSusp^ j f)) (IsEquiv.isInj (PiAb.map.isEquiv d (cofSusp^ j f) (cofSusp^.isEquiv j f)))
+                         (\lam _ => idp)
+                         (\lam v => PiAb.map.path d (inv (cofSusp^.inc j f)) v *> PiAb.map.comp d (cofSusp^ j f) (Cof.inc (Susp^.map j f)) v)
+                         (cofExact d (Susp^.map j f) c)

@@ -1,0 +1,156 @@
+\import Algebra.Group
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Arith.Int
+\import Arith.Nat
+\import Category (Iso)
+\import Equiv
+\import Function
+\import Homotopy.Cofiber
+\import Homotopy.Connectivity
+\import Homotopy.Homology
+\import Homotopy.Homology.EilenbergSteenrod
+\import Homotopy.Homology.Theory
+\import Homotopy.Homology.Theory.Smash
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Cofiber
+\import Homotopy.Smash.Pushout
+\import Homotopy.Smash.Suspension
+\import Homotopy.Suspension
+\import Logic
+\import Paths
+
+\open ->* (∘*)
+
+\lemma proj-surj.{u} (m : Nat) (X K : Pointed.{u}) : IsSurj (StablePi.map m (SmashPushout.proj {X} {K}))
+  => \lam v => \case smash {m} {X} {K} (StablePi.map m (SmashPushout.toSmash X K).map v) \with {
+       | inP (w, p) => inP (w, (AbGroupCat.equivOfIso (stableHomology.pushIso (pos m) (SmashPushout.toSmash X K))).isInj
+                                 (inv (pmap (\lam (h : AddGroupHom _ _) => h w) (StablePi.map-comp m SmashPushout.proj (SmashPushout.toSmash X K).map)) *> p))
+     }
+  \where
+    \lemma smash.{u} {m : Nat} {X K : Pointed.{u}} : IsSurj (StablePi.map m (Smash.proj {X} {K})) \elim m
+      | 0 => smash-surj stableHomology (neg 1) X K
+      | suc m => smash-surj stableHomology (pos m) X K
+
+\lemma proj-ext.{u} (m : Nat) {X K Z : Pointed.{u}} {F G : SmashPushout X K ->* Z} (p : \Pi (t : \Sigma X K) -> F.1 (pinr t) = G.1 (pinr t))
+                    (t : StablePi m (SmashPushout X K)) : StablePi.map m F t = StablePi.map m G t
+  => \case proj-surj m X K t \with {
+       | inP (w, q) => inv (pmap (StablePi.map m F) q) *> inv (suspIso.comp m SmashPushout.proj F w)
+                       *> StablePi.map-fun m {_} {_} {F ∘* SmashPushout.proj} {G ∘* SmashPushout.proj} p w
+                       *> suspIso.comp m SmashPushout.proj G w *> pmap (StablePi.map m G) q
+     }
+
+\lemma proj-square.{u} (m : Nat) {X K Z W W' : Pointed.{u}} {F : SmashPushout X K ->* W} {G : W ->* Z} {F' : SmashPushout X K ->* W'} {G' : W' ->* Z}
+                       (p : \Pi (t : \Sigma X K) -> G.1 (F.1 (pinr t)) = G'.1 (F'.1 (pinr t))) (t : StablePi m (SmashPushout X K))
+  : StablePi.map m G (StablePi.map m F t) = StablePi.map m G' (StablePi.map m F' t)
+  => inv (suspIso.comp m F G t) *> proj-ext m {_} {_} {_} {G ∘* F} {G' ∘* F'} p t *> suspIso.comp m F' G' t
+
+\func swapEquiv.{u} (m : Nat) (X K : Pointed.{u}) : QEquiv (StablePi.map m (SmashPushout.swap X K)) \cowith
+  | ret => StablePi.map m (SmashPushout.swap K X)
+  | ret_f => involution m X K
+  | f_sec => involution m K X
+  \where
+    \lemma involution.{u} (m : Nat) (X K : Pointed.{u}) (t : StablePi m (SmashPushout X K))
+      : StablePi.map m (SmashPushout.swap K X) (StablePi.map m (SmashPushout.swap X K) t) = t
+      => inv (suspIso.comp m _ _ t) *> proj-ext m {_} {_} {_} {SmashPushout.swap K X ∘* SmashPushout.swap X K} { ->*.id} (\lam _ => idp) t
+         *> pmap (\lam (h : AddGroupHom _ _) => h t) (StablePi.map-id m (SmashPushout X K))
+
+\func tau.{u} (m : Nat) (X K : Pointed.{u}) : AddGroupHom (StablePi m (SmashPushout X K)) (StablePi (suc m) (SmashPushout X (Susp.pointed K)))
+  => StablePi.map (suc m) (SmashPushout.swap (Susp.pointed K) X) AddGroupHom.∘ theta m K X AddGroupHom.∘ StablePi.map m (SmashPushout.swap X K)
+  \where {
+    \lemma isEquiv.{u} (m : Nat) (X K : Pointed.{u}) : IsEquiv (tau m X K)
+      => IsEquiv.trans (inP (swapEquiv m X K))
+           (IsEquiv.trans (inP (AbGroupCat.equivOfIso (theta.iso m K X))) (inP (swapEquiv (suc m) (Susp.pointed K) X)))
+
+    \lemma natural.{u} (m : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (t : StablePi m (SmashPushout X K))
+      : tau m Y K (StablePi.map m (SmashPushout.map f ->*.id) t) = StablePi.map (suc m) (SmashPushout.map f ->*.id) (tau m X K t)
+      => pmap (\lam z => StablePi.map (suc m) (SmashPushout.swap (Susp.pointed K) Y) (theta m K Y z))
+              (proj-square m {_} {_} {_} {_} {_} {SmashPushout.map f ->*.id} {SmashPushout.swap Y K} {SmashPushout.swap X K} {SmashPushout.map ->*.id f}
+                           (\lam _ => idp) t)
+         *> pmap (StablePi.map (suc m) (SmashPushout.swap (Susp.pointed K) Y)) (theta.natural m ->*.id f (StablePi.map m (SmashPushout.swap X K) t))
+         *> proj-square (suc m) {_} {_} {_} {_} {_} {SmashPushout.map.{u} (Susp-Func (->*.id {K})) f} {SmashPushout.swap.{u} (Susp.pointed K) Y}
+                        {SmashPushout.swap.{u} (Susp.pointed K) X} {SmashPushout.map.{u} f ->*.id}
+                        (\lam t => pmap (\lam s => pinr (f.1 t.2, s)) (pmap (\lam (h : Susp.pointed K ->* Susp.pointed K) => h.1 t.1) Susp-Func.id))
+                        (theta m K X (StablePi.map m (SmashPushout.swap X K) t))
+  }
+
+\lemma smashExact.{u} (m : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u})
+  : AbExactAt (StablePi.map m (SmashPushout.map f (->*.id {K}))) (StablePi.map m (SmashPushout.map (Cof.inc f) (->*.id {K})))
+  => AbExactAt.transport {StablePi m (SmashPushout X K)} {StablePi m (SmashPushout X K)} {StablePi m (SmashPushout Y K)} {StablePi m (SmashPushout Y K)}
+                         {StablePi m (Cof.pointed (SmashPushout.map f (->*.id {K})))} {StablePi m (SmashPushout (Cof.pointed f) K)}
+                         (StablePi.map m (SmashPushout.map f ->*.id)) (StablePi.map m (Cof.inc (SmashPushout.map f ->*.id)))
+                         (StablePi.map m (SmashPushout.map f ->*.id)) (StablePi.map m (SmashPushout.map (Cof.inc f) ->*.id))
+                         AddGroupHom.id (\lam u => inP (u, idp)) AddGroupHom.id (\lam u => inP (u, idp)) (\lam p => p)
+                         (StablePi.map m (cofSmash f K))
+                         (IsEquiv.isInj (StablePi.map-isEquiv m {suc m} (cofSmash f K) (nconnected-map-equiv (suc m) (cofSmash.isEquiv f K)) id<suc))
+                         (\lam _ => idp)
+                         (\lam v => inv (proj-ext m {_} {_} {_} {cofSmash f K ∘* Cof.inc (SmashPushout.map f ->*.id)} {SmashPushout.map (Cof.inc f) ->*.id}
+                                                  (cofSmash.inc f K) v)
+                                    *> suspIso.comp m (Cof.inc (SmashPushout.map f ->*.id)) (cofSmash f K) v)
+                         (stableExact m (SmashPushout.map f ->*.id))
+
+\func suspIso.{u} (m : Nat) (X K : Pointed.{u})
+  : Iso {AbGroupCat.{u}} {StablePi (suc m) (Susp.pointed (SmashPushout X K))} {StablePi (suc m) (SmashPushout (Susp.pointed X) K)}
+        (StablePi.map (suc m) (smashSusp X K))
+  => AbGroupCat.isoOfEquiv (StablePi.map (suc m) (smashSusp X K)) (QEquiv.fromInjSurj inj surj)
+  \where {
+    \lemma comp.{u} (m : Nat) {X Y Z : Pointed.{u}} (f : X ->* Y) (g : Y ->* Z) (t : StablePi m X)
+      : StablePi.map m (g ∘* f) t = StablePi.map m g (StablePi.map m f t)
+      => pmap (\lam (h : AddGroupHom _ _) => h t) (StablePi.map-comp m f g)
+
+    \lemma surj.{u} {m : Nat} {X K : Pointed.{u}} : IsSurj (StablePi.map (suc m) (smashSusp X K))
+      => \lam v => \case proj-surj (suc m) (Susp.pointed X) K v \with {
+           | inP (w, q) => inP (StablePi.map (suc m) (smashUnsusp X K ∘* SmashPushout.proj) w,
+                                inv (comp (suc m) (smashUnsusp X K ∘* SmashPushout.proj) (smashSusp X K) w)
+                                *> pmap (\lam g => StablePi.map (suc m) g w) (smashSusp.unsusp-proj X K) *> q)
+         }
+
+    \lemma retract.{u} {m : Nat} {X K : Pointed.{u}} (a : StablePi (suc m) (Susp.pointed (SmashPushout X K)))
+      : StablePi.map (suc m) (smashUnsusp X K) (StablePi.map (suc m) (smashSusp X K) a) = a
+      => \case susp-surj m X K a \with {
+           | inP (u, p) => inv (pmap (\lam z => StablePi.map (suc m) (smashUnsusp X K) (StablePi.map (suc m) (smashSusp X K) z)) p)
+                           *> pmap (StablePi.map (suc m) (smashUnsusp X K)) (inv (comp (suc m) (Susp-Func SmashPushout.proj) (smashSusp X K) u))
+                           *> inv (comp (suc m) (smashSusp X K ∘* Susp-Func SmashPushout.proj) (smashUnsusp X K) u)
+                           *> pmap (\lam g => StablePi.map (suc m) g u) (smashSusp.susp-proj X K) *> p
+         }
+
+    \lemma inj.{u} {m : Nat} {X K : Pointed.{u}} : IsInj (StablePi.map (suc m) (smashSusp X K))
+      => \lam {a} {b} p => inv (retract a) *> pmap (StablePi.map (suc m) (smashUnsusp X K)) p *> retract b
+
+    \lemma susp-surj.{u} (m : Nat) (X K : Pointed.{u}) : IsSurj (StablePi.map (suc m) (Susp-Func (SmashPushout.proj {X} {K})))
+      => \lam u => \case IsEquiv.isSurj (stableSusp.isEquiv m (SmashPushout X K)) u \with {
+           | inP (t, p) => \case proj-surj m X K t \with {
+             | inP (w, q) => inP (stableSusp m (PointedProduct X K) w,
+                                  inv (pmap (\lam (h : AddGroupHom _ _) => h w) (stableSusp.natural m SmashPushout.proj))
+                                  *> pmap (stableSusp m (SmashPushout X K)) q *> p)
+           }
+         }
+  }
+
+\func theta.{u} (m : Nat) (X K : Pointed.{u}) : AddGroupHom (StablePi m (SmashPushout X K)) (StablePi (suc m) (SmashPushout (Susp.pointed X) K))
+  => StablePi.map (suc m) (smashSusp X K) AddGroupHom.∘ stableSusp m (SmashPushout X K)
+  \where {
+    \func iso.{u} (m : Nat) (X K : Pointed.{u}) : Iso {AbGroupCat.{u}} {StablePi m (SmashPushout X K)} {StablePi (suc m) (SmashPushout (Susp.pointed X) K)} (theta m X K)
+      => AbGroupCat.isoOfEquiv (theta m X K) (IsEquiv.toQEquiv (IsEquiv.trans (stableSusp.isEquiv m (SmashPushout X K))
+                                                                               (inP (AbGroupCat.equivOfIso (suspIso m X K)))))
+
+    \lemma natural.{u} (m : Nat) {X Y K L : Pointed.{u}} (f : X ->* Y) (g : K ->* L) (t : StablePi m (SmashPushout X K))
+      : theta m Y L (StablePi.map m (SmashPushout.map f g) t) = StablePi.map (suc m) (SmashPushout.map (Susp-Func f) g) (theta m X K t)
+      => \case proj-surj m X K t \with {
+           | inP (w, p) => inv (pmap (\lam z => theta m Y L (StablePi.map m (SmashPushout.map f g) z)) p)
+                           *> pmap (StablePi.map (suc m) (smashSusp Y L))
+                                   (pmap (\lam (h : AddGroupHom _ _) => h (StablePi.map m SmashPushout.proj w)) (stableSusp.natural m (SmashPushout.map f g))
+                                    *> pmap (StablePi.map (suc m) (Susp-Func (SmashPushout.map f g)))
+                                            (pmap (\lam (h : AddGroupHom _ _) => h w) (stableSusp.natural m SmashPushout.proj)))
+                           *> inv (suspIso.comp (suc m) _ _ _) *> inv (suspIso.comp (suc m) _ _ _)
+                           *> pmap (\lam h => StablePi.map (suc m) h (stableSusp m (PointedProduct X K) w)) (smashSusp.natural-proj f g)
+                           *> suspIso.comp (suc m) _ _ _ *> pmap (StablePi.map (suc m) (SmashPushout.map (Susp-Func f) g)) (suspIso.comp (suc m) _ _ _)
+                           *> inv (pmap (StablePi.map (suc m) (SmashPushout.map (Susp-Func f) g))
+                                        (pmap (StablePi.map (suc m) (smashSusp X K))
+                                              (pmap (\lam (h : AddGroupHom _ _) => h w) (stableSusp.natural m SmashPushout.proj))))
+                           *> pmap (\lam z => StablePi.map (suc m) (SmashPushout.map (Susp-Func f) g) (theta m X K z)) p
+         }
+  }

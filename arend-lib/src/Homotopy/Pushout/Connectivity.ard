@@ -1,0 +1,107 @@
+\import Equiv
+\import Equiv.Sigma
+\import Homotopy.Connectivity
+\import Homotopy.HLevel
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Suspension
+\import Logic
+\import Paths
+\import Paths.Meta
+
+\open PushoutData (ppglue, congr, drec)
+
+\lemma congr-nconnected.{u} {n : Nat} {J A B J' A' B' : \Type u} (u : J -> A) (v : J -> B) (u' : J' -> A') (v' : J' -> B')
+                             (eJ : J -> J') (eA : A -> A') (eB : B -> B')
+                             (alpha : \Pi (c : J) -> u' (eJ c) = eA (u c)) (beta : \Pi (c : J) -> v' (eJ c) = eB (v c))
+                             (cJ : isNConnectedMap n eJ) (cA : isNConnectedMap (suc n) eA) (cB : isNConnectedMap (suc n) eB)
+  : isNConnectedMap (suc n) (congr u v u' v' eJ eA eB alpha beta)
+  => section=>nconnected (suc n) _ \lam Q lv g =>
+      \let r => IsEquiv.splitSurj (restrict-isEquiv u v u' v' eJ eA eB alpha beta cJ cA cB Q lv) g
+      \in (r.1, \lam x => path ((r.2 @ __) x))
+  \where {
+    \lemma pathOver-level {T : \Type} (Q : T -> \Type) {n : Nat} (lv : \Pi (t : T) -> Q t ofHLevel_-1+ suc n) {t t' : T} (p : t = t') (x : Q t) (y : Q t')
+      : Path (\lam i => Q (p @ i)) x y ofHLevel_-1+ n \elim p
+      | idp => lv t x y
+
+    \func adjust {T : \Type} {Q : T -> \Type} {x' x y y' : T} {a : x' = x} {q : x = y} {b : y = y'} {sx' : Q x'} {sx : Q x} {sy : Q y} {sy' : Q y'}
+                 (s : Path (\lam i => Q (a @ i)) sx' sx) (r : Path (\lam i => Q (b @ i)) sy sy')
+      : QEquiv {Path (\lam i => Q (q @ i)) sx sy} {Path (\lam i => Q (((a *> q) *> b) @ i)) sx' sy'} \elim a, b, s, r
+      | idp, idp, idp, idp => adjust0 {_} {Q} {_} {_} {q}
+
+    \func adjust0 {T : \Type} {Q : T -> \Type} {x y : T} {q : x = y} {sx : Q x} {sy : Q y}
+      : QEquiv {Path (\lam i => Q (q @ i)) sx sy} {Path (\lam i => Q ((idp *> q) @ i)) sx sy} \elim q
+      | idp => idEquiv
+
+    \func Dep {J A B : \Type} {u : J -> A} {v : J -> B} (Q : PushoutData u v -> \Type)
+      => \Sigma (p : \Sigma (\Pi (a : A) -> Q (pinl a)) (\Pi (b : B) -> Q (pinr b))) (\Pi (c : J) -> Path (\lam i => Q (pglue c i)) (p.1 (u c)) (p.2 (v c)))
+
+    \func depEquiv {J A B : \Type} {u : J -> A} {v : J -> B} (Q : PushoutData u v -> \Type)
+      : QEquiv {\Pi (x : PushoutData u v) -> Q x} {Dep Q} \cowith
+      | f s => ((\lam a => s (pinl a), \lam b => s (pinr b)), \lam c => path (\lam i => s (pglue c i)))
+      | ret t => drec Q t.1.1 t.1.2 t.2
+      | ret_f s => (drec.equiv Q).ret_f s
+      | f_sec _ => idp
+
+    \func Phi {J A B J' A' B' : \Type} (u : J -> A) (v : J -> B) (u' : J' -> A') (v' : J' -> B')
+              (eJ : J -> J') (eA : A -> A') (eB : B -> B')
+              (alpha : \Pi (c : J) -> u' (eJ c) = eA (u c)) (beta : \Pi (c : J) -> v' (eJ c) = eB (v c))
+              (Q : PushoutData u' v' -> \Type) (t : Dep Q) : Dep (\lam x => Q (congr u v u' v' eJ eA eB alpha beta x))
+      => ((\lam a => t.1.1 (eA a), \lam b => t.1.2 (eB b)),
+          \lam c => adjust {_} {Q} {_} {_} {_} {_} {pmap pinl (inv (alpha c))} {ppglue (eJ c)} {pmap pinr (beta c)}
+                           (path (\lam i => t.1.1 (inv (alpha c) @ i))) (path (\lam i => t.1.2 (beta c @ i))) (t.2 (eJ c)))
+
+    \lemma Phi-isEquiv.{l} {n : Nat} {J A B J' A' B' : \Type l} (u : J -> A) (v : J -> B) (u' : J' -> A') (v' : J' -> B')
+                           (eJ : J -> J') (eA : A -> A') (eB : B -> B')
+                           (alpha : \Pi (c : J) -> u' (eJ c) = eA (u c)) (beta : \Pi (c : J) -> v' (eJ c) = eB (v c))
+                           (cJ : isNConnectedMap n eJ) (cA : isNConnectedMap (suc n) eA) (cB : isNConnectedMap (suc n) eB)
+                           (Q : PushoutData u' v' -> \Type l) (lv : \Pi (y : PushoutData u' v') -> Q y ofHLevel_-1+ suc n)
+      : IsEquiv (Phi u v u' v' eJ eA eB alpha beta Q)
+      => inP (sigma-equiv (sigma-equiv (IsEquiv.toQEquiv (nconnected-ext {suc n} cA (\lam a' => Q (pinl a')) (\lam a' => lv (pinl a'))))
+                                        (\lam _ => IsEquiv.toQEquiv (nconnected-ext {suc n} cB (\lam b' => Q (pinr b')) (\lam b' => lv (pinr b')))))
+                          (\lam p => transQEquiv (IsEquiv.toQEquiv (nconnected-ext {n} cJ (\lam c' => Path (\lam i => Q (pglue c' i)) (p.1 (u' c')) (p.2 (v' c')))
+                                                                                  (\lam c' => pathOver-level Q lv (ppglue c') _ _)))
+                                                 (pi-right \lam c => adjust {_} {Q} {_} {_} {_} {_} {pmap pinl (inv (alpha c))} {ppglue (eJ c)} {pmap pinr (beta c)}
+                                                                             (path (\lam i => p.1 (inv (alpha c) @ i))) (path (\lam i => p.2 (beta c @ i))))))
+
+    \func restrict-eq {J A B J' A' B' : \Type} (u : J -> A) (v : J -> B) (u' : J' -> A') (v' : J' -> B')
+                       (eJ : J -> J') (eA : A -> A') (eB : B -> B')
+                       (alpha : \Pi (c : J) -> u' (eJ c) = eA (u c)) (beta : \Pi (c : J) -> v' (eJ c) = eB (v c))
+                       (Q : PushoutData u' v' -> \Type) (h : \Pi (y : PushoutData u' v') -> Q y)
+      : depEquiv (\lam x => Q (congr u v u' v' eJ eA eB alpha beta x)) (\lam x => h (congr u v u' v' eJ eA eB alpha beta x))
+        = Phi u v u' v' eJ eA eB alpha beta Q (depEquiv Q h)
+      => path \lam j => ((\lam a => h (pinl (eA a)), \lam b => h (pinr (eB b))),
+                         \lam c => apd-adjust h (pmap pinl (inv (alpha c))) (ppglue (eJ c)) (pmap pinr (beta c)) @ j)
+
+    \func apd-adjust {T : \Type} {Q : T -> \Type} (h : \Pi (t : T) -> Q t) {x' x y y' : T} (a : x' = x) (q : x = y) (b : y = y')
+      : path (\lam i => h (((a *> q) *> b) @ i))
+        = {Path (\lam i => Q (((a *> q) *> b) @ i)) (h x') (h y')}
+          adjust {T} {Q} {x'} {x} {y} {y'} {a} {q} {b} (path (\lam i => h (a @ i))) (path (\lam i => h (b @ i))) (path (\lam i => h (q @ i))) \elim a, b
+      | idp, idp => adjust0-apd h q
+
+    \func adjust0-apd {T : \Type} {Q : T -> \Type} (h : \Pi (t : T) -> Q t) {x y : T} (q : x = y)
+      : path (\lam i => h ((idp *> q) @ i)) = {Path (\lam i => Q ((idp *> q) @ i)) (h x) (h y)} adjust0 {T} {Q} {x} {y} {q} (path (\lam i => h (q @ i))) \elim q
+      | idp => idp
+
+    \lemma restrict-isEquiv.{l} {n : Nat} {J A B J' A' B' : \Type l} (u : J -> A) (v : J -> B) (u' : J' -> A') (v' : J' -> B')
+                                (eJ : J -> J') (eA : A -> A') (eB : B -> B')
+                                (alpha : \Pi (c : J) -> u' (eJ c) = eA (u c)) (beta : \Pi (c : J) -> v' (eJ c) = eB (v c))
+                                (cJ : isNConnectedMap n eJ) (cA : isNConnectedMap (suc n) eA) (cB : isNConnectedMap (suc n) eB)
+                                (Q : PushoutData u' v' -> \Type l) (lv : \Pi (y : PushoutData u' v') -> Q y ofHLevel_-1+ suc n)
+      : IsEquiv {\Pi (y : PushoutData u' v') -> Q y} {\Pi (x : PushoutData u v) -> Q (congr u v u' v' eJ eA eB alpha beta x)}
+                (\lam h x => h (congr u v u' v' eJ eA eB alpha beta x))
+      => transport IsEquiv (path \lam j h => (inv (pmap (QEquiv.ret {depEquiv (\lam x => Q (congr u v u' v' eJ eA eB alpha beta x))})
+                                                         (restrict-eq u v u' v' eJ eA eB alpha beta Q h))
+                                              *> QEquiv.ret_f {depEquiv (\lam x => Q (congr u v u' v' eJ eA eB alpha beta x))}
+                                                              (\lam x => h (congr u v u' v' eJ eA eB alpha beta x))) @ j)
+                   (IsEquiv.trans (inP (depEquiv Q))
+                                  (IsEquiv.trans (Phi-isEquiv u v u' v' eJ eA eB alpha beta cJ cA cB Q lv)
+                                                 (inP (symQEquiv (depEquiv (\lam x => Q (congr u v u' v' eJ eA eB alpha beta x)))))))
+  }
+
+\lemma susp-map-nconnected.{u} {n : Nat} {A B : \Type u} {f : A -> B} (c : isNConnectedMap n f) : isNConnectedMap (suc n) (Susp.map f)
+  => transport (\lam (g : Susp A -> Susp B) => isNConnectedMap (suc n) g)
+               (path \lam j s => PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+                                   {congr _ _ _ _ f (\lam t => t) (\lam t => t) (\lam _ => idp) (\lam _ => idp)} {Susp.map f}
+                                   (\lam _ => idp) (\lam _ => idp) (\lam _ => idp) s @ j)
+               (congr-nconnected {n} {A} {\Sigma} {\Sigma} {B} {\Sigma} {\Sigma} _ _ _ _ f (\lam t => t) (\lam t => t) (\lam _ => idp) (\lam _ => idp)
+                                 c (nconnected-map-equiv (suc n) (inP idEquiv)) (nconnected-map-equiv (suc n) (inP idEquiv)))

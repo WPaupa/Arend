@@ -1,0 +1,72 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupHom
+\import Algebra.Pointed (AddPointed, zro)
+\import Arith.Int
+\import Category (Iso)
+\import Equiv
+\import Function
+\import Homotopy.Cofiber
+\import Homotopy.Homology.Theory
+\import Homotopy.Homology.Theory.LongExact
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Wedge
+\import Logic
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func cofLeft.{u} (X Y : Pointed.{u}) : PointedEquiv (Cof.pointed (Wedge.left X Y)) Y \cowith
+  | map => (PushoutData.rec (\lam w => (wedgeToProduct X Y w).2) (\lam _ => base) (\lam _ => idp), idp)
+  | map-isEquiv => inP \new QEquiv {
+    | ret y => pinl (pinr y)
+    | ret_f => PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+                 {\lam c => pinl (pinr (PushoutData.rec (\lam w => (wedgeToProduct X Y w).2) (\lam _ => base) (\lam _ => idp) c))} {\lam c => c}
+                 (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam w => pinl (pinr (wedgeToProduct X Y w).2)} {pinl}
+                    (\lam x => back X Y x) (\lam _ => idp) (\lam _ => sq-wedge (pmap pinl (ppglue ())) (ppglue base)))
+                 (\lam _ => inv (pmap pinl (ppglue ())) *> ppglue base)
+                 (\lam x => sq-cof (pmap pinl (ppglue ())) (ppglue base) (ppglue x))
+    | f_sec _ => idp
+  }
+  \where {
+    \func back.{u} (X Y : Pointed.{u}) (x : X)
+      : pinl (pinr base) = {Cof (Wedge.left X Y).1} pinl (pinl x)
+      => inv (pmap pinl (ppglue ())) *> ppglue base *> inv (ppglue x)
+
+    \func sq-wedge {T : \Type} {u v c : T} (W : u = v) (P : u = c) : (inv W *> P *> inv P) *> W = idp \elim W, P
+      | idp, idp => idp
+
+    \func sq-cof {T : \Type} {u v c d : T} (W : u = v) (P : u = c) (Q : d = c) : (inv W *> P *> inv Q) *> Q = idp *> (inv W *> P) \elim W, P, Q
+      | idp, idp, idp => idp
+
+    \func inc.{u} (X Y : Pointed.{u}) : (cofLeft X Y).map ∘* Cof.inc (Wedge.left X Y) = PointedProduct.proj2 {X} {Y} ∘* Wedge.toProduct X Y
+      => idp
+  }
+
+\lemma toProduct-inj.{u} (T : HomologyTheory.{u}) (n : Int) (X Y : Pointed.{u}) (w : T.E n (Wedge.pointed X Y))
+                         (p : T.push n (Wedge.toProduct X Y) w = 0) : w = 0
+  => \have zero2 : T.push n (Cof.inc (Wedge.left X Y)) w = 0
+       => (AbGroupCat.equivOfIso (T.pushIso n (cofLeft X Y))).isInj
+            (T.push-square n (cofLeft.inc X Y) w *> pmap (T.push n (PointedProduct.proj2 {X} {Y})) p *> AddGroupHom.func-zro *> inv AddGroupHom.func-zro)
+     \in \case AbExactAt.lift (T.exact n (Wedge.left X Y)) zero2 \with {
+       | inP (x, q) => inv q *> pmap (T.push n (Wedge.left X Y)) (left-zero T n X Y x (pmap (T.push n (Wedge.toProduct X Y)) q *> p)) *> AddGroupHom.func-zro
+     }
+  \where
+    \lemma left-zero.{u} (T : HomologyTheory.{u}) (n : Int) (X Y : Pointed.{u}) (x : T.E n X)
+                         (p : T.push n (Wedge.toProduct X Y) (T.push n (Wedge.left X Y) x) = 0) : x = 0
+      => inv (pmap (\lam (h : AddGroupHom _ _) => h x) (T.push-id n X))
+         *> pmap (\lam (h : AddGroupHom _ _) => h x) (T.push-comp n (Wedge.toProduct X Y ∘* Wedge.left X Y) (PointedProduct.proj1 {X} {Y}))
+         *> pmap (T.push n (PointedProduct.proj1 {X} {Y})) (pmap (\lam (h : AddGroupHom _ _) => h x) (T.push-comp n (Wedge.left X Y) (Wedge.toProduct X Y)) *> p)
+         *> AddGroupHom.func-zro
+
+\lemma smash-surj.{u} (T : HomologyTheory.{u}) (n : Int) (X Y : Pointed.{u}) : IsSurj (T.push (isuc n) (Smash.proj {X} {Y}))
+  => \lam v => AbExactAt.lift {T.E (isuc n) (PointedProduct X Y)} {T.E (isuc n) (Smash X Y)} {T.E n (Wedge.pointed X Y)}
+                              {T.push (isuc n) (Smash.proj {X} {Y})} {delta T n (Wedge.toProduct X Y)}
+                              (delta-exact-cof T n (Wedge.toProduct X Y))
+                              (toProduct-inj T n X Y (delta T n (Wedge.toProduct X Y) v)
+                                 (AbExactAt.zero {T.E (isuc n) (Smash X Y)} {T.E n (Wedge.pointed X Y)} {T.E n (PointedProduct X Y)}
+                                                 {delta T n (Wedge.toProduct X Y)} {T.push n (Wedge.toProduct X Y)} (delta-exact T n (Wedge.toProduct X Y)) v))
