@@ -1,0 +1,235 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.Chain.LongExact
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Cokernel
+\import Algebra.Group.Product
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Arith.Int
+\import Equiv
+\import Function
+\import Logic
+\import Homotopy.CW
+\import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Maps.Cellular
+\import Data.Or
+\import Homotopy.CW.Structure.Pair
+\import Homotopy.CW.Structure.Pair.Quotient
+\import Homotopy.CW.Structure.Quotient
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence (in~)
+\import Set.Fin
+
+\open PushoutData (ppglue, homotopy, congr)
+
+\open CWPair (combined, Nested)
+
+\func pairCell.{u} (P : CWPair.{u}) (n : Nat) (a : Fin (P.sub.count n))
+  : CellMatch {P.sub} {combined.{u} P} (CellStep.of {P.sub} {combined.{u} P} P.inc n) a (fin-inc a) \cowith
+  | center => pmap (Nested.cen {N.{u} P n}) (inv (OrFin.ret_inl-lem {P.sub.count n} {P.rcount n} a))
+  | bd s => pmap (\lam o => Nested.att {N.{u} P n} o s) (inv (OrFin.ret_inl-lem {P.sub.count n} {P.rcount n} a))
+  | coh s => square-reindex (P.ambient.inclusion n) (\lam o => Nested.att {N.{u} P n} o s) (Nested.cen {N.{u} P n}) (\lam o => Nested.glu {N.{u} P n} o s)
+                                        (P.inc.natural n (P.sub.attach n (a, s))) _ (inv (cancel _ _)) (inv (OrFin.ret_inl-lem {P.sub.count n} {P.rcount n} a))
+  \where {
+    \func N.{u} (P : CWPair.{u}) (n : Nat) => \new Nested (CWPair.empty.{u} P.sub) P n
+
+    \func cancel {Y : \Type} {a b c : Y} (sq : a = b) (q : b = c) : inv sq *> (sq *> q) = q
+      => inv (*>-assoc _ _ _) *> pmap (`*> q) (inv_*> sq) *> idp_*> q
+  }
+
+\func pairSplit.{u} (P : CWPair.{u}) : ChainSplit (cellularMap {P.sub} {combined.{u} P} P.inc) \cowith
+  | Q n => ZFree (P.rcount n)
+  | back _ => Cone.fst AddGroupHom.∘ ZFree.split
+  | inj _ => AddGroupHom.inverse ZFree.split ZFree.split-equiv AddGroupHom.∘ pairHom AddGroupHom.zero AddGroupHom.id
+  | cut _ => Cone.snd AddGroupHom.∘ ZFree.split
+  | back-i n a => pmap __.1 (inc-split.{u} P n a)
+  | cut-inj n x => pmap __.2 (ZFree.split-equiv.f_sec (AddMonoid.zro {ZFree (P.sub.count n)}, x))
+  | decomp n _ => ZFree.split-equiv.isInj (ZFree.split.func-+ *> pmap2 (+) (inc-split.{u} P n _) (ZFree.split-equiv.f_sec (AddMonoid.zro {ZFree (P.sub.count n)}, _))
+                                           *> pmap2 (__,__) zro-right zro-left)
+  \where
+    \lemma inc-split.{u} (P : CWPair.{u}) (n : Nat) (a : ZFree (P.sub.count n))
+      : ZFree.split (ChainMap.f {cellularMap {P.sub} {combined.{u} P} P.inc} n a) = (a, AddMonoid.zro {ZFree (P.rcount n)})
+      => pmap (\lam (h : AddGroupHom (ZFree (P.sub.count n)) (ProductAbGroup (ZFree (P.sub.count n)) (ZFree (P.rcount n)))) => h a)
+              (ZFree.hom-ext (ZFree.split AddGroupHom.∘ ChainMap.f {cellularMap {P.sub} {combined.{u} P} P.inc} n) (pairHom AddGroupHom.id AddGroupHom.zero)
+                             \lam c => pmap ZFree.split (chainStep-cell (CellStep.of {P.sub} {combined.{u} P} P.inc n) (CellMatch.quotient {P.sub} {combined.{u} P} {n} {CellStep.of {P.sub} {combined.{u} P} P.inc n} (pairCell.{u} P n c))) *> ZFree.split-left c)
+
+\func relative.{u} (P : CWPair.{u}) : ChainComplex => ChainSplit.complex {pairSplit.{u} P}
+
+\func qStep.{u} (P : CWPair.{u}) (n : Nat) => CellStep.of {combined.{u} P} {pairQuotient.{u} P} (pairQuotient.map.{u} P) n
+
+\func qChain.{u} (P : CWPair.{u}) : ChainMap (cellular (combined.{u} P)) (cellular (pairQuotient.{u} P)) => cellularMap {combined.{u} P} {pairQuotient.{u} P} (pairQuotient.map.{u} P)
+
+\lemma q-suc.{u} (P : CWPair.{u}) (n : Nat) : ChainMap.f {qChain.{u} P} (suc n) = ChainSplit.cut {pairSplit.{u} P} (suc n)
+  => ZFree.hom-ext-split (ChainMap.f {qChain.{u} P} (suc n)) (ChainSplit.cut {pairSplit.{u} P} (suc n))
+       (\lam a => chainStep-null (qStep.{u} P (suc n)) (quotSub.{u} P n a) *> inv (pmap __.2 (ZFree.split-left {P.sub.count (suc n)} {P.rcount (suc n)} a)))
+       (\lam j => chainStep-cell (qStep.{u} P (suc n)) (CellMatch.quotient {combined.{u} P} {pairQuotient.{u} P} {suc n} {qStep.{u} P (suc n)} (quotRel.{u} P n j))
+                  *> inv (pmap __.2 (ZFree.split-right {P.sub.count (suc n)} {P.rcount (suc n)} j)))
+
+\lemma q-zero.{u} (P : CWPair.{u}) (x : ZFree (P.sub.count 0 Nat.+ P.rcount 0))
+  : ZFree.uncons (ChainMap.f {qChain.{u} P} 0 x) = (ZFree.augment (ZFree.split x).1, (ZFree.split x).2)
+  => pmap (\lam (h : AddGroupHom (ZFree (P.sub.count 0 Nat.+ P.rcount 0)) (ProductAbGroup IntRing (ZFree (P.rcount 0)))) => h x)
+          (ZFree.hom-ext-split (ZFree.uncons AddGroupHom.∘ ChainMap.f {qChain.{u} P} 0)
+                               (pairHom (ZFree.augment AddGroupHom.∘ Cone.fst AddGroupHom.∘ ZFree.split) (Cone.snd AddGroupHom.∘ ZFree.split))
+             (\lam a => pmap ZFree.uncons (chainStep-cell (qStep.{u} P 0) (CellMatch.quotient {combined.{u} P} {pairQuotient.{u} P} {0} {qStep.{u} P 0} (quotSub0.{u} P a))) *> ZFree.uncons-basis0
+                        *> inv (pmap2 (\lam x y => (ZFree.augment x, y)) (pmap __.1 (ZFree.split-left a)) (pmap __.2 (ZFree.split-left a))
+                                *> pmap (\lam t => (t, AddMonoid.zro {ZFree (P.rcount 0)})) (ZFree.augment-basis a)))
+             (\lam j => pmap ZFree.uncons (chainStep-cell (qStep.{u} P 0) (CellMatch.quotient {combined.{u} P} {pairQuotient.{u} P} {0} {qStep.{u} P 0} (quotRel0.{u} P j))) *> ZFree.uncons-basis j
+                        *> inv (pmap2 (\lam x y => (ZFree.augment x, y)) (pmap __.1 (ZFree.split-right j)) (pmap __.2 (ZFree.split-right j))
+                                *> pmap (\lam t => (t, ZFree.basis j)) AddGroupHom.func-zro)))
+
+\func pairCompare.{u} (P : CWPair.{u}) : ChainMap (relative.{u} P) (cellular (pairQuotient.{u} P)) \cowith
+  | f n => \case \elim n \with {
+    | 0 => low.{u} P
+    | suc n => AddGroupHom.id
+  }
+  | comm n x => \case \elim n, \elim x \with {
+    | 0, x => comm0 P x
+    | suc n, x => commSuc P n x
+  }
+  \where {
+    \func low.{u} (P : CWPair.{u}) : AddGroupHom (ZFree (P.rcount 0)) (ZFree (suc (P.rcount 0)))
+      => AddGroupHom.inverse ZFree.uncons ZFree.uncons-equiv AddGroupHom.∘ pairHom (AddGroupHom.negate AddGroupHom.∘ ZFree.augment) AddGroupHom.id
+
+    \lemma through.{u} (P : CWPair.{u}) (n : Nat) (x : ZFree (P.rcount (suc n)))
+      : ChainComplex.d {cellular (pairQuotient.{u} P)} n x = ChainMap.f {qChain.{u} P} n (ChainComplex.d {cellular (combined.{u} P)} n (ChainSplit.inj {pairSplit.{u} P} (suc n) x))
+      => pmap (ChainComplex.d {cellular (pairQuotient.{u} P)} n)
+              (inv (ChainSplit.cut-inj {pairSplit.{u} P} (suc n) x) *> inv (pmap (\lam (h : AddGroupHom _ _) => h (ChainSplit.inj {pairSplit.{u} P} (suc n) x)) (q-suc.{u} P n)))
+         *> ChainMap.comm {qChain.{u} P} n (ChainSplit.inj {pairSplit.{u} P} (suc n) x)
+
+    \lemma commSuc.{u} (P : CWPair.{u}) (n : Nat) (x : ZFree (P.rcount (suc (suc n))))
+      : ChainComplex.d {cellular (pairQuotient.{u} P)} (suc n) x = ChainComplex.d {relative.{u} P} (suc n) x
+      => through.{u} P (suc n) x *> pmap (\lam (h : AddGroupHom _ _) => h (ChainComplex.d {cellular (combined.{u} P)} (suc n) (ChainSplit.inj {pairSplit.{u} P} (suc (suc n)) x))) (q-suc.{u} P n)
+
+    \lemma comm0.{u} (P : CWPair.{u}) (x : ZFree (P.rcount 1))
+      : ChainComplex.d {cellular (pairQuotient.{u} P)} 0 x = low.{u} P (ChainComplex.d {relative.{u} P} 0 x)
+      => through.{u} P 0 x *> inv ((ZFree.uncons-equiv {P.rcount 0}).ret_f (ChainMap.f {qChain.{u} P} 0 (y.{u} P x)))
+         *> pmap (ZFree.uncons-equiv {P.rcount 0}).ret
+                 (q-zero.{u} P (y.{u} P x)
+                  *> pmap (\lam t => (t, (ZFree.split (y.{u} P x)).2))
+                          (AddMonoid.negative-unique (ZFree.augment (ZFree.split (y.{u} P x)).2)
+                                                     (inv (ZFree.augment-split (y.{u} P x)) *> augment-d {combined.{u} P} P.ambient.empty (ChainSplit.inj {pairSplit.{u} P} 1 x))
+                                                     negative-right))
+      \where
+        \func y.{u} (P : CWPair.{u}) (x : ZFree (P.rcount 1)) : ZFree (P.sub.count 0 Nat.+ P.rcount 0)
+          => ChainComplex.d {cellular (combined.{u} P)} 0 (ChainSplit.inj {pairSplit.{u} P} 1 x)
+
+    \lemma low-inj.{u} (P : CWPair.{u}) : IsInj (low.{u} P)
+      => \lam {y y' : ZFree (P.rcount 0)} q => pmap __.2 (inv ((ZFree.uncons-equiv {P.rcount 0}).f_ret (AddGroupHom.negate (ZFree.augment y), y))
+                                                         *> pmap ZFree.uncons q *> (ZFree.uncons-equiv {P.rcount 0}).f_ret (AddGroupHom.negate (ZFree.augment y'), y'))
+
+    \func equiv.{u} (P : CWPair.{u}) (n : Nat) : QEquiv (ChainMap.homology {pairCompare.{u} P} (suc n))
+      => ChainMap.homology-equiv (pairCompare.{u} P) n idEquiv idEquiv (\case \elim n \with {
+        | 0 => low-inj.{u} P
+        | suc n => \lam q => q
+      })  }
+
+\lemma quotient-homology.{u} (P : CWPair.{u}) (n : Nat)
+  : ChainMap.homology {qChain.{u} P} (suc n) = ChainMap.homology {pairCompare.{u} P} (suc n) AddGroupHom.∘ ChainMap.homology {ChainSplit.proj {pairSplit.{u} P}} (suc n)
+  => Coker.hom-ext (ChainMap.homology {qChain.{u} P} (suc n)) _ \lam z => pmap in~ (ext (pmap (\lam (h : AddGroupHom _ _) => h z.1) (q-suc.{u} P n)))
+  \where
+    \func factor.{u} (P : CWPair.{u})
+      : HomologyFactor (cellularMap {combined.{u} P} {pairQuotient.{u} P} (pairQuotient.map.{u} P)) (pairCompare.{u} P) (ChainSplit.proj {pairSplit.{u} P})
+      => HomologyFactor.make {cellular (combined.{u} P)} {relative.{u} P} {cellular (pairQuotient.{u} P)}
+                             {cellularMap {combined.{u} P} {pairQuotient.{u} P} (pairQuotient.map.{u} P)} {pairCompare.{u} P} {ChainSplit.proj {pairSplit.{u} P}}
+                             (factor-at.{u} P)
+
+    \lemma factor-at.{u} (P : CWPair.{u}) (n : Nat) (v : Homology (cellular (combined.{u} P)) (suc n))
+      : ChainMap.homology {cellularMap {combined.{u} P} {pairQuotient.{u} P} (pairQuotient.map.{u} P)} (suc n) v
+        = ChainMap.homology {pairCompare.{u} P} (suc n) (ChainMap.homology {ChainSplit.proj {pairSplit.{u} P}} (suc n) v)
+      => pmap (\lam (h : AddGroupHom (Homology (cellular (combined.{u} P)) (suc n)) (Homology (cellular (pairQuotient.{u} P)) (suc n))) => h v)
+              (quotient-homology.{u} P n)
+
+\record PairData.{u} (sub : CW.{u}) {
+  | total : CW.{u}
+  | subInc : CellularMap sub total
+  | quotCW : CW.{u}
+  | quotMap : CellularMap total quotCW
+  | relComplex : ChainComplex
+  | relProj : ChainMap (cellular total) relComplex
+  | relSplit : SplitExact (cellularMap {sub} {total} subInc) relProj
+  | relCompare : ChainMap relComplex (cellular quotCW)
+  | relCompare-equiv (n : Nat) : QEquiv (ChainMap.homology {relCompare} (suc n))
+  | quot-factor : HomologyFactor (cellularMap {total} {quotCW} quotMap) relCompare relProj
+} \where {
+  \func subAt.{u} {S : CW.{u}} (P : PairData.{u} S) (n : Nat) (s : S.stage n) : RelCW.stage {P.total} n => P.subInc.func n s
+
+  \func quotAt.{u} {S : CW.{u}} (P : PairData.{u} S) (n : Nat) (x : RelCW.stage {P.total} n) : RelCW.stage {P.quotCW} n => P.quotMap.func n x
+
+  \func of.{u} (P : CWPair.{u}) : PairData.{u} P.sub \cowith
+    | total => combined.{u} P
+    | subInc => P.inc
+    | quotCW => pairQuotient.{u} P
+    | quotMap => pairQuotient.map.{u} P
+    | relComplex => relative.{u} P
+    | relProj => ChainSplit.proj {pairSplit.{u} P}
+    | relSplit => ChainSplit.exact {pairSplit.{u} P}
+    | relCompare => pairCompare.{u} P
+    | relCompare-equiv => pairCompare.equiv.{u} P
+    | quot-factor => quotient-homology.factor.{u} P
+}
+
+\func quotRel.{u} (P : CWPair.{u}) (n : Nat) (j : Fin (P.rcount (suc n))) : CellMatch (qStep.{u} P (suc n)) (fin-raise j) j \cowith
+  | center => pmap (\lam o => pinl (Nested.cen {pairCell.N.{u} P (suc n)} o)) (lem.{u} P (suc n) j)
+  | bd s => pmap (\lam o => pinl (Nested.att {pairCell.N.{u} P (suc n)} o s)) (lem.{u} P (suc n) j)
+  | coh s => square-reindex (RelCW.inclusion {pairQuotient.{u} P} (suc n)) (\lam o => pinl (Nested.att {pairCell.N.{u} P (suc n)} o s))
+                                        (\lam o => pinl (Nested.cen {pairCell.N.{u} P (suc n)} o)) (\lam o => pmap pinl (Nested.glu {pairCell.N.{u} P (suc n)} o s))
+                                        idp _ (inv (idp_*> _)) (lem.{u} P (suc n) j)
+  \where
+    \lemma lem.{u} (P : CWPair.{u}) (n : Nat) (j : Fin (P.rcount n)) : OrFin.aux (fin-raise j) = inr j
+      => OrFin.ret_inr-lem {P.sub.count n} {P.rcount n} j
+
+\func quotRel0.{u} (P : CWPair.{u}) (j : Fin (P.rcount 0)) : CellMatch (qStep.{u} P 0) (fin-raise j) (suc j) \cowith
+  | center => pmap (\lam o => pinl (Nested.cen {pairCell.N.{u} P 0} o)) (quotRel.lem.{u} P 0 j)
+  | bd s => \case s \with {}
+  | coh s => \case s \with {}
+
+\func quotSub0.{u} (P : CWPair.{u}) (a : Fin (P.sub.count 0)) : CellMatch (qStep.{u} P 0) (fin-inc a) 0 \cowith
+  | center => pmap (\lam o => pinl (Nested.cen {pairCell.N.{u} P 0} o)) (OrFin.ret_inl-lem {P.sub.count 0} {P.rcount 0} a) *> ppglue (P.sub.build 0 (pinr a))
+  | bd s => \case s \with {}
+  | coh s => \case s \with {}
+
+\sfunc quotSub.{u} (P : CWPair.{u}) (n : Nat) (a : Fin (P.sub.count (suc n)))
+  : quotientMap (qStep.{u} P (suc n)) ->*.∘* charCell (suc n) (fin-inc a) = ->*.zero _ _
+  => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(quotientMap (qStep.{u} P (suc n)) ->*.∘* charCell (suc n) (fin-inc a)).1} {\lam _ => pinr ()}
+                       (\lam _ => idp) (\lam _ => south.{u} P n a)
+                       (\lam s => inv (pmap (`*> south.{u} P n a) (pmap_inv-comm (\lam w => (quotientMap (qStep.{u} P (suc n))).1 ((Quotient.cells {combined.{u} P} (suc n)).map.1 ((collapseCells.expand (RelCW.attach {combined.{u} P} (suc n))).1 w)))
+                                                                             (ppglue (fin-inc a, s))
+                                                               *> pmap inv (charCell.glue-map (qStep.{u} P (suc n)) (fin-inc a) s))
+                                       *> at.{u} P n a s (OrFin.ret_inl-lem {P.sub.count (suc n)} {P.rcount (suc n)} a))))
+             idp
+  \where {
+    \func south.{u} (P : CWPair.{u}) (n : Nat) (a : Fin (P.sub.count (suc n)))
+      => pmap pinl (pmap (\lam o => pinl (Nested.cen {pairCell.N.{u} P (suc n)} o)) (OrFin.ret_inl-lem {P.sub.count (suc n)} {P.rcount (suc n)} a)
+                    *> ppglue (P.sub.build (suc n) (pinr a)))
+         *> ppglue {_} {_} {_} {RelCW.inclusion {pairQuotient.{u} P} (suc n)} {\lam _ => ()} (pinr ())
+
+    \sfunc at.{u} (P : CWPair.{u}) (n : Nat) (a : Fin (P.sub.count (suc n))) (s : boundary (suc n)) {o : Or (Fin (P.sub.count (suc n))) (Fin (P.rcount (suc n)))} (lem : o = inl a)
+      : inv (pmap (pinl {_} {_} {_} {RelCW.inclusion {pairQuotient.{u} P} (suc n)} {\lam _ => ()}) (inv (pmap pinl (Nested.glu {pairCell.N.{u} P (suc n)} o s)))
+             *> (pmap pinl (inv idp) *> ppglue (pinl (Nested.att {pairCell.N.{u} P (suc n)} o s))))
+        *> (pmap pinl (pmap (\lam o => pinl (Nested.cen {pairCell.N.{u} P (suc n)} o)) lem *> ppglue (P.sub.build (suc n) (pinr a)))
+            *> ppglue {_} {_} {_} {RelCW.inclusion {pairQuotient.{u} P} (suc n)} {\lam _ => ()} (pinr ()))
+        = idp \elim lem
+      | idp => null (P.inc.natural (suc n)) (P.sub.attach (suc n) (a, s)) (pmap (P.sub.build (suc n)) (ppglue (a, s)))
+
+    \sfunc null {A0 A1 X0 X1 : \Type} {i0 : A0 -> X0} {i1 : A1 -> X1} {ia : A0 -> A1} {ix : X0 -> X1} (nat : \Pi (a : A0) -> ix (i0 a) = i1 (ia a))
+                (a' : A0) {cy : A1} (g : ia a' = cy)
+      : inv (pmap (pinl {_} {_} {_} {congr i0 (\lam _ => ()) i1 (\lam _ => ()) ia ix (\lam x => x) (\lam a => inv (nat a)) (\lam _ => idp)} {\lam _ => ()})
+                  (inv (pmap pinl (nat a' *> pmap i1 g))) *> (pmap pinl (inv idp) *> ppglue (pinl (i0 a'))))
+        *> (pmap pinl (idp *> ppglue cy) *> ppglue (pinr ())) = idp \elim g
+      | idp => pmap (\lam t => inv (pmap pinl (inv (pmap pinl (nat a'))) *> (idp *> t)) *> (pmap pinl (idp *> ppglue (ia a')) *> ppglue (pinr ())))
+                    (inv (glueNat (congr i0 (\lam _ => ()) i1 (\lam _ => ()) ia ix (\lam x => x) (\lam a => inv (nat a)) (\lam _ => idp)) (ppglue a')))
+               *> alg pinl pinl (nat a') (ppglue (ia a')) (ppglue (pinr ()))
+
+    \sfunc glueNat {V V' : \Type} (k : V -> V') {v v' : V} (q : v = v')
+      : pmap (pinl {V} {V'} {\Sigma} {k} {\lam _ => ()}) (pmap k q) *> ppglue v' = ppglue v \elim q
+      | idp => idp_*> _
+
+    \sfunc alg {X1 V' W : \Type} (l : X1 -> V') (L : V' -> W) {x0 x1 : X1} {v' : V'} {w : W} (N : x0 = x1) (G' : l x1 = v') (E : L v' = w)
+      : inv (pmap L (inv (pmap l N)) *> (idp *> (pmap L (pmap l (inv (inv N)) *> G') *> E))) *> (pmap L (idp *> G') *> E) = idp \elim N, G', E
+      | idp, idp, idp => idp
+  }

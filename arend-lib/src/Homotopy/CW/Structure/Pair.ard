@@ -114,6 +114,32 @@
              (\lam j => \case j \with {}) (\lam p => \case p.1 \with {}) w
     }
 
+  \func toCW.{u} (P : CWPair.{u}) (e : \Pi (n : Nat) -> P.sub.stage n -> Empty) : CW.{u} \cowith
+    | stage => P.ambient.stage
+    | count => P.rcount
+    | attach => P.rattach
+    | build n => IsEquiv.toQEquiv {_} {_} {toCW.buildMap P n}
+                   (transport IsEquiv (ext (toCW.hom P e n))
+                              (IsEquiv.trans (congr.isEquiv.{u} (P.rattach n) (\lam p => p.1) (\lam p => pinl (P.rattach n p)) (\lam p => p.1)
+                                                                idEquiv (PushoutData.pinl-equiv (e (suc n))) idEquiv (\lam _ => idp) (\lam _ => idp))
+                                             (P.rbuild-equiv n)))
+    | empty => P.ambient.empty
+    \where {
+      \func buildMap.{u} (P : CWPair.{u}) (n : Nat) (w : PushoutData (P.rattach n) (\lam p => p.1)) : P.ambient.stage (suc n)
+        => rec (P.ambient.inclusion n) (P.rcenter n) (P.rglue n) w
+
+      \func hom.{u} (P : CWPair.{u}) (_ : \Pi (n : Nat) -> P.sub.stage n -> Empty) (n : Nat) (w : PushoutData (P.rattach n) (\lam p => p.1))
+        : pairGlue P.inc n (P.rattach n) (P.rcenter n) (P.rglue n)
+            (congr (P.rattach n) (\lam p => p.1) (\lam p => pinl (P.rattach n p)) (\lam p => p.1) (\lam p => p) pinl (\lam c => c) (\lam _ => idp) (\lam _ => idp) w)
+          = buildMap P n w
+        => homotopy {_} {_} {_} {_} {_} {_}
+             {\lam w => pairGlue P.inc n (P.rattach n) (P.rcenter n) (P.rglue n)
+                          (congr (P.rattach n) (\lam p => p.1) (\lam p => pinl (P.rattach n p)) (\lam p => p.1) (\lam p => p) pinl (\lam c => c) (\lam _ => idp) (\lam _ => idp) w)}
+             {buildMap P n} (\lam _ => idp) (\lam _ => idp) (\lam p => idp_*> _ *> inv (pmap_idp_*> (pairGlue P.inc n (P.rattach n) (P.rcenter n) (P.rglue n)) (ppglue p))) w
+    }
+
+  \func combined.{u} (P : CWPair.{u}) : CW.{u} => toCW.{u} (comp.{u} (empty.{u} P.sub) P) empty.none.empty
+
   \func comp.{u} (P : CWPair.{u}) (Q : CWPair.{u} { | sub => P.ambient }) : CWPair.{u} \cowith
     | sub => P.sub
     | ambient => Q.ambient

@@ -1,0 +1,56 @@
+\import Data.Or
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Maps.Cellular
+\import Homotopy.CW.Structure.Pair
+\import Homotopy.CW.Structure.Pair.Inclusion
+\import Homotopy.CW.Structure.Span
+\import Homotopy.Pushout
+\import Homotopy.Pushout.Grid
+\import Paths
+\import Set.Fin
+
+\open PushoutData (ppglue)
+\open span (SpanStep, cellIndex, final, hom0, step, srcCount)
+
+\func spanInclusion.{u} {S T U : CW.{u}} (F : CellularMap S T) (G : CellularMap S U) : CellInclusion.{u} T (spanCW.{u} F G) \cowith
+  | incl => span.left.{u} F G
+  | rest n => srcCount S n Nat.+ U.count n
+  | index _ => Or.Or_QEquiv idEquiv OrFin.aux `transQEquiv` Or.exchange `transQEquiv` symQEquiv cellIndex
+  | centerEq n b => inv (pmap (final.{u} F G n) (Grid.comparison.corner20 (spanGrid.{u} F G n) (inl b))) *> pmap (centerOf.{u} F G n) (reindexCell (inr (inl b)))
+  | attachEq n b s => pmap (\lam o => attachOf.{u} F G n o s) (reindexCell (inr (inl b)))
+  | glueEq n b s => inv (*>-assoc _ _ _)
+                    *> square-reindex (RelCW.inclusion {span.{u} F G} n) (\lam o => attachOf.{u} F G n o s) (centerOf.{u} F G n) (\lam o => glueOf.{u} F G n o s) idp _
+                                      (inv (idp_*> _ *> pmap (_ *>) (pmap_idp_*> (\lam w => final.{u} F G n (Grid.comparison (spanGrid.{u} F G n) w)) _
+                                                                     *> pmap (pmap (final.{u} F G n)) (Grid.comparison.edge10 (spanGrid.{u} F G n) (inl (b, s)))
+                                                                     *> pmap_*>-comm (final.{u} F G n) _ _
+                                                                     *> pmap (_ *>) (pmap_*>-comm (final.{u} F G n) _ _ *> pmap (_ *>) (pmap_inv-comm (final.{u} F G n) _)))
+                                            *> cancel _ _ _))
+                                      (reindexCell (inr (inl b)))
+  \where {
+    \func spanGrid.{u} {S T U : CW.{u}} (F : CellularMap S T) (G : CellularMap S U) (n : Nat) => SpanStep.grid {step.{u} F G n}
+
+    \func centerOf.{u} {S T U : CW.{u}} (F : CellularMap S T) (G : CellularMap S U) (n : Nat) (o : SpanStep.Cells {step.{u} F G n})
+      : SpanStep.Old {step.{u} F G (suc n)}
+      => final.{u} F G n (Grid.comparison (spanGrid.{u} F G n) (pinr (SpanStep.centersTo {step.{u} F G n} o)))
+
+    \func attachOf.{u} {S T U : CW.{u}} (F : CellularMap S T) (G : CellularMap S U) (n : Nat) (o : SpanStep.Cells {step.{u} F G n}) (s : boundary n)
+      : SpanStep.Old {step.{u} F G n}
+      => Grid.r0 {spanGrid.{u} F G n} (SpanStep.cellsTo {step.{u} F G n} (o, s))
+
+    \func glueOf.{u} {S T U : CW.{u}} (F : CellularMap S T) (G : CellularMap S U) (n : Nat) (o : SpanStep.Cells {step.{u} F G n}) (s : boundary n)
+      : RelCW.inclusion {span.{u} F G} n (attachOf.{u} F G n o s) = centerOf.{u} F G n o
+      => hom0.{u} F G n (attachOf.{u} F G n o s)
+         *> pmap (\lam w => final.{u} F G n (Grid.comparison (spanGrid.{u} F G n) w))
+                 ((idp *> ppglue (SpanStep.cellsTo {step.{u} F G n} (o, s))) *> pmap pinr (SpanStep.cellsBeta {step.{u} F G n} (o, s)))
+
+    \func reindexCell {a b c : Nat} (o : Or (Fin a) (Or (Fin b) (Fin c))) : o = cellIndex (cellIndex.ret o)
+      => inv (cellIndex.f_ret o)
+
+    \func cancel {X : \Type} {a b c d : X} (corner00 : a = b) (edge : b = c) (corner20 : d = c)
+      : (idp *> inv corner00) *> (corner00 *> (edge *> inv corner20)) = edge *> inv corner20 \elim corner00, edge, corner20
+      | idp, idp, idp => idp
+  }
+
+\func spanPair.{u} {S T U : CW.{u}} (F : CellularMap S T) (G : CellularMap S U) : CWPair.{u} => CellInclusion.pair.{u} (spanInclusion.{u} F G)

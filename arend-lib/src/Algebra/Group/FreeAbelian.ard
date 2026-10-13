@@ -12,6 +12,7 @@
 \import Arith.Int
 \import Data.Array
 \import Data.Fin (fsuc/=, fsuc/=0)
+\import Data.Or
 \import Equiv
 \import Function.Meta
 \import Logic
@@ -173,6 +174,43 @@
       | ret_f _ => inv ++'-split
       | f_sec (y, z) => pmap2 (__,__) (exts \lam i => ++'.++'_index-left {_} {y} {g'} {z} {i}) (exts \lam j => ++'.++'_index-right {_} {y} {g'} {z} {j})
 
+    \lemma basis-image {g g' : Nat} {e : Fin g -> Fin g'} (inj : \Pi {a b : Fin g} -> e a = e b -> a = b) (a b : Fin g) : basis (e a) (e b) = basis a b
+      => \case decideEq a b \with {
+        | yes p => rewrite p (basis-diagonal *> inv basis-diagonal)
+        | no q => basis-coordinate (\lam r => q (inj r)) *> inv (basis-coordinate q)
+      }
+
+    \func augment {g : Nat} : AddGroupHom (ZFree g) IntRing => extend {IntRing} (\lam _ => 1)
+
+    \lemma augment-basis {g : Nat} (a : Fin g) : augment (basis a) = 1
+      => extend-basis {IntRing} (\lam _ => 1) a
+
+    \lemma augment-split {g g' : Nat} (b : ZFree (g Nat.+ g')) : augment b = augment (split b).1 + augment (split b).2
+      => pmap (\lam (h : AddGroupHom (ZFree (g Nat.+ g')) IntRing) => h b)
+              (hom-ext-split augment (copairHom augment augment AddGroupHom.∘ split)
+                 (\lam a => augment-basis (fin-inc a) *> inv (pmap (copairHom augment augment) (split-left a)
+                                                               *> pmap2 (+) (augment-basis a) (AddGroupHom.func-zro {augment {g'}}) *> zro-right))
+                 (\lam c => augment-basis (fin-raise c) *> inv (pmap (copairHom augment augment) (split-right c)
+                                                                 *> pmap2 (+) (AddGroupHom.func-zro {augment {g}}) (augment-basis c) *> zro-left)))
+
+    \lemma hom-ext-split {A : AbGroup} {g g' : Nat} (h k : AddGroupHom (ZFree (g Nat.+ g')) A)
+                         (pl : \Pi (a : Fin g) -> h (basis (fin-inc a)) = k (basis (fin-inc a)))
+                         (pr : \Pi (b : Fin g') -> h (basis (fin-raise b)) = k (basis (fin-raise b))) : h = k
+      => hom-ext h k \lam c => transport (\lam c' => h (basis c') = k (basis c')) (OrFin.aux.ret_f c) (onOr h k pl pr (OrFin.aux c))
+      \where
+        \lemma onOr {A : AbGroup} {g g' : Nat} (h k : AddGroupHom (ZFree (g Nat.+ g')) A)
+                    (pl : \Pi (a : Fin g) -> h (basis (fin-inc a)) = k (basis (fin-inc a)))
+                    (pr : \Pi (b : Fin g') -> h (basis (fin-raise b)) = k (basis (fin-raise b)))
+                    (o : Or (Fin g) (Fin g')) : h (basis (OrFin.aux.ret o)) = k (basis (OrFin.aux.ret o)) \elim o
+          | inl a => pl a
+          | inr b => pr b
+
+    \lemma split-left {g g' : Nat} (a : Fin g) : split {g} {g'} (basis (fin-inc a)) = (basis a, 0)
+      => pmap2 (__,__) (exts \lam i => basis-image fin-inc-inj a i) (exts \lam j => basis-coordinate (fin-inc/=fin-raise a j))
+
+    \lemma split-right {g g' : Nat} (b : Fin g') : split {g} {g'} (basis (fin-raise b)) = (0, basis b)
+      => pmap2 (__,__) (exts \lam i => basis-coordinate (\lam p => fin-inc/=fin-raise i b (inv p))) (exts \lam j => basis-image fin-raise-inj b j)
+
     \lemma basis-suc {g : Nat} {a b : Fin g} : basis {suc g} (suc a) (suc b) = basis a b
       => \case decideEq a b \with {
         | yes p => rewrite p (basis-diagonal *> inv basis-diagonal)
@@ -226,7 +264,7 @@
 
         \lemma comp {J : \Type} {g g' g'' : Nat} (e : QEquiv {Fin g} {J}) (e' : QEquiv {Fin g'} {J}) (e'' : QEquiv {Fin g''} {J}) (x : ZFree g)
           : change e' e'' (change e e' x) = change e e'' x
-          => exts \lam b => pmap x (pmap e.ret (e'.f_ret _))
+          => exts \lam _ => pmap x (pmap e.ret (e'.f_ret _))
       }
   }
 

@@ -1,0 +1,153 @@
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Data.SeqColimit.Pushout
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Structure.Pair
+\import Homotopy.Cofiber
+\import Homotopy.Pushout
+\import Logic
+\import Paths
+\import Paths.Meta
+
+\open PushoutData (ppglue, rec, congr, homotopy, swap, paste, assoc)
+
+\func toPoint (S : Seq) : SeqMap S (const (\Sigma)) \cowith
+  | func _ _ => ()
+  | natural _ _ => idp
+
+\func pairCof.{u} (P : CWPair.{u}) : Seq.{u} => spanSeq P.inc (toPoint P.sub.seq)
+
+\func Cells.{u} (P : CWPair.{u}) (n : Nat) : \Type u
+  => PushoutData (\lam p => pinl {_} {_} {_} {P.inc.func n} {\lam _ => ()} (P.rattach n p)) (\lam p => p.1)
+
+\func cellsTo.{u} (P : CWPair.{u}) (n : Nat) : QEquiv {Cells P n} {Cof (P.inc.func (suc n))}
+  => IsEquiv.toQEquiv (congr.isEquiv.{u} (\lam p => pinl (P.rattach n p)) (\lam p => p.1) (\lam p => pinr (pinl (P.rattach n p))) (\lam p => p.1)
+                                         idEquiv (kap P n) idEquiv (\lam _ => idp) (\lam _ => idp))
+     `transQEquiv` symQEquiv (assoc (\lam _ => ()) pinr (\lam p => pinl (P.rattach n p)) (\lam p => p.1))
+     `transQEquiv` swap _ _
+     `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{u} (\lam a => pinl (pinr a)) (\lam _ => ()) (P.inc.func (suc n)) (\lam _ => ())
+                                                     idEquiv (P.rbuild n) idEquiv (\lam _ => idp) (\lam _ => idp))
+  \where
+    \func kap.{u} (P : CWPair.{u}) (n : Nat)
+      : QEquiv {Cof (P.inc.func n)} {PushoutData {P.sub.stage (suc n)} {\Sigma} {P.Base n} (\lam _ => ()) pinr}
+      => symQEquiv (paste (P.inc.func n) (P.sub.inclusion n) (\lam _ => ())) `transQEquiv` swap pinr (\lam _ => ())
+
+\func buildMap.{u} (P : CWPair.{u}) (n : Nat) (w : Cells P n) : Cof (P.inc.func (suc n))
+  => rec (Seq.f {pairCof P}) (\lam j => pinl (P.rcenter n j)) (\lam p => pmap pinl (P.rglue n p)) w
+
+\func buildHom.{u} (P : CWPair.{u}) (n : Nat) (w : Cells P n) : buildMap P n w = cellsTo P n w
+  => homotopy {_} {_} {_} {_} {_} {_} {buildMap P n} {cellsTo P n}
+       (\lam c => homotopy {_} {_} {_} {_} {_} {_} {Seq.f {pairCof P}} {\lam c => cellsTo P n (pinl c)} (\lam _ => idp) (\lam _ => idp) (glueL P n) c)
+       (\lam _ => idp) (\lam p => idp_*> _ *> glueR P n p) w
+  \where {
+    \func M.{u} (P : CWPair.{u}) (n : Nat) : \Type u
+      => PushoutData (\lam p => pinl {P.sub.stage n} {P.ambient.stage n} {P.sub.stage (suc n)} {P.inc.func n} {P.sub.inclusion n} (P.rattach n p)) (\lam p => p.1)
+
+    \func j.{u} (P : CWPair.{u}) (n : Nat) (a : P.sub.stage (suc n)) : M P n => pinl (pinr a)
+
+    \func CE.{u} (P : CWPair.{u}) (n : Nat) (m : Cof (j P n)) : Cof (P.inc.func (suc n))
+      => congr (\lam a => pinl (pinr a)) (\lam _ => ()) (P.inc.func (suc n)) (\lam _ => ()) (\lam x => x) (P.rbuild n) (\lam x => x) (\lam _ => idp) (\lam _ => idp) m
+
+    \func T.{u} (P : CWPair.{u}) (n : Nat)
+                (y : PushoutData {\Sigma (Fin (P.rcount n)) (boundary n)} {PushoutData {P.sub.stage (suc n)} {\Sigma} {P.Base n} (\lam _ => ()) pinr} {Fin (P.rcount n)}
+                                 (\lam p => pinr (pinl (P.rattach n p))) (\lam p => p.1))
+      : Cof (P.inc.func (suc n))
+      => CE P n (swap.map (\lam _ => ()) (\lam a => pinl (pinr a)) (assoc.from (\lam _ => ()) pinr (\lam p => pinl (P.rattach n p)) (\lam p => p.1) y))
+
+    \func G.{u} (P : CWPair.{u}) (n : Nat) (l : PushoutData {P.sub.stage (suc n)} {\Sigma} {P.Base n} (\lam _ => ()) pinr) : Cof (P.inc.func (suc n))
+      => T P n (pinl l)
+
+    \func glueL.{u} (P : CWPair.{u}) (n : Nat) (a : P.sub.stage n)
+      : idp *> pmap (\lam c => cellsTo P n (pinl c)) (ppglue a) = pmap (Seq.f {pairCof P}) (ppglue a) *> idp
+      => idp_*> _
+         *> pmap (pmap (G P n)) (pmap_*>-comm (swap.map pinr (\lam _ => ())) (pmap pinl (ppglue a)) (ppglue (P.sub.inclusion n a)))
+         *> pmap_*>-comm (G P n) _ _
+         *> pmap (_ *>) (pmap_inv-comm (G P n) (ppglue (P.sub.inclusion n a))
+                         *> pmap inv (pmap_inv-comm (CE P n) (ppglue (P.sub.inclusion n a)))
+                         *> inv_inv _ *> idp_*> _)
+         *> pmap (`*> _) (pmap (pmap pinl) (inv (inv_inv (P.inc.natural n a))))
+
+    \func glueR.{u} (P : CWPair.{u}) (n : Nat) (p : \Sigma (Fin (P.rcount n)) (boundary n))
+      : pmap (cellsTo P n) (ppglue p) = pmap pinl (P.rglue n p)
+      => pmap_idp_*> (T P n) (ppglue p)
+  }
+
+\func buildEquiv.{u} (P : CWPair.{u}) (n : Nat) : QEquiv (buildMap P n) \cowith
+  | ret => (cellsTo P n).ret
+  | ret_f w => pmap (cellsTo P n).ret (buildHom P n w) *> (cellsTo P n).ret_f w
+  | f_sec y => buildHom P n ((cellsTo P n).ret y) *> (cellsTo P n).f_sec y
+
+\func qStage.{u} (P : CWPair.{u}) (n : Nat) : \Type u \elim n
+  | 0 => Empty
+  | suc n => Cof (P.inc.func (suc n))
+
+\func qCount.{u} (P : CWPair.{u}) (n : Nat) : Nat \elim n
+  | 0 => suc (P.rcount 0)
+  | suc n => P.rcount (suc n)
+
+\func qAttach.{u} (P : CWPair.{u}) (n : Nat) (p : \Sigma (Fin (qCount P n)) (boundary n)) : qStage P n \elim n
+  | 0 => \case p.2 \with {}
+  | suc n => pinl (P.rattach (suc n) p)
+
+\func vertIn.{u} (P : CWPair.{u}) (k : Fin (suc (P.rcount 0))) : Cells P 0 \elim k
+  | 0 => pinl (pinr ())
+  | suc j => pinr j
+
+\func Verts.{u} (P : CWPair.{u}) : \Type u => PushoutData (qAttach P 0) (\lam p => p.1)
+
+\func vertPoint.{u} (P : CWPair.{u}) (c : Cof (P.inc.func 0)) : Verts P
+  => rec {P.sub.stage 0} {P.ambient.stage 0} {\Sigma} {P.inc.func 0} {\lam _ => ()} {Verts P}
+         (\lam x => absurd (P.ambient.empty x)) (\lam _ => pinr 0) (\lam a => absurd (P.sub.empty a)) c
+
+\func vertOut.{u} (P : CWPair.{u}) (w : Cells P 0) : Verts P
+  => rec {\Sigma (Fin (P.rcount 0)) Empty} {Cof (P.inc.func 0)} {Fin (P.rcount 0)} {\lam p => pinl (P.rattach 0 p)} {\lam p => p.1} {Verts P}
+         (vertPoint P) (\lam j => pinr (suc j)) (\lam p => absurd p.2) w
+
+\func vertMap.{u} (P : CWPair.{u}) (w : Verts P) : Cells P 0
+  => rec {\Sigma (Fin (qCount P 0)) Empty} {Empty} {Fin (qCount P 0)} {qAttach P 0} {\lam p => p.1} {Cells P 0}
+         (\lam x => absurd x) (vertIn P) (\lam p => absurd p.2) w
+
+\func vertEquiv.{u} (P : CWPair.{u}) : QEquiv (vertMap P) \cowith
+  | ret => vertOut P
+  | ret_f => homotopy {_} {_} {_} {_} {_} {_} {\lam w => vertOut P (vertMap P w)} {\lam w => w} (\lam x => absurd x) (back P) (\lam p => absurd p.2)
+  | f_sec => homotopy {_} {_} {_} {_} {_} {_} {\lam w => vertMap P (vertOut P w)} {\lam w => w}
+               (homotopy {_} {_} {_} {_} {_} {_} {\lam c => vertMap P (vertPoint P c)} {pinl}
+                         (\lam x => absurd (P.ambient.empty x)) (\lam _ => idp) (\lam a => absurd (P.sub.empty a)))
+               (\lam _ => idp) (\lam p => absurd p.2)
+  \where
+    \func back.{u} (P : CWPair.{u}) (k : Fin (suc (P.rcount 0))) : vertOut P (vertIn P k) = pinr k \elim k
+      | 0 => idp
+      | suc j => idp
+
+\func qBuild.{u} (P : CWPair.{u}) (n : Nat) : QEquiv {PushoutData (qAttach P n) (\lam p => p.1)} {qStage P (suc n)} \elim n
+  | 0 => vertEquiv P `transQEquiv` cellsTo P 0
+  | suc n => buildEquiv P (suc n)
+
+\func pairQuotient.{u} (P : CWPair.{u}) : CW.{u} \cowith
+  | stage => qStage P
+  | count => qCount P
+  | attach => qAttach P
+  | build => qBuild P
+  | empty x => x
+  \where {
+    \func space.{u} (P : CWPair.{u}) : QEquiv {CW.Space {pairQuotient P}} {Cof (realize P.inc)}
+      => symQEquiv (tail.step (RelCW.seq {pairQuotient P}))
+         `transQEquiv` tail.step (pairCof P)
+         `transQEquiv` colimitPushout P.inc (toPoint P.sub.seq)
+         `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{u} (realize P.inc) (realize (toPoint P.sub.seq)) (realize P.inc) (\lam _ => ())
+                                                          idEquiv idEquiv (symQEquiv (const.equiv (\Sigma))) (\lam _ => idp) (\lam _ => idp))
+
+    \func mapAt.{u} (P : CWPair.{u}) (n : Nat) (x : P.ambient.stage n) : qStage P n \elim n
+      | 0 => absurd (P.ambient.empty x)
+      | suc n => pinl x
+
+    \func mapNat.{u} (P : CWPair.{u}) (n : Nat) (x : P.ambient.stage n)
+      : RelCW.inclusion {pairQuotient P} n (mapAt P n x) = mapAt P (suc n) (P.ambient.inclusion n x) \elim n
+      | 0 => absurd (P.ambient.empty x)
+      | suc n => idp
+
+    \func map.{u} (P : CWPair.{u}) : SeqMap P.ambient.seq (RelCW.seq {pairQuotient P}) \cowith
+      | func => mapAt P
+      | natural => mapNat P
+  }

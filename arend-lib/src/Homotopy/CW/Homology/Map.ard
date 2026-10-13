@@ -109,6 +109,20 @@
         | inP (A', q) => inv q *> independent n f A' A
       }
 
+    \lemma of-cellular.{u} {C D : CW.{u}} (F : SeqMap C.seq D.seq) (n : Nat) : cellHomologyMap n (realize F) = ChainMap.homology {cellularMap F} n
+      => of-approximation F n (\lam _ => idp)
+
+    \lemma of-approximation.{u} {C D : CW.{u}} (F : SeqMap C.seq D.seq) (n : Nat) {f : C.Space -> D.Space}
+                                (p : \Pi (x : C.stage (suc (suc n))) -> inSC (F.func (suc (suc n)) x) = f (inSC x))
+      : cellHomologyMap n f = ChainMap.homology {cellularMap F} n
+      => eval {C} {D} {n} {f} (FiniteCellularMap.fromCellular F (suc (suc n)), p)
+         *> Coker.hom-ext (towerHomologyMap (FiniteCellularMap.fromCellular F (suc (suc n)))) (ChainMap.homology {cellularMap F} n) \lam _ => pmap in~ (ext idp)
+
+    \lemma pointwise.{u} {C D : CW.{u}} {F G : SeqMap C.seq D.seq} (n : Nat)
+                         (p : \Pi (x : C.stage (suc (suc n))) -> inSC {D.seq} (F.func (suc (suc n)) x) = inSC {D.seq} (G.func (suc (suc n)) x))
+      : ChainMap.homology {cellularMap F} n = ChainMap.homology {cellularMap G} n
+      => inv (of-cellular F n) *> of-approximation G n (\lam x => inv (p x))
+
     \lemma homotopy.{u} {C D : CW.{u}} (n : Nat) {f g : C.Space -> D.Space} (p : \Pi (z : C.Space) -> f z = g z) : cellHomologyMap n f = cellHomologyMap n g
       => \case approximateThrough (suc n) f \with {
         | inP A => eval A *> inv (eval {C} {D} {n} {g} (A.1, \lam x => A.2 x *> p (inSC x)))

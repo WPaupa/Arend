@@ -31,6 +31,23 @@
         | inl a => pmap inl (e1.f_ret a)
         | inr b => pmap inr (e2.f_ret b)
       }
+
+    \func exchange {A B C : \Type} : QEquiv {Or B (Or A C)} {Or A (Or B C)} \cowith
+      | f => swapLeft
+      | ret => swapLeft
+      | ret_f => swapLeft-swapLeft
+      | f_sec => swapLeft-swapLeft
+      \where {
+        \func swapLeft {A B C : \Type} (o : Or B (Or A C)) : Or A (Or B C) \elim o
+          | inl b => inr (inl b)
+          | inr (inl a) => inl a
+          | inr (inr c) => inr (inr c)
+
+        \func swapLeft-swapLeft {A B C : \Type} (o : Or B (Or A C)) : swapLeft (swapLeft o) = o \elim o
+          | inl b => idp
+          | inr (inl a) => idp
+          | inr (inr c) => idp
+      }
   }
 
 \sfunc uninl {A B : \Type} {a a' : A} (p : inl a = {Or A B} inl a') : a = a'

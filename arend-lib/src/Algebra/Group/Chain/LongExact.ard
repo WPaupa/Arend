@@ -152,6 +152,46 @@
     \where
       \lemma zero (y : Homology Q (suc n)) : i.homology n (connecting n y) = 0 \elim y
         | in~ z => Homology.class-eq (s (suc n) z.1) (inv (lift-eq n z.1 z.2) *> inv AddGroup.minus_zro)
+} \where
+  \lemma middle {A B Q : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} (S : SplitExact i p) (n : Nat) : AbExactAt (i.homology n) (p.homology n)
+    => S.exact-middle n
+
+\record ChainSplit {A B : ChainComplex} (i : ChainMap A B) {
+  | Q : Nat -> AbGroup
+  | back (n : Nat) : AddGroupHom (B.C n) (A.C n)
+  | inj (n : Nat) : AddGroupHom (Q n) (B.C n)
+  | cut (n : Nat) : AddGroupHom (B.C n) (Q n)
+  | back-i (n : Nat) (a : A.C n) : back n (i.f n a) = a
+  | cut-inj (n : Nat) (x : Q n) : cut n (inj n x) = x
+  | decomp (n : Nat) (b : B.C n) : i.f n (back n b) + inj n (cut n b) = b
+
+  \lemma cut-i (n : Nat) (a : A.C n) : cut n (i.f n a) = 0
+    => \have t : inj n (cut n (i.f n a)) = 0
+               => AddGroup.cancel-left (i.f n a) (pmap (\lam x => i.f n x + inj n (cut n (i.f n a))) (inv (back-i n a)) *> decomp n (i.f n a) *> inv zro-right)
+       \in inv (cut-inj n _) *> pmap (cut n) t *> AddMonoidHom.func-zro {cut n}
+
+  \lemma inj-cut (n : Nat) (b : B.C n) : inj n (cut n b) = b - i.f n (back n b)
+    => inv equation.abGroup *> pmap (\lam x => x - i.f n (back n b)) (decomp n b)
+
+  \lemma cut-d (n : Nat) (b : B.C (suc n)) : cut n (B.d n (inj (suc n) (cut (suc n) b))) = cut n (B.d n b)
+    => pmap (\lam x => cut n (B.d n x)) (inj-cut (suc n) b) *> pmap (cut n) ((B.d n).func-minus *> pmap (_ -) (i.comm n _))
+       *> (cut n).func-minus *> pmap (_ -) (cut-i n _) *> AddGroup.minus_zro
+
+  \func complex : ChainComplex \cowith
+    | C => Q
+    | d n => cut n AddGroupHom.∘ B.d n AddGroupHom.∘ inj (suc n)
+    | dd n x => cut-d n (B.d (suc n) (inj (suc (suc n)) x)) *> pmap (cut n) (B.dd n _) *> AddMonoidHom.func-zro {cut n}
+
+  \func proj : ChainMap B complex \cowith
+    | f => cut
+    | comm => cut-d
+
+  \func exact : SplitExact i proj \cowith
+    | r => back
+    | s => inj
+    | ri => back-i
+    | ps => cut-inj
+    | split => decomp
 }
 
 \lemma connecting-natural {A B Q A' B' Q' : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} {i' : ChainMap A' B'} {p' : ChainMap B' Q'}

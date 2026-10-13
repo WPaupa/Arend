@@ -1,0 +1,139 @@
+\import Data.Or
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Maps.Cellular
+\import Homotopy.CW.Structure.Attach (cellsSplit)
+\import Homotopy.CW.Structure.Pair
+\import Homotopy.CW.Structure.Span (span)
+\import Homotopy.Pushout
+\import Logic
+\import Paths
+\import Paths.Meta
+
+\open PushoutData (ppglue, rec, congr, homotopy, assoc, collapse)
+
+\record CellInclusion.{u} (A C : CW.{u}) {
+  | incl : CellularMap A C
+  | rest (n : Nat) : Nat
+  | index (n : Nat) : QEquiv {Or (Fin (A.count n)) (Fin (rest n))} {Fin (C.count n)}
+  | centerEq (n : Nat) (a : Fin (A.count n)) : incl.func (suc n) (A.build n (pinr a)) = C.build n (pinr (index n (inl a)))
+  | attachEq (n : Nat) (a : Fin (A.count n)) (s : boundary n) : incl.func n (A.attach n (a, s)) = C.attach n (index n (inl a), s)
+  | glueEq (n : Nat) (a : Fin (A.count n)) (s : boundary n)
+    : pmap (incl.func (suc n)) (pmap (A.build n) (ppglue (a, s))) *> centerEq n a
+      = (inv (incl.natural n (A.attach n (a, s))) *> pmap (C.inclusion n) (attachEq n a s)) *> pmap (C.build n) (ppglue (index n (inl a), s))
+} \where {
+  \func pair.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) : CWPair.{u} \cowith
+    | sub => A
+    | ambient => C
+    | inc => I.incl
+    | rcount => I.rest
+    | rattach n => relAttach I n
+    | rcenter n j => C.build n (pinr (I.index n (inr j)))
+    | rglue n p => pmap (C.build n) (ppglue (I.index n (inr p.1), p.2))
+    | rbuild-equiv n => glueMap-equiv I n
+
+  \func subAttach.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (p : \Sigma (Fin (A.count n)) (boundary n)) : C.stage n
+    => C.attach n (I.index n (inl p.1), p.2)
+
+  \func relAttach.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (p : \Sigma (Fin (I.rest n)) (boundary n)) : C.stage n
+    => C.attach n (I.index n (inr p.1), p.2)
+
+  \func PairBase.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) : \Type u
+    => PushoutData (I.incl.func n) (A.inclusion n)
+
+  \func SubCells.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) : \Type u
+    => PushoutData (subAttach I n) (\lam p => p.1)
+
+  \func toBase.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (w : SubCells I n) : PairBase I n
+    => rec pinl (\lam a => pinr (A.build n (pinr a)))
+           (\lam p => pmap pinl (inv (I.attachEq n p.1 p.2)) *> ppglue (A.attach n p) *> pmap pinr (pmap (A.build n) (ppglue p))) w
+
+  \func toBase'.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) : QEquiv {SubCells I n} {PairBase I n}
+    => IsEquiv.toQEquiv (congr.isEquiv.{u} (subAttach I n) (\lam p => p.1) (\lam p => I.incl.func n (A.attach n p)) (\lam p => p.1)
+                                           idEquiv idEquiv idEquiv (\lam p => I.attachEq n p.1 p.2) (\lam _ => idp))
+       `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{u} (\lam p => I.incl.func n (A.attach n p)) (\lam p => p.1)
+                                                        (\lam p => pinr (A.attach n p)) (\lam p => p.1)
+                                                        idEquiv (symQEquiv (collapse (I.incl.func n))) idEquiv (\lam p => inv (ppglue (A.attach n p))) (\lam _ => idp))
+       `transQEquiv` symQEquiv (assoc (I.incl.func n) (\lam a => a) (A.attach n) (\lam p => p.1))
+       `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv.{u} (I.incl.func n) (\lam a => pinl a) (I.incl.func n) (A.inclusion n)
+                                                        idEquiv idEquiv (A.build n) (\lam _ => idp) (\lam _ => idp))
+
+  \func fromCollapse.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat)
+                         (w : PushoutData {\Sigma (Fin (A.count n)) (boundary n)} {PushoutData (I.incl.func n) (\lam a => a)} {Fin (A.count n)}
+                                          (\lam p => pinr (A.attach n p)) (\lam p => p.1)) : PairBase I n
+    => congr (I.incl.func n) (\lam a => pinl a) (I.incl.func n) (A.inclusion n) (\lam x => x) (\lam x => x) (A.build n) (\lam _ => idp) (\lam _ => idp)
+             (assoc.from (I.incl.func n) (\lam a => a) (A.attach n) (\lam p => p.1) w)
+
+  \func fromIncl.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (w : PushoutData (\lam p => I.incl.func n (A.attach n p)) (\lam p => p.1)) : PairBase I n
+    => fromCollapse I n (congr (\lam p => I.incl.func n (A.attach n p)) (\lam p => p.1) (\lam p => pinr (A.attach n p)) (\lam p => p.1) (\lam x => x) pinl (\lam x => x)
+                               (\lam p => inv (ppglue (A.attach n p))) (\lam _ => idp) w)
+
+  \func toBase-eq.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (w : SubCells I n) : toBase' I n w = toBase I n w
+    => homotopy {_} {_} {_} {_} {_} {_} {toBase' I n} {toBase I n} (\lam _ => idp) (\lam _ => idp)
+                (\lam p => idp_*> _ *> inv (pmap_*>-comm (fromIncl I n) (pmap pinl (inv (I.attachEq n p.1 p.2))) (ppglue p)
+                                            *> pmap (_ *>) (pmap_*>-comm (fromCollapse I n) (pmap pinl (inv (inv (ppglue (A.attach n p))))) (ppglue p)
+                                                            *> pmap (`*> _) (pmap_inv-comm (\lam x => fromCollapse I n (pinl x)) (inv (ppglue (A.attach n p)))
+                                                                             *> pmap inv (pmap_inv-comm (\lam x => fromCollapse I n (pinl x)) (ppglue (A.attach n p)))
+                                                                             *> inv_inv _ *> idp_*> _)))) w
+
+  \func toBase-equiv.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) : QEquiv (toBase I n) \cowith
+    | ret => (toBase' I n).ret
+    | ret_f w => pmap (toBase' I n).ret (inv (toBase-eq I n w)) *> (toBase' I n).ret_f w
+    | f_sec y => inv (toBase-eq I n _) *> (toBase' I n).f_sec y
+
+  \func AllCells.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) : \Type u
+    => PushoutData (cellsSplit.join (subAttach I n) (relAttach I n)) (\lam p => p.1)
+
+  \func attach-join.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (p : \Sigma (Or (Fin (A.count n)) (Fin (I.rest n))) (boundary n))
+    : C.attach n (I.index n p.1, p.2) = cellsSplit.join (subAttach I n) (relAttach I n) p \elim p
+    | (inl a, s) => idp
+    | (inr j, s) => idp
+
+  \func reindex.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (w : AllCells I n) : PushoutData (C.attach n) (\lam p => p.1)
+    => congr (cellsSplit.join (subAttach I n) (relAttach I n)) (\lam p => p.1) (C.attach n) (\lam p => p.1) (\lam p => (I.index n p.1, p.2)) (\lam x => x) (I.index n)
+             (attach-join I n) (\lam _ => idp) w
+
+  \func RelCells.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) : \Type u
+    => PushoutData (\lam p => pinl {A.stage n} {C.stage n} {A.stage (suc n)} {I.incl.func n} {A.inclusion n} (relAttach I n p)) (\lam p => p.1)
+
+  \func split.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (w : AllCells I n) : RelCells I n
+    => congr (\lam p => pinl (relAttach I n p)) (\lam p => p.1) (\lam p => pinl (relAttach I n p)) (\lam p => p.1) (\lam x => x) (toBase I n) (\lam x => x)
+             (\lam _ => idp) (\lam _ => idp) (cellsSplit.to (subAttach I n) (relAttach I n) w)
+
+  \func glueMap.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (w : RelCells I n) : C.stage (suc n)
+    => pairGlue I.incl n (relAttach I n) (\lam j => C.build n (pinr (I.index n (inr j)))) (\lam p => pmap (C.build n) (ppglue (I.index n (inr p.1), p.2))) w
+
+  \func centers.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (o : Or (Fin (A.count n)) (Fin (I.rest n)))
+    : C.build n (pinr (I.index n o)) = glueMap I n (split I n (pinr o)) \elim o
+    | inl a => inv (I.centerEq n a)
+    | inr j => idp
+
+  \func glues.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (p : \Sigma (Or (Fin (A.count n)) (Fin (I.rest n))) (boundary n))
+    : idp *> pmap (\lam w => glueMap I n (split I n w)) (ppglue p) = pmap (\lam w => C.build n (reindex I n w)) (ppglue p) *> centers I n p.1 \elim p
+    | (inl a, s) => pmap (idp *>) (pmap_*>-comm (pairBase I.incl n) (pmap pinl (inv (I.attachEq n a s))) _
+                                   *> pmap2 (*>) (pmap_inv-comm (C.inclusion n) (I.attachEq n a s)) (pmap_*>-comm (pairBase I.incl n) (ppglue (A.attach n (a, s))) _))
+                    *> square (pmap (C.inclusion n) (I.attachEq n a s)) (I.incl.natural n (A.attach n (a, s))) (pmap (I.incl.func (suc n)) (pmap (A.build n) (ppglue (a, s))))
+                              (I.centerEq n a) (pmap (C.build n) (ppglue (I.index n (inl a), s))) (I.glueEq n a s)
+                    *> pmap (`*> _) (inv (pmap_idp_*> (C.build n) (ppglue (I.index n (inl a), s))))
+    | (inr j, s) => idp_*> _ *> pmap_idp_*> (glueMap I n) (ppglue (j, s)) *> inv (pmap_idp_*> (C.build n) (ppglue (I.index n (inr j), s)))
+    \where
+      \func square {X : \Type} {x1 x2 y1 y2 c : X} (attach : x1 = x2) (natural : x1 = y1) (glue : y1 = y2) (center : y2 = c) (build : x2 = c)
+                   (coh : glue *> center = (inv natural *> attach) *> build) : idp *> (inv attach *> (natural *> glue)) = build *> inv center
+        \elim attach, natural, glue, build
+        | idp, idp, idp, idp => inv (pmap (\lam t => idp *> inv t) (inv (idp_*> center) *> coh))
+
+  \func split-build.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat) (w : AllCells I n) : C.build n (reindex I n w) = glueMap I n (split I n w)
+    => homotopy {_} {_} {_} {_} {_} {_} {\lam w => C.build n (reindex I n w)} {\lam w => glueMap I n (split I n w)} (\lam _ => idp) (centers I n) (glues I n) w
+
+  \lemma glueMap-equiv.{u} {A C : CW.{u}} (I : CellInclusion.{u} A C) (n : Nat)
+    : IsEquiv (pairGlue I.incl n (relAttach I n) (\lam j => C.build n (pinr (I.index n (inr j)))) (\lam p => pmap (C.build n) (ppglue (I.index n (inr p.1), p.2))))
+    => IsEquiv.rightFactor {AllCells I n} {RelCells I n} {C.stage (suc n)} {split I n}
+         (IsEquiv.trans (inP (cellsSplit (subAttach I n) (relAttach I n)))
+                        (congr.isEquiv.{u} (\lam p => pinl (relAttach I n p)) (\lam p => p.1) (\lam p => pinl (relAttach I n p)) (\lam p => p.1) idEquiv (toBase-equiv I n) idEquiv
+                                           (\lam _ => idp) (\lam _ => idp)))
+         (transport IsEquiv (ext (split-build I n))
+                    (IsEquiv.trans (congr.isEquiv.{u} (cellsSplit.join (subAttach I n) (relAttach I n)) (\lam p => p.1) (C.attach n) (\lam p => p.1)
+                                                      (span.sigmaMap (I.index n)) idEquiv (I.index n) (attach-join I n) (\lam _ => idp))
+                                   (inP (C.build n))))
+}

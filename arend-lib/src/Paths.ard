@@ -69,6 +69,14 @@
     \func idp_concat {A : \Type} {a a' : A} (p : a = a') : *>.concat idp p = p \elim p
       | idp => idp
 
+\func pmap_idp_*> {A B : \Type} (f : A -> B) {a a' : A} (p : a = a') : pmap f (idp *> p) = pmap f p \elim p
+  | idp => idp
+
+\func square-reindex {X Y K : \Type} (i : X -> Y) (a : K -> X) (c : K -> Y) (g : \Pi (k : K) -> i (a k) = c k) {k k' : K} {y : Y}
+                     (s : i (a k) = y) (q : y = c k) (e : q = inv s *> g k) (p : k = k')
+  : q *> pmap c p = (inv s *> pmap i (pmap a p)) *> g k' \elim p
+  | idp => e
+
 \func <*_idp {A : \Type} {a a' : A} (p : a = a') : p <* idp = p
   | idp => idp
 

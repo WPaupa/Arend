@@ -53,9 +53,6 @@
 
     \func Coeq (S : Seq) => PushoutData (fwd {S}) fold
 
-    \func pmapIdp {X Y : \Type} (h : X -> Y) {x y : X} (q : x = y) : pmap h (idp *> q) = pmap h q \elim q
-      | idp => idp
-
     \func coeq (S : Seq) : QEquiv {SeqColimit S} {Coeq S} \cowith
       | f => to
       | ret => from
@@ -173,11 +170,11 @@
 
     \func rowInr {T : Seq} {n : Nat} (b : T.A n) {y : T.A (suc n)} (p : T.f b = y)
       : idp *> pmap (coeq.from {T}) (pmap pinl (inv (pmap (at (suc n)) p)) *> ppglue (inr (at n b))) = inv (pquotSC b *> pmap inSC p) \elim p
-      | idp => idp_*> _ *> pmapIdp (coeq.from {T}) (ppglue {_} {_} {_} {fwd {T}} {fold} (inr (at n b)))
+      | idp => idp_*> _ *> pmap_idp_*> (coeq.from {T}) (ppglue {_} {_} {_} {fwd {T}} {fold} (inr (at n b)))
 
     \func rowGlue {S T : Seq} (F : SeqMap S T) (o : Or (Total S) (Total S))
       : idp *> pmap (\lam c => coeq.from {T} (rowMap F c)) (ppglue o) = pmap (\lam c => realize F (coeq.from {S} c)) (ppglue o) \elim o
-      | inl t => idp_*> _ *> pmapIdp (coeq.from {T}) (ppglue {_} {_} {_} {fwd {T}} {fold} (inl (tmap F.func t)))
+      | inl t => idp_*> _ *> pmap_idp_*> (coeq.from {T}) (ppglue {_} {_} {_} {fwd {T}} {fold} (inl (tmap F.func t)))
       | inr t => rowInr (F.func t.1 t.2) (F.natural t.1 t.2) *> inv (pmap_inv-comm (realize F) (pquotSC t.2))
 
     \func rowSq {S T : Seq} (F : SeqMap S T) (c : Coeq S) : realize F (coeq.from {S} c) = coeq.from {T} (rowMap F c)
@@ -210,13 +207,13 @@
                  {b : T.A (suc n)} (p : b = F.func (suc n) a) {d : U.A (suc n)} (r : d = G.func (suc n) a)
       : idp *> pmap (L1 F G) ((pmap pinl (inv (inv (pmap (at (suc n)) p))) *> ppglue (at (suc n) a)) *> pmap pinr (inv (pmap (at (suc n)) r)))
           = pmap (sigmaPushout.pin {_} {_} {_} {_} {F.func} {G.func} (suc n)) ((pmap pinl (inv (inv p)) *> ppglue a) *> pmap pinr (inv r)) \elim p, r
-      | idp, idp => idp_*> _ *> pmapIdp (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} (at (suc n) a))
-                    *> inv (pmapIdp (sigmaPushout.pin {_} {_} {_} {_} {F.func} {G.func} (suc n)) (ppglue a))
+      | idp, idp => idp_*> _ *> pmap_idp_*> (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} (at (suc n) a))
+                    *> inv (pmap_idp_*> (sigmaPushout.pin {_} {_} {_} {_} {F.func} {G.func} (suc n)) (ppglue a))
 
     \func colGlue {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) (o : Or (Total S) (Total S))
       : colL F G (omap (tmap F.func) (tmap F.func) o) *> pmap (\lam c => L1 F G (Grid.r0 {transpose (grid F G)} c)) (ppglue o)
           = pmap (\lam c => fwd (colMap F G c)) (ppglue o) *> colR F G (omap (tmap G.func) (tmap G.func) o) \elim o
-      | inl t => idp_*> _ *> pmapIdp (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} t)
+      | inl t => idp_*> _ *> pmap_idp_*> (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} t)
       | inr t => colInr F G (S.f t.2) (F.natural t.1 t.2) (G.natural t.1 t.2)
 
     \func colFoldL {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) (o : Or (Total T) (Total T))
@@ -232,8 +229,8 @@
     \func colFoldGlue {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) (o : Or (Total S) (Total S))
       : colFoldL F G (omap (tmap F.func) (tmap F.func) o) *> pmap (\lam c => L1 F G (Grid.r2 {transpose (grid F G)} c)) (ppglue o)
           = pmap (\lam c => fold (colMap F G c)) (ppglue o) *> colFoldR F G (omap (tmap G.func) (tmap G.func) o) \elim o
-      | inl t => idp_*> _ *> pmapIdp (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} t)
-      | inr t => idp_*> _ *> pmapIdp (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} t)
+      | inl t => idp_*> _ *> pmap_idp_*> (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} t)
+      | inr t => idp_*> _ *> pmap_idp_*> (L1 F G) (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} t)
 
     \func cols.{v} {S T U : Seq.{v}} (F : SeqMap S T) (G : SeqMap S U) : QEquiv {Pcols (grid F G)} {Coeq (spanSeq F G)}
       => IsEquiv.toQEquiv (congr.isEquiv.{v} (Grid.r0 {transpose (grid F G)}) (Grid.r2 {transpose (grid F G)}) fwd fold (colMap F G) (L1 F G) (L1 F G)

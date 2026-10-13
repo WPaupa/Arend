@@ -389,6 +389,15 @@
       | suc n => rewrite (ret_inr-lem {n} t) idp
   }
 
+\lemma fin-inc-inj {n m : Nat} {a b : Fin n} (p : fin-inc {n} {m} a = fin-inc b) : a = b
+  => pmap (\lam o => Or.rec (\lam x => x) (\lam _ => a) o) (inv (OrFin.ret_inl-lem a) *> pmap OrFin.aux p *> OrFin.ret_inl-lem b)
+
+\lemma fin-raise-inj {n m : Nat} {a b : Fin m} (p : fin-raise {m} {n} a = fin-raise b) : a = b
+  => pmap (\lam o => Or.rec (\lam _ => a) (\lam x => x) o) (inv (OrFin.ret_inr-lem a) *> pmap OrFin.aux p *> OrFin.ret_inr-lem b)
+
+\lemma fin-inc/=fin-raise {n m : Nat} (a : Fin n) (b : Fin m) (p : fin-inc {n} {m} a = fin-raise b) : Empty
+  => \case inv (OrFin.ret_inl-lem a) *> pmap OrFin.aux p *> OrFin.ret_inr-lem b \with {}
+
 \func finSet {A : FinSet} => A
 
 \lemma finiteDependentChoice {A : \Type} (R : A -> A -> \Type) (a0 : A) (step : \Pi (a : A) -> ∃ (b : A) (R a b)) (n : Nat)

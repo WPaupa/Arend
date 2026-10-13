@@ -1,0 +1,170 @@
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Maps.Cellular
+\import Homotopy.CW.Structure.Finite (discrete)
+\import Homotopy.CW.Structure.Pair
+\import Homotopy.CW.Structure.Pair.Quotient
+\import Homotopy.CW.Structure.Pair.Span
+\import Homotopy.CW.Structure.Span
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Logic
+\import Paths
+\import Paths.Meta
+
+\open PushoutData (ppglue, rec, homotopy)
+\open SeqColimit (pquotSC)
+\open span (SpanStep, srcBuild, srcSeq, src)
+
+\func toPointAt.{u} (S : CW.{u}) (n : Nat) (x : S.stage n) : discrete.stage 1 n \elim n
+  | 0 => absurd (S.empty x)
+  | suc n => 0
+
+\func toPointNat.{u} (S : CW.{u}) (n : Nat) (x : S.stage n) : RelCW.inclusion {discrete 1} n (toPointAt.{u} S n x) = toPointAt.{u} S (suc n) (S.inclusion n x) \elim n
+  | 0 => absurd (S.empty x)
+  | suc n => idp
+
+\func toPointCW.{u} (S : CW.{u}) : CellularMap S (discrete 1) \cowith
+  | func => toPointAt.{u} S
+  | natural => toPointNat.{u} S
+
+\func Cyl.{u} {S T : CW.{u}} (F : CellularMap S T) => RelCW.seq {span.{u} (SeqMap.id S.seq) F}
+
+\func collapseAt.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (x : SpanStep.Old {span.step.{u} (SeqMap.id S.seq) F n}) : T.stage n
+  => rec (F.func n) (\lam t => t) (\lam _ => idp) x
+
+\func collapseNat.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (x : SpanStep.Old {span.step.{u} (SeqMap.id S.seq) F n})
+  : T.inclusion n (collapseAt.{u} F n x) = collapseAt.{u} F (suc n) (RelCW.inclusion {span.{u} (SeqMap.id S.seq) F} n x)
+  => homotopy {_} {_} {_} {_} {_} {_} {\lam x => T.inclusion n (collapseAt.{u} F n x)} {\lam x => collapseAt.{u} F (suc n) (RelCW.inclusion {span.{u} (SeqMap.id S.seq) F} n x)}
+              (F.natural n) (\lam _ => idp)
+              (\lam y => pmap (F.natural n (srcBuild.{u} S n (pinl y)) *>)
+                              (pmap_*>-comm (collapseAt.{u} F (suc n)) (idp *> ppglue (Seq.f {srcSeq.{u} S} y)) (pmap pinr (inv (F.natural n (srcBuild.{u} S n (pinl y)))))
+                               *> pmap (`*> _) (pmap_idp_*> (collapseAt.{u} F (suc n)) (ppglue (Seq.f {srcSeq.{u} S} y))) *> idp_*> _)
+                         *> *>_inv _) x
+
+\func collapse.{u} {S T : CW.{u}} (F : CellularMap S T) : SeqMap (Cyl.{u} F) T.seq \cowith
+  | func => collapseAt.{u} F
+  | natural => collapseNat.{u} F
+  \where {
+    \func toTarget.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (s : S.stage n)
+      : inSC {Cyl.{u} F} {n} (pinr (F.func n s)) = inSC {Cyl.{u} F} {n} (pinl s)
+      => pquotSC (pinr (F.func n s)) *> pmap (\lam t => inSC {Cyl.{u} F} {suc n} (pinr t)) (F.natural n s)
+         *> inv (pmap (inSC {Cyl.{u} F} {suc n}) (ppglue s)) *> inv (pquotSC (pinl s))
+
+    \func right-collapse.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (x : SpanStep.Old {span.step.{u} (SeqMap.id S.seq) F n})
+      : inSC {Cyl.{u} F} {n} (pinr (collapseAt.{u} F n x)) = inSC {Cyl.{u} F} {n} x
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam x => inSC {Cyl.{u} F} {n} (pinr (collapseAt.{u} F n x))} {inSC {Cyl.{u} F} {n}} (toTarget.{u} F n) (\lam _ => idp)
+                  (\lam y => cancel (pmap (inSC {Cyl.{u} F} {n}) (ppglue y)) (pquotSC (pinl (srcBuild.{u} S n (pinl y)))) (pquotSC (pinr (F.func n (srcBuild.{u} S n (pinl y)))))
+                                    (pmap (inSC {Cyl.{u} F} {suc n}) (ppglue (Seq.f {srcSeq.{u} S} y))) (pmap (\lam t => inSC {Cyl.{u} F} {suc n} (pinr t)) (F.natural n (srcBuild.{u} S n (pinl y))))
+                                    (pquotSC.natural (ppglue y)
+                                     *> pmap (_ *>) (pmap_*>-comm (inSC {Cyl.{u} F} {suc n}) (idp *> ppglue (Seq.f {srcSeq.{u} S} y)) _
+                                                    *> pmap2 (*>) (pmap_idp_*> (inSC {Cyl.{u} F} {suc n}) (ppglue (Seq.f {srcSeq.{u} S} y)))
+                                                                  (pmap_inv-comm (\lam t => inSC {Cyl.{u} F} {suc n} (pinr t)) (F.natural n (srcBuild.{u} S n (pinl y)))))))
+                  x
+      \where
+        \func cancel {X : \Type} {a b a1 b1 c1 : X} (start : a = b) (left : a = a1) (right : b = b1) (glue : a1 = c1) (target : b1 = c1)
+                     (natural : start *> right = left *> (glue *> inv target)) : (right *> target *> inv glue *> inv left) *> start = idp
+          \elim start, left, right, target
+          | idp, idp, idp, idp => pmap (\lam t => idp *> (idp *> inv t)) (inv (idp_*> glue) *> inv natural)
+  }
+
+\func cylPair.{u} {S T : CW.{u}} (F : CellularMap S T) : CWPair.{u} => spanPair.{u} (SeqMap.id S.seq) F
+
+\func CofSpan.{u} {S T : CW.{u}} (F : CellularMap S T) => span.{u} F (toPointCW.{u} S)
+
+\func OldCyl.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) => SpanStep.Old {span.step.{u} (SeqMap.id S.seq) F n}
+
+\func OldCof.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) => SpanStep.Old {span.step.{u} F (toPointCW.{u} S) n}
+
+\func toCofAt.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (m : OldCyl.{u} F n) : OldCof.{u} F n
+  => rec (\lam s => pinr (toPointAt.{u} S n s)) pinl (\lam y => inv (ppglue y)) m
+
+\func fromQuotientAt.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (w : qStage.{u} (cylPair.{u} F) n) : RelCW.stage {CofSpan.{u} F} n \elim n
+  | 0 => absurd w
+  | suc n => rec (toCofAt.{u} F (suc n)) (\lam _ => pinr 0) (\lam _ => idp) w
+
+\func toQuotientAt.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (r : OldCof.{u} F n) : qStage.{u} (cylPair.{u} F) n \elim n
+  | 0 => rec (\lam t => absurd (T.empty t)) (\lam d => absurd d) (\lam y => absurd (S.empty y)) r
+  | suc n => rec (\lam t => pinl (pinr t)) (\lam _ => pinr ()) (\lam y => pmap pinl (inv (ppglue y)) *> ppglue (srcBuild.{u} S (suc n) (pinl y))) r
+
+\func fromQuotientNat.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (w : qStage.{u} (cylPair.{u} F) n)
+  : RelCW.inclusion {CofSpan.{u} F} n (fromQuotientAt.{u} F n w) = fromQuotientAt.{u} F (suc n) (RelCW.inclusion {pairQuotient.{u} (cylPair.{u} F)} n w) \elim n
+  | 0 => absurd w
+  | suc n => homotopy {_} {_} {_} {_} {_} {_} {\lam w => RelCW.inclusion {CofSpan.{u} F} (suc n) (fromQuotientAt.{u} F (suc n) w)}
+                      {\lam w => fromQuotientAt.{u} F (suc (suc n)) (RelCW.inclusion {pairQuotient.{u} (cylPair.{u} F)} (suc n) w)}
+                      (\lam m => homotopy {_} {_} {_} {_} {_} {_} {\lam m => RelCW.inclusion {CofSpan.{u} F} (suc n) (toCofAt.{u} F (suc n) m)}
+                                          {\lam m => toCofAt.{u} F (suc (suc n)) (RelCW.inclusion {span.{u} (SeqMap.id S.seq) F} (suc n) m)}
+                                          (\lam _ => idp) (\lam _ => idp)
+                                          (\lam y => pmap (idp *>) (pmap_*>-comm (toCofAt.{u} F (suc (suc n))) (idp *> ppglue (Seq.f {srcSeq.{u} S} y)) _
+                                                                    *> pmap (`*> _) (pmap_idp_*> (toCofAt.{u} F (suc (suc n))) (ppglue (Seq.f {srcSeq.{u} S} y))))
+                                                     *> swap pinl (F.natural (suc n) (srcBuild.{u} S (suc n) (pinl y))) (ppglue (Seq.f {srcSeq.{u} S} y))
+                                                     *> inv (pmap_inv-comm (RelCW.inclusion {CofSpan.{u} F} (suc n)) (ppglue y))) m)
+                      (\lam _ => idp) (\lam s => idp_*> _ *> pmap_idp_*> (fromQuotientAt.{u} F (suc (suc n))) (ppglue (S.inclusion (suc n) s))) w
+  \where
+    \func swap {Y Z : \Type} (l : Y -> Z) {a b : Y} {c : Z} (n : a = b) (g : l b = c) : idp *> (inv g *> pmap l (inv n)) = inv (pmap l (inv (inv n)) *> g) \elim n, g
+      | idp, idp => idp
+
+\func toQuotientNat.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (r : OldCof.{u} F n)
+  : RelCW.inclusion {pairQuotient.{u} (cylPair.{u} F)} n (toQuotientAt.{u} F n r) = toQuotientAt.{u} F (suc n) (RelCW.inclusion {CofSpan.{u} F} n r) \elim n
+  | 0 => homotopy {_} {_} {_} {_} {_} {_} {\lam r => RelCW.inclusion {pairQuotient.{u} (cylPair.{u} F)} 0 (toQuotientAt.{u} F 0 r)} {\lam r => toQuotientAt.{u} F 1 (RelCW.inclusion {CofSpan.{u} F} 0 r)}
+                  (\lam t => absurd (T.empty t)) (\lam d => absurd d) (\lam y => absurd (S.empty y)) r
+  | suc n => homotopy {_} {_} {_} {_} {_} {_} {\lam r => RelCW.inclusion {pairQuotient.{u} (cylPair.{u} F)} (suc n) (toQuotientAt.{u} F (suc n) r)}
+                      {\lam r => toQuotientAt.{u} F (suc (suc n)) (RelCW.inclusion {CofSpan.{u} F} (suc n) r)} (\lam _ => idp) (\lam _ => idp)
+                      (\lam y => pmap (idp *>) (pmap_*>-comm (toQuotientAt.{u} F (suc (suc n))) (pmap pinl (inv (inv (F.natural (suc n) (srcBuild.{u} S (suc n) (pinl y)))))) (ppglue (Seq.f {srcSeq.{u} S} y)))
+                                 *> natural pinl pinr (F.natural (suc n) (srcBuild.{u} S (suc n) (pinl y))) (ppglue (Seq.f {srcSeq.{u} S} y)) (ppglue (S.inclusion (suc n) (Seq.f {srcSeq.{u} S} y)))
+                                 *> inv (pmap_*>-comm (RelCW.inclusion {pairQuotient.{u} (cylPair.{u} F)} (suc n)) (pmap pinl (inv (ppglue y))) (ppglue (Seq.f {srcSeq.{u} S} y))
+                                         *> pmap (`*> _) (pmap (pmap pinl) (pmap_inv-comm (RelCW.inclusion {span.{u} (SeqMap.id S.seq) F} (suc n)) (ppglue y))))) r
+  \where
+    \func natural {M Q T : \Type} (l : M -> Q) (r : T -> M) {t0 t1 : T} {m0 : M} {q : Q} (n : t0 = t1) (gm : m0 = r t1) (gq : l m0 = q)
+      : idp *> (pmap (\lam t => l (r t)) (inv (inv n)) *> (pmap l (inv gm) *> gq)) = pmap l (inv ((idp *> gm) *> pmap r (inv n))) *> (idp *> gq) \elim n, gm, gq
+      | idp, idp, idp => idp
+
+\func fromQuotient.{u} {S T : CW.{u}} (F : CellularMap S T) : SeqMap (RelCW.seq {pairQuotient.{u} (cylPair.{u} F)}) (RelCW.seq {CofSpan.{u} F}) \cowith
+  | func => fromQuotientAt.{u} F
+  | natural => fromQuotientNat.{u} F
+
+\func toQuotient.{u} {S T : CW.{u}} (F : CellularMap S T) : SeqMap (RelCW.seq {CofSpan.{u} F}) (RelCW.seq {pairQuotient.{u} (cylPair.{u} F)}) \cowith
+  | func => toQuotientAt.{u} F
+  | natural => toQuotientNat.{u} F
+
+\func fin1 (d : Fin 1) : (0 : Fin 1) = d \elim d
+  | 0 => idp
+
+\func from-to.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (r : OldCof.{u} F (suc n)) : fromQuotientAt.{u} F (suc n) (toQuotientAt.{u} F (suc n) r) = r
+  => homotopy {_} {_} {_} {_} {_} {_} {\lam r => fromQuotientAt.{u} F (suc n) (toQuotientAt.{u} F (suc n) r)} {\lam r => r}
+              (\lam _ => idp) (\lam d => pmap pinr (fin1 d))
+              (\lam y => idp_*> _ *> inv (pmap_*>-comm (fromQuotientAt.{u} F (suc n)) (pmap pinl (inv (ppglue y))) (ppglue (srcBuild.{u} S (suc n) (pinl y)))
+                                          *> pmap_inv-comm (toCofAt.{u} F (suc n)) (ppglue y) *> inv_inv _)) r
+
+\func to-from.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (w : qStage.{u} (cylPair.{u} F) (suc n)) : toQuotientAt.{u} F (suc n) (fromQuotientAt.{u} F (suc n) w) = w
+  => homotopy {_} {_} {_} {_} {_} {_} {\lam w => toQuotientAt.{u} F (suc n) (fromQuotientAt.{u} F (suc n) w)} {\lam w => w}
+              (\lam m => homotopy {_} {_} {_} {_} {_} {_} {\lam m => toQuotientAt.{u} F (suc n) (toCofAt.{u} F (suc n) m)} {pinl}
+                                  (\lam s => inv (ppglue s)) (\lam _ => idp)
+                                  (\lam y => glue {_} {_} {pinl} (ppglue y) (ppglue (srcBuild.{u} S (suc n) (pinl y))) *> inv (pmap_inv-comm (toQuotientAt.{u} F (suc n)) (ppglue y))) m)
+              (\lam _ => idp) (\lam s => inv_*> (ppglue s)) w
+  \where
+    \func glue {M Q : \Type} {l : M -> Q} {a b : M} {c : Q} (m : a = b) (g : l a = c) : inv g *> pmap l m = inv (pmap l (inv m) *> g) \elim m, g
+      | idp, idp => idp
+
+\func toCone.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (s : S.stage (suc n))
+  : inSC {RelCW.seq {CofSpan.{u} F}} {suc n} (pinr 0) = inSC {RelCW.seq {CofSpan.{u} F}} {suc n} (pinl (F.func (suc n) s))
+  => inv (pquotSC (pinl (F.func (suc n) s)) *> pmap (\lam t => inSC {RelCW.seq {CofSpan.{u} F}} {suc (suc n)} (pinl t)) (F.natural (suc n) s)
+          *> pmap (inSC {RelCW.seq {CofSpan.{u} F}} {suc (suc n)}) (ppglue s) *> inv (pquotSC {RelCW.seq {CofSpan.{u} F}} {suc n} (pinr 0)))
+
+\func quotient-collapse.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (x : OldCyl.{u} F (suc n))
+  : inSC {RelCW.seq {CofSpan.{u} F}} {suc n} (fromQuotientAt.{u} F (suc n) (pinl x)) = inSC {RelCW.seq {CofSpan.{u} F}} {suc n} (pinl (collapseAt.{u} F (suc n) x))
+  => homotopy {_} {_} {_} {_} {_} {_} {\lam x => inSC {RelCW.seq {CofSpan.{u} F}} {suc n} (fromQuotientAt.{u} F (suc n) (pinl x))}
+              {\lam x => inSC {RelCW.seq {CofSpan.{u} F}} {suc n} (pinl (collapseAt.{u} F (suc n) x))} (toCone.{u} F n) (\lam _ => idp)
+              (\lam y => square (pmap (inSC {RelCW.seq {CofSpan.{u} F}} {suc n}) (ppglue y)) (pquotSC (pinl (F.func (suc n) (srcBuild.{u} S (suc n) (pinl y))))) (pquotSC {RelCW.seq {CofSpan.{u} F}} {suc n} (pinr 0))
+                                (pmap (\lam t => inSC {RelCW.seq {CofSpan.{u} F}} {suc (suc n)} (pinl t)) (F.natural (suc n) (srcBuild.{u} S (suc n) (pinl y))))
+                                (pmap (inSC {RelCW.seq {CofSpan.{u} F}} {suc (suc n)}) (ppglue (Seq.f {srcSeq.{u} S} y)))
+                                (pquotSC.natural (ppglue y)
+                                 *> pmap (_ *>) (pmap_*>-comm (inSC {RelCW.seq {CofSpan.{u} F}} {suc (suc n)})
+                                                              (pmap pinl (inv (inv (F.natural (suc n) (srcBuild.{u} S (suc n) (pinl y)))))) (ppglue (Seq.f {srcSeq.{u} S} y))
+                                                *> pmap (`*> _) (pmap (pmap (\lam t => inSC {RelCW.seq {CofSpan.{u} F}} {suc (suc n)} (pinl t))) (inv_inv _))))
+                         *> inv (pmap_inv-comm (inSC {RelCW.seq {CofSpan.{u} F}} {suc n}) (ppglue y))) x
+  \where
+    \func square {X : \Type} {a b a1 b1 c1 : X} (start : a = b) (left : a = a1) (right : b = b1) (along : a1 = c1) (glue : c1 = b1)
+                 (natural : start *> right = left *> (along *> glue)) : inv (left *> along *> glue *> inv right) = inv start \elim start, left, along, glue
+      | idp, idp, idp, idp => pmap (\lam t => inv (idp *> (idp *> (idp *> inv t)))) (inv (idp_*> right) *> natural)

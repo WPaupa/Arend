@@ -13,6 +13,10 @@
   | quotSC {n : Nat} (x : s.A n) : inSC x = inSC (s.f x)
   \where {
     \func pquotSC {s : Seq} {n : Nat} (x : s.A n) : inSC x = {SeqColimit s} inSC (s.f x) => path (quotSC x)
+      \where
+        \func natural {s : Seq} {n : Nat} {x x' : s.A n} (q : x = x')
+          : pmap (inSC {s} {n}) q *> pquotSC x' = pquotSC x *> pmap (\lam z => inSC {s} {suc n} (s.f z)) q \elim q
+          | idp => idp_*> _
 
     \func Cocone (s : Seq) (Z : \Type)
       => \Sigma (h : \Pi (n : Nat) -> s.A n -> Z) (\Pi (n : Nat) (x : s.A n) -> h n x = h (suc n) (s.f x))

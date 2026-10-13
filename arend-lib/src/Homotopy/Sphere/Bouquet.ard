@@ -165,6 +165,14 @@
 
         \sfunc id {n g : Nat} : suspend (->*.id {Bouquet n g}) = ->*.id
           => pmap (\lam q => (suspEquiv n g).map ->*.∘* (q ->*.∘* Ei {n} g)) Susp-Func.id *> PointedEquiv.inverse-sec (suspEquiv n g)
+
+        \sfunc on-include {n g h : Nat} {f : Bouquet n g ->* Bouquet n h} {a : Fin g} {Z : Sphere.pointed n ->* Bouquet n h} (p : f ->*.∘* include a = Z)
+          : suspend f ->*.∘* include a = (suspEquiv n h).map ->*.∘* Susp-Func Z
+          => inv (->*.compose-assoc (suspEquiv n h).map (Susp-Func f ->*.∘* Ei {n} g) (include a))
+             *> pmap ((suspEquiv n h).map ->*.∘*)
+                     (inv (->*.compose-assoc (Susp-Func f) (Ei {n} g) (include a))
+                      *> pmap (Susp-Func f ->*.∘*) (PointedEquiv.inverse-comp (suspEquiv n g) {Susp-Func (include a)} {include a} (suspEquiv.include a))
+                      *> inv (Susp-Func.comp f (include a)) *> pmap Susp-Func p)
       }
   }
 
@@ -305,6 +313,15 @@
 
     \lemma suspend {m g h : Nat} (f : Bouquet (suc m) g ->* Bouquet (suc m) h) : degreeHom (Bouquet.suspend f) = degreeHom f
       => pmap columnAction (degreeMatrix.suspend f)
+
+    \lemma on-include {m g h : Nat} {f : Bouquet (suc m) g ->* Bouquet (suc m) h} {a : Fin g} {b : Fin h} (p : f ->*.∘* Bouquet.include a = Bouquet.include b)
+      : degreeHom f (basis a) = basis b
+      => exts \lam c => columnActionBasis (degreeMatrix f) a c *> degreeMatrix.eval f c a *> pmap (\lam t => degree (Bouquet.project c ->*.∘* t)) p *> Bouquet.petal b c
+
+    \lemma on-zero {m g h : Nat} {f : Bouquet (suc m) g ->* Bouquet (suc m) h} {a : Fin g} (p : f ->*.∘* Bouquet.include a = ->*.zero _ _)
+      : degreeHom f (basis a) = AddMonoid.zro {ZFree h}
+      => exts \lam c => columnActionBasis (degreeMatrix f) a c *> degreeMatrix.eval f c a *> pmap (\lam t => degree (Bouquet.project c ->*.∘* t)) p
+                        *> pmap (degree {m}) (->*.compose-zero {Sphere.pointed (suc m)} (Bouquet.project {suc m} c)) *> degree.zero
 
     \lemma sum {p g h : Nat} (f k : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h)
       : degreeHom (Bouquet.sum f k) = AddGroupHom.sum (degreeHom f) (degreeHom k)

@@ -1,0 +1,107 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.Chain.LongExact
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Category (Iso)
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Function
+\import Homotopy.CW
+\import Homotopy.CW.Homology
+\import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Homology.Map
+\import Homotopy.CW.Homology.Relative
+\import Homotopy.CW.Maps.Cellular
+\import Homotopy.Cofiber
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Logic
+\import Paths
+
+\record CofiberModel.{u} {X Y : \Type u} (f : X -> Y) {
+  | source : CW.{u}
+  | target : CW.{u}
+  | cofib : CW.{u}
+  | srcEquiv : QEquiv {X} {source.Space}
+  | tgtEquiv : QEquiv {Y} {target.Space}
+  | cofEquiv : QEquiv {Cof f} {cofib.Space}
+  | cmap : CellularMap source target
+  | cmap-approx (n : Nat) (x : source.stage (suc (suc n)))
+    : inSC {target.seq} (cmap.func (suc (suc n)) x) = tgtEquiv (f (srcEquiv.ret (inSC {source.seq} x)))
+  | cinc : CellularMap target cofib
+  | cinc-approx (n : Nat) (t : target.stage (suc (suc n)))
+    : inSC {cofib.seq} (cinc.func (suc (suc n)) t) = cofEquiv (pinl (tgtEquiv.ret (inSC {target.seq} t)))
+  | pair : PairData.{u} source
+  | cylCollapse : CellularMap pair.total target
+  | cylSection : CellularMap target pair.total
+  | toCof : CellularMap pair.quotCW cofib
+  | fromCof : CellularMap cofib pair.quotCW
+  | section-collapse (n : Nat) (x : RelCW.stage {pair.total} (suc (suc n)))
+    : inSC {RelCW.seq {pair.total}} (cylSection.func (suc (suc n)) (cylCollapse.func (suc (suc n)) x)) = inSC {RelCW.seq {pair.total}} x
+  | collapse-section (n : Nat) (t : target.stage (suc (suc n)))
+    : inSC {target.seq} (cylCollapse.func (suc (suc n)) (cylSection.func (suc (suc n)) t)) = inSC {target.seq} t
+  | collapse-sub (n : Nat) (s : source.stage (suc (suc n)))
+    : inSC {target.seq} (cylCollapse.func (suc (suc n)) (PairData.subAt.{u} pair (suc (suc n)) s)) = inSC {target.seq} (cmap.func (suc (suc n)) s)
+  | to-from (n : Nat) (y : cofib.stage (suc (suc n)))
+    : inSC {cofib.seq} (toCof.func (suc (suc n)) (fromCof.func (suc (suc n)) y)) = inSC {cofib.seq} y
+  | from-to (n : Nat) (w : RelCW.stage {pair.quotCW} (suc (suc n)))
+    : inSC {RelCW.seq {pair.quotCW}} (fromCof.func (suc (suc n)) (toCof.func (suc (suc n)) w)) = inSC {RelCW.seq {pair.quotCW}} w
+  | quotient-collapse (n : Nat) (x : RelCW.stage {pair.total} (suc (suc n)))
+    : inSC {cofib.seq} (toCof.func (suc (suc n)) (PairData.quotAt.{u} pair (suc (suc n)) x)) = inSC {cofib.seq} (cinc.func (suc (suc n)) (cylCollapse.func (suc (suc n)) x))
+} \where {
+  \func H.{u} (C : CW.{u}) (n : Nat) => Homology (cellular C) n
+
+  \func hom.{u} {C D : CW.{u}} (G : CellularMap C D) (n : Nat) : AddGroupHom (H.{u} C n) (H.{u} D n) => ChainMap.homology {cellularMap G} n
+
+  \lemma comp-eq.{u} {C D E : CW.{u}} (G : CellularMap D E) (F : CellularMap C D) (K : CellularMap C E) (n : Nat)
+                     (p : \Pi (x : C.stage (suc (suc n))) -> inSC {E.seq} (G.func (suc (suc n)) (F.func (suc (suc n)) x)) = inSC {E.seq} (K.func (suc (suc n)) x))
+                     (x : H.{u} C n) : hom.{u} G n (hom.{u} F n x) = hom.{u} K n x
+    => inv (pmap (\lam (h : AddGroupHom (H.{u} C n) (H.{u} E n)) => h x) (cellularMap.homology-comp G F n))
+       *> pmap (\lam (h : AddGroupHom (H.{u} C n) (H.{u} E n)) => h x) (cellHomologyMap.pointwise.{u} {C} {E} {SeqMap.comp G F} {K} n p)
+
+  \lemma comp-id.{u} {C D : CW.{u}} (G : CellularMap D C) (F : CellularMap C D) (n : Nat)
+                     (p : \Pi (x : C.stage (suc (suc n))) -> inSC {C.seq} (G.func (suc (suc n)) (F.func (suc (suc n)) x)) = inSC {C.seq} x)
+                     (x : H.{u} C n) : hom.{u} G n (hom.{u} F n x) = x
+    => comp-eq.{u} G F (SeqMap.id C.seq) n p x *> pmap (\lam (h : AddGroupHom (H.{u} C n) (H.{u} C n)) => h x) (cellularMap.homology-id n)
+
+  \lemma chain-exact.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat)
+    : AbExactAt (hom.{u} M.cmap (suc n)) (hom.{u} M.cinc (suc n))
+    => AbExactAt.transport (hom.{u} M.pair.subInc (suc n)) (ChainMap.homology {M.pair.relProj} (suc n)) (hom.{u} M.cmap (suc n)) (hom.{u} M.cinc (suc n))
+         AddGroupHom.id (\lam u => inP (u, idp))
+         (hom.{u} M.cylCollapse (suc n)) (\lam y => inP (_, comp-id.{u} M.cylCollapse M.cylSection (suc n) (M.collapse-section (suc n)) y))
+         (\lam {x} {x'} q => inv (comp-id.{u} M.cylSection M.cylCollapse (suc n) (M.section-collapse (suc n)) x)
+                             *> pmap (hom.{u} M.cylSection (suc n)) q *> comp-id.{u} M.cylSection M.cylCollapse (suc n) (M.section-collapse (suc n)) x')
+         (hom.{u} M.toCof (suc n) AddGroupHom.∘ ChainMap.homology {M.pair.relCompare} (suc n))
+         (\lam q => (M.pair.relCompare-equiv n).isInj (inv (comp-id.{u} M.fromCof M.toCof (suc n) (M.from-to (suc n)) _) *> pmap (hom.{u} M.fromCof (suc n)) q
+                                                       *> comp-id.{u} M.fromCof M.toCof (suc n) (M.from-to (suc n)) _))
+         (\lam u => inv (comp-eq.{u} M.cylCollapse M.pair.subInc M.cmap (suc n) (M.collapse-sub (suc n)) u))
+         (\lam v => comp-eq.{u} M.cinc M.cylCollapse (SeqMap.comp M.cinc M.cylCollapse) (suc n) (\lam _ => idp) v
+                    *> inv (comp-eq.{u} M.toCof M.pair.quotMap (SeqMap.comp M.cinc M.cylCollapse) (suc n) (M.quotient-collapse (suc n)) v)
+                    *> pmap (hom.{u} M.toCof (suc n)) (HomologyFactor.factor {M.pair.quot-factor} n v))
+         (SplitExact.middle M.pair.relSplit (suc n))
+
+  \lemma exact.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (cC : IsCW.{u} (Cof f)) (n : Nat)
+    : AbExactAt (CWHomology.map.{u} (suc n) cX cY f) (CWHomology.map.{u} (suc n) cY cC pinl)
+    => AbExactAt.transport (hom.{u} M.cmap (suc n)) (hom.{u} M.cinc (suc n)) (CWHomology.map.{u} (suc n) cX cY f) (CWHomology.map.{u} (suc n) cY cC pinl)
+         (Iso.hinv {CWHomology.compare.{u} (suc n) cX (M.source, M.srcEquiv)})
+         (\lam x => inP (Iso.f {CWHomology.compare.{u} (suc n) cX (M.source, M.srcEquiv)} x, CWHomology.inverse-compare.{u} (suc n) cX (M.source, M.srcEquiv) x))
+         (Iso.f {CWHomology.compare.{u} (suc n) cY (M.target, M.tgtEquiv)})
+         (\lam y => inP (Iso.hinv {CWHomology.compare.{u} (suc n) cY (M.target, M.tgtEquiv)} y, CWHomology.compare-inverse.{u} (suc n) cY (M.target, M.tgtEquiv) y))
+         (\lam {x} {x'} q => inv (CWHomology.inverse-compare.{u} (suc n) cY (M.target, M.tgtEquiv) x) *> pmap (Iso.hinv {CWHomology.compare.{u} (suc n) cY (M.target, M.tgtEquiv)}) q
+                             *> CWHomology.inverse-compare.{u} (suc n) cY (M.target, M.tgtEquiv) x')
+         (Iso.f {CWHomology.compare.{u} (suc n) cC (M.cofib, M.cofEquiv)})
+         (\lam {x} {x'} q => inv (CWHomology.inverse-compare.{u} (suc n) cC (M.cofib, M.cofEquiv) x) *> pmap (Iso.hinv {CWHomology.compare.{u} (suc n) cC (M.cofib, M.cofEquiv)}) q
+                             *> CWHomology.inverse-compare.{u} (suc n) cC (M.cofib, M.cofEquiv) x')
+         (\lam u => pmap (CWHomology.map.{u} (suc n) cX cY f) (inv (CWHomology.compare-inverse.{u} (suc n) cX (M.source, M.srcEquiv) u))
+                    *> CWHomology.natural.{u} (suc n) cX cY f (M.source, M.srcEquiv) (M.target, M.tgtEquiv) _
+                    *> pmap (Iso.f {CWHomology.compare.{u} (suc n) cY (M.target, M.tgtEquiv)})
+                            (pmap (\lam (h : AddGroupHom (H.{u} M.source (suc n)) (H.{u} M.target (suc n))) => h (Iso.hinv {CWHomology.compare.{u} (suc n) cX (M.source, M.srcEquiv)} u))
+                                  (cellHomologyMap.of-approximation.{u} M.cmap (suc n) (M.cmap-approx (suc n)))))
+         (\lam v => CWHomology.natural.{u} (suc n) cY cC pinl (M.target, M.tgtEquiv) (M.cofib, M.cofEquiv) v
+                    *> pmap (Iso.f {CWHomology.compare.{u} (suc n) cC (M.cofib, M.cofEquiv)})
+                            (pmap (\lam (h : AddGroupHom (H.{u} M.target (suc n)) (H.{u} M.cofib (suc n))) => h v)
+                                  (cellHomologyMap.of-approximation.{u} M.cinc (suc n) (M.cinc-approx (suc n)))))
+         (chain-exact.{u} M n)
+}

@@ -9,6 +9,7 @@
 \import Algebra.Monoid.MonoidHom
 \import Algebra.Pointed
 \import Arith.Nat (pred)
+\import Equiv
 \import Function
 \import Logic
 \import Logic.Meta
@@ -85,7 +86,24 @@
   \lemma homology-ext {X Y : ChainComplex} {F G : ChainMap X Y} (p : \Pi (n : Nat) (x : X.C n) -> F.f n x = G.f n x) (n : Nat)
     : ChainMap.homology {F} n = ChainMap.homology {G} n
     => Coker.hom-ext (ChainMap.homology {F} n) _ \lam z => pmap in~ (ext (p n z.1))
+
+  \func homology-equiv {X Y : ChainComplex} (F : ChainMap X Y) (n : Nat) (e1 : QEquiv (F.f (suc n))) (e2 : QEquiv (F.f (suc (suc n))))
+                       (inj : IsInj (F.f n)) : QEquiv (F.homology (suc n))
+    => Coker.mapEquiv (X.boundary (suc n)) (Y.boundary (suc n)) (F.f (suc (suc n))) (F.cycles (suc n)) (\lam x => ext (inv (F.comm (suc n) x))) e2
+                      (cycles-equiv F n e1 inj)
+    \where
+      \func cycles-equiv {X Y : ChainComplex} (F : ChainMap X Y) (n : Nat) (e1 : QEquiv (F.f (suc n))) (inj : IsInj (F.f n)) : QEquiv (F.cycles (suc n)) \cowith
+        | ret z => (e1.ret z.1, inj (inv (F.comm n (e1.ret z.1)) *> pmap (Y.d n) (e1.f_ret z.1) *> z.2 *> inv (AddMonoidHom.func-zro {F.f n})))
+        | ret_f x => ext (e1.ret_f x.1)
+        | f_sec z => ext (e1.f_ret z.1)
 }
+
+\record HomologyFactor {X Y Z : ChainComplex} (H : ChainMap X Z) (G : ChainMap Y Z) (F : ChainMap X Y)
+  | factor (n : Nat) (x : Homology X (suc n)) : H.homology (suc n) x = G.homology (suc n) (F.homology (suc n) x)
+  \where
+    \func make {X Y Z : ChainComplex} {H : ChainMap X Z} {G : ChainMap Y Z} {F : ChainMap X Y}
+               (p : \Pi (n : Nat) (x : Homology X (suc n)) -> H.homology (suc n) x = G.homology (suc n) (F.homology (suc n) x)) : HomologyFactor H G F \cowith
+      | factor => p
 
 \record ChainHomotopy {X Y : ChainComplex} (F G : ChainMap X Y) {
   | K (n : Nat) : AddGroupHom (X.C n) (Y.C (suc n))

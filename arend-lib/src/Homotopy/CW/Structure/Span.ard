@@ -29,14 +29,47 @@
 \func span.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) : RelCW.{u} \cowith
   | stage n => SpanStep.Old {step F G n}
   | count n => srcCount S n Nat.+ (T.count n Nat.+ U.count n)
-  | attach n p => Grid.r0 {SpanStep.grid {step F G n}} (SpanStep.cellsTo {step F G n} (cellIndex p.1, p.2))
-  | build n => IsEquiv.toQEquiv (congr.isEquiv.{u} _ (\lam p => p.1) (Grid.r0 {SpanStep.grid {step F G n}}) (Grid.r2 {SpanStep.grid {step F G n}})
-                                                   (sigmaMap cellIndex `transQEquiv` SpanStep.cellsEquiv {step F G n}) idEquiv
-                                                   (cellIndex `transQEquiv` SpanStep.centersEquiv {step F G n})
-                                                   (\lam _ => idp) (\lam p => SpanStep.cellsBeta {step F G n} (cellIndex p.1, p.2)))
-                 `transQEquiv` Grid.comparison (SpanStep.grid {step F G n})
-                 `transQEquiv` final F G n
+  | attach => attachAt F G
+  | build => buildEquiv F G
   \where {
+    \func attachAt.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat)
+                       (p : \Sigma (Fin (srcCount S n Nat.+ (T.count n Nat.+ U.count n))) (boundary n)) : SpanStep.Old {step F G n}
+      => Grid.r0 {SpanStep.grid {step F G n}} (SpanStep.cellsTo {step F G n} (cellIndex p.1, p.2))
+
+    \func oldBuild.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat)
+      : QEquiv {PushoutData (attachAt F G n) (\lam p => p.1)} {SpanStep.Old {step F G (suc n)}}
+      => IsEquiv.toQEquiv (congr.isEquiv.{u} _ (\lam p => p.1) (Grid.r0 {SpanStep.grid {step F G n}}) (Grid.r2 {SpanStep.grid {step F G n}})
+                                             (sigmaMap cellIndex `transQEquiv` SpanStep.cellsEquiv {step F G n}) idEquiv
+                                             (cellIndex `transQEquiv` SpanStep.centersEquiv {step F G n})
+                                             (\lam _ => idp) (\lam p => SpanStep.cellsBeta {step F G n} (cellIndex p.1, p.2)))
+           `transQEquiv` Grid.comparison (SpanStep.grid {step F G n})
+           `transQEquiv` final F G n
+
+    \func hom0.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat) (x : SpanStep.Old {step F G n})
+      : Seq.f {spanSeq (srcMap F) (srcMap G)} x = oldBuild F G n (pinl x)
+      => finalCorner F G n x *> inv (pmap (final F G n) (SpanStep.cornerHom {step F G n} x))
+
+    \func buildMap.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat)
+                       (w : PushoutData (attachAt F G n) (\lam p => p.1)) : SpanStep.Old {step F G (suc n)}
+      => rec (Seq.f {spanSeq (srcMap F) (srcMap G)}) (\lam j => oldBuild F G n (pinr j)) (\lam p => hom0 F G n (attachAt F G n p) *> pmap (oldBuild F G n) (ppglue p)) w
+
+    \func buildHom.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat)
+                       (w : PushoutData (attachAt F G n) (\lam p => p.1)) : buildMap F G n w = oldBuild F G n w
+      => homotopy {_} {_} {_} {_} {_} {_} {buildMap F G n} {oldBuild F G n} (hom0 F G n) (\lam _ => idp) (\lam _ => idp) w
+
+    \func buildEquiv.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat) : QEquiv (buildMap F G n) \cowith
+      | ret => (oldBuild F G n).ret
+      | ret_f w => pmap (oldBuild F G n).ret (buildHom F G n w) *> (oldBuild F G n).ret_f w
+      | f_sec y => buildHom F G n ((oldBuild F G n).ret y) *> (oldBuild F G n).f_sec y
+
+    \func left.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) : SeqMap T.seq (RelCW.seq {span F G}) \cowith
+      | func _ b => pinl b
+      | natural _ _ => idp
+
+    \func right.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) : SeqMap U.seq (RelCW.seq {span F G}) \cowith
+      | func _ d => pinr d
+      | natural _ _ => idp
+
     \record SpanStep {
       | Y : \Type
       | B : \Type
@@ -335,7 +368,7 @@
 
     \func toSpanSeq.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) : SeqMap (RelCW.seq {span F G}) (spanSeq (srcMap F) (srcMap G)) \cowith
       | func _ x => x
-      | natural n x => finalCorner F G n x *> inv (pmap (final F G n) (SpanStep.cornerHom {step F G n} x))
+      | natural _ _ => idp
 
     \func srcSq.{u} {S T : RelCW.{u}} (F : SeqMap S.seq T.seq) (z : SeqColimit S.seq) : realize (srcMap F) (tail (srcSeq S) 1 z) = realize F z
       => SeqColimit.homotopy {S.seq} {_} {\lam z => realize (srcMap F) (tail (srcSeq S) 1 z)} {realize F}
