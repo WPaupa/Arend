@@ -5,6 +5,7 @@
 \import Homotopy.Pushout
 \import Logic
 \import Paths
+\import Set.Fin (fin1-equiv)
 
 \func discrete (N : Nat) : CW \cowith
   | stage => discrete.stage N
@@ -34,6 +35,9 @@
         | 0, p => absurd linarith
         | suc _, _ => idp
       }
+
+    \func point : QEquiv {\Sigma} {CW.Space {discrete 1}}
+      => fin1-equiv `transQEquiv` RelCW.stableRealization {discrete 1} (bound 1)
   }
 
 \lemma zero-dim.{u} {X : \Type u} : IsFinCWUpTo 0 X <-> TruncP (\Sigma (N : Nat) (QEquiv {X} {Fin N}))
@@ -44,12 +48,11 @@
   => zero-dim.2 (inP (0, emptyEquiv (\lam x => x) (\lam (c : Fin 0) => \case c \with {})))
 
 \lemma unit-isFinCW.{u} : IsFinCWUpTo.{u} 0 (\Sigma)
-  => zero-dim.{u}.2 (inP (1, \new QEquiv {
-       | f _ => 0
-       | ret _ => ()
-       | ret_f _ => idp
-       | f_sec y => \case \elim y \with { | 0 => idp }
-     }))
+  => zero-dim.{u}.2 (inP (1, fin1-equiv))
+
+\func unit-structure.{u} : HasCWStructure.{u} (\Sigma) => (discrete 1, discrete.point)
+
+\lemma unit-isCW.{u} : IsCW.{u} (\Sigma) => inP unit-structure.{u}
 
 -- | After ``Cubical/CW/Instances`` in the cubical library.
 \lemma finiteCWInduction.{u} (P : \Type u -> \Prop) (equivInvariant : \Pi {X Y : \Type u} -> QEquiv {X} {Y} -> P X -> P Y)

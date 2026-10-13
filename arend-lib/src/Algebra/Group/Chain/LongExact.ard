@@ -152,9 +152,19 @@
     \where
       \lemma zero (y : Homology Q (suc n)) : i.homology n (connecting n y) = 0 \elim y
         | in~ z => Homology.class-eq (s (suc n) z.1) (inv (lift-eq n z.1 z.2) *> inv AddGroup.minus_zro)
-} \where
+} \where {
   \lemma middle {A B Q : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} (S : SplitExact i p) (n : Nat) : AbExactAt (i.homology n) (p.homology n)
     => S.exact-middle n
+
+  \func delta {A B Q : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} (S : SplitExact i p) (n : Nat) : AddGroupHom (Homology Q (suc n)) (Homology A n)
+    => S.connecting n
+
+  \lemma right {A B Q : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} (S : SplitExact i p) (n : Nat) : AbExactAt (p.homology (suc n)) (delta S n)
+    => S.exact-right n
+
+  \lemma left {A B Q : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} (S : SplitExact i p) (n : Nat) : AbExactAt (delta S n) (i.homology n)
+    => S.exact-left n
+}
 
 \record ChainSplit {A B : ChainComplex} (i : ChainMap A B) {
   | Q : Nat -> AbGroup

@@ -11,7 +11,8 @@
 \import Equiv
 \import Homotopy.CW
 \import Homotopy.CW.Homology.Chain
-\import Homotopy.CW.Structure.Finite (unit-isFinCW)
+\import Algebra.Group.FreeAbelian (ZFree)
+\import Homotopy.CW.Structure.Finite (discrete, unit-isCW, unit-structure)
 \import Homotopy.CW.Homology.Descent
 \import Homotopy.CW.Homology.Map
 \import Logic
@@ -65,14 +66,28 @@
   }
 
 \func ReducedCWHomology.{u} (n : Nat) {X : \Type u} (cw : IsCW X) : AbGroup.{0}
-  => IAbGroup (KernelAddGroup (CWHomology.map n cw point.{u} (\lam _ => ())))
+  => IAbGroup (KernelAddGroup (CWHomology.map n cw unit-isCW.{u} (\lam _ => ())))
   \where {
-    \lemma point.{u} : IsCW.{u} (\Sigma)
-      => IsFinCW.toCW (IsFinCWUpTo.toFinCW unit-isFinCW.{u})
+    \lemma point-trivial.{u} (n : Nat) (y : CWHomology.{u} (suc n) unit-isCW.{u}) : y = AddMonoid.zro {CWHomology.{u} (suc n) unit-isCW.{u}}
+      => inv (CWHomology.compare-inverse.{u} (suc n) unit-isCW.{u} unit-structure.{u} y)
+         *> pmap (Iso.f {CWHomology.compare.{u} (suc n) unit-isCW.{u} unit-structure.{u}})
+                 (Homology.trivial {cellular (discrete 1)} {suc n} ZFree.zero-trivial (Iso.hinv {CWHomology.compare.{u} (suc n) unit-isCW.{u} unit-structure.{u}} y))
+         *> AddMonoidHom.func-zro
+
+    \func forget.{u} (n : Nat) {X : \Type u} (cw : IsCW X) : AddGroupHom (ReducedCWHomology.{u} n cw) (CWHomology.{u} n cw) \cowith
+      | func y => y.1
+      | func-+ => idp
+
+    \func unreduced.{u} (n : Nat) {X : \Type u} (cw : IsCW X) : Iso {AbGroupCat.{0}} (forget.{u} (suc n) cw)
+      => AbGroupCat.isoOfEquiv (forget.{u} (suc n) cw) (\new QEquiv {
+           | ret y => (y, point-trivial.{u} n (CWHomology.map.{u} (suc n) cw unit-isCW.{u} (\lam _ => ()) y))
+           | ret_f _ => ext idp
+           | f_sec _ => idp
+         })
 
     \func map.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y) : AddGroupHom (ReducedCWHomology n cX) (ReducedCWHomology n cY) \cowith
       | func y => (CWHomology.map n cX cY f y.1,
-                   inv (pmap (\lam (h : AddGroupHom (CWHomology n cX) (CWHomology n point)) => h y.1) (CWHomology.map-comp n cX cY point (\lam _ => ()) f)) *> y.2)
+                   inv (pmap (\lam (h : AddGroupHom (CWHomology n cX) (CWHomology n unit-isCW)) => h y.1) (CWHomology.map-comp n cX cY unit-isCW (\lam _ => ()) f)) *> y.2)
       | func-+ => ext (CWHomology.map n cX cY f).func-+
 
     \lemma map-id.{u} (n : Nat) {X : \Type u} (cX : IsCW X) (y : ReducedCWHomology n cX) : map n cX cX (\lam x => x) y = y
@@ -86,10 +101,10 @@
       : map n cX cY f y = map n cX cY g y
       => ext (pmap (\lam (h : AddGroupHom (CWHomology n cX) (CWHomology n cY)) => h y.1) (CWHomology.map-homotopy n cX cY p))
 
-    \func Cells.{u} (n : Nat) {X : \Type u} (s : HasCWStructure X) (t : HasCWStructure (\Sigma)) : AbGroup.{0}
+    \func Cells.{u} (n : Nat) {X : \Type u} (s : HasCWStructure X) (t : HasCWStructure.{u} (\Sigma)) : AbGroup.{0}
       => IAbGroup (KernelAddGroup (structureMap n (\lam (_ : X) => ()) s t))
 
-    \func compare.{u} (n : Nat) {X : \Type u} (cw : IsCW X) (s : HasCWStructure X) (t : HasCWStructure (\Sigma))
+    \func compare.{u} (n : Nat) {X : \Type u} (cw : IsCW X) (s : HasCWStructure X) (t : HasCWStructure.{u} (\Sigma))
       : Iso {AbGroupCat.{0}} {Cells n s t} {ReducedCWHomology n cw}
       => AbGroupCat.isoOfEquiv (forward n cw s t) (\new QEquiv {
            | ret y => (Iso.hinv {CWHomology.compare n cw s} y.1, backward n cw s t y.1 y.2)
@@ -97,18 +112,18 @@
            | f_sec y => ext (CWHomology.compare-inverse n cw s y.1)
          })
       \where {
-        \func forward.{u} (n : Nat) {X : \Type u} (cw : IsCW X) (s : HasCWStructure X) (t : HasCWStructure (\Sigma))
+        \func forward.{u} (n : Nat) {X : \Type u} (cw : IsCW X) (s : HasCWStructure X) (t : HasCWStructure.{u} (\Sigma))
           : AddGroupHom (Cells n s t) (ReducedCWHomology n cw) \cowith
           | func x => (Iso.f {CWHomology.compare n cw s} x.1,
-                       CWHomology.natural n cw point (\lam _ => ()) s t x.1 *> pmap (Iso.f {CWHomology.compare n point t}) x.2 *> AddMonoidHom.func-zro)
+                       CWHomology.natural n cw unit-isCW (\lam _ => ()) s t x.1 *> pmap (Iso.f {CWHomology.compare n unit-isCW t}) x.2 *> AddMonoidHom.func-zro)
           | func-+ => ext (Iso.f {CWHomology.compare n cw s}).func-+
 
-        \lemma backward.{u} (n : Nat) {X : \Type u} (cw : IsCW X) (s : HasCWStructure X) (t : HasCWStructure (\Sigma)) (y : CWHomology n cw)
-                            (q : CWHomology.map n cw point.{u} (\lam _ => ()) y = AddMonoid.zro {CWHomology n point.{u}})
+        \lemma backward.{u} (n : Nat) {X : \Type u} (cw : IsCW X) (s : HasCWStructure X) (t : HasCWStructure.{u} (\Sigma)) (y : CWHomology n cw)
+                            (q : CWHomology.map n cw unit-isCW.{u} (\lam _ => ()) y = AddMonoid.zro {CWHomology n unit-isCW.{u}})
           : structureMap n (\lam (_ : X) => ()) s t (Iso.hinv {CWHomology.compare n cw s} y) = AddMonoid.zro {Homology (cellular t.1) n}
-          => inv (CWHomology.inverse-compare n point t _)
-             *> pmap (Iso.hinv {CWHomology.compare n point t})
-                     (inv (CWHomology.natural n cw point (\lam _ => ()) s t _) *> pmap (CWHomology.map n cw point (\lam _ => ())) (CWHomology.compare-inverse n cw s y) *> q)
+          => inv (CWHomology.inverse-compare n unit-isCW t _)
+             *> pmap (Iso.hinv {CWHomology.compare n unit-isCW t})
+                     (inv (CWHomology.natural n cw unit-isCW (\lam _ => ()) s t _) *> pmap (CWHomology.map n cw unit-isCW (\lam _ => ())) (CWHomology.compare-inverse n cw s y) *> q)
              *> AddMonoidHom.func-zro
       }
   }

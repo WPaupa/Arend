@@ -1,0 +1,129 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.Chain.LongExact
+\import Algebra.Group.Exact
+\import Algebra.Group.FreeAbelian (ZFree)
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.SubGroup
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Pointed
+\import Category (Iso)
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Homology
+\import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Homology.Cofiber (toPointCW)
+\import Homotopy.CW.Homology.Exact
+\import Homotopy.CW.Homology.Map
+\import Homotopy.CW.Homology.Relative
+\import Homotopy.CW.Maps.Cellular
+\import Homotopy.CW.Structure.Finite (discrete, unit-isCW, unit-structure)
+\import Homotopy.Suspension
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Paths.Meta
+
+\open CofiberModel (H, hom, comp-eq, comp-id)
+
+\func KerH.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat)
+  => IAbGroup (KernelAddGroup (hom.{u} M.cmap n))
+
+\lemma total-zero.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f)
+                      (tz : \Pi (n : Nat) (y : Homology (cellular M.target) (suc n)) -> y = AddMonoid.zro {Homology (cellular M.target) (suc n)})
+                      (n : Nat) (x : Homology (cellular M.pair.total) (suc n)) : x = AddMonoid.zro {Homology (cellular M.pair.total) (suc n)}
+  => inv (comp-id.{u} M.cylSection M.cylCollapse (suc n) (M.section-collapse (suc n)) x) *> pmap (hom.{u} M.cylSection (suc n)) (tz n _) *> AddMonoidHom.func-zro
+
+\func delta.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat) : AddGroupHom (Homology M.pair.relComplex (suc n)) (H.{u} M.source n)
+  => SplitExact.delta M.pair.relSplit n
+
+\lemma collapse-sub.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat) (x : H.{u} M.source n)
+  : hom.{u} M.cylCollapse n (hom.{u} M.pair.subInc n x) = hom.{u} M.cmap n x
+  => comp-eq.{u} M.cylCollapse M.pair.subInc M.cmap n (M.collapse-sub n) x
+
+\lemma delta-kernel.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat) (y : Homology M.pair.relComplex (suc n))
+  : hom.{u} M.cmap n (delta.{u} M n y) = AddMonoid.zro {Homology (cellular M.target) n}
+  => inv (collapse-sub.{u} M n _)
+     *> pmap (hom.{u} M.cylCollapse n) (AbExactAt.zero {_} {_} {_} {delta.{u} M n} {hom.{u} M.pair.subInc n} (SplitExact.left M.pair.relSplit n) y)
+     *> AddMonoidHom.func-zro
+
+\lemma delta-zero.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f)
+                      (tz : \Pi (n : Nat) (y : Homology (cellular M.target) (suc n)) -> y = AddMonoid.zro {Homology (cellular M.target) (suc n)})
+                      (n : Nat) (y : Homology M.pair.relComplex (suc n)) (q : delta.{u} M n y = AddMonoid.zro {Homology (cellular M.source) n})
+  : y = AddMonoid.zro {Homology M.pair.relComplex (suc n)}
+  => \case AbExactAt.lift {_} {_} {_} {ChainMap.homology {M.pair.relProj} (suc n)} {delta.{u} M n} (SplitExact.right M.pair.relSplit n) q \with {
+    | inP (x, r) => inv r *> pmap (ChainMap.homology {M.pair.relProj} (suc n)) (total-zero.{u} M tz n x) *> AddMonoidHom.func-zro
+  }
+
+\lemma delta-surj.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat) (x : Homology (cellular M.source) n)
+                      (k : hom.{u} M.cmap n x = AddMonoid.zro {Homology (cellular M.target) n})
+  : ∃ (y : Homology M.pair.relComplex (suc n)) (delta.{u} M n y = x)
+  => AbExactAt.lift {_} {_} {_} {delta.{u} M n} {hom.{u} M.pair.subInc n} (SplitExact.left M.pair.relSplit n)
+       (inv (comp-id.{u} M.cylSection M.cylCollapse n (M.section-collapse n) _) *> pmap (hom.{u} M.cylSection n) (collapse-sub.{u} M n x *> k)
+        *> AddMonoidHom.func-zro)
+
+\func deltaKer.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat) : AddGroupHom (Homology M.pair.relComplex (suc n)) (KerH.{u} M n) \cowith
+  | func y => (delta.{u} M n y, delta-kernel.{u} M n y)
+  | func-+ => ext (delta.{u} M n).func-+
+  \where
+    \func equiv.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f)
+                    (tz : \Pi (n : Nat) (y : Homology (cellular M.target) (suc n)) -> y = AddMonoid.zro {Homology (cellular M.target) (suc n)}) (n : Nat)
+      : QEquiv (deltaKer.{u} M n)
+      => QEquiv.fromInjSurj
+           (\lam {y} {y'} q => AddGroup.fromZero (delta-zero.{u} M tz n (y - y') ((delta.{u} M n).func-minus *> AddGroup.toZero (pmap __.1 q))))
+           (\lam k => TruncP.map (delta-surj.{u} M n k.1 k.2) \lam s => (s.1, ext s.2))
+
+\func toCofiber.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat)
+  : AddGroupHom (Homology M.pair.relComplex (suc n)) (H.{u} M.cofib (suc n))
+  => hom.{u} M.toCof (suc n) AddGroupHom.∘ ChainMap.homology {M.pair.relCompare} (suc n)
+  \where {
+    \func cofEquiv.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat) : QEquiv (hom.{u} M.toCof (suc n)) \cowith
+      | ret => hom.{u} M.fromCof (suc n)
+      | ret_f => comp-id.{u} M.fromCof M.toCof (suc n) (M.from-to (suc n))
+      | f_sec => comp-id.{u} M.toCof M.fromCof (suc n) (M.to-from (suc n))
+
+    \func equiv.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat) : QEquiv (toCofiber.{u} M n)
+      => M.pair.relCompare-equiv n `transQEquiv` cofEquiv.{u} M n
+  }
+
+\func suspChain.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f)
+                    (tz : \Pi (n : Nat) (y : Homology (cellular M.target) (suc n)) -> y = AddMonoid.zro {Homology (cellular M.target) (suc n)}) (n : Nat)
+  : Iso {AbGroupCat.{0}} {KerH.{u} M n} {H.{u} M.cofib (suc n)}
+  => AbGroupCat.isoOfEquiv (toCofiber.{u} M n AddGroupHom.∘ AddGroupHom.inverse (deltaKer.{u} M n) (deltaKer.equiv.{u} M tz n))
+                           (symQEquiv (deltaKer.equiv.{u} M tz n) `transQEquiv` toCofiber.equiv.{u} M n)
+
+\func suspModel.{u} {X : \Type u} {S : CW.{u}} (eX : QEquiv {X} {S.Space}) : CofiberModel.{u} (\lam (_ : X) => ())
+  => CofiberModel.of.{u} (\lam _ => ()) eX discrete.point (toPointCW.{u} S) (\lam z => inv (discrete.point.f_ret (realize (toPointCW.{u} S) z)))
+  \where {
+    \lemma trivial.{u} {X : \Type u} {S : CW.{u}} (eX : QEquiv {X} {S.Space}) (n : Nat) (y : Homology (cellular (CofiberModel.target {suspModel.{u} eX})) (suc n))
+      : y = AddMonoid.zro {Homology (cellular (CofiberModel.target {suspModel.{u} eX})) (suc n)}
+      => Homology.trivial {cellular (discrete 1)} {suc n} ZFree.zero-trivial y
+
+    \lemma toPoint-eq.{u} {X : \Type u} {S : CW.{u}} (eX : QEquiv {X} {S.Space}) (n : Nat)
+      : structureMap.{u} n (\lam (_ : X) => ()) (S, eX) unit-structure.{u} = hom.{u} (toPointCW.{u} S) n
+      => cellHomologyMap.of-approximation.{u} (toPointCW.{u} S) n (\lam _ => inv (discrete.point.f_ret _))
+
+    \func cells.{u} {X : \Type u} {S : CW.{u}} (eX : QEquiv {X} {S.Space}) (n : Nat)
+      : Iso {AbGroupCat.{0}} {ReducedCWHomology.Cells.{u} n (S, eX) unit-structure.{u}} {KerH.{u} (suspModel.{u} eX) n}
+      => AbGroupCat.isoOfEquiv (cellsMap.{u} eX n) (cellsMap.equiv.{u} eX n)
+
+    \func cellsMap.{u} {X : \Type u} {S : CW.{u}} (eX : QEquiv {X} {S.Space}) (n : Nat)
+      : AddGroupHom (ReducedCWHomology.Cells.{u} n (S, eX) unit-structure.{u}) (KerH.{u} (suspModel.{u} eX) n) \cowith
+      | func x => (x.1, inv (pmap (\lam (h : AddGroupHom _ _) => h x.1) (toPoint-eq.{u} eX n)) *> x.2)
+      | func-+ => ext idp
+      \where
+        \func equiv.{u} {X : \Type u} {S : CW.{u}} (eX : QEquiv {X} {S.Space}) (n : Nat) : QEquiv (cellsMap.{u} eX n) \cowith
+          | ret k => (k.1, pmap (\lam (h : AddGroupHom _ _) => h k.1) (toPoint-eq.{u} eX n) *> k.2)
+          | ret_f _ => ext idp
+          | f_sec _ => ext idp
+  }
+
+\func suspAt.{u} (n : Nat) {X : \Type u} (cX : IsCW.{u} X) (cS : IsCW.{u} (Susp X)) {S : CW.{u}} (eX : QEquiv {X} {S.Space})
+  : Iso {AbGroupCat.{0}} {ReducedCWHomology.{u} n cX} {CWHomology.{u} (suc n) cS}
+  => Iso.composite (Iso.composite (Iso.composite (Iso.reverse {ReducedCWHomology.compare.{u} n cX (S, eX) unit-structure.{u}}) (suspModel.cells.{u} eX n))
+                                  (suspChain.{u} (suspModel.{u} eX) (suspModel.trivial.{u} eX) n))
+                   (CWHomology.compare.{u} (suc n) cS (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX}))

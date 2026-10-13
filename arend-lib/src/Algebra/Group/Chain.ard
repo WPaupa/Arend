@@ -51,6 +51,9 @@
     \lemma class-eq-inv {X : ChainComplex} {n : Nat} {z z' : X.Cycles n} (p : in~ z = {Homology X n} in~ z')
       : ∃ (w : X.C (suc n)) (X.d n w = z.1 - z'.1)
       => TruncP.map (Coker.proj-equality.1 p) \lam s => (s.1, pmap __.1 s.2)
+
+    \lemma trivial {X : ChainComplex} {n : Nat} (c : \Pi (x : X.C n) -> x = 0) (h : Homology X n) : h = 0 \elim h
+      | in~ z => pmap in~ (ext (c z.1))
   }
 
 \record ChainMap (X Y : ChainComplex) {

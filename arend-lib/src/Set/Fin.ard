@@ -398,6 +398,15 @@
 \lemma fin-inc/=fin-raise {n m : Nat} (a : Fin n) (b : Fin m) (p : fin-inc {n} {m} a = fin-raise b) : Empty
   => \case inv (OrFin.ret_inl-lem a) *> pmap OrFin.aux p *> OrFin.ret_inr-lem b \with {}
 
+\func fin1 (d : Fin 1) : (0 : Fin 1) = d \elim d
+  | 0 => idp
+
+\func fin1-equiv : QEquiv {\Sigma} {Fin 1} \cowith
+  | f _ => 0
+  | ret _ => ()
+  | ret_f _ => idp
+  | f_sec => fin1
+
 \func finSet {A : FinSet} => A
 
 \lemma finiteDependentChoice {A : \Type} (R : A -> A -> \Type) (a0 : A) (step : \Pi (a : A) -> ∃ (b : A) (R a b)) (n : Nat)

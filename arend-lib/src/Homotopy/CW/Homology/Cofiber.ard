@@ -12,6 +12,7 @@
 \import Logic
 \import Paths
 \import Paths.Meta
+\import Set.Fin (fin1)
 
 \open PushoutData (ppglue, rec, homotopy)
 \open SeqColimit (pquotSC)
@@ -127,9 +128,6 @@
 \func toQuotient.{u} {S T : CW.{u}} (F : CellularMap S T) : SeqMap (RelCW.seq {CofSpan.{u} F}) (RelCW.seq {pairQuotient.{u} (cylPair.{u} F)}) \cowith
   | func => toQuotientAt.{u} F
   | natural => toQuotientNat.{u} F
-
-\func fin1 (d : Fin 1) : (0 : Fin 1) = d \elim d
-  | 0 => idp
 
 \func from-to.{u} {S T : CW.{u}} (F : CellularMap S T) (n : Nat) (r : OldCof.{u} F (suc n)) : fromQuotientAt.{u} F (suc n) (toQuotientAt.{u} F (suc n) r) = r
   => homotopy {_} {_} {_} {_} {_} {_} {\lam r => fromQuotientAt.{u} F (suc n) (toQuotientAt.{u} F (suc n) r)} {\lam r => r}

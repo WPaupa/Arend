@@ -12,9 +12,13 @@
 \import Homotopy.CW
 \import Homotopy.CW.Homology
 \import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Homology.Cofiber
 \import Homotopy.CW.Homology.Map
 \import Homotopy.CW.Homology.Relative
+\import Homotopy.CW.Maps.Approximation
 \import Homotopy.CW.Maps.Cellular
+\import Homotopy.CW.Structure.Finite (discrete)
+\import Homotopy.CW.Structure.Span
 \import Homotopy.Cofiber
 \import Homotopy.Pushout \hiding (PushoutPointed)
 \import Logic
@@ -51,7 +55,7 @@
   | quotient-collapse (n : Nat) (x : RelCW.stage {pair.total} (suc (suc n)))
     : inSC {cofib.seq} (toCof.func (suc (suc n)) (PairData.quotAt.{u} pair (suc (suc n)) x)) = inSC {cofib.seq} (cinc.func (suc (suc n)) (cylCollapse.func (suc (suc n)) x))
 } \where {
-  \func H.{u} (C : CW.{u}) (n : Nat) => Homology (cellular C) n
+  \func H.{u} (C : CW.{u}) (n : Nat) : AbGroup.{0} => Homology (cellular C) n
 
   \func hom.{u} {C D : CW.{u}} (G : CellularMap C D) (n : Nat) : AddGroupHom (H.{u} C n) (H.{u} D n) => ChainMap.homology {cellularMap G} n
 
@@ -104,4 +108,36 @@
                             (pmap (\lam (h : AddGroupHom (H.{u} M.target (suc n)) (H.{u} M.cofib (suc n))) => h v)
                                   (cellHomologyMap.of-approximation.{u} M.cinc (suc n) (M.cinc-approx (suc n)))))
          (chain-exact.{u} M n)
+
+  \func of.{u} {X Y : \Type u} (f : X -> Y) {S T : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {T.Space})
+               (F : CellularMap S T) (hF : \Pi (z : S.Space) -> realize F z = eY (f (eX.ret z))) : CofiberModel.{u} f \cowith
+    | source => S
+    | target => T
+    | cofib => spanCW.{u} F (toPointCW.{u} S)
+    | srcEquiv => eX
+    | tgtEquiv => eY
+    | cofEquiv => spanCW.model.{u} f (\lam _ => ()) eX eY discrete.point F hF (toPointCW.{u} S) (\lam z => inv (discrete.point.f_ret (realize (toPointCW.{u} S) z)))
+    | cmap => F
+    | cmap-approx _ x => hF (inSC x)
+    | cinc => span.left.{u} F (toPointCW.{u} S)
+    | cinc-approx _ t => inv (pmap (\lam w => (span.realization.{u} F (toPointCW.{u} S)).ret (pinl w)) (eY.f_ret (inSC t))
+                              *> pmap (span.realization.{u} F (toPointCW.{u} S)).ret (inv (span.realization.left.{u} F (toPointCW.{u} S) t))
+                              *> (span.realization.{u} F (toPointCW.{u} S)).ret_f (inSC (pinl t)))
+    | pair => PairData.of.{u} (cylPair.{u} F)
+    | cylCollapse => collapse.{u} F
+    | cylSection => span.right.{u} (SeqMap.id S.seq) F
+    | toCof => fromQuotient.{u} F
+    | fromCof => toQuotient.{u} F
+    | section-collapse n x => collapse.right-collapse.{u} F (suc (suc n)) x
+    | collapse-section _ _ => idp
+    | collapse-sub _ _ => idp
+    | to-from n y => pmap inSC (Homotopy.CW.Homology.Cofiber.from-to.{u} F (suc n) y)
+    | from-to n w => pmap inSC (Homotopy.CW.Homology.Cofiber.to-from.{u} F (suc n) w)
+    | quotient-collapse n x => Homotopy.CW.Homology.Cofiber.quotient-collapse.{u} F (suc n) x
 }
+
+\lemma cofiber-exact.{u} {X Y : \Type u} (f : X -> Y) (cX : IsFinCW.{u} X) (cY : IsCW.{u} Y) (cC : IsCW.{u} (Cof f)) (n : Nat)
+  : AbExactAt (CWHomology.map.{u} (suc n) (IsFinCW.toCW cX) cY f) (CWHomology.map.{u} (suc n) cY cC pinl) \elim cX, cY
+  | inP (_, ((S, bS), eX)), inP (T, eY) => \case approximateBounded bS (\lam z => eY (f (eX.ret z))) \with {
+    | inP (F, hF) => CofiberModel.exact.{u} (CofiberModel.of.{u} f eX eY F hF) (IsFinCW.toCW (inP (_, ((S, bS), eX)))) (inP (T, eY)) cC n
+  }
