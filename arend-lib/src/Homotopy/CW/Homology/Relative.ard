@@ -122,6 +122,27 @@
       => \lam {y y' : ZFree (P.rcount 0)} q => pmap __.2 (inv ((ZFree.uncons-equiv {P.rcount 0}).f_ret (AddGroupHom.negate (ZFree.augment y), y))
                                                          *> pmap ZFree.uncons q *> (ZFree.uncons-equiv {P.rcount 0}).f_ret (AddGroupHom.negate (ZFree.augment y'), y'))
 
+    \lemma inj0.{u} (P : CWPair.{u}) : IsInj (ChainMap.homology {pairCompare.{u} P} 0)
+      => \lam {h} {h'} q => inj0-at.{u} P h h' q
+
+    \lemma inj0-at.{u} (P : CWPair.{u}) (h h' : Homology (relative.{u} P) 0)
+                       (q : ChainMap.homology {pairCompare.{u} P} 0 h = ChainMap.homology {pairCompare.{u} P} 0 h') : h = h' \elim h, h'
+      | in~ z, in~ z' => \case Homology.class-eq-inv q \with {
+        | inP (w, r) => Homology.class-eq w (low-inj.{u} P (inv (comm0.{u} P w) *> r *> inv (AddGroupHom.func-minus {low.{u} P})))
+      }
+
+    \lemma quot-zero.{u} (P : CWPair.{u}) (x : ZFree (P.sub.count 0 Nat.+ P.rcount 0)) (a : ZFree.augment x = 0)
+      : ChainMap.f {qChain.{u} P} 0 x = low.{u} P (ChainSplit.cut {pairSplit.{u} P} 0 x)
+      => (ZFree.uncons-equiv {P.rcount 0}).isInj
+           (q-zero.{u} P x
+            *> pmap (\lam t => (t, (ZFree.split x).2)) (AddMonoid.negative-unique (ZFree.augment (ZFree.split x).2) (inv (ZFree.augment-split x) *> a) negative-right)
+            *> inv ((ZFree.uncons-equiv {P.rcount 0}).f_sec (negative (ZFree.augment (ZFree.split x).2), (ZFree.split x).2)))
+
+    \func lift.{u} (P : CWPair.{u}) (z : ZFree (suc (P.rcount 0))) (a : ZFree.augment z = 0) : \Sigma (y : ZFree (P.rcount 0)) (low.{u} P y = z)
+      => ((ZFree.uncons z).2, pmap (\lam t => (ZFree.uncons-equiv {P.rcount 0}).ret (t, (ZFree.uncons z).2))
+                                   (inv (AddMonoid.negative-unique (ZFree.augment (ZFree.uncons z).2) (inv (ZFree.augment-uncons z) *> a) negative-right))
+                              *> (ZFree.uncons-equiv {P.rcount 0}).ret_f z)
+
     \func equiv.{u} (P : CWPair.{u}) (n : Nat) : QEquiv (ChainMap.homology {pairCompare.{u} P} (suc n))
       => ChainMap.homology-equiv (pairCompare.{u} P) n idEquiv idEquiv (\case \elim n \with {
         | 0 => low-inj.{u} P
@@ -155,6 +176,10 @@
   | relCompare : ChainMap relComplex (cellular quotCW)
   | relCompare-equiv (n : Nat) : QEquiv (ChainMap.homology {relCompare} (suc n))
   | quot-factor : HomologyFactor (cellularMap {total} {quotCW} quotMap) relCompare relProj
+  | relCompare-inj0 : IsInj (ChainMap.homology {relCompare} 0)
+  | quot-zero (x : ZFree (total.count 0)) (a : ZFree.augment x = 0)
+    : ChainMap.f {cellularMap {total} {quotCW} quotMap} 0 x = ChainMap.f {relCompare} 0 (ChainMap.f {relProj} 0 x)
+  | quot-lift (z : ZFree (quotCW.count 0)) (a : ZFree.augment z = 0) : \Sigma (y : ChainComplex.C {relComplex} 0) (ChainMap.f {relCompare} 0 y = z)
 } \where {
   \func subAt.{u} {S : CW.{u}} (P : PairData.{u} S) (n : Nat) (s : S.stage n) : RelCW.stage {P.total} n => P.subInc.func n s
 
@@ -171,7 +196,55 @@
     | relCompare => pairCompare.{u} P
     | relCompare-equiv => pairCompare.equiv.{u} P
     | quot-factor => quotient-homology.factor.{u} P
+    | relCompare-inj0 q => pairCompare.inj0.{u} P q
+    | quot-zero => pairCompare.quot-zero.{u} P
+    | quot-lift => pairCompare.lift.{u} P
 }
+
+\func relativeMap.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q) : ChainMap (relative.{u} P) (relative.{u} Q)
+  => splitMap (ChainSplit.exact {pairSplit.{u} P}) (ChainSplit.exact {pairSplit.{u} Q}) (cellularMap M.1) (cellularMap {combined.{u} P} {combined.{u} Q} M.2)
+              (sub-square.{u} M)
+  \where {
+    \lemma sub-square.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q) (n : Nat) (a : ZFree (P.sub.count n))
+      : ChainMap.f {cellularMap {combined.{u} P} {combined.{u} Q} M.2} n (ChainMap.f {cellularMap {P.sub} {combined.{u} P} P.inc} n a)
+      = ChainMap.f {cellularMap {Q.sub} {combined.{u} Q} Q.inc} n (ChainMap.f {cellularMap M.1} n a)
+      => inv (pmap (\lam (h : AddGroupHom _ _) => h a) (cellularMap.comp {P.sub} {combined.{u} P} {combined.{u} Q} M.2 P.inc n))
+         *> pmap (\lam (h : AddGroupHom _ _) => h a) (cellularMap.homotopy {P.sub} {combined.{u} Q} M.3 n)
+         *> pmap (\lam (h : AddGroupHom _ _) => h a) (cellularMap.comp {P.sub} {Q.sub} {combined.{u} Q} Q.inc M.1 n)
+
+    \lemma quot-square.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q) (n : Nat) (x : ZFree (P.rcount (suc n)))
+      : ChainMap.f {relativeMap.{u} M} (suc n) x
+      = ChainMap.f {cellularMap {pairQuotient.{u} P} {pairQuotient.{u} Q} (pairQuotient.induced.{u} M)} (suc n) x
+      => inv (pmap (ChainMap.f {cellularMap {pairQuotient.{u} P} {pairQuotient.{u} Q} (pairQuotient.induced.{u} M)} (suc n))
+                   (inv (ChainSplit.cut-inj {pairSplit.{u} P} (suc n) x) *> inv (pmap (\lam (h : AddGroupHom _ _) => h (inj.{u} P n x)) (q-suc.{u} P n)))
+              *> inv (pmap (\lam (h : AddGroupHom _ _) => h (inj.{u} P n x))
+                           (cellularMap.comp {combined.{u} P} {pairQuotient.{u} P} {pairQuotient.{u} Q} (pairQuotient.induced.{u} M) (pairQuotient.map.{u} P) (suc n)))
+              *> pmap (\lam (h : AddGroupHom _ _) => h (inj.{u} P n x))
+                      (cellularMap.homotopy {combined.{u} P} {pairQuotient.{u} Q} (pairQuotient.induced.square.{u} M) (suc n))
+              *> pmap (\lam (h : AddGroupHom _ _) => h (inj.{u} P n x))
+                      (cellularMap.comp {combined.{u} P} {combined.{u} Q} {pairQuotient.{u} Q} (pairQuotient.map.{u} Q) M.2 (suc n))
+              *> pmap (\lam (h : AddGroupHom _ _) => h (ChainMap.f {cellularMap {combined.{u} P} {combined.{u} Q} M.2} (suc n) (inj.{u} P n x))) (q-suc.{u} Q n))
+
+    \func inj.{u} (P : CWPair.{u}) (n : Nat) (x : ZFree (P.rcount (suc n))) : ZFree (P.sub.count (suc n) Nat.+ P.rcount (suc n))
+      => ChainSplit.inj {pairSplit.{u} P} (suc n) x
+  }
+
+\record PairDataMap.{u} {S S' : CW.{u}} (D : PairData.{u} S) (D' : PairData.{u} S') {
+  | src : CellularMap S S'
+  | tot : CellularMap D.total D'.total
+  | quot : CellularMap D.quotCW D'.quotCW
+  | sub-square (n : Nat) (a : ZFree (S.count n))
+    : ChainMap.f {cellularMap tot} n (ChainMap.f {cellularMap D.subInc} n a) = ChainMap.f {cellularMap D'.subInc} n (ChainMap.f {cellularMap src} n a)
+  | quot-square (n : Nat) (x : ChainComplex.C {D.relComplex} (suc n))
+    : ChainMap.f {D'.relCompare} (suc n) (ChainMap.f {splitMap D.relSplit D'.relSplit (cellularMap src) (cellularMap tot) sub-square} (suc n) x)
+    = ChainMap.f {cellularMap quot} (suc n) (ChainMap.f {D.relCompare} (suc n) x)
+} \where
+  \func of.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q) : PairDataMap.{u} (PairData.of.{u} P) (PairData.of.{u} Q) \cowith
+    | src => M.1
+    | tot => M.2
+    | quot => pairQuotient.induced.{u} M
+    | sub-square => relativeMap.sub-square.{u} M
+    | quot-square => relativeMap.quot-square.{u} M
 
 \func quotRel.{u} (P : CWPair.{u}) (n : Nat) (j : Fin (P.rcount (suc n))) : CellMatch (qStep.{u} P (suc n)) (fin-raise j) j \cowith
   | center => pmap (\lam o => pinl (Nested.cen {pairCell.N.{u} P (suc n)} o)) (lem.{u} P (suc n) j)

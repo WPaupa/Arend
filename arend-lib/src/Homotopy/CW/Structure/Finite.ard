@@ -3,7 +3,10 @@
 \import Equiv
 \import Homotopy.CW
 \import Homotopy.Pushout
+\import Homotopy.Sphere
+\import Homotopy.Suspension
 \import Logic
+\import Logic.Unique
 \import Paths
 \import Set.Fin (fin1-equiv)
 
@@ -38,6 +41,12 @@
 
     \func point : QEquiv {\Sigma} {CW.Space {discrete 1}}
       => fin1-equiv `transQEquiv` RelCW.stableRealization {discrete 1} (bound 1)
+
+    \lemma point-isProp : isProp (CW.Space {discrete 1})
+      => \lam w w' => inv (point.f_sec w) *> point.f_sec w'
+
+    \lemma point-isSet : isSet (CW.Space {discrete 1})
+      => \lam w w' => isProp.=>isSet point-isProp w w'
   }
 
 \lemma zero-dim.{u} {X : \Type u} : IsFinCWUpTo 0 X <-> TruncP (\Sigma (N : Nat) (QEquiv {X} {Fin N}))
@@ -46,6 +55,26 @@
 
 \lemma empty-isFinCW : IsFinCWUpTo 0 Empty
   => zero-dim.2 (inP (0, emptyEquiv (\lam x => x) (\lam (c : Fin 0) => \case c \with {})))
+
+\func sphere0-equiv : QEquiv {Sphere 0} {Fin 2} \cowith
+  | f => sphere0-equiv.toFin
+  | ret => sphere0-equiv.point
+  | ret_f => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam x => sphere0-equiv.point (sphere0-equiv.toFin x)} {\lam x => x}
+                                  (\lam _ => idp) (\lam _ => idp) (\lam e => absurd e)
+  | f_sec => sphere0-equiv.back
+  \where {
+    \func toFin (x : Sphere 0) : Fin 2 => Susp.rec 0 1 (\lam (e : Empty) => absurd e) x
+
+    \func point (j : Fin 2) : Sphere 0 \elim j
+      | 0 => north
+      | 1 => south
+
+    \func back (j : Fin 2) : toFin (point j) = j \elim j
+      | 0 => idp
+      | 1 => idp
+  }
+
+\func sphere0-structure.{u} : HasCWStructure.{u} (Sphere 0) => (discrete 2, sphere0-equiv `transQEquiv` RelCW.stableRealization (discrete.bound 2))
 
 \lemma unit-isFinCW.{u} : IsFinCWUpTo.{u} 0 (\Sigma)
   => zero-dim.{u}.2 (inP (1, fin1-equiv))

@@ -1,7 +1,15 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.FreeAbelian (ZFree)
+\import Algebra.Group.GroupHom
+\import Algebra.Monoid
+\import Arith.Int
 \import Data.SeqColimit
 \import Data.SeqColimit.Map
 \import Equiv
 \import Homotopy.CW
+\import Homotopy.CW.Homology.Chain
+\import Relation.Equivalence (in~)
 \import Homotopy.CW.Maps.Cellular
 \import Homotopy.CW.Structure.Finite (discrete)
 \import Homotopy.CW.Structure.Pair
@@ -29,6 +37,30 @@
 \func toPointCW.{u} (S : CW.{u}) : CellularMap S (discrete 1) \cowith
   | func => toPointAt.{u} S
   | natural => toPointNat.{u} S
+  \where {
+    \func vertex.{u} (S : CW.{u}) (a : Fin (S.count 0)) : CellMatch (CellStep.of (toPointCW.{u} S) 0) a 0 \cowith
+      | center => idp
+      | bd s => \case s \with {}
+      | coh s => \case s \with {}
+
+    \lemma augment.{u} (S : CW.{u}) (z : ZFree (S.count 0)) : ZFree.one (ChainMap.f {cellularMap (toPointCW.{u} S)} 0 z) = ZFree.augment z
+      => pmap (\lam (h : AddGroupHom (ZFree (S.count 0)) IntRing) => h z)
+              (ZFree.hom-ext (ZFree.one AddGroupHom.∘ ChainMap.f {cellularMap (toPointCW.{u} S)} 0) ZFree.augment \lam a =>
+                 pmap ZFree.one (chainStep-cell (CellStep.of (toPointCW.{u} S) 0) (CellMatch.quotient (vertex.{u} S a))) *> ZFree.basis-diagonal {1} {0} *> inv (ZFree.augment-basis a))
+
+    \lemma augment-zero.{u} (S : CW.{u}) (z : ChainComplex.Cycles {cellular S} 0)
+                            (p : ChainMap.homology {cellularMap (toPointCW.{u} S)} 0 (in~ z) = AddMonoid.zro {Homology (cellular (discrete 1)) 0})
+      : ZFree.augment z.1 = 0
+      => inv (augment.{u} S z.1) *> pmap ZFree.one (point-zero.{u} S z p) *> AddGroupHom.func-zro
+
+    \lemma point-zero.{u} (S : CW.{u}) (z : ChainComplex.Cycles {cellular S} 0)
+                          (p : ChainMap.homology {cellularMap (toPointCW.{u} S)} 0 (in~ z) = AddMonoid.zro {Homology (cellular (discrete 1)) 0})
+      : ChainMap.f {cellularMap (toPointCW.{u} S)} 0 z.1 = AddMonoid.zro {ZFree 1}
+      => \case Homology.class-eq-inv {cellular (discrete 1)} {0} {ChainMap.cycles {cellularMap (toPointCW.{u} S)} 0 z} {AddMonoid.zro} p \with {
+        | inP (w, q) => inv (AddGroup.minus_zro {ZFree 1}) *> inv q *> pmap (ChainComplex.d {cellular (discrete 1)} 0) (ZFree.zero-trivial w)
+                        *> AddGroupHom.func-zro {ChainComplex.d {cellular (discrete 1)} 0}
+      }
+  }
 
 \func Cyl.{u} {S T : CW.{u}} (F : CellularMap S T) => RelCW.seq {span.{u} (SeqMap.id S.seq) F}
 

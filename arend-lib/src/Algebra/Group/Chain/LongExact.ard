@@ -225,3 +225,17 @@
                                                      = v.f n (B.d n (E.s (suc n) z.1)) - B'.d n (E'.s (suc n) (w.f (suc n) z.1))
       => (i'.f n).func-minus *> pmap2 (\lam x y => x - y) (inv (sq-i n _) *> pmap (v.f n) (E.lift-eq n z.1 z.2)) (E'.lift-eq n _ (w.comm-out (suc n) z.1 z.2))
   }
+
+\func splitMap {A B Q A' B' Q' : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} {i' : ChainMap A' B'} {p' : ChainMap B' Q'}
+               (E : SplitExact i p) (E' : SplitExact i' p') (u : ChainMap A A') (v : ChainMap B B')
+               (sq-i : \Pi (n : Nat) (a : A.C n) -> v.f n (i.f n a) = i'.f n (u.f n a)) : ChainMap Q Q' \cowith
+  | f n => p'.f n AddGroupHom.∘ v.f n AddGroupHom.∘ E.s n
+  | comm n x => p'.comm n (v.f (suc n) (E.s (suc n) x)) *> pmap (p'.f n) (v.comm n (E.s (suc n) x)) *> inv (sq-p E E' u v sq-i n (B.d n (E.s (suc n) x)))
+                *> pmap (\lam t => p'.f n (v.f n (E.s n t))) (inv (p.comm n (E.s (suc n) x)) *> pmap (Q.d n) (E.ps (suc n) x))
+  \where
+    \lemma sq-p {A B Q A' B' Q' : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} {i' : ChainMap A' B'} {p' : ChainMap B' Q'}
+                (E : SplitExact i p) (E' : SplitExact i' p') (u : ChainMap A A') (v : ChainMap B B')
+                (sq-i : \Pi (n : Nat) (a : A.C n) -> v.f n (i.f n a) = i'.f n (u.f n a)) (n : Nat) (b : B.C n)
+      : p'.f n (v.f n (E.s n (p.f n b))) = p'.f n (v.f n b)
+      => pmap (\lam t => p'.f n (v.f n t)) (E.sp n b) *> pmap (p'.f n) (v.f n).func-minus *> (p'.f n).func-minus
+         *> pmap (_ -) (pmap (p'.f n) (sq-i n _) *> E'.pi n _) *> AddGroup.minus_zro

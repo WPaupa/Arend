@@ -1,0 +1,259 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.Exact
+\import Algebra.Group.FreeAbelian (ZFree)
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Arith.Int
+\import Category (Iso, idIso)
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Homology
+\import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Homology.Cofiber (toPointCW)
+\import Homotopy.CW.Homology.Exact
+\import Homotopy.CW.Homology.Map
+\import Homotopy.CW.Homology.Suspension (suspAt, suspModel)
+\import Homotopy.CW.Maps.Approximation
+\import Homotopy.CW.Maps.Cellular
+\import Homotopy.CW.Structure.Finite (discrete, sphere0-structure, unit-isCW, unit-structure)
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
+\import Homotopy.Suspension
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Paths.Meta
+
+\open CofiberModel (H, hom)
+\open PushoutData (ppglue)
+\open ->* (∘*)
+
+\record CWHomologyTheory.{u} {
+  | E : Int -> \Pi (X : Pointed.{u}) -> IsCW.{u} X -> AbGroup.{u}
+  | push (n : Int) {X Y : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (f : X ->* Y) : AddGroupHom (E n X cX) (E n Y cY)
+  | push-id (n : Int) {X : Pointed.{u}} (cX : IsCW.{u} X) : push n cX cX (->*.id {X}) = AddGroupHom.id
+  | push-comp (n : Int) {X Y Z : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (cZ : IsCW.{u} Z) (f : X ->* Y) (g : Y ->* Z)
+    : push n cX cZ (g ∘* f) = push n cY cZ g AddGroupHom.∘ push n cX cY f
+  | susp (n : Int) {X : Pointed.{u}} (cX : IsFinCW.{u} X) (cS : IsCW.{u} (Susp.pointed X))
+    : Iso {AbGroupCat.{u}} {E n X (IsFinCW.toCW cX)} {E (isuc n) (Susp.pointed X) cS}
+  | susp-natural (n : Int) {X Y : Pointed.{u}} (cX : IsFinCW.{u} X) (cY : IsFinCW.{u} Y) (cSX : IsCW.{u} (Susp.pointed X)) (cSY : IsCW.{u} (Susp.pointed Y)) (f : X ->* Y)
+    : Iso.f {susp n cY cSY} AddGroupHom.∘ push n (IsFinCW.toCW cX) (IsFinCW.toCW cY) f = push (isuc n) cSX cSY (Susp-Func f) AddGroupHom.∘ Iso.f {susp n cX cSX}
+  | exact (n : Int) {X Y : Pointed.{u}} (cX : IsFinCW.{u} X) (cY : IsCW.{u} Y) (f : X ->* Y) (cC : IsCW.{u} (Cof.pointed f))
+    : AbExactAt (push n (IsFinCW.toCW cX) cY f) (push n cY cC (Cof.inc f))
+}
+
+\record OrdinaryCWHomologyTheory.{u} \extends CWHomologyTheory.{u}
+  | dimension (n : Int) (n/=0 : n /= 0) (c : IsCW.{u} (Sphere.pointed 0)) (x : E n (Sphere.pointed 0) c) : x = AddMonoid.zro {E n (Sphere.pointed 0) c}
+
+\func cellularHomology.{u} : OrdinaryCWHomologyTheory.{u} \cowith
+  | E => cellE.{u}
+  | push => cellPush.{u}
+  | push-id => cellPush-id.{u}
+  | push-comp => cellPush-comp.{u}
+  | susp => cellSusp.{u}
+  | susp-natural => cellSusp-natural.{u}
+  | exact => cellExact.{u}
+  | dimension => cellDimension.{u}
+  \where {
+    \lemma cellPush-id.{u} (d : Int) {X : Pointed.{u}} (cX : IsCW.{u} X) : cellPush.{u} d cX cX (->*.id {X}) = AddGroupHom.id \elim d
+      | pos n => AddGroupHom.equals (ReducedCWHomology.map-id.{u} n cX)
+      | neg (suc _) => idp
+
+    \lemma cellPush-comp.{u} (d : Int) {X Y Z : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (cZ : IsCW.{u} Z) (f : X ->* Y) (g : Y ->* Z)
+      : cellPush.{u} d cX cZ (g ∘* f) = cellPush.{u} d cY cZ g AddGroupHom.∘ cellPush.{u} d cX cY f \elim d
+      | pos n => AddGroupHom.equals (ReducedCWHomology.map-comp.{u} n cX cY cZ g.1 f.1)
+      | neg (suc _) => idp
+
+    \lemma cellSusp-natural.{u} (d : Int) {X Y : Pointed.{u}} (cX : IsFinCW.{u} X) (cY : IsFinCW.{u} Y) (cSX : IsCW.{u} (Susp.pointed X)) (cSY : IsCW.{u} (Susp.pointed Y)) (f : X ->* Y)
+      : Iso.f {cellSusp.{u} d cY cSY} AddGroupHom.∘ cellPush.{u} d (IsFinCW.toCW cX) (IsFinCW.toCW cY) f
+      = cellPush.{u} (isuc d) cSX cSY (Susp-Func f) AddGroupHom.∘ Iso.f {cellSusp.{u} d cX cSX} \elim d
+      | pos n => exts \lam y => ext (suspension.natural.{u} n f.1 cX cY cSX cSY y)
+      | neg 1 => exts \lam _ => susp-bottom.{u} Y (IsFinCW.toCW cY) cSY _ *> inv (susp-bottom.{u} Y (IsFinCW.toCW cY) cSY _)
+      | neg (suc (suc _)) => idp
+
+    \lemma cellExact.{u} (d : Int) {X Y : Pointed.{u}} (cX : IsFinCW.{u} X) (cY : IsCW.{u} Y) (f : X ->* Y) (cC : IsCW.{u} (Cof.pointed f))
+      : AbExactAt (cellPush.{u} d (IsFinCW.toCW cX) cY f) (cellPush.{u} d cY cC (Cof.inc f)) \elim d
+      | pos 0 => reduced-exact0.{u} f.1 cX cY cC
+      | pos (suc n) => reduced-exact.{u} n f.1 cX cY cC
+      | neg (suc _) => \lam _ => (\lam _ => inP ((), idp), \lam _ => idp)
+
+    \lemma cellDimension.{u} (d : Int) (d/=0 : d /= 0) (c : IsCW.{u} (Sphere.pointed 0)) (x : cellE.{u} d (Sphere.pointed 0) c)
+      : x = AddMonoid.zro {cellE.{u} d (Sphere.pointed 0) c} \elim d
+      | pos 0 => absurd (d/=0 idp)
+      | pos (suc n) => sphere-trivial.{u} n c x
+      | neg (suc _) => idp
+
+    \func cellE.{u} (d : Int) (X : Pointed.{u}) (cX : IsCW.{u} X) : AbGroup.{u} \elim d
+      | pos n => ReducedCWHomology.{u} n cX
+      | neg (suc _) => TrivialAbGroup
+
+    \func cellPush.{u} (d : Int) {X Y : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (f : X ->* Y) : AddGroupHom (cellE.{u} d X cX) (cellE.{u} d Y cY) \elim d
+      | pos n => ReducedCWHomology.map.{u} n cX cY f.1
+      | neg (suc _) => AddGroupHom.id
+
+    \func cellSusp.{u} (d : Int) {X : Pointed.{u}} (cX : IsFinCW.{u} X) (cS : IsCW.{u} (Susp.pointed X))
+      : Iso {AbGroupCat.{u}} {cellE.{u} d X (IsFinCW.toCW cX)} {cellE.{u} (isuc d) (Susp.pointed X) cS} \elim d
+      | pos n => liftIso.{u} (Iso.composite (suspension.{u} n cX cS) (Iso.reverse {ReducedCWHomology.unreduced.{u} n cS}))
+      | neg 1 => Iso.reverse {TrivialAbGroup.trivialIso.{u} (ReducedCWHomology.{u} 0 cS) (susp-bottom.{u} X (IsFinCW.toCW cX) cS)}
+      | neg (suc (suc _)) => idIso
+
+    \func liftIso.{u} {A B : AbGroup.{0}} (e : Iso {AbGroupCat.{0}} {A} {B}) : Iso {AbGroupCat.{u}} {A} {B} \cowith
+      | f => e.f
+      | hinv => e.hinv
+      | hinv_f => e.hinv_f
+      | f_hinv => e.f_hinv
+
+    \lemma sphere-trivial.{u} (n : Nat) (c : IsCW.{u} (Sphere 0)) (x : ReducedCWHomology.{u} (suc n) c) : x = AddMonoid.zro {ReducedCWHomology.{u} (suc n) c}
+      => ext (inv (CWHomology.compare-inverse.{u} (suc n) c sphere0-structure.{u} x.1)
+              *> pmap (Iso.f {CWHomology.compare.{u} (suc n) c sphere0-structure.{u}})
+                      (Homology.trivial {cellular (discrete 2)} {suc n} ZFree.zero-trivial (Iso.hinv {CWHomology.compare.{u} (suc n) c sphere0-structure.{u}} x.1))
+              *> AddMonoidHom.func-zro)
+  }
+
+\lemma reduced-exact.{u} (n : Nat) {X Y : \Type u} (f : X -> Y) (cX : IsFinCW.{u} X) (cY : IsCW.{u} Y) (cC : IsCW.{u} (Cof f))
+  : AbExactAt (ReducedCWHomology.map.{u} (suc n) (IsFinCW.toCW cX) cY f) (ReducedCWHomology.map.{u} (suc n) cY cC pinl)
+  => \lam _ => (\lam p => TruncP.map (AbExactAt.lift (cofiber-exact.{u} f cX cY cC n) (pmap __.1 p))
+                                     (\lam s => ((s.1, ReducedCWHomology.point-trivial.{u} n _), ext s.2)),
+                \lam e => \case e \with {
+                  | inP (u, q) => ext (pmap (CWHomology.map.{u} (suc n) cY cC pinl) (inv (pmap __.1 q)) *> AbExactAt.zero (cofiber-exact.{u} f cX cY cC n) u.1)
+                })
+
+\lemma reduced-exact0.{u} {X Y : \Type u} (f : X -> Y) (cX : IsFinCW.{u} X) (cY : IsCW.{u} Y) (cC : IsCW.{u} (Cof f))
+  : AbExactAt (ReducedCWHomology.map.{u} 0 (IsFinCW.toCW cX) cY f) (ReducedCWHomology.map.{u} 0 cY cC pinl)
+  => \lam v => (\lam p => lift0.{u} f cX cY cC v p,
+                \lam e => \case e \with {
+                  | inP (u, q) => inv (pmap (ReducedCWHomology.map.{u} 0 cY cC pinl) q) *> null0.{u} f cX cY cC u
+                })
+  \where {
+    \lemma null0.{u} {X Y : \Type u} (f : X -> Y) (cX : IsFinCW.{u} X) (cY : IsCW.{u} Y) (cC : IsCW.{u} (Cof f)) (u : ReducedCWHomology.{u} 0 (IsFinCW.toCW cX))
+      : ReducedCWHomology.map.{u} 0 cY cC pinl (ReducedCWHomology.map.{u} 0 (IsFinCW.toCW cX) cY f u) = AddMonoid.zro {ReducedCWHomology.{u} 0 cC}
+      => ext (inv (pmap (\lam (h : AddGroupHom _ _) => h u.1) (CWHomology.map-comp.{u} 0 (IsFinCW.toCW cX) cY cC pinl f))
+              *> pmap (\lam (h : AddGroupHom _ _) => h u.1) (CWHomology.map-homotopy.{u} 0 (IsFinCW.toCW cX) cC (\lam x => ppglue x))
+              *> pmap (\lam (h : AddGroupHom _ _) => h u.1) (CWHomology.map-comp.{u} 0 (IsFinCW.toCW cX) unit-isCW.{u} cC (\lam _ => pinr ()) (\lam _ => ()))
+              *> pmap (CWHomology.map.{u} 0 unit-isCW.{u} cC (\lam _ => pinr ())) u.2 *> AddMonoidHom.func-zro)
+
+    \lemma lift0.{u} {X Y : \Type u} (f : X -> Y) (cX : IsFinCW.{u} X) (cY : IsCW.{u} Y) (cC : IsCW.{u} (Cof f)) (v : ReducedCWHomology.{u} 0 cY)
+                     (p : ReducedCWHomology.map.{u} 0 cY cC pinl v = AddMonoid.zro {ReducedCWHomology.{u} 0 cC})
+      : ∃ (u : ReducedCWHomology.{u} 0 (IsFinCW.toCW cX)) (ReducedCWHomology.map.{u} 0 (IsFinCW.toCW cX) cY f u = v)
+      => \case cX, cY \with {
+        | inP (_, ((S, bS), eX)), inP (T, eY) => \case approximateBounded bS (\lam z => eY (f (eX.ret z))) \with {
+          | inP (F, hF) => TruncP.map (CofiberModel.exact0.{u} (CofiberModel.of.{u} f eX eY F hF) (Iso.hinv {CWHomology.compare.{u} 0 cY (T, eY)} v.1)
+                                                            (tgt-reduced.{u} cY eY v) (cinc-zero.{u} (CofiberModel.of.{u} f eX eY F hF) cY cC v p))
+              \lam s => ((Iso.f {CWHomology.compare.{u} 0 (IsFinCW.toCW cX) (S, eX)} s.1,
+                          pmap (\lam (h : AddGroupHom _ _) => h (Iso.f {CWHomology.compare.{u} 0 (IsFinCW.toCW cX) (S, eX)} s.1))
+                               (CWHomology.map-comp.{u} 0 (IsFinCW.toCW cX) cY unit-isCW.{u} (\lam _ => ()) f)
+                          *> pmap (CWHomology.map.{u} 0 cY unit-isCW.{u} (\lam _ => ())) (image.{u} f cX cY eX eY F hF v s.1 s.2) *> v.2),
+                         ext (image.{u} f cX cY eX eY F hF v s.1 s.2))
+        }
+      }
+
+    \lemma image.{u} {X Y : \Type u} (f : X -> Y) (cX : IsFinCW.{u} X) (cY : IsCW.{u} Y) {S T : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {T.Space})
+                     (F : CellularMap S T) (hF : \Pi (z : S.Space) -> realize F z = eY (f (eX.ret z))) (v : ReducedCWHomology.{u} 0 cY) (x : H.{u} S 0)
+                     (q : hom.{u} F 0 x = Iso.hinv {CWHomology.compare.{u} 0 cY (T, eY)} v.1)
+      : CWHomology.map.{u} 0 (IsFinCW.toCW cX) cY f (Iso.f {CWHomology.compare.{u} 0 (IsFinCW.toCW cX) (S, eX)} x) = v.1
+      => CWHomology.natural.{u} 0 (IsFinCW.toCW cX) cY f (S, eX) (T, eY) x
+         *> pmap (Iso.f {CWHomology.compare.{u} 0 cY (T, eY)})
+                 (pmap (\lam (h : AddGroupHom _ _) => h x) (cellHomologyMap.of-approximation.{u} F 0 (\lam z => hF (inSC z))) *> q)
+         *> CWHomology.compare-inverse.{u} 0 cY (T, eY) v.1
+
+    \lemma tgt-reduced.{u} {Y : \Type u} (cY : IsCW.{u} Y) {T : CW.{u}} (eY : QEquiv {Y} {T.Space}) (v : ReducedCWHomology.{u} 0 cY)
+      : hom.{u} (toPointCW.{u} T) 0 (Iso.hinv {CWHomology.compare.{u} 0 cY (T, eY)} v.1) = AddMonoid.zro {H.{u} (discrete 1) 0}
+      => inv (pmap (\lam (h : AddGroupHom _ _) => h (Iso.hinv {CWHomology.compare.{u} 0 cY (T, eY)} v.1)) (suspModel.toPoint-eq.{u} eY 0))
+         *> ReducedCWHomology.compare.backward.{u} 0 cY (T, eY) unit-structure.{u} v.1 v.2
+
+    \lemma cinc-zero.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (cY : IsCW.{u} Y) (cC : IsCW.{u} (Cof f))
+                         (v : ReducedCWHomology.{u} 0 cY) (p : ReducedCWHomology.map.{u} 0 cY cC pinl v = AddMonoid.zro {ReducedCWHomology.{u} 0 cC})
+      : hom.{u} M.cinc 0 (Iso.hinv {CWHomology.compare.{u} 0 cY (M.target, M.tgtEquiv)} v.1) = AddMonoid.zro {H.{u} M.cofib 0}
+      => inv (CWHomology.inverse-compare.{u} 0 cC (M.cofib, M.cofEquiv) _)
+         *> pmap (Iso.hinv {CWHomology.compare.{u} 0 cC (M.cofib, M.cofEquiv)})
+                 (inv (pmap (Iso.f {CWHomology.compare.{u} 0 cC (M.cofib, M.cofEquiv)})
+                            (pmap (\lam (h : AddGroupHom _ _) => h (Iso.hinv {CWHomology.compare.{u} 0 cY (M.target, M.tgtEquiv)} v.1))
+                                  (cellHomologyMap.of-approximation.{u} M.cinc 0 (M.cinc-approx 0))))
+                  *> inv (CWHomology.natural.{u} 0 cY cC pinl (M.target, M.tgtEquiv) (M.cofib, M.cofEquiv) _)
+                  *> pmap (CWHomology.map.{u} 0 cY cC pinl) (CWHomology.compare-inverse.{u} 0 cY (M.target, M.tgtEquiv) v.1)
+                  *> pmap __.1 p)
+         *> AddMonoidHom.func-zro
+  }
+
+\lemma susp-bottom.{u} (X : Pointed.{u}) (cX : IsCW.{u} X) (cS : IsCW.{u} (Susp X)) (y : ReducedCWHomology.{u} 0 cS) : y = AddMonoid.zro {ReducedCWHomology.{u} 0 cS}
+  => \case cX \with {
+    | inP (S, eX) => inv (suspAt.section.{u} 0 cS (CofiberModel.cofEquiv {suspModel.{u} eX}) y)
+                     *> pmap (Iso.f {ReducedCWHomology.compare.{u} 0 cS (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX}) unit-structure.{u}})
+                             (cofib-zero.{u} X eX (Iso.hinv {ReducedCWHomology.compare.{u} 0 cS (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX}) unit-structure.{u}} y))
+                     *> AddMonoidHom.func-zro
+  }
+  \where {
+    \lemma cofib-zero.{u} (X : Pointed.{u}) {S : CW.{u}} (eX : QEquiv {X} {S.Space})
+                          (x : ReducedCWHomology.Cells.{u} 0 (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX}) unit-structure.{u})
+      : x = AddMonoid.zro {ReducedCWHomology.Cells.{u} 0 (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX}) unit-structure.{u}}
+      => ext (CofiberModel.cofib-trivial.{u} (suspModel.{u} eX) (base-onto.{u} X eX) x.1
+                (inv (pmap (\lam (h : AddGroupHom _ _) => h x.1) (suspModel.toPoint-eq.{u} {Susp X} {CofiberModel.cofib {suspModel.{u} eX}} (CofiberModel.cofEquiv {suspModel.{u} eX}) 0)) *> x.2))
+
+    \lemma base-onto.{u} (X : Pointed.{u}) {S : CW.{u}} (eX : QEquiv {X} {S.Space}) (c : H.{u} (discrete 1) 0)
+      : ∃ (x : H.{u} S 0) (hom.{u} (toPointCW.{u} S) 0 x = c)
+      => inP (structureMap.{u} 0 (\lam (_ : \Sigma) => base {X}) unit-structure.{u} (S, eX) c,
+              inv (pmap (\lam (h : AddGroupHom _ _) => h _) (suspModel.toPoint-eq.{u} eX 0))
+              *> structureMap.comp.{u} 0 (\lam (_ : X) => ()) (\lam (_ : \Sigma) => base {X}) unit-structure.{u} (S, eX) unit-structure.{u} c
+              *> pmap (\lam (h : AddGroupHom _ _) => h c) (structureMap.id.{u} 0 unit-structure.{u}))
+  }
+
+\func suspension.{u} (n : Nat) {X : \Type u} (cX : IsFinCW.{u} X) (cS : IsCW.{u} (Susp X))
+  : Iso {AbGroupCat.{0}} {ReducedCWHomology.{u} n (IsFinCW.toCW cX)} {CWHomology.{u} (suc n) cS}
+  => (TruncP.rec-set cX (byStructure.{u} n cX cS) (independent.{u} n cX cS)).1
+  \where {
+    \func byStructure.{u} (n : Nat) {X : \Type u} (cX : IsFinCW.{u} X) (cS : IsCW.{u} (Susp X)) (s : HasFinCWStructure.{u} X)
+      : Iso {AbGroupCat.{0}} {ReducedCWHomology.{u} n (IsFinCW.toCW cX)} {CWHomology.{u} (suc n) cS}
+      => suspAt.{u} n (IsFinCW.toCW cX) cS s.2.2
+
+    \lemma independent.{u} (n : Nat) {X : \Type u} (cX : IsFinCW.{u} X) (cS : IsCW.{u} (Susp X)) (s t : HasFinCWStructure.{u} X)
+      : byStructure.{u} n cX cS s = byStructure.{u} n cX cS t
+      => Iso.equals (byStructure.{u} n cX cS s) (byStructure.{u} n cX cS t) (AddGroupHom.equals (agree.{u} n (IsFinCW.toCW cX) cS s.2.1.2 s.2.2 t.2.2))
+
+    \lemma agree.{u} (n : Nat) {X : \Type u} (cX : IsCW.{u} X) (cS : IsCW.{u} (Susp X)) {S T : CW.{u}} {d : Nat} (b : S.Bound d)
+                     (eX : QEquiv {X} {S.Space}) (eX' : QEquiv {X} {T.Space}) (y : ReducedCWHomology.{u} n cX)
+      : Iso.f {suspAt.{u} n cX cS eX} y = Iso.f {suspAt.{u} n cX cS eX'} y
+      => inv (map-id.{u} n cS (Iso.f {suspAt.{u} n cX cS eX} y)) *> inv (cell-natural.{u} n (\lam x => x) cX cX cS cS b eX eX' y)
+         *> pmap (Iso.f {suspAt.{u} n cX cS eX'}) (ReducedCWHomology.map-id.{u} n cX y)
+
+    \lemma cell-natural.{u} (n : Nat) {X Y : \Type u} (f : X -> Y) (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (cSX : IsCW.{u} (Susp X)) (cSY : IsCW.{u} (Susp Y))
+                            {S T : CW.{u}} {d : Nat} (b : S.Bound d) (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {T.Space}) (y : ReducedCWHomology.{u} n cX)
+      : Iso.f {suspAt.{u} n cY cSY eY} (ReducedCWHomology.map.{u} n cX cY f y) = CWHomology.map.{u} (suc n) cSX cSY (Susp.map f) (Iso.f {suspAt.{u} n cX cSX eX} y)
+      => \case approximateBounded b (\lam z => eY (f (eX.ret z))) \with {
+        | inP (G, hG) => suspAt.natural.{u} n f cX cY cSX cSY eX eY G hG y
+      }
+
+    \lemma map-id.{u} (n : Nat) {X : \Type u} (cS : IsCW.{u} (Susp X)) (w : CWHomology.{u} (suc n) cS)
+      : CWHomology.map.{u} (suc n) cS cS (Susp.map (\lam (x : X) => x)) w = w
+      => pmap (\lam (h : AddGroupHom _ _) => h w) (CWHomology.map-homotopy.{u} (suc n) cS cS susp-id *> CWHomology.map-id.{u} (suc n) cS)
+
+    \func susp-id {X : \Type} (x : Susp X) : Susp.map (\lam (x : X) => x) x = x
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Susp.map (\lam (x : X) => x)} {\lam x => x} (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _) x
+
+    \lemma eval.{u} (n : Nat) {X : \Type u} (cX : IsFinCW.{u} X) (cS : IsCW.{u} (Susp X)) (s : HasFinCWStructure.{u} X)
+      : suspension.{u} n cX cS = byStructure.{u} n cX cS s
+      => \case (TruncP.rec-set cX (byStructure.{u} n cX cS) (independent.{u} n cX cS)).2 \with {
+        | inP (a, q) => inv q *> independent.{u} n cX cS a s
+      }
+
+    \lemma eval-at.{u} (n : Nat) {X : \Type u} (cX : IsFinCW.{u} X) (cS : IsCW.{u} (Susp X)) (s : HasFinCWStructure.{u} X) (y : ReducedCWHomology.{u} n (IsFinCW.toCW cX))
+      : Iso.f {suspension.{u} n cX cS} y = Iso.f {suspAt.{u} n (IsFinCW.toCW cX) cS s.2.2} y
+      => pmap (\lam (e : Iso {AbGroupCat.{0}} {ReducedCWHomology.{u} n (IsFinCW.toCW cX)} {CWHomology.{u} (suc n) cS}) => Iso.f {e} y) (eval.{u} n cX cS s)
+
+    \lemma natural.{u} (n : Nat) {X Y : \Type u} (f : X -> Y) (cX : IsFinCW.{u} X) (cY : IsFinCW.{u} Y) (cSX : IsCW.{u} (Susp X)) (cSY : IsCW.{u} (Susp Y))
+                       (y : ReducedCWHomology.{u} n (IsFinCW.toCW cX))
+      : Iso.f {suspension.{u} n cY cSY} (ReducedCWHomology.map.{u} n (IsFinCW.toCW cX) (IsFinCW.toCW cY) f y)
+      = CWHomology.map.{u} (suc n) cSX cSY (Susp.map f) (Iso.f {suspension.{u} n cX cSX} y)
+      => \case cX, cY \with {
+        | inP s, inP t => eval-at.{u} n cY cSY t _
+                          *> cell-natural.{u} n f (IsFinCW.toCW cX) (IsFinCW.toCW cY) cSX cSY s.2.1.2 s.2.2 t.2.2 y
+                          *> inv (pmap (CWHomology.map.{u} (suc n) cSX cSY (Susp.map f)) (eval-at.{u} n cX cSX s y))
+      }
+  }

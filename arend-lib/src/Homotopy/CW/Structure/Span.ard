@@ -361,6 +361,26 @@
       | func n y => F.func n (srcBuild S n (pinl y))
       | natural n y => F.natural n (srcBuild S n (pinl y))
 
+    \func srcFunc.{u} {S S' : RelCW.{u}} (a : SeqMap S.seq S'.seq) (n : Nat) (y : src S n) : src S' n \elim n
+      | 0 => a.func 0 y
+      | suc k => a.func k y
+
+    \func srcNat.{u} {S S' : RelCW.{u}} (a : SeqMap S.seq S'.seq) (n : Nat) (y : src S n)
+      : srcBuild S' n (pinl (srcFunc a n y)) = a.func n (srcBuild S n (pinl y)) \elim n
+      | 0 => idp
+      | suc k => a.natural k y
+
+    \func srcSeqMap.{u} {S S' : RelCW.{u}} (a : SeqMap S.seq S'.seq) : SeqMap (srcSeq S) (srcSeq S') \cowith
+      | func => srcFunc a
+      | natural => srcNat a
+
+    \func map.{u} {S T U S' T' U' : RelCW.{u}} {F : SeqMap S.seq T.seq} {G : SeqMap S.seq U.seq} {F' : SeqMap S'.seq T'.seq} {G' : SeqMap S'.seq U'.seq}
+                  (a : SeqMap S.seq S'.seq) (b : SeqMap T.seq T'.seq) (c : SeqMap U.seq U'.seq)
+                  (hF : SeqMap.Homotopy (SeqMap.comp (srcMap F') (srcSeqMap a)) (SeqMap.comp b (srcMap F)))
+                  (hG : SeqMap.Homotopy (SeqMap.comp (srcMap G') (srcSeqMap a)) (SeqMap.comp c (srcMap G)))
+      : SeqMap (RelCW.seq {span F G}) (RelCW.seq {span F' G'})
+      => spanSeq.map {srcSeq S} {T.seq} {U.seq} {srcSeq S'} {T'.seq} {U'.seq} {srcMap F} {srcMap G} {srcMap F'} {srcMap G'} (srcSeqMap a) b c hF hG
+
     \func finalCorner.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat) (x : SpanStep.Old {step F G n})
       : Seq.f {spanSeq (srcMap F) (srcMap G)} x = final F G n (SpanStep.cornerMap {step F G n} x)
       => homotopy {_} {_} {_} {_} {_} {_} {\lam x => Seq.f {spanSeq (srcMap F) (srcMap G)} x} {\lam x => final F G n (SpanStep.cornerMap {step F G n} x)}
@@ -393,6 +413,29 @@
         \func right.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) {n : Nat} (d : U.stage n)
           : realization F G (inSC (pinr d)) = pinr (inSC d)
           => pmap (back F G).ret (colimitPushout.right (srcMap F) (srcMap G) d) *> (back F G).ret_f (pinr (inSC d))
+
+        \func point.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) (n : Nat) (y : SpanStep.Old {step F G (suc n)})
+          : PushoutData (realize F) (realize G)
+          => rec (\lam b => pinl (inSC b)) (\lam d => pinr (inSC d))
+                 (\lam a => pmap pinl (srcSq F (inSC {S.seq} {n} a)) *> ppglue (inSC a) *> inv (pmap pinr (srcSq G (inSC {S.seq} {n} a)))) y
+
+        \func onStage.{u} {S T U : RelCW.{u}} (F : SeqMap S.seq T.seq) (G : SeqMap S.seq U.seq) {n : Nat} (y : SpanStep.Old {step F G (suc n)})
+          : realization F G (inSC {RelCW.seq {span F G}} {suc n} y) = point F G n y
+          => pmap (back F G).ret (colimitPushout.onStage (srcMap F) (srcMap G) y)
+             *> homotopy {_} {_} {_} {_} {_} {_} {\lam y => (back F G).ret (colimitPushout.point (srcMap F) (srcMap G) (suc n) y)} {point F G n}
+                         (\lam b => (back F G).ret_f (pinl (inSC b))) (\lam d => (back F G).ret_f (pinr (inSC d)))
+                         (\lam a => retGlue (back F G) (pmap pinl (srcSq F (inSC {S.seq} {n} a))) (ppglue (inSC {S.seq} {n} a)) (pmap pinr (srcSq G (inSC {S.seq} {n} a)))
+                                            (unglue pinl pinr (srcSq F (inSC {S.seq} {n} a)) (srcSq G (inSC {S.seq} {n} a)) (ppglue (inSC {srcSeq S} {suc n} a)))) y
+          \where {
+            \func retGlue {P Q : \Type} (e : QEquiv {P} {Q}) {p0 p1 p2 p3 : P} (L : p0 = p1) (Gp : p1 = p2) (Rr : p3 = p2) {gq : e p0 = e p3}
+                          (eq : gq = pmap e L *> pmap e Gp *> inv (pmap e Rr))
+              : e.ret_f p0 *> (L *> (Gp *> inv Rr)) = pmap e.ret gq *> e.ret_f p3 \elim L, Gp, Rr, eq
+              | idp, idp, idp, idp => inv (idp_*> _)
+
+            \func unglue {A B Q : \Type} (lQ : A -> Q) (rQ : B -> Q) {a0 a1 : A} (sF : a1 = a0) {b0 b1 : B} (sG : b1 = b0) (gQ : lQ a1 = rQ b1)
+              : gQ = pmap lQ sF *> ((pmap lQ (inv sF) *> gQ) *> pmap rQ sG) *> inv (pmap rQ sG) \elim sF, sG
+              | idp, idp => inv (idp_*> _ *> idp_*> gQ)
+          }
       }
 
     \lemma srcBound.{u} {S : RelCW.{u}} {a d : Nat} (bS : S.Bound a) (p : a < d) (k : Nat) (q : d < k) : srcCount S k = 0 \elim k
@@ -416,10 +459,17 @@
                     (F : CellularMap S T) (hF : \Pi (z : S.Space) -> realize F z = eY (f (eX.ret z)))
                     (G : CellularMap S U) (hG : \Pi (z : S.Space) -> realize G z = eZ (g (eX.ret z)))
       : QEquiv {PushoutData f g} {CW.Space {spanCW F G}}
-      => IsEquiv.toQEquiv (congr.isEquiv.{u} f g (realize F) (realize G) eX eY eZ
-                                             (\lam x => hF (eX x) *> pmap (\lam x' => eY (f x')) (eX.ret_f x))
-                                             (\lam x => hG (eX x) *> pmap (\lam x' => eZ (g x')) (eX.ret_f x)))
-         `transQEquiv` symQEquiv (span.realization F G)
+      => first f g eX eY eZ F hF G hG `transQEquiv` symQEquiv (span.realization F G)
+      \where
+        \func first.{u} {X Y Z : \Type u} (f : X -> Y) (g : X -> Z) {S T U : CW.{u}}
+                        (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {T.Space}) (eZ : QEquiv {Z} {U.Space})
+                        (F : CellularMap S T) (hF : \Pi (z : S.Space) -> realize F z = eY (f (eX.ret z)))
+                        (G : CellularMap S U) (hG : \Pi (z : S.Space) -> realize G z = eZ (g (eX.ret z)))
+          : QEquiv (congr f g (realize F) (realize G) eX eY eZ (\lam x => hF (eX x) *> pmap (\lam x' => eY (f x')) (eX.ret_f x))
+                          (\lam x => hG (eX x) *> pmap (\lam x' => eZ (g x')) (eX.ret_f x)))
+          => IsEquiv.toQEquiv (congr.isEquiv.{u} f g (realize F) (realize G) eX eY eZ
+                                                 (\lam x => hF (eX x) *> pmap (\lam x' => eY (f x')) (eX.ret_f x))
+                                                 (\lam x => hG (eX x) *> pmap (\lam x' => eZ (g x')) (eX.ret_f x)))
 
 \lemma pushout-isCW.{u} {X Y Z : \Type u} (f : X -> Y) (g : X -> Z) {a : Nat} (cX : IsFinCWUpTo a X) (cY : IsCW Y) (cZ : IsCW Z)
   : IsCW (PushoutData f g) \elim cX, cY, cZ

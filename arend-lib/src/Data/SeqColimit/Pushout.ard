@@ -13,6 +13,28 @@
 \func spanSeq {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) : Seq \cowith
   | A n => PushoutData (F.func n) (G.func n)
   | f {n} => congr (F.func n) (G.func n) (F.func (suc n)) (G.func (suc n)) S.f T.f U.f (\lam a => inv (F.natural n a)) (\lam a => inv (G.natural n a))
+  \where {
+    \func map {S T U S' T' U' : Seq} {F : SeqMap S T} {G : SeqMap S U} {F' : SeqMap S' T'} {G' : SeqMap S' U'}
+              (a : SeqMap S S') (b : SeqMap T T') (c : SeqMap U U')
+              (hF : SeqMap.Homotopy (SeqMap.comp F' a) (SeqMap.comp b F)) (hG : SeqMap.Homotopy (SeqMap.comp G' a) (SeqMap.comp c G))
+      : SeqMap (spanSeq F G) (spanSeq F' G') \cowith
+      | func n => congr (F.func n) (G.func n) (F'.func n) (G'.func n) (a.func n) (b.func n) (c.func n) (hF.1 n) (hG.1 n)
+      | natural n w =>
+        congr.comp (a.func n) (b.func n) (c.func n) (hF.1 n) (hG.1 n) S'.f T'.f U'.f (\lam z => inv (F'.natural n z)) (\lam z => inv (G'.natural n z)) w
+        *> congr.homotopic (a.natural n) (b.natural n) (c.natural n)
+             (\lam j => pmap (\lam t => pmap (F'.func (suc n)) (a.natural n j) *> (hF.1 (suc n) (S.f j) *> t)) (pmap_inv-comm (b.func (suc n)) (F.natural n j))
+                        *> coh (F'.natural n (a.func n j)) (pmap (F'.func (suc n)) (a.natural n j)) (hF.1 (suc n) (S.f j)) (pmap (T'.f {n}) (hF.1 n j))
+                               (b.natural n (F.func n j)) (pmap (b.func (suc n)) (F.natural n j)) (hF.2 n j))
+             (\lam j => pmap (\lam t => pmap (G'.func (suc n)) (a.natural n j) *> (hG.1 (suc n) (S.f j) *> t)) (pmap_inv-comm (c.func (suc n)) (G.natural n j))
+                        *> coh (G'.natural n (a.func n j)) (pmap (G'.func (suc n)) (a.natural n j)) (hG.1 (suc n) (S.f j)) (pmap (U'.f {n}) (hG.1 n j))
+                               (c.natural n (G.func n j)) (pmap (c.func (suc n)) (G.natural n j)) (hG.2 n j)) w
+        *> inv (congr.comp S.f T.f U.f (\lam z => inv (F.natural n z)) (\lam z => inv (G.natural n z))
+                           (a.func (suc n)) (b.func (suc n)) (c.func (suc n)) (hF.1 (suc n)) (hG.1 (suc n)) w)
+      \where
+        \func coh {X : \Type} {x0 x1 x2 x3 x4 x5 : X} (N : x0 = x1) (Q : x1 = x2) (H : x2 = x3) (phi : x0 = x4) (bn : x4 = x5) (K : x5 = x3)
+                  (s : phi *> (bn *> K) = (N *> Q) *> H) : Q *> (H *> inv K) = (inv N *> phi) *> bn \elim N, Q, H, phi, bn
+          | idp, idp, idp, idp, idp => pmap (\lam t => idp *> (idp *> inv t)) (inv (idp_*> K) *> inv (idp_*> (idp *> K)) *> s)
+  }
 
 \func colimitPushout.{u} {S T U : Seq.{u}} (F : SeqMap S T) (G : SeqMap S U)
   : QEquiv {SeqColimit (spanSeq F G)} {PushoutData (realize F) (realize G)}
@@ -29,6 +51,61 @@
       => pmap (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)) ((cols F G).ret_f (pinl (pinr (at n d))))
          *> pmap (rows F G) (inv (pmap (Grid.comparison (grid F G)).ret (Grid.comparison.corner20 (grid F G) (at n d)))
                              *> (Grid.comparison (grid F G)).ret_f (pinr (pinl (at n d))))
+
+    \func point {S T U : Seq} (F : SeqMap S T) (G : SeqMap S U) (n : Nat) (y : PushoutData (F.func n) (G.func n)) : PushoutData (realize F) (realize G)
+      => rec (\lam b => pinl (inSC b)) (\lam d => pinr (inSC d)) (\lam a => ppglue (inSC a)) y
+
+    \func onStage.{u} {S T U : Seq.{u}} (F : SeqMap S T) (G : SeqMap S U) {n : Nat} (y : PushoutData (F.func n) (G.func n))
+      : colimitPushout F G (inSC y) = point F G n y
+      => homotopy {_} {_} {_} {_} {_} {_} {\lam y => colimitPushout F G (inSC y)} {point F G n} (left F G) (right F G) (atGlue F G) y
+      \where {
+        \func conj {A B Z : \Type} (e : QEquiv {A} {B}) (h : A -> Z) {x y : A} (p : x = y)
+          : pmap (\lam w => h (e.ret (e.f w))) p = pmap h (e.ret_f x) *> pmap h p *> inv (pmap h (e.ret_f y)) \elim p
+          | idp => inv (pmap (pmap h (e.ret_f x) *>) (idp_*> _) *> *>_inv _)
+
+        \func unconj {X : \Type} {a b c d : X} (p : a = b) (r : b = c) (q : d = c) {m : a = d} (e : m = p *> r *> inv q) : r = inv p *> (m *> q) \elim p, q, e
+          | idp, idp, idp => inv (idp_*> _ *> idp_*> r)
+
+        \func alg {Q Z : \Type} (R : Q -> Z) {t0 t1 s0 s1 t2 t3 : Q} (k00 : t0 = t1) (Y0 : t0 = s0) (E : s0 = s1) (Y1 : t2 = s1) (k20 : t2 = t3)
+                  {z0 z1 : Z} (P1 : z0 = R t1) (P2 : z1 = R t3)
+          : (P1 *> pmap R (inv k00 *> Y0)) *> pmap R E
+            = (P1 *> ((pmap R (inv k00) *> ((pmap R Y0 *> pmap R E *> inv (pmap R Y1)) *> pmap R k20)) *> inv P2)) *> (P2 *> pmap R (inv k20 *> Y1))
+          \elim k00, Y0, E, Y1, k20, P1, P2
+          | idp, idp, idp, idp, idp, idp, idp => idp
+
+        \func atGlue.{u} {S T U : Seq.{u}} (F : SeqMap S T) (G : SeqMap S U) {n : Nat} (a : S.A n)
+          : left F G (F.func n a) *> ppglue (inSC a) = pmap (\lam y => colimitPushout F G (inSC y)) (ppglue a) *> right F G (G.func n a)
+          => pmap (left F G (F.func n a) *>) (inv (idp_*> (ppglue (inSC a))))
+             *> alg (rows F G)
+                    (pmap (Grid.comparison (grid F G)).ret (Grid.comparison.corner00 (grid F G) (at n (F.func n a))))
+                    ((Grid.comparison (grid F G)).ret_f (pinl (pinl (at n (F.func n a)))))
+                    (ppglue {_} {_} {_} {Grid.r0 {grid F G}} {Grid.r2 {grid F G}} (pinl (at n a)))
+                    ((Grid.comparison (grid F G)).ret_f (pinr (pinl (at n (G.func n a)))))
+                    (pmap (Grid.comparison (grid F G)).ret (Grid.comparison.corner20 (grid F G) (at n (G.func n a))))
+                    (pmap (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)) ((cols F G).ret_f (pinl (pinl (at n (F.func n a))))))
+                    (pmap (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)) ((cols F G).ret_f (pinl (pinr (at n (G.func n a))))))
+             *> inv (pmap (`*> right F G (G.func n a)) (chain F G a))
+
+        \func chain.{u} {S T U : Seq.{u}} (F : SeqMap S T) (G : SeqMap S U) {n : Nat} (a : S.A n)
+          : pmap (\lam y => colimitPushout F G (inSC y)) (ppglue a)
+            = pmap (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)) ((cols F G).ret_f (pinl (pinl (at n (F.func n a)))))
+              *> ((pmap (rows F G) (inv (pmap (Grid.comparison (grid F G)).ret (Grid.comparison.corner00 (grid F G) (at n (F.func n a)))))
+                   *> ((pmap (rows F G) ((Grid.comparison (grid F G)).ret_f (pinl (pinl (at n (F.func n a)))))
+                        *> pmap (rows F G) (ppglue {_} {_} {_} {Grid.r0 {grid F G}} {Grid.r2 {grid F G}} (pinl (at n a)))
+                        *> inv (pmap (rows F G) ((Grid.comparison (grid F G)).ret_f (pinr (pinl (at n (G.func n a)))))))
+                       *> pmap (rows F G) (pmap (Grid.comparison (grid F G)).ret (Grid.comparison.corner20 (grid F G) (at n (G.func n a))))))
+                  *> inv (pmap (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)) ((cols F G).ret_f (pinl (pinr (at n (G.func n a)))))))
+          => conj (cols F G) (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)) (pmap pinl (ppglue {_} {_} {_} {tmap F.func} {tmap G.func} (at n a)))
+             *> pmap (\lam t => _ *> t *> _)
+                     (pmap (pmap (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)))
+                           (unconj (Grid.comparison.corner00 (grid F G) (at n (F.func n a))) _ (Grid.comparison.corner20 (grid F G) (at n (G.func n a)))
+                                   (Grid.comparison.edge10 (grid F G) (at n a)))
+                      *> pmap_*>-comm (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)) _ _
+                      *> pmap2 (*>) (pmap (pmap (rows F G)) (pmap_inv-comm (Grid.comparison (grid F G)).ret _))
+                                    (pmap_*>-comm (\lam w => rows F G ((Grid.comparison (grid F G)).ret w)) _ _
+                                     *> pmap (`*> _) (conj (Grid.comparison (grid F G)) (rows F G)
+                                                           (ppglue {_} {_} {_} {Grid.r0 {grid F G}} {Grid.r2 {grid F G}} (pinl (at n a))))))
+      }
 
     \func Total (S : Seq) => \Sigma (n : Nat) (S.A n)
 

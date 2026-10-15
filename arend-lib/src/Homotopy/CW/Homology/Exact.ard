@@ -21,8 +21,13 @@
 \import Homotopy.CW.Structure.Span
 \import Homotopy.Cofiber
 \import Homotopy.Pushout \hiding (PushoutPointed)
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
 \import Logic
+\import Logic.Meta
 \import Paths
+\import Paths.Meta
+\import Relation.Equivalence (in~)
 
 \record CofiberModel.{u} {X Y : \Type u} (f : X -> Y) {
   | source : CW.{u}
@@ -108,6 +113,61 @@
                             (pmap (\lam (h : AddGroupHom (H.{u} M.target (suc n)) (H.{u} M.cofib (suc n))) => h v)
                                   (cellHomologyMap.of-approximation.{u} M.cinc (suc n) (M.cinc-approx (suc n)))))
          (chain-exact.{u} M n)
+
+  \lemma exact0.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (y : H.{u} M.target 0)
+                    (red : hom.{u} (toPointCW.{u} M.target) 0 y = AddMonoid.zro {H.{u} (discrete 1) 0}) (k : hom.{u} M.cinc 0 y = AddMonoid.zro {H.{u} M.cofib 0})
+    : ∃ (x : H.{u} M.source 0) (hom.{u} M.cmap 0 x = y)
+    => TruncP.map (AbExactAt.lift {_} {_} {_} {ChainMap.homology {cellularMap M.pair.subInc} 0} {ChainMap.homology {M.pair.relProj} 0} (SplitExact.middle M.pair.relSplit 0)
+                                  (total-reduced.{u} M (hom.{u} M.cylSection 0 y) (quot-section.{u} M y k)
+                                                     (comp-eq.{u} (toPointCW.{u} M.pair.total) M.cylSection (toPointCW.{u} M.target) 0 (\lam _ => idp) y *> red)))
+         \lam s => (s.1, inv (comp-eq.{u} M.cylCollapse M.pair.subInc M.cmap 0 (M.collapse-sub 0) s.1) *> pmap (hom.{u} M.cylCollapse 0) s.2
+                         *> comp-id.{u} M.cylCollapse M.cylSection 0 (M.collapse-section 0) y)
+
+  \lemma quot-section.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (y : H.{u} M.target 0) (k : hom.{u} M.cinc 0 y = AddMonoid.zro {H.{u} M.cofib 0})
+    : hom.{u} M.pair.quotMap 0 (hom.{u} M.cylSection 0 y) = AddMonoid.zro {H.{u} M.pair.quotCW 0}
+    => inv (comp-id.{u} M.fromCof M.toCof 0 (M.from-to 0) _)
+       *> pmap (hom.{u} M.fromCof 0)
+               (comp-eq.{u} M.toCof M.pair.quotMap (SeqMap.comp M.cinc M.cylCollapse) 0 (M.quotient-collapse 0) _
+                *> inv (comp-eq.{u} M.cinc M.cylCollapse (SeqMap.comp M.cinc M.cylCollapse) 0 (\lam _ => idp) _)
+                *> pmap (hom.{u} M.cinc 0) (comp-id.{u} M.cylCollapse M.cylSection 0 (M.collapse-section 0) y) *> k)
+       *> AddMonoidHom.func-zro
+
+  \lemma total-reduced.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (w : H.{u} M.pair.total 0)
+                           (qw : hom.{u} M.pair.quotMap 0 w = AddMonoid.zro {H.{u} M.pair.quotCW 0})
+                           (wred : hom.{u} (toPointCW.{u} M.pair.total) 0 w = AddMonoid.zro {H.{u} (discrete 1) 0})
+    : ChainMap.homology {M.pair.relProj} 0 w = AddMonoid.zro {Homology M.pair.relComplex 0} \elim w
+    | in~ z => M.pair.relCompare-inj0 (Homology.class-ext (inv (M.pair.quot-zero z.1 (toPointCW.augment-zero.{u} M.pair.total z wred))) *> qw *> inv AddMonoidHom.func-zro)
+
+  \lemma cofib-trivial.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (sur : \Pi (c : H.{u} M.target 0) -> ∃ (x : H.{u} M.source 0) (hom.{u} M.cmap 0 x = c))
+                           (y : H.{u} M.cofib 0) (red : hom.{u} (toPointCW.{u} M.cofib) 0 y = AddMonoid.zro {H.{u} (discrete 1) 0})
+    : y = AddMonoid.zro {H.{u} M.cofib 0}
+    => inv (comp-id.{u} M.toCof M.fromCof 0 (M.to-from 0) y)
+       *> pmap (hom.{u} M.toCof 0) (quot-trivial.{u} M sur (hom.{u} M.fromCof 0 y) (comp-eq.{u} (toPointCW.{u} M.pair.quotCW) M.fromCof (toPointCW.{u} M.cofib) 0 (\lam _ => idp) y *> red))
+       *> AddMonoidHom.func-zro
+
+  \lemma quot-trivial.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (sur : \Pi (c : H.{u} M.target 0) -> ∃ (x : H.{u} M.source 0) (hom.{u} M.cmap 0 x = c))
+                          (v : H.{u} M.pair.quotCW 0) (vred : hom.{u} (toPointCW.{u} M.pair.quotCW) 0 v = AddMonoid.zro {H.{u} (discrete 1) 0})
+    : v = AddMonoid.zro {H.{u} M.pair.quotCW 0} \elim v
+    | in~ z => Homology.class-ext {_} {_} {z} {ChainMap.cycles {M.pair.relCompare} 0 ((M.pair.quot-lift z.1 (toPointCW.augment-zero.{u} M.pair.quotCW z vred)).1, idp)}
+                                  (inv (M.pair.quot-lift z.1 (toPointCW.augment-zero.{u} M.pair.quotCW z vred)).2)
+               *> pmap (ChainMap.homology {M.pair.relCompare} 0) (rel-trivial.{u} M sur ((M.pair.quot-lift z.1 (toPointCW.augment-zero.{u} M.pair.quotCW z vred)).1, idp))
+               *> AddMonoidHom.func-zro
+
+  \lemma rel-trivial.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (sur : \Pi (c : H.{u} M.target 0) -> ∃ (x : H.{u} M.source 0) (hom.{u} M.cmap 0 x = c))
+                         (r : ChainComplex.Cycles {M.pair.relComplex} 0)
+    : in~ r = {Homology M.pair.relComplex 0} AddMonoid.zro {Homology M.pair.relComplex 0}
+    => \case total-image.{u} M sur (in~ (SplitExact.s {M.pair.relSplit} 0 r.1, idp)) \with {
+      | inP (x, q) => Homology.class-ext {_} {_} {r} {ChainMap.cycles {M.pair.relProj} 0 (SplitExact.s {M.pair.relSplit} 0 r.1, idp)} (inv (SplitExact.ps {M.pair.relSplit} 0 r.1))
+                      *> pmap (ChainMap.homology {M.pair.relProj} 0) (inv q)
+                      *> AbExactAt.zero (SplitExact.middle M.pair.relSplit 0) x
+    }
+
+  \lemma total-image.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (sur : \Pi (c : H.{u} M.target 0) -> ∃ (x : H.{u} M.source 0) (hom.{u} M.cmap 0 x = c))
+                         (w : H.{u} M.pair.total 0) : ∃ (x : H.{u} M.source 0) (hom.{u} M.pair.subInc 0 x = w)
+    => TruncP.map (sur (hom.{u} M.cylCollapse 0 w)) \lam s =>
+        (s.1, inv (comp-id.{u} M.cylSection M.cylCollapse 0 (M.section-collapse 0) _)
+              *> pmap (hom.{u} M.cylSection 0) (comp-eq.{u} M.cylCollapse M.pair.subInc M.cmap 0 (M.collapse-sub 0) s.1 *> s.2)
+              *> comp-id.{u} M.cylSection M.cylCollapse 0 (M.section-collapse 0) w)
 
   \func of.{u} {X Y : \Type u} (f : X -> Y) {S T : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {T.Space})
                (F : CellularMap S T) (hF : \Pi (z : S.Space) -> realize F z = eY (f (eX.ret z))) : CofiberModel.{u} f \cowith

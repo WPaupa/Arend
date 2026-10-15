@@ -15,6 +15,9 @@
 \func toPoint (S : Seq) : SeqMap S (const (\Sigma)) \cowith
   | func _ _ => ()
   | natural _ _ => idp
+  \where
+    \func after {S S' : Seq} (a : SeqMap S S') : SeqMap.Homotopy (SeqMap.comp (toPoint S') a) (SeqMap.comp (SeqMap.id (const (\Sigma))) (toPoint S))
+      => (\lam _ _ => idp, \lam _ _ => idp)
 
 \func pairCof.{u} (P : CWPair.{u}) : Seq.{u} => spanSeq P.inc (toPoint P.sub.seq)
 
@@ -150,4 +153,38 @@
     \func map.{u} (P : CWPair.{u}) : SeqMap P.ambient.seq (RelCW.seq {pairQuotient P}) \cowith
       | func => mapAt P
       | natural => mapNat P
+
+    \func induced.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q) : SeqMap (RelCW.seq {pairQuotient P}) (RelCW.seq {pairQuotient Q}) \cowith
+      | func => inducedAt.{u} M
+      | natural => inducedNat.{u} M
+      \where {
+        \func cof.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q) : SeqMap (pairCof.{u} P) (pairCof.{u} Q)
+          => spanSeq.map {P.sub.seq} {P.ambient.seq} {const (\Sigma)} {Q.sub.seq} {Q.ambient.seq} {const (\Sigma)} {P.inc} {toPoint P.sub.seq} {Q.inc} {toPoint Q.sub.seq}
+                         M.1 M.2 (SeqMap.id (const (\Sigma))) (SeqMap.Homotopy.inverse {P.sub.seq} {Q.ambient.seq} {SeqMap.comp M.2 P.inc} {SeqMap.comp Q.inc M.1} M.3)
+                         (toPoint.after M.1)
+
+        \func inducedAt.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q) (n : Nat) (w : qStage.{u} P n) : qStage.{u} Q n \elim n
+          | 0 => absurd w
+          | suc n => SeqMap.func {cof.{u} M} (suc n) w
+
+        \func inducedNat.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q) (n : Nat) (w : qStage.{u} P n)
+          : RelCW.inclusion {pairQuotient.{u} Q} n (inducedAt.{u} M n w) = inducedAt.{u} M (suc n) (RelCW.inclusion {pairQuotient.{u} P} n w) \elim n
+          | 0 => absurd w
+          | suc n => SeqMap.natural {cof.{u} M} (suc n) w
+
+        \func square.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q)
+          : SeqMap.Homotopy (SeqMap.comp (induced.{u} M) (map.{u} P)) (SeqMap.comp (map.{u} Q) M.2)
+          => (squareAt.{u} M, squareNat.{u} M)
+
+        \func squareAt.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q) (n : Nat) (x : P.ambient.stage n)
+          : inducedAt.{u} M n (mapAt.{u} P n x) = mapAt.{u} Q n (M.2.func n x) \elim n
+          | 0 => absurd (P.ambient.empty x)
+          | suc n => idp
+
+        \func squareNat.{u} {P Q : CWPair.{u}} (M : PairMap.{u} P Q) (n : Nat) (x : P.ambient.stage n)
+          : pmap (RelCW.inclusion {pairQuotient.{u} Q} n) (squareAt.{u} M n x) *> SeqMap.natural {SeqMap.comp (map.{u} Q) M.2} n x
+          = SeqMap.natural {SeqMap.comp (induced.{u} M) (map.{u} P)} n x *> squareAt.{u} M (suc n) (P.ambient.inclusion n x) \elim n
+          | 0 => absurd (P.ambient.empty x)
+          | suc n => idp_*> _
+      }
   }

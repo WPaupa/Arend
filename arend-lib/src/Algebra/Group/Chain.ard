@@ -48,6 +48,9 @@
       : in~ z = {Homology X n} in~ z'
       => Coker.proj-equality.2 (inP (w, ext q))
 
+    \lemma class-ext {X : ChainComplex} {n : Nat} {z z' : X.Cycles n} (p : z.1 = z'.1) : in~ z = {Homology X n} in~ z'
+      => pmap in~ (ext p)
+
     \lemma class-eq-inv {X : ChainComplex} {n : Nat} {z z' : X.Cycles n} (p : in~ z = {Homology X n} in~ z')
       : ∃ (w : X.C (suc n)) (X.d n w = z.1 - z'.1)
       => TruncP.map (Coker.proj-equality.1 p) \lam s => (s.1, pmap __.1 s.2)
@@ -88,7 +91,11 @@
 
   \lemma homology-ext {X Y : ChainComplex} {F G : ChainMap X Y} (p : \Pi (n : Nat) (x : X.C n) -> F.f n x = G.f n x) (n : Nat)
     : ChainMap.homology {F} n = ChainMap.homology {G} n
-    => Coker.hom-ext (ChainMap.homology {F} n) _ \lam z => pmap in~ (ext (p n z.1))
+    => homology-at n (p n)
+
+  \lemma homology-at {X Y : ChainComplex} {F G : ChainMap X Y} (n : Nat) (p : \Pi (x : X.C n) -> F.f n x = G.f n x)
+    : ChainMap.homology {F} n = ChainMap.homology {G} n
+    => Coker.hom-ext (ChainMap.homology {F} n) _ \lam z => pmap in~ (ext (p z.1))
 
   \func homology-equiv {X Y : ChainComplex} (F : ChainMap X Y) (n : Nat) (e1 : QEquiv (F.f (suc n))) (e2 : QEquiv (F.f (suc (suc n))))
                        (inj : IsInj (F.f n)) : QEquiv (F.homology (suc n))

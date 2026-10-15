@@ -7,6 +7,7 @@
 \import Homotopy.Pointed
 \import Homotopy.Square
 \import Logic
+\import Logic.Unique (isSet)
 \import Paths
 \import Paths.Meta
 
@@ -169,6 +170,19 @@
           => rec (\lam b => pinl (pinl b)) pinr (\lam a => pmap pinl (ppglue a) *> ppglue (v a)) y
       }
 
+    \func legs {A B C : \Type} {f : A -> B} {g : A -> C} (sB : isSet B) (sC : isSet C) {b : B} {c : C} {z z' : A} (h : z = z')
+               (P : b = f z) (Q : g z = c) (P' : b = f z') (Q' : g z' = c)
+      : pmap (pinl {A} {B} {C} {f} {g}) P *> ppglue z *> pmap (pinr {A} {B} {C} {f} {g}) Q
+      = pmap (pinl {A} {B} {C} {f} {g}) P' *> ppglue z' *> pmap (pinr {A} {B} {C} {f} {g}) Q' \elim h
+      | idp => pmap2 (\lam p q => pmap (pinl {A} {B} {C} {f} {g}) p *> ppglue z *> pmap (pinr {A} {B} {C} {f} {g}) q) (sB _ _ P P') (sC _ _ Q Q')
+      \where
+        \func square {A B C : \Type} {f : A -> B} {g : A -> C} (sB : isSet B) (sC : isSet C) {z z' : A} (h : z = z')
+                     {b0 b1 : B} {c0 c1 : C} (k : b0 = b1) (m : c0 = c1) (P : b0 = f z) (Q : c0 = g z) (P' : b1 = f z') (Q' : g z' = c1)
+          : pmap (pinl {A} {B} {C} {f} {g}) k *> ((pmap (pinl {A} {B} {C} {f} {g}) P' *> ppglue z') *> pmap (pinr {A} {B} {C} {f} {g}) Q')
+          = (pmap (pinl {A} {B} {C} {f} {g}) P *> (ppglue z *> inv (pmap (pinr {A} {B} {C} {f} {g}) Q))) *> pmap (pinr {A} {B} {C} {f} {g}) m \elim k, m
+          | idp, idp => idp_*> _ *> *>-assoc _ _ _ *> legs sB sC (inv h) P' Q' P (inv Q)
+                        *> pmap (\lam t => pmap (pinl {A} {B} {C} {f} {g}) P *> (ppglue z *> t)) (pmap_inv-comm (pinr {A} {B} {C} {f} {g}) Q)
+
     \func pinl-equiv {A B C : \Type} {f : A -> B} {g : A -> C} (e : C -> Empty) : QEquiv (pinl {A} {B} {C} {f} {g}) \cowith
       | ret => rec (\lam b => b) (\lam c => absurd (e c)) (\lam a => absurd (e (g a)))
       | ret_f _ => idp
@@ -266,6 +280,46 @@
                                         (pmap_*>-comm h (pmap pinl (inv (alpha c))) (ppglue (eJ c))))))
              *> inv (rec.map h (\lam a => pinl (eA a)) (\lam b => pinr (eB b))
                               (\lam c => (pmap pinl (inv (alpha c)) *> ppglue (eJ c)) *> pmap pinr (beta c)) x)
+
+        \func comp {J A B J' A' B' J'' A'' B'' : \Type} {u : J -> A} {v : J -> B} {u' : J' -> A'} {v' : J' -> B'} {u'' : J'' -> A''} {v'' : J'' -> B''}
+                   (eJ : J -> J') (eA : A -> A') (eB : B -> B') (alpha : \Pi (c : J) -> u' (eJ c) = eA (u c)) (beta : \Pi (c : J) -> v' (eJ c) = eB (v c))
+                   (fJ : J' -> J'') (fA : A' -> A'') (fB : B' -> B'') (alpha' : \Pi (c : J') -> u'' (fJ c) = fA (u' c)) (beta' : \Pi (c : J') -> v'' (fJ c) = fB (v' c))
+                   (x : PushoutData u v)
+          : congr u' v' u'' v'' fJ fA fB alpha' beta' (congr u v u' v' eJ eA eB alpha beta x)
+            = congr u v u'' v'' (\lam c => fJ (eJ c)) (\lam a => fA (eA a)) (\lam b => fB (eB b))
+                    (\lam c => alpha' (eJ c) *> pmap fA (alpha c)) (\lam c => beta' (eJ c) *> pmap fB (beta c)) x
+          => homotopy {_} {_} {_} {_} {_} {_} {\lam x => congr u' v' u'' v'' fJ fA fB alpha' beta' (congr u v u' v' eJ eA eB alpha beta x)}
+                      {congr u v u'' v'' (\lam c => fJ (eJ c)) (\lam a => fA (eA a)) (\lam b => fB (eB b))
+                             (\lam c => alpha' (eJ c) *> pmap fA (alpha c)) (\lam c => beta' (eJ c) *> pmap fB (beta c))}
+                      (\lam _ => idp) (\lam _ => idp)
+                      (\lam c => idp_*> _ *> inv (pmap_*>-comm (congr u' v' u'' v'' fJ fA fB alpha' beta') _ (pmap pinr (beta c))
+                                                  *> pmap (`*> _) (pmap_*>-comm (congr u' v' u'' v'' fJ fA fB alpha' beta') (pmap pinl (inv (alpha c))) (ppglue (eJ c)))
+                                                  *> glue pinl pinr fA fB (alpha c) (alpha' (eJ c)) (ppglue (fJ (eJ c))) (beta' (eJ c)) (beta c))) x
+          \where
+            \func glue {A' A'' B' B'' W : \Type} (l : A'' -> W) (r : B'' -> W) (fA : A' -> A'') (fB : B' -> B'')
+                       {x0 x1 : A'} (a1 : x0 = x1) {y0 : A''} (a2 : y0 = fA x0) {w0 : B'} {z0 : B''} (g : l y0 = r z0) (b2 : z0 = fB w0) {w1 : B'} (b1 : w0 = w1)
+              : (pmap l (pmap fA (inv a1)) *> ((pmap l (inv a2) *> g) *> pmap r b2)) *> pmap r (pmap fB b1)
+                = (pmap l (inv (a2 *> pmap fA a1)) *> g) *> pmap r (b2 *> pmap fB b1) \elim a1, a2, b2, b1
+              | idp, idp, idp, idp => idp_*> _
+
+        \func homotopic {J A B J' A' B' : \Type} {u : J -> A} {v : J -> B} {u' : J' -> A'} {v' : J' -> B'}
+                       {eJ eJ' : J -> J'} {eA eA' : A -> A'} {eB eB' : B -> B'}
+                       {alpha : \Pi (c : J) -> u' (eJ c) = eA (u c)} {beta : \Pi (c : J) -> v' (eJ c) = eB (v c)}
+                       {alpha' : \Pi (c : J) -> u' (eJ' c) = eA' (u c)} {beta' : \Pi (c : J) -> v' (eJ' c) = eB' (v c)}
+                       (hJ : \Pi (c : J) -> eJ c = eJ' c) (hA : \Pi (a : A) -> eA a = eA' a) (hB : \Pi (b : B) -> eB b = eB' b)
+                       (cA : \Pi (c : J) -> pmap u' (hJ c) *> alpha' c = alpha c *> hA (u c))
+                       (cB : \Pi (c : J) -> pmap v' (hJ c) *> beta' c = beta c *> hB (v c))
+                       (x : PushoutData u v)
+          : congr u v u' v' eJ eA eB alpha beta x = congr u v u' v' eJ' eA' eB' alpha' beta' x
+          => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {congr u v u' v' eJ eA eB alpha beta} {congr u v u' v' eJ' eA' eB' alpha' beta'}
+                                  (\lam a => pmap pinl (hA a)) (\lam b => pmap pinr (hB b))
+                                  (\lam c => glue pinl pinr (hJ c) (ppglue {J'} {A'} {B'} {u'} {v'}) (alpha c) (alpha' c) (hA (u c)) (cA c) (beta c) (beta' c) (hB (v c)) (cB c)) x
+          \where
+            \func glue {J' A' B' W : \Type} {u' : J' -> A'} {v' : J' -> B'} (l : A' -> W) (r : B' -> W) {y y' : J'} (h : y = y')
+                       (g : \Pi (j : J') -> l (u' j) = r (v' j)) {a0 a1 : A'} (al : u' y = a0) (al' : u' y' = a1) (ha : a0 = a1)
+                       (ca : pmap u' h *> al' = al *> ha) {b0 b1 : B'} (be : v' y = b0) (be' : v' y' = b1) (hb : b0 = b1) (cb : pmap v' h *> be' = be *> hb)
+              : pmap l ha *> ((pmap l (inv al') *> g y') *> pmap r be') = ((pmap l (inv al) *> g y) *> pmap r be) *> pmap r hb \elim h, al', ha, ca, be', hb, cb
+              | idp, idp, idp, idp, idp, idp, idp => idp_*> _
 
         \lemma isEquiv.{l} {J A B J' A' B' : \Type l} (u : J -> A) (v : J -> B) (u' : J' -> A') (v' : J' -> B')
                            (eJ : QEquiv {J} {J'}) (eA : QEquiv {A} {A'}) (eB : QEquiv {B} {B'})

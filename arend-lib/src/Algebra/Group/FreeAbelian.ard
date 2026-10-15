@@ -193,6 +193,14 @@
                  (\lam c => augment-basis (fin-raise c) *> inv (pmap (copairHom augment augment) (split-right c)
                                                                  *> pmap2 (+) (AddGroupHom.func-zro {augment {g}}) (augment-basis c) *> zro-left)))
 
+    \lemma augment-uncons {g : Nat} (z : ZFree (suc g)) : augment z = (uncons z).1 + augment (uncons z).2
+      => pmap (\lam (h : AddGroupHom (ZFree (suc g)) IntRing) => h z)
+              (hom-ext augment (copairHom AddGroupHom.id augment AddGroupHom.∘ uncons) on-basis)
+      \where
+        \lemma on-basis {g : Nat} (a : Fin (suc g)) : augment (basis a) = copairHom AddGroupHom.id augment (uncons (basis a)) \elim a
+          | 0 => augment-basis {suc g} 0 *> inv (pmap (copairHom AddGroupHom.id augment) uncons-basis0 *> pmap (\lam (t : Int) => 1 + t) (AddGroupHom.func-zro {augment {g}}) *> zro-right)
+          | suc a => augment-basis {suc g} (suc a) *> inv (pmap (copairHom AddGroupHom.id augment) (uncons-basis a) *> pmap (\lam (t : Int) => 0 + t) (augment-basis a) *> zro-left)
+
     \lemma hom-ext-split {A : AbGroup} {g g' : Nat} (h k : AddGroupHom (ZFree (g Nat.+ g')) A)
                          (pl : \Pi (a : Fin g) -> h (basis (fin-inc a)) = k (basis (fin-inc a)))
                          (pr : \Pi (b : Fin g') -> h (basis (fin-raise b)) = k (basis (fin-raise b))) : h = k
