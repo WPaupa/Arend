@@ -220,8 +220,13 @@
     \lemma agree.{u} (n : Nat) {X : \Type u} (cX : IsCW.{u} X) (cS : IsCW.{u} (Susp X)) {S T : CW.{u}} {d : Nat} (b : S.Bound d)
                      (eX : QEquiv {X} {S.Space}) (eX' : QEquiv {X} {T.Space}) (y : ReducedCWHomology.{u} n cX)
       : Iso.f {suspAt.{u} n cX cS eX} y = Iso.f {suspAt.{u} n cX cS eX'} y
-      => inv (map-id.{u} n cS (Iso.f {suspAt.{u} n cX cS eX} y)) *> inv (cell-natural.{u} n (\lam x => x) cX cX cS cS b eX eX' y)
-         *> pmap (Iso.f {suspAt.{u} n cX cS eX'}) (ReducedCWHomology.map-id.{u} n cX y)
+      => from-natural.{u} n cX cS (Iso.f {suspAt.{u} n cX cS eX'}) (Iso.f {suspAt.{u} n cX cS eX}) y (cell-natural.{u} n (\lam x => x) cX cX cS cS b eX eX' y)
+
+    \lemma from-natural.{u} (n : Nat) {X : \Type u} (cX : IsCW.{u} X) (cS : IsCW.{u} (Susp X))
+                            (g h : AddGroupHom (ReducedCWHomology.{u} n cX) (CWHomology.{u} (suc n) cS)) (y : ReducedCWHomology.{u} n cX)
+                            (nat : g (ReducedCWHomology.map.{u} n cX cX (\lam x => x) y) = CWHomology.map.{u} (suc n) cS cS (Susp.map (\lam (x : X) => x)) (h y))
+      : h y = g y
+      => inv (map-id.{u} n cS (h y)) *> inv nat *> pmap g (ReducedCWHomology.map-id.{u} n cX y)
 
     \lemma cell-natural.{u} (n : Nat) {X Y : \Type u} (f : X -> Y) (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (cSX : IsCW.{u} (Susp X)) (cSY : IsCW.{u} (Susp Y))
                             {S T : CW.{u}} {d : Nat} (b : S.Bound d) (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {T.Space}) (y : ReducedCWHomology.{u} n cX)

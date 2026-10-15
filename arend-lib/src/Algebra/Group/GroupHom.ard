@@ -61,6 +61,9 @@
   \lemma equals {G H : AddGroup} {f g : AddGroupHom G H} (p : \Pi (x : G) -> f x = g x) : f = g
     => exts p
 
+  \lemma happly {G H : AddGroup} {f g : AddGroupHom G H} (p : f = g) (x : G) : f x = g x
+    => pmap (\lam (h : AddGroupHom G H) => h x) p
+
   \func toGroupHom {G H : AddGroup} (f : AddGroupHom G H) : GroupHom (AddGroup.toGroup G) (AddGroup.toGroup H) \cowith
     | func x => f x
     | func-* => f.func-+

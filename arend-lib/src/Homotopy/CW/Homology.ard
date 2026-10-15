@@ -46,6 +46,11 @@
       : map n cX cY f (Iso.f {compare n cX s} x) = Iso.f {compare n cY t} (structureMap n f s t x)
       => (Contr.center {MapDatum.contr n cX cY f}).2 s t x
 
+    \lemma natural-at.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y) (s : HasCWStructure X) (t : HasCWStructure Y)
+                          (x : Homology (cellular s.1) n) {y : CWHomology n cX} (e : Iso.f {compare n cX s} x = y)
+      : Iso.f {compare n cY t} (structureMap n f s t x) = map n cX cY f y
+      => inv (natural n cX cY f s t x) *> pmap (map n cX cY f) e
+
     \lemma map-unique.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y) (D : MapDatum n cX cY f) : map n cX cY f = D.1
       => pmap __.1 (Contr.contraction {MapDatum.contr n cX cY f} D)
 

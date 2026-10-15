@@ -64,6 +64,15 @@
 
   \func hom.{u} {C D : CW.{u}} (G : CellularMap C D) (n : Nat) : AddGroupHom (H.{u} C n) (H.{u} D n) => ChainMap.homology {cellularMap G} n
 
+  \lemma hom-approx.{u} {C D : CW.{u}} (F : CellularMap C D) (n : Nat) {f : C.Space -> D.Space}
+                        (p : \Pi (x : C.stage (suc (suc n))) -> inSC (F.func (suc (suc n)) x) = f (inSC x))
+    : cellHomologyMap n f = hom.{u} F n
+    => cellHomologyMap.of-approximation.{u} F n p
+
+  \lemma hom-comp.{u} {C D E : CW.{u}} (G : CellularMap D E) (F : CellularMap C D) (n : Nat) (x : H.{u} C n)
+    : hom.{u} (SeqMap.comp G F) n x = hom.{u} G n (hom.{u} F n x)
+    => pmap (\lam (h : AddGroupHom (H.{u} C n) (H.{u} E n)) => h x) (cellularMap.homology-comp G F n)
+
   \lemma comp-eq.{u} {C D E : CW.{u}} (G : CellularMap D E) (F : CellularMap C D) (K : CellularMap C E) (n : Nat)
                      (p : \Pi (x : C.stage (suc (suc n))) -> inSC {E.seq} (G.func (suc (suc n)) (F.func (suc (suc n)) x)) = inSC {E.seq} (K.func (suc (suc n)) x))
                      (x : H.{u} C n) : hom.{u} G n (hom.{u} F n x) = hom.{u} K n x

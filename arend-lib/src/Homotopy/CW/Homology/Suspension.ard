@@ -34,7 +34,7 @@
 
 \open PushoutData (ppglue, rec, homotopy)
 
-\open CofiberModel (H, hom, comp-eq, comp-id)
+\open CofiberModel (H, hom, comp-eq, comp-id, hom-approx, hom-comp)
 
 \func KerH.{u} {X Y : \Type u} {f : X -> Y} (M : CofiberModel.{u} f) (n : Nat)
   => IAbGroup (KernelAddGroup (hom.{u} M.cmap n))
@@ -116,10 +116,21 @@
                          -> inSC {M'.target.seq} (M'.cmap.func (suc (suc n)) (D.src.func (suc (suc n)) s)) = inSC {M'.target.seq} (tgt.func (suc (suc n)) (M.cmap.func (suc (suc n)) s)))
                        (n : Nat) (x : KerH.{u} M n)
       : Iso.f {suspChain.{u} M' tz' n} (kerMap.{u} M M' D.src tgt sq n x)
-      = hom.{u} M'.toCof (suc n) (hom.{u} D.quot (suc n) (hom.{u} M.fromCof (suc n) (Iso.f {suspChain.{u} M tz n} x)))
+      = hom.{u} (SeqMap.comp M'.toCof (SeqMap.comp D.quot M.fromCof)) (suc n) (Iso.f {suspChain.{u} M tz n} x)
       => pmap (\lam t => Iso.f {suspChain.{u} M' tz' n} (kerMap.{u} M M' D.src tgt sq n t)) (inv ((deltaKer.equiv.{u} M tz n).f_ret x))
          *> on-delta-natural.{u} M M' tz tz' D tgt sq n ((deltaKer.equiv.{u} M tz n).ret x)
          *> pmap (\lam t => hom.{u} M'.toCof (suc n) (hom.{u} D.quot (suc n) (hom.{u} M.fromCof (suc n) (Iso.f {suspChain.{u} M tz n} t)))) ((deltaKer.equiv.{u} M tz n).f_ret x)
+         *> inv (hom-comp.{u} M'.toCof (SeqMap.comp D.quot M.fromCof) (suc n) _ *> pmap (hom.{u} M'.toCof (suc n)) (hom-comp.{u} D.quot M.fromCof (suc n) _))
+
+    \lemma natural-at.{u} {X Y X' Y' : \Type u} {f : X -> Y} {f' : X' -> Y'} (M : CofiberModel.{u} f) (M' : CofiberModel.{u} f')
+                          (tz : \Pi (n : Nat) (y : Homology (cellular M.target) (suc n)) -> y = AddMonoid.zro {Homology (cellular M.target) (suc n)})
+                          (tz' : \Pi (n : Nat) (y : Homology (cellular M'.target) (suc n)) -> y = AddMonoid.zro {Homology (cellular M'.target) (suc n)})
+                          (D : PairDataMap.{u} M.pair M'.pair) (tgt : CellularMap M.target M'.target)
+                          (sq : \Pi (n : Nat) (s : M.source.stage (suc (suc n)))
+                            -> inSC {M'.target.seq} (M'.cmap.func (suc (suc n)) (D.src.func (suc (suc n)) s)) = inSC {M'.target.seq} (tgt.func (suc (suc n)) (M.cmap.func (suc (suc n)) s)))
+                          (n : Nat) (x : KerH.{u} M n) (k : KerH.{u} M' n) (e : k = kerMap.{u} M M' D.src tgt sq n x)
+      : Iso.f {suspChain.{u} M' tz' n} k = hom.{u} (SeqMap.comp M'.toCof (SeqMap.comp D.quot M.fromCof)) (suc n) (Iso.f {suspChain.{u} M tz n} x)
+      => pmap (Iso.f {suspChain.{u} M' tz' n}) e *> natural.{u} M M' tz tz' D tgt sq n x
 
     \lemma on-delta-natural.{u} {X Y X' Y' : \Type u} {f : X -> Y} {f' : X' -> Y'} (M : CofiberModel.{u} f) (M' : CofiberModel.{u} f')
                                 (tz : \Pi (n : Nat) (y : Homology (cellular M.target) (suc n)) -> y = AddMonoid.zro {Homology (cellular M.target) (suc n)})
@@ -300,9 +311,9 @@
                        {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
                        (hG : \Pi (z : S.Space) -> realize G z = eY (f (eX.ret z))) (y : ReducedCWHomology.{u} n cX)
       : Iso.f {suspAt.{u} n cY cSY eY} (ReducedCWHomology.map.{u} n cX cY f y) = CWHomology.map.{u} (suc n) cSX cSY (Susp.map f) (Iso.f {suspAt.{u} n cX cSX eX} y)
-      => pmap (\lam t => Iso.f {suspAt.{u} n cY cSY eY} (ReducedCWHomology.map.{u} n cX cY f t)) (inv (section.{u} n cX eX y))
+      => pmap (Iso.f {suspAt.{u} n cY cSY eY}) (pmap (ReducedCWHomology.map.{u} n cX cY f) (inv (section.{u} n cX eX y)))
          *> on-cells.{u} n f cX cY cSX cSY eX eY G hG (Iso.hinv {ReducedCWHomology.compare.{u} n cX (S, eX) unit-structure.{u}} y)
-         *> pmap (\lam t => CWHomology.map.{u} (suc n) cSX cSY (Susp.map f) (Iso.f {suspAt.{u} n cX cSX eX} t)) (section.{u} n cX eX y)
+         *> pmap (CWHomology.map.{u} (suc n) cSX cSY (Susp.map f)) (pmap (Iso.f {suspAt.{u} n cX cSX eX}) (section.{u} n cX eX y))
 
     \lemma section.{u} (n : Nat) {X : \Type u} (cX : IsCW.{u} X) {S : CW.{u}} (eX : QEquiv {X} {S.Space}) (y : ReducedCWHomology.{u} n cX)
       : Iso.f {ReducedCWHomology.compare.{u} n cX (S, eX) unit-structure.{u}} (Iso.hinv {ReducedCWHomology.compare.{u} n cX (S, eX) unit-structure.{u}} y) = y
@@ -317,68 +328,118 @@
                         (hG : \Pi (z : S.Space) -> realize G z = eY (f (eX.ret z))) (x : ReducedCWHomology.Cells.{u} n (S, eX) unit-structure.{u})
       : Iso.f {suspAt.{u} n cY cSY eY} (ReducedCWHomology.map.{u} n cX cY f (Iso.f {ReducedCWHomology.compare.{u} n cX (S, eX) unit-structure.{u}} x))
       = CWHomology.map.{u} (suc n) cSX cSY (Susp.map f) (Iso.f {suspAt.{u} n cX cSX eX} (Iso.f {ReducedCWHomology.compare.{u} n cX (S, eX) unit-structure.{u}} x))
+      => combine.{u} n f cSX cSY eX eY G hG (suspModel.cellsMap.{u} eY n (cellsImage.{u} eX eY G n x))
+                     (Iso.f {suspChain.{u} (suspModel.{u} eX) (suspModel.trivial.{u} eX) n} (suspModel.cellsMap.{u} eX n x))
+                     (cells-side.{u} n f cX cY cSY eX eY G hG x) (chain-step.{u} eX eY G n x) (x-side.{u} n cX cSX eX x)
+
+    \lemma combine.{u} (n : Nat) {X Y : \Type u} (f : X -> Y) (cSX : IsCW.{u} (Susp X)) (cSY : IsCW.{u} (Susp Y))
+                       {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
+                       (hG : \Pi (z : S.Space) -> realize G z = eY (f (eX.ret z))) {w : CWHomology.{u} (suc n) cSY} (k : KerH.{u} (suspModel.{u} eY) n)
+                       (z : H.{u} (CofiberModel.cofib {suspModel.{u} eX}) (suc n)) {y : CWHomology.{u} (suc n) cSX}
+                       (a : w = Iso.f {CWHomology.compare.{u} (suc n) cSY (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY})}
+                                  (Iso.f {suspChain.{u} (suspModel.{u} eY) (suspModel.trivial.{u} eY) n} k))
+                       (c : Iso.f {suspChain.{u} (suspModel.{u} eY) (suspModel.trivial.{u} eY) n} k
+                          = hom.{u} {CofiberModel.cofib {suspModel.{u} eX}} {CofiberModel.cofib {suspModel.{u} eY}}
+                                    (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}}
+                                                 {RelCW.seq {CofiberModel.cofib {suspModel.{u} eY}}} (CofiberModel.toCof {suspModel.{u} eY})
+                                                 (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}}}
+                                                              {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} (PairDataMap.quot {pairMap.{u} eX eY G})
+                                                              (CofiberModel.fromCof {suspModel.{u} eX}))) (suc n) z)
+                       (e : Iso.f {CWHomology.compare.{u} (suc n) cSX (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX})} z = y)
+      : w = CWHomology.map.{u} (suc n) cSX cSY (Susp.map f) y
+      => a *> pmap (Iso.f {CWHomology.compare.{u} (suc n) cSY (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY})}) c
+         *> struct-side.{u} n f cSX cSY eX eY G hG z e
+
+    \lemma struct-side.{u} (n : Nat) {X Y : \Type u} (f : X -> Y) (cSX : IsCW.{u} (Susp X)) (cSY : IsCW.{u} (Susp Y))
+                           {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
+                           (hG : \Pi (z : S.Space) -> realize G z = eY (f (eX.ret z))) (z : H.{u} (CofiberModel.cofib {suspModel.{u} eX}) (suc n))
+                           {y : CWHomology.{u} (suc n) cSX}
+                           (e : Iso.f {CWHomology.compare.{u} (suc n) cSX (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX})} z = y)
+      : Iso.f {CWHomology.compare.{u} (suc n) cSY (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY})}
+          (hom.{u} {CofiberModel.cofib {suspModel.{u} eX}} {CofiberModel.cofib {suspModel.{u} eY}}
+                   (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} {RelCW.seq {CofiberModel.cofib {suspModel.{u} eY}}}
+                                (CofiberModel.toCof {suspModel.{u} eY})
+                                (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}}}
+                                             {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} (PairDataMap.quot {pairMap.{u} eX eY G}) (CofiberModel.fromCof {suspModel.{u} eX}))) (suc n) z)
+      = CWHomology.map.{u} (suc n) cSX cSY (Susp.map f) y
+      => inv (pmap (Iso.f {CWHomology.compare.{u} (suc n) cSY (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY})})
+                   (AddGroupHom.happly (susp-homology.{u} f eX eY G hG n) z))
+         *> CWHomology.natural-at.{u} (suc n) cSX cSY (Susp.map f) (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX})
+                                      (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY}) z e
+
+    \lemma x-side.{u} (n : Nat) {X : \Type u} (cX : IsCW.{u} X) (cSX : IsCW.{u} (Susp X)) {S : CW.{u}} (eX : QEquiv {X} {S.Space})
+                      (x : ReducedCWHomology.Cells.{u} n (S, eX) unit-structure.{u})
+      : Iso.f {CWHomology.compare.{u} (suc n) cSX (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX})}
+          (Iso.f {suspChain.{u} (suspModel.{u} eX) (suspModel.trivial.{u} eX) n} (suspModel.cellsMap.{u} eX n x))
+      = Iso.f {suspAt.{u} n cX cSX eX} (Iso.f {ReducedCWHomology.compare.{u} n cX (S, eX) unit-structure.{u}} x)
+      => inv (pmap (Iso.f {CWHomology.compare.{u} (suc n) cSX (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX})})
+                   (pmap (Iso.f {suspChain.{u} (suspModel.{u} eX) (suspModel.trivial.{u} eX) n})
+                         (pmap (suspModel.cellsMap.{u} eX n) (retraction.{u} n cX eX x))))
+         *> inv (unfold.{u} n cX cSX eX (Iso.f {ReducedCWHomology.compare.{u} n cX (S, eX) unit-structure.{u}} x))
+
+    \lemma cells-side.{u} (n : Nat) {X Y : \Type u} (f : X -> Y) (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (cSY : IsCW.{u} (Susp Y))
+                          {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
+                          (hG : \Pi (z : S.Space) -> realize G z = eY (f (eX.ret z))) (x : ReducedCWHomology.Cells.{u} n (S, eX) unit-structure.{u})
+      : Iso.f {suspAt.{u} n cY cSY eY} (ReducedCWHomology.map.{u} n cX cY f (Iso.f {ReducedCWHomology.compare.{u} n cX (S, eX) unit-structure.{u}} x))
+      = Iso.f {CWHomology.compare.{u} (suc n) cSY (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY})}
+          (Iso.f {suspChain.{u} (suspModel.{u} eY) (suspModel.trivial.{u} eY) n} (suspModel.cellsMap.{u} eY n (cellsImage.{u} eX eY G n x)))
       => pmap (Iso.f {suspAt.{u} n cY cSY eY}) (map-cells.{u} n f cX cY eX eY G hG x)
-         *> pmap (\lam t => Iso.f {CWHomology.compare.{u} (suc n) cSY (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY})}
-                                  (Iso.f {suspChain.{u} (suspModel.{u} eY) (suspModel.trivial.{u} eY) n} (suspModel.cellsMap.{u} eY n t)))
-                 (retraction.{u} n cY eY (cellsImage.{u} eX eY G n x))
+         *> unfold.{u} n cY cSY eY (Iso.f {ReducedCWHomology.compare.{u} n cY (S', eY) unit-structure.{u}} (cellsImage.{u} eX eY G n x))
          *> pmap (Iso.f {CWHomology.compare.{u} (suc n) cSY (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY})})
-                 (pmap (Iso.f {suspChain.{u} (suspModel.{u} eY) (suspModel.trivial.{u} eY) n}) (ext idp)
-                  *> suspChain.natural.{u} (suspModel.{u} eX) (suspModel.{u} eY) (suspModel.trivial.{u} eX) (suspModel.trivial.{u} eY)
-                                           (cylMap.pairData.{u} G) (SeqMap.id (RelCW.seq {discrete 1})) (\lam _ _ => idp) n (suspModel.cellsMap.{u} eX n x)
-                  *> inv (susp-homology.{u} f eX eY G hG n (Iso.f {suspChain.{u} (suspModel.{u} eX) (suspModel.trivial.{u} eX) n} (suspModel.cellsMap.{u} eX n x))))
-         *> inv (CWHomology.natural.{u} (suc n) cSX cSY (Susp.map f) (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX})
-                                        (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY}) _)
-         *> inv (pmap (\lam t => CWHomology.map.{u} (suc n) cSX cSY (Susp.map f)
-                                   (Iso.f {CWHomology.compare.{u} (suc n) cSX (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX})}
-                                     (Iso.f {suspChain.{u} (suspModel.{u} eX) (suspModel.trivial.{u} eX) n} (suspModel.cellsMap.{u} eX n t))))
-                      (retraction.{u} n cX eX x))
+                 (pmap (Iso.f {suspChain.{u} (suspModel.{u} eY) (suspModel.trivial.{u} eY) n})
+                       (pmap (suspModel.cellsMap.{u} eY n) (retraction.{u} n cY eY (cellsImage.{u} eX eY G n x))))
+
+    \lemma unfold.{u} (n : Nat) {X : \Type u} (cX : IsCW.{u} X) (cS : IsCW.{u} (Susp X)) {S : CW.{u}} (eX : QEquiv {X} {S.Space}) (y : ReducedCWHomology.{u} n cX)
+      : Iso.f {suspAt.{u} n cX cS eX} y
+      = Iso.f {CWHomology.compare.{u} (suc n) cS (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX})}
+          (Iso.f {suspChain.{u} (suspModel.{u} eX) (suspModel.trivial.{u} eX) n}
+            (suspModel.cellsMap.{u} eX n (Iso.hinv {ReducedCWHomology.compare.{u} n cX (S, eX) unit-structure.{u}} y)))
+      => idp
+
+    \lemma chain-step.{u} {X Y : \Type u} {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S') (n : Nat)
+                          (x : ReducedCWHomology.Cells.{u} n (S, eX) unit-structure.{u})
+      : Iso.f {suspChain.{u} (suspModel.{u} eY) (suspModel.trivial.{u} eY) n} (suspModel.cellsMap.{u} eY n (cellsImage.{u} eX eY G n x))
+      = hom.{u} {CofiberModel.cofib {suspModel.{u} eX}} {CofiberModel.cofib {suspModel.{u} eY}}
+                (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} {RelCW.seq {CofiberModel.cofib {suspModel.{u} eY}}}
+                             (CofiberModel.toCof {suspModel.{u} eY})
+                             (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}}}
+                                          {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} (PairDataMap.quot {pairMap.{u} eX eY G}) (CofiberModel.fromCof {suspModel.{u} eX}))) (suc n)
+                (Iso.f {suspChain.{u} (suspModel.{u} eX) (suspModel.trivial.{u} eX) n} (suspModel.cellsMap.{u} eX n x))
+      => suspChain.natural-at.{u} (suspModel.{u} eX) (suspModel.{u} eY) (suspModel.trivial.{u} eX) (suspModel.trivial.{u} eY)
+                                  (pairMap.{u} eX eY G) (tgtMap.{u} eX eY) (sqProof.{u} eX eY G) n (suspModel.cellsMap.{u} eX n x)
+                                  (suspModel.cellsMap.{u} eY n (cellsImage.{u} eX eY G n x)) (ext idp)
+
+    \func tgtMap.{u} {X Y : \Type u} {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space})
+      : CellularMap (CofiberModel.target {suspModel.{u} eX}) (CofiberModel.target {suspModel.{u} eY})
+      => SeqMap.id (RelCW.seq {discrete 1})
+
+    \func sqProof.{u} {X Y : \Type u} {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
+                      (n : Nat) (s : RelCW.stage {CofiberModel.source {suspModel.{u} eX}} (suc (suc n)))
+      : inSC {RelCW.seq {CofiberModel.target {suspModel.{u} eY}}} {suc (suc n)}
+             (SeqMap.func {CofiberModel.cmap {suspModel.{u} eY}} (suc (suc n)) (SeqMap.func {PairDataMap.src {pairMap.{u} eX eY G}} (suc (suc n)) s))
+      = inSC {RelCW.seq {CofiberModel.target {suspModel.{u} eY}}} {suc (suc n)} (SeqMap.func {tgtMap.{u} eX eY} (suc (suc n)) (SeqMap.func {CofiberModel.cmap {suspModel.{u} eX}} (suc (suc n)) s))
+      => idp
 
     \lemma susp-homology.{u} {X Y : \Type u} (f : X -> Y) {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
-                             (hG : \Pi (z : S.Space) -> realize G z = eY (f (eX.ret z))) (n : Nat) (z : H.{u} (CofiberModel.cofib {suspModel.{u} eX}) (suc n))
+                             (hG : \Pi (z : S.Space) -> realize G z = eY (f (eX.ret z))) (n : Nat)
       : structureMap.{u} (suc n) (Susp.map f) (CofiberModel.cofib {suspModel.{u} eX}, CofiberModel.cofEquiv {suspModel.{u} eX})
-                                              (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY}) z
-      = homTo.{u} eY (suc n) (homQuot.{u} eX eY G (suc n) (homFrom.{u} eX (suc n) z))
-      => pmap (\lam (h : AddGroupHom _ _) => h z)
-              (cellHomologyMap.of-approximation.{u} {CofiberModel.cofib {suspModel.{u} eX}} {CofiberModel.cofib {suspModel.{u} eY}} (suspModelMap.{u} eX eY G) (suc n)
-                                                    {\lam w => CofiberModel.cofEquiv {suspModel.{u} eY} (Susp.map f ((CofiberModel.cofEquiv {suspModel.{u} eX}).ret w))}
-                                                    (cofPointwise.{u} f eX eY G hG (suc (suc n))))
-         *> inv (comp-eq.{u} {CofiberModel.cofib {suspModel.{u} eX}} {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}} {CofiberModel.cofib {suspModel.{u} eY}}
-                             (toCofModel.{u} eY) (fromModelMap.{u} eX eY G) (suspModelMap.{u} eX eY G) (suc n) (\lam _ => idp) z)
-         *> pmap (homTo.{u} eY (suc n))
-                 (inv (comp-eq.{u} {CofiberModel.cofib {suspModel.{u} eX}} {PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}} {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}
-                                   (quotModelMap.{u} eX eY G) (fromCofModel.{u} eX) (fromModelMap.{u} eX eY G) (suc n) (\lam _ => idp) z))
+                                              (CofiberModel.cofib {suspModel.{u} eY}, CofiberModel.cofEquiv {suspModel.{u} eY})
+      = hom.{u} {CofiberModel.cofib {suspModel.{u} eX}} {CofiberModel.cofib {suspModel.{u} eY}}
+                (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} {RelCW.seq {CofiberModel.cofib {suspModel.{u} eY}}}
+                             (CofiberModel.toCof {suspModel.{u} eY})
+                             (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}}}
+                                          {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} (PairDataMap.quot {pairMap.{u} eX eY G}) (CofiberModel.fromCof {suspModel.{u} eX}))) (suc n)
+      => hom-approx.{u} {CofiberModel.cofib {suspModel.{u} eX}} {CofiberModel.cofib {suspModel.{u} eY}}
+                        (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} {RelCW.seq {CofiberModel.cofib {suspModel.{u} eY}}}
+                                     (CofiberModel.toCof {suspModel.{u} eY})
+                                     (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}}}
+                                                  {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} (PairDataMap.quot {pairMap.{u} eX eY G}) (CofiberModel.fromCof {suspModel.{u} eX}))) (suc n)
+                        {\lam w => CofiberModel.cofEquiv {suspModel.{u} eY} (Susp.map f ((CofiberModel.cofEquiv {suspModel.{u} eX}).ret w))}
+                        (cofPointwise.{u} f eX eY G hG (suc (suc n)))
 
-    \func homTo.{u} {X : \Type u} {S : CW.{u}} (eX : QEquiv {X} {S.Space}) (n : Nat)
-      : AddGroupHom (H.{u} (PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}) n) (H.{u} (CofiberModel.cofib {suspModel.{u} eX}) n)
-      => hom.{u} {PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}} {CofiberModel.cofib {suspModel.{u} eX}} (toCofModel.{u} eX) n
-
-    \func homFrom.{u} {X : \Type u} {S : CW.{u}} (eX : QEquiv {X} {S.Space}) (n : Nat)
-      : AddGroupHom (H.{u} (CofiberModel.cofib {suspModel.{u} eX}) n) (H.{u} (PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}) n)
-      => hom.{u} {CofiberModel.cofib {suspModel.{u} eX}} {PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}} (fromCofModel.{u} eX) n
-
-    \func homQuot.{u} {X Y : \Type u} {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S') (n : Nat)
-      : AddGroupHom (H.{u} (PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}) n) (H.{u} (PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}) n)
-      => hom.{u} {PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}} {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}} (quotModelMap.{u} eX eY G) n
-
-    \func toCofModel.{u} {X : \Type u} {S : CW.{u}} (eX : QEquiv {X} {S.Space})
-      : CellularMap (PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}) (CofiberModel.cofib {suspModel.{u} eX})
-      => CofiberModel.toCof {suspModel.{u} eX}
-
-    \func fromCofModel.{u} {X : \Type u} {S : CW.{u}} (eX : QEquiv {X} {S.Space})
-      : CellularMap (CofiberModel.cofib {suspModel.{u} eX}) (PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}})
-      => CofiberModel.fromCof {suspModel.{u} eX}
-
-    \func quotModelMap.{u} {X Y : \Type u} {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
-      : CellularMap (PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}) (PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}})
-      => PairDataMap.quot {cylMap.pairData.{u} G}
-
-    \func fromModelMap.{u} {X Y : \Type u} {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
-      : CellularMap (CofiberModel.cofib {suspModel.{u} eX}) (PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}})
-      => SeqMap.comp (quotModelMap.{u} eX eY G) (fromCofModel.{u} eX)
-
-    \func suspModelMap.{u} {X Y : \Type u} {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
-      : CellularMap (CofiberModel.cofib {suspModel.{u} eX}) (CofiberModel.cofib {suspModel.{u} eY})
-      => SeqMap.comp (toCofModel.{u} eY) (fromModelMap.{u} eX eY G)
+    \func pairMap.{u} {X Y : \Type u} {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
+      : PairDataMap.{u} (CofiberModel.pair {suspModel.{u} eX}) (CofiberModel.pair {suspModel.{u} eY})
+      => cylMap.pairData.{u} G
 
     \lemma map-cells.{u} (n : Nat) {X Y : \Type u} (f : X -> Y) (cX : IsCW.{u} X) (cY : IsCW.{u} Y) {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space})
                          (G : CellularMap S S') (hG : \Pi (z : S.Space) -> realize G z = eY (f (eX.ret z))) (x : ReducedCWHomology.Cells.{u} n (S, eX) unit-structure.{u})
@@ -390,13 +451,19 @@
 
     \func cellsImage.{u} {X Y : \Type u} {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S') (n : Nat)
                          (x : ReducedCWHomology.Cells.{u} n (S, eX) unit-structure.{u}) : ReducedCWHomology.Cells.{u} n (S', eY) unit-structure.{u}
-      => (suspModel.cellsMap.equiv.{u} eY n).ret (kerMap.{u} (suspModel.{u} eX) (suspModel.{u} eY) G (SeqMap.id (RelCW.seq {discrete 1})) (\lam _ _ => idp) n (suspModel.cellsMap.{u} eX n x))
+      => (suspModel.cellsMap.equiv.{u} eY n).ret (kerMap.{u} (suspModel.{u} eX) (suspModel.{u} eY) (PairDataMap.src {pairMap.{u} eX eY G}) (tgtMap.{u} eX eY) (sqProof.{u} eX eY G) n
+                                                         (suspModel.cellsMap.{u} eX n x))
   }
 
 \func cofPointwise.{u} {X Y : \Type u} (f : X -> Y) {S S' : CW.{u}} (eX : QEquiv {X} {S.Space}) (eY : QEquiv {Y} {S'.Space}) (G : CellularMap S S')
-                       (hG : \Pi (z : S.Space) -> realize G z = eY (f (eX.ret z))) (k : Nat) (r : OldCof.{u} (toPointCW.{u} S) (suc k))
-  : inSC {RelCW.seq {CofSpan.{u} (toPointCW.{u} S')}} (SeqMap.func {suspMapCW.{u} G} (suc k) r)
-  = CofiberModel.cofEquiv {suspModel.{u} eY} (Susp.map f ((CofiberModel.cofEquiv {suspModel.{u} eX}).ret (inSC {RelCW.seq {CofSpan.{u} (toPointCW.{u} S)}} r)))
+                       (hG : \Pi (z : S.Space) -> realize G z = eY (f (eX.ret z))) (k : Nat) (r : RelCW.stage {CofiberModel.cofib {suspModel.{u} eX}} (suc k))
+  : inSC {RelCW.seq {CofiberModel.cofib {suspModel.{u} eY}}}
+         (SeqMap.func {SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} {RelCW.seq {CofiberModel.cofib {suspModel.{u} eY}}}
+                                   (CofiberModel.toCof {suspModel.{u} eY})
+                                   (SeqMap.comp {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eX}}}}
+                                                {RelCW.seq {PairData.quotCW {CofiberModel.pair {suspModel.{u} eY}}}} (PairDataMap.quot {suspAt.pairMap.{u} eX eY G}) (CofiberModel.fromCof {suspModel.{u} eX}))}
+                      (suc k) r)
+  = CofiberModel.cofEquiv {suspModel.{u} eY} (Susp.map f ((CofiberModel.cofEquiv {suspModel.{u} eX}).ret (inSC {RelCW.seq {CofiberModel.cofib {suspModel.{u} eX}}} r)))
   => inv ((span.realization (toPointCW.{u} S') (toPointCW.{u} S')).ret_f _)
      *> pmap (span.realization (toPointCW.{u} S') (toPointCW.{u} S')).ret
              (span.realization.onStage (toPointCW.{u} S') (toPointCW.{u} S') (SeqMap.func {suspMapCW.{u} G} (suc k) r)
