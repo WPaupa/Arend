@@ -33,7 +33,11 @@
      *> inv (Trunc0.map-comp t (Omega^-Func n f).1 (Omega^-Func n g).1)
 
 \func piSphereEquiv.{u} (n : Nat) (X : Pointed.{u}) : QEquiv {Trunc0 (Sphere.pointed n ->* X)} {pi n X}
-  => Trunc0.mapEquiv (Equiv.toQEquiv (=_Equiv (omegaSphere n X)))
+  => Trunc0.mapEquiv (omegaSphere n X)
+  \where
+    \lemma natural.{u} (n : Nat) {X Y : Pointed.{u}} (g : X ->* Y) (t : Trunc0 (Sphere.pointed n ->* X))
+      : piSphereEquiv n Y (Trunc0.map t (g ->*.∘*)) = piMap n g (piSphereEquiv n X t) \elim t
+      | in0 k => pmap in0 (omegaSphere.natural n g k)
 
 \instance PiGroup.{u} (n : Nat) (X : Pointed.{u}) : Group (Trunc0 (Omega^ (suc n) X))
   => Aut (base {Omega^ n X})

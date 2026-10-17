@@ -1,0 +1,199 @@
+-- | After `Cubical/CW/HurewiczTheorem.agda` in the cubical library.
+
+\import Algebra.Group
+\import Algebra.Group.Abelianization
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Arith.Nat
+\import Category (Iso)
+\import Data.SeqColimit
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Connectivity
+\import Homotopy.CW
+\import Homotopy.CW.Connected
+\import Homotopy.CW.Connected.WeakHurewicz (weakHurewicz)
+\import Homotopy.CW.Homology
+\import Homotopy.CW.Homology.Hurewicz.Cofiber
+\import Homotopy.CW.Homology.Hurewicz.Map
+\import Homotopy.CW.Homology.Level
+\import Homotopy.CW.Homology.Skeleton
+\import Homotopy.CW.Homology.Sphere
+\import Homotopy.CW.Structure.Attach (bouquetStage, top)
+\import Homotopy.Pushout (pinl)
+\import Homotopy.CW.Structure.Span (cofiber-isCW)
+\import Homotopy.HomotopyGroup
+\import Homotopy.HomotopyGroup.Level
+\import Homotopy.Pointed
+\import Homotopy.Sphere
+\import Homotopy.Sphere.Bouquet
+\import Logic
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence (in~)
+\import Set (Trunc0, in0)
+
+\func sphereGen.{u} (n : Nat) : CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n))
+  => Iso.f {homologyLevel.{u} (suc n) (sphere-isCW.{0} (suc n)) (sphere-isCW.{u} (suc n))} (sphereClass.{0} n)
+
+\lemma hurewicz-level.{u} (n : Nat) {X : Pointed.{0}} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (x : pi.{0} (suc n) X)
+  : hurewiczAt.{u} n {X} cX' (sphereGen.{u} n) (piLevel.{u} n X x) = Iso.f {homologyLevel.{u} (suc n) cX cX'} (hurewiczAt.{0} n {X} cX (sphereClass.{0} n) x)
+  => transport (\lam x' => hurewiczAt.{u} n {X} cX' (sphereGen.{u} n) (piLevel.{u} n X x') = Iso.f {homologyLevel.{u} (suc n) cX cX'} (hurewiczAt.{0} n {X} cX (sphereClass.{0} n) x'))
+               ((piSphereEquiv.{0} (suc n) X).f_sec x) (on-class.{u} n cX cX' ((piSphereEquiv.{0} (suc n) X).ret x))
+  \where
+    \lemma on-class.{u} (n : Nat) {X : Pointed.{0}} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (t : Trunc0 (Sphere.pointed (suc n) ->* X))
+      : hurewiczAt.{u} n {X} cX' (sphereGen.{u} n) (piLevel.{u} n X (piSphereEquiv.{0} (suc n) X t))
+        = Iso.f {homologyLevel.{u} (suc n) cX cX'} (hurewiczAt.{0} n {X} cX (sphereClass.{0} n) (piSphereEquiv.{0} (suc n) X t)) \elim t
+      | in0 k => pmap (hurewiczAt.{u} n {X} cX' (sphereGen.{u} n)) (piLevel.sphere.{u} n X (in0 k))
+                 *> hurewiczAt.on-sphere.{u} n cX' (sphereGen.{u} n) k
+                 *> inv (homologyLevel.natural.{u} (suc n) (sphere-isCW.{0} (suc n)) (sphere-isCW.{u} (suc n)) cX cX' k.1 (sphereClass.{0} n))
+                 *> inv (pmap (Iso.f {homologyLevel.{u} (suc n) cX cX'}) (hurewiczAt.on-sphere.{0} n cX (sphereClass.{0} n) k))
+
+\lemma sphereGen-additive.{u} (n : Nat) : hurewicz-hom.Additive.{u} n (sphereGen.{u} n)
+  => pmap2 (\lam z z' => hurewiczAt.{u} n (bouquet-isCW.{u} n 2) (sphereGen.{u} n) ((Group.* {PiGroup n (Bouquet (suc n) 2)}) z z')) (inv (inc-level 0)) (inv (inc-level 1))
+     *> pmap (hurewiczAt.{u} n (bouquet-isCW.{u} n 2) (sphereGen.{u} n)) (inv (GroupHom.func-* {piLevel.{u} n (Bouquet (suc n) 2)} {hurewicz-hom.inc.{0} n 0} {hurewicz-hom.inc.{0} n 1}))
+     *> hurewicz-level.{u} n (bouquet-isCW.{0} n 2) (bouquet-isCW.{u} n 2) ((Group.* {PiGroup n (Bouquet (suc n) 2)}) (hurewicz-hom.inc.{0} n 0) (hurewicz-hom.inc.{0} n 1))
+     *> pmap (Iso.f {homologyLevel.{u} (suc n) (bouquet-isCW.{0} n 2) (bouquet-isCW.{u} n 2)}) (hurewicz-bouquet.hom n 2 (hurewicz-hom.inc.{0} n 0) (hurewicz-hom.inc.{0} n 1))
+     *> AddGroupHom.func-+
+     *> inv (pmap2 (AddMonoid.+ {CWHomology.{u} (suc n) (bouquet-isCW.{u} n 2)})
+                   (pmap (hurewiczAt.{u} n (bouquet-isCW.{u} n 2) (sphereGen.{u} n)) (inv (inc-level 0)) *> hurewicz-level.{u} n (bouquet-isCW.{0} n 2) (bouquet-isCW.{u} n 2) (hurewicz-hom.inc.{0} n 0))
+                   (pmap (hurewiczAt.{u} n (bouquet-isCW.{u} n 2) (sphereGen.{u} n)) (inv (inc-level 1)) *> hurewicz-level.{u} n (bouquet-isCW.{0} n 2) (bouquet-isCW.{u} n 2) (hurewicz-hom.inc.{0} n 1)))
+  \where
+    \lemma inc-level.{u} {n : Nat} (a : Fin 2) : piLevel.{u} n (Bouquet (suc n) 2) (hurewicz-hom.inc.{0} n a) = hurewicz-hom.inc.{u} n a
+      => piLevel.sphere.{u} n (Bouquet (suc n) 2) (in0 (Bouquet.include {suc n} {2} a))
+
+\func hurewiczHom.{u} (n : Nat) {X : Pointed.{u}} (cX : IsCW.{u} X) : GroupHom (PiGroup n X) (CWHomology.{u} (suc n) cX) \cowith
+  | func => hurewiczAt.{u} n cX (sphereGen.{u} n)
+  | func-* {x} {y} => hurewicz-hom.of.{u} n cX (sphereGen.{u} n) (sphereGen-additive.{u} n) x y
+
+\sfunc hurewicz.{u} (n : Nat) {X : Pointed.{u}} (cX : IsCW.{u} X) : GroupHom (PiGroup n X) (CWHomology.{u} (suc n) cX)
+  => hurewiczHom.{u} n cX
+  \where {
+    \lemma eval.{u} (n : Nat) {X : Pointed.{u}} (cX : IsCW.{u} X) (x : pi (suc n) X) : hurewicz.{u} n cX x = hurewiczAt.{u} n cX (sphereGen.{u} n) x
+      => pmap (\lam (h : GroupHom (PiGroup n X) (CWHomology.{u} (suc n) cX)) => h x) (\peval hurewicz.{u} n cX)
+
+    \lemma natural.{u} (n : Nat) {X Y : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (g : X ->* Y) (x : pi (suc n) X)
+      : hurewicz.{u} n cY (piMap (suc n) g x) = CWHomology.map.{u} (suc n) cX cY g.1 (hurewicz.{u} n cX x)
+      => eval.{u} n cY _ *> hurewiczAt.natural.{u} n cX cY (sphereGen.{u} n) g x *> inv (pmap (CWHomology.map.{u} (suc n) cX cY g.1) (eval.{u} n cX x))
+
+    \lemma transfer.{u} (n : Nat) {X Y : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (g : X ->* Y)
+                        (pe : IsEquiv (piMap (suc n) g)) (he : IsEquiv (CWHomology.map.{u} (suc n) cX cY g.1)) (e : IsEquiv (hurewicz.{u} n cX))
+      : IsEquiv (hurewicz.{u} n cY)
+      => IsEquiv.rightFactor pe (transport IsEquiv (ext (\lam x => inv (natural.{u} n cX cY g x))) (IsEquiv.trans e he))
+
+    \lemma transfer-back.{u} (n : Nat) {X Y : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (g : X ->* Y)
+                             (pe : IsEquiv (piMap (suc n) g)) (he : IsEquiv (CWHomology.map.{u} (suc n) cX cY g.1)) (e : IsEquiv (hurewicz.{u} n cY))
+      : IsEquiv (hurewicz.{u} n cX)
+      => IsEquiv.leftFactor he (transport IsEquiv (ext (\lam x => natural.{u} n cX cY g x)) (IsEquiv.trans pe e))
+
+    \lemma level.{u} (n : Nat) {X : Pointed.{0}} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (e : IsEquiv (hurewiczAt.{0} n cX (sphereClass.{0} n))) : IsEquiv (hurewicz.{u} n cX')
+      => IsEquiv.rightFactor (inP (piLevel.equiv.{u} n X))
+           (transport IsEquiv (ext (\lam x => inv (eval.{u} n cX' (piLevel.{u} n X x) *> hurewicz-level.{u} n cX cX' x)))
+                      (IsEquiv.trans {_} {_} {_} {hurewiczAt.{0} n cX (sphereClass.{0} n)} e {Iso.f {homologyLevel.{u} (suc n) cX cX'}} (inP (AbGroupCat.equivOfIso (homologyLevel.{u} (suc n) cX cX')))))
+
+    \lemma cofiber.{u} (p : Nat) {A B : Nat} (f : Bouquet (suc (suc p)) A ->* Bouquet (suc (suc p)) B) (cC : IsCW.{u} (Cof f.1))
+      : IsEquiv (hurewicz.{u} (suc p) {Cof.pointed f} cC)
+      => level.{u} (suc p) (cofiber-isCW.{0} f.1 (bouquet-isFinCW.{0} (suc p) A) (bouquet-isCW.{0} (suc p) B)) cC (inP (hurewicz-cofiber p f _))
+  }
+
+\lemma hurewicz-isEquiv.{u} (p : Nat) {X : Pointed.{u}} (cw : IsCW.{u} X) (c : isNConnectedType (suc (suc p)) X) : IsEquiv (hurewicz.{u} (suc p) cw)
+  => \case connectedPresentation.{u} (suc p) cw c \with {
+    | inP (C, one, gap, e) => \case top {C} {suc p} one gap \with {
+      | inP (f, s, compat) => \case nconnected1-path (nconnected-mono {1} {suc (suc p)} linarith c) base (e.ret (inSC (weakHurewicz.start.{u} one gap))) \with {
+        | inP q => hurewicz.transfer-back.{u} (suc p) cw (inP (C, idEquiv)) (weakHurewicz.realization.{u} e q)
+                     (piMap-isEquiv.{u} (suc (suc p)) (weakHurewicz.realization.{u} e q) (inP e))
+                     (inP (CWHomology.map-equiv.{u} (suc (suc p)) cw (inP (C, idEquiv)) e))
+                     (colimit.{u} p one gap f s compat)
+      }
+    }
+  }
+  \where {
+    \lemma stage.{u} (p : Nat) {C : CW.{u}} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc (suc p) -> C.count (suc k) = 0)
+                     (f : Bouquet (suc (suc p)) (C.count (suc (suc (suc p)))) ->* Bouquet (suc (suc p)) (C.count (suc (suc p))))
+                     (s : QEquiv {C.stage (suc (suc (suc (suc p))))} {Cof f.1})
+                     (compat : \Pi (y : C.stage (suc (suc (suc p)))) -> s (C.inclusion (suc (suc (suc p))) y) = pinl (bouquetStage one gap y))
+      : IsEquiv (hurewicz.{u} (suc p) {weakHurewicz.Start.{u} one gap} (inP (skeletonHomology.structure.{u} C (suc (suc p)))))
+      => hurewicz.transfer-back.{u} (suc p) (inP (skeletonHomology.structure.{u} C (suc (suc p)))) (cofCW.{u} p f)
+                                    (weakHurewicz.cofiber.{u} s compat) (a1.{u} p one gap f s compat) (a2.{u} p one gap f s compat) (a3.{u} p f)
+
+    \lemma cofCW.{u} (p : Nat) {A B : Nat} (f : Bouquet (suc (suc p)) A ->* Bouquet (suc (suc p)) B) : IsCW.{u} (Cof f.1)
+      => cofiber-isCW.{u} f.1 (bouquet-isFinCW.{u} (suc p) A) (bouquet-isCW.{u} (suc p) B)
+
+    \lemma a1.{u} (p : Nat) {C : CW.{u}} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc (suc p) -> C.count (suc k) = 0)
+                  (f : Bouquet (suc (suc p)) (C.count (suc (suc (suc p)))) ->* Bouquet (suc (suc p)) (C.count (suc (suc p))))
+                  (s : QEquiv {C.stage (suc (suc (suc (suc p))))} {Cof f.1})
+                  (compat : \Pi (y : C.stage (suc (suc (suc p)))) -> s (C.inclusion (suc (suc (suc p))) y) = pinl (bouquetStage one gap y))
+      : IsEquiv (piMap.{u} (suc (suc p)) (weakHurewicz.cofiber.{u} {C} {suc p} {one} {gap} s compat))
+      => piMap-isEquiv.{u} (suc (suc p)) (weakHurewicz.cofiber.{u} {C} {suc p} {one} {gap} s compat) (inP s)
+
+    \lemma a2.{u} (p : Nat) {C : CW.{u}} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc (suc p) -> C.count (suc k) = 0)
+                  (f : Bouquet (suc (suc p)) (C.count (suc (suc (suc p)))) ->* Bouquet (suc (suc p)) (C.count (suc (suc p))))
+                  (s : QEquiv {C.stage (suc (suc (suc (suc p))))} {Cof f.1})
+                  (compat : \Pi (y : C.stage (suc (suc (suc p)))) -> s (C.inclusion (suc (suc (suc p))) y) = pinl (bouquetStage one gap y))
+      : IsEquiv (CWHomology.map.{u} (suc (suc p)) (inP (skeletonHomology.structure.{u} C (suc (suc p)))) (cofCW.{u} p f) (weakHurewicz.cofiber.{u} {C} {suc p} {one} {gap} s compat).1)
+      => inP (CWHomology.map-equiv.{u} (suc (suc p)) (inP (skeletonHomology.structure.{u} C (suc (suc p)))) (cofCW.{u} p f) s)
+
+    \lemma a3.{u} (p : Nat) {A B : Nat} (f : Bouquet (suc (suc p)) A ->* Bouquet (suc (suc p)) B) : IsEquiv (hurewicz.{u} (suc p) {Cof.pointed f} (cofCW.{u} p f))
+      => hurewicz.cofiber.{u} p f (cofCW.{u} p f)
+
+    \lemma colimit.{u} (p : Nat) {C : CW.{u}} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc (suc p) -> C.count (suc k) = 0)
+                       (f : Bouquet (suc (suc p)) (C.count (suc (suc (suc p)))) ->* Bouquet (suc (suc p)) (C.count (suc (suc p))))
+                       (s : QEquiv {C.stage (suc (suc (suc (suc p))))} {Cof f.1})
+                       (compat : \Pi (y : C.stage (suc (suc (suc p)))) -> s (C.inclusion (suc (suc (suc p))) y) = pinl (bouquetStage one gap y))
+      : IsEquiv (hurewicz.{u} (suc p) {weakHurewicz.Colimit.{u} one gap} (inP (C, idEquiv)))
+      => hurewicz.transfer.{u} (suc p) (inP (skeletonHomology.structure.{u} C (suc (suc p)))) (inP (C, idEquiv)) (weakHurewicz.inclusion.{u} one gap)
+                               (inP (weakHurewicz.skeleton.{u} one gap)) (skeletonHomology.inclusion-equiv.{u} C (suc (suc p))) (stage.{u} p one gap f s compat)
+  }
+
+\func hurewiczAb.{u} {X : Pointed.{u}} (cX : IsCW.{u} X) : AddGroupHom (Ab (PiGroup 0 X)) (CWHomology.{u} 1 cX)
+  => Ab.desc (hurewicz.{u} 0 cX)
+  \where {
+    \lemma natural.{u} {X Y : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (g : X ->* Y) (w : Ab (PiGroup 0 X))
+      : hurewiczAb.{u} cY (Ab.map (piGroupMap 0 g) w) = CWHomology.map.{u} 1 cX cY g.1 (hurewiczAb.{u} cX w) \elim w
+      | in~ x => hurewicz.natural.{u} 0 cX cY g x
+
+    \func piEquiv.{u} {X Y : Pointed.{u}} (g : X ->* Y) (pe : IsEquiv (piMap 1 g)) : QEquiv (Ab.map (piGroupMap 0 g))
+      => Ab.map.equiv (piGroupMap 0 g) (IsEquiv.toQEquiv pe)
+
+    \lemma transfer.{u} {X Y : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (g : X ->* Y)
+                        (pe : IsEquiv (piMap 1 g)) (he : IsEquiv (CWHomology.map.{u} 1 cX cY g.1)) (e : IsEquiv (hurewiczAb.{u} cX)) : IsEquiv (hurewiczAb.{u} cY)
+      => IsEquiv.rightFactor (inP (piEquiv.{u} g pe)) (transport IsEquiv (ext (\lam w => inv (natural.{u} cX cY g w))) (IsEquiv.trans e he))
+
+    \lemma transfer-back.{u} {X Y : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (g : X ->* Y)
+                             (pe : IsEquiv (piMap 1 g)) (he : IsEquiv (CWHomology.map.{u} 1 cX cY g.1)) (e : IsEquiv (hurewiczAb.{u} cY)) : IsEquiv (hurewiczAb.{u} cX)
+      => IsEquiv.leftFactor he (transport IsEquiv (ext (\lam w => natural.{u} cX cY g w)) (IsEquiv.trans (inP (piEquiv.{u} g pe)) e))
+
+    \lemma level-at.{u} {X : Pointed.{0}} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (w : Ab (PiGroup.{0} 0 X))
+      : hurewiczAb.{u} cX' (Ab.map (piLevel.{u} 0 X) w) = Iso.f {homologyLevel.{u} 1 cX cX'} (Ab.desc (hurewicz-hom.group 0 cX) w) \elim w
+      | in~ x => hurewicz.eval.{u} 0 cX' (piLevel.{u} 0 X x) *> hurewicz-level.{u} 0 cX cX' x
+
+    \lemma level.{u} {X : Pointed.{0}} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (e : IsEquiv (Ab.desc (hurewicz-hom.group 0 cX))) : IsEquiv (hurewiczAb.{u} cX')
+      => IsEquiv.rightFactor (inP (Ab.map.equiv (piLevel.{u} 0 X) (piLevel.equiv.{u} 0 X)))
+           (transport IsEquiv (ext (\lam w => inv (level-at.{u} cX cX' w)))
+                      (IsEquiv.trans {_} {_} {_} {Ab.desc (hurewicz-hom.group 0 cX)} e {Iso.f {homologyLevel.{u} 1 cX cX'}} (inP (AbGroupCat.equivOfIso (homologyLevel.{u} 1 cX cX')))))
+
+    \lemma cofiber.{u} {A B : Nat} (f : Bouquet 1 A ->* Bouquet 1 B) (cC : IsCW.{u} (Cof f.1)) : IsEquiv (hurewiczAb.{u} {Cof.pointed f} cC)
+      => level.{u} (cofiber-isCW.{0} f.1 (bouquet-isFinCW.{0} 0 A) (bouquet-isCW.{0} 0 B)) cC (inP (hurewicz-cofiber1 f _))
+  }
+
+\lemma hurewiczOne.{u} {X : Pointed.{u}} (cw : IsCW.{u} X) (c : isNConnectedType 1 X) : IsEquiv (hurewiczAb.{u} cw)
+  => \case connectedPresentation.{u} 0 cw c \with {
+    | inP (C, one, gap, e) => \case top {C} {0} one gap \with {
+      | inP (f, s, compat) => \case nconnected1-path c base (e.ret (inSC (weakHurewicz.start.{u} one gap))) \with {
+        | inP q => hurewiczAb.transfer-back.{u} cw (inP (C, idEquiv)) (weakHurewicz.realization.{u} e q)
+                     (piMap-isEquiv.{u} 1 (weakHurewicz.realization.{u} e q) (inP e))
+                     (inP (CWHomology.map-equiv.{u} 1 cw (inP (C, idEquiv)) e))
+                     (hurewiczAb.transfer.{u} (inP (skeletonHomology.structure.{u} C 1)) (inP (C, idEquiv)) (weakHurewicz.inclusion.{u} one gap)
+                        (inP (weakHurewicz.skeleton.{u} one gap)) (skeletonHomology.inclusion-equiv.{u} C 1)
+                        (hurewiczAb.transfer-back.{u} (inP (skeletonHomology.structure.{u} C 1)) (cofiber-isCW.{u} f.1 (bouquet-isFinCW.{u} 0 _) (bouquet-isCW.{u} 0 _))
+                           (weakHurewicz.cofiber.{u} s compat)
+                           (piMap-isEquiv.{u} 1 (weakHurewicz.cofiber.{u} s compat) (inP s))
+                           (inP (CWHomology.map-equiv.{u} 1 (inP (skeletonHomology.structure.{u} C 1)) (cofiber-isCW.{u} f.1 (bouquet-isFinCW.{u} 0 _) (bouquet-isCW.{u} 0 _)) s))
+                           (hurewiczAb.cofiber.{u} f _)))
+      }
+    }
+  }

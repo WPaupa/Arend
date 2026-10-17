@@ -1,0 +1,241 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.Cokernel
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Group.Exact
+\import Arith.Int
+\import Category (Iso)
+\import Data.Array (mkArray)
+\import Data.Fin (fsuc/=0)
+\import Equiv
+\import Function (IsSurj)
+\import Homotopy.Cofiber
+\import Homotopy.CW
+\import Homotopy.CW.Homology
+\import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Homology.Cofiber (toPointCW)
+\import Homotopy.CW.Homology.Exact (cofiber-exact)
+\import Homotopy.CW.Homology.Map
+\import Homotopy.CW.Homology.Theory (susp-bottom, suspension)
+\import Homotopy.CW.Structure.Finite (discrete, sphere0-equiv, sphere0-structure, unit-isCW, unit-isFinCW, unit-structure)
+\import Homotopy.CW.Structure.Span (susp-isFinCW, wedge-isCW, wedge-isFinCW)
+\import Homotopy.Suspension
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Wedge
+\import Arith.Nat (zero<=_)
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence (in~)
+
+\lemma sphere-isFinCW.{u} (n : Nat) : IsFinCWUpTo.{u} n (Sphere n) \elim n
+  | 0 => inP ((discrete 2, discrete.bound 2), sphere0-equiv `transQEquiv` RelCW.stableRealization (discrete.bound 2))
+  | suc n => susp-isFinCW (sphere-isFinCW n)
+
+\lemma sphere-isCW.{u} (n : Nat) : IsCW.{u} (Sphere n) => IsFinCW.toCW (IsFinCWUpTo.toFinCW (sphere-isFinCW.{u} n))
+
+\func zeroClass (N : Nat) : AddGroupHom (ZFree N) (Homology (cellular (discrete N)) 0)
+  => Coker.proj (ChainComplex.boundary {cellular (discrete N)} 0) AddGroupHom.∘ cycle N
+  \where {
+    \func cycle (N : Nat) : AddGroupHom (ZFree N) (ChainComplex.Cycles {cellular (discrete N)} 0) \cowith
+      | func z => (z, idp)
+      | func-+ => ext idp
+
+    \func coord (N : Nat) : AddGroupHom (Homology (cellular (discrete N)) 0) (ZFree N)
+      => Coker.desc (ChainComplex.cycleInc {cellular (discrete N)} 0)
+                    (\lam w => pmap (ChainComplex.d {cellular (discrete N)} 0) (ZFree.zero-trivial w) *> AddGroupHom.func-zro {ChainComplex.d {cellular (discrete N)} 0})
+
+    \func equiv (N : Nat) : QEquiv (zeroClass N) \cowith
+      | ret => coord N
+      | ret_f _ => idp
+      | f_sec (y : Homology (cellular (discrete N)) 0) : zeroClass N (coord N y) = y \elim y {
+        | in~ z => Homology.class-ext idp
+      }
+  }
+
+\func reducedZero.{u} : AddGroupHom (ReducedCWHomology.Cells.{u} 0 sphere0-structure.{u} unit-structure.{u}) (ZFree 1) \cowith
+  | func x => (ZFree.uncons (zeroClass.coord 2 x.1)).2
+  | func-+ => pmap (\lam v => (ZFree.uncons v).2) (AddGroupHom.func-+ {zeroClass.coord 2})
+  \where {
+    \func F.{u} => cellularMap (toPointCW.{u} (discrete 2))
+
+    \lemma toPoint.{u} (z : ZFree 2)
+      : zeroClass.coord 1 (structureMap.{u} 0 (\lam (_ : Sphere 0) => ()) sphere0-structure.{u} unit-structure.{u} (zeroClass 2 z)) = ChainMap.f {F.{u}} 0 z
+      => pmap (\lam (h : AddGroupHom (Homology (cellular (discrete 2)) 0) (Homology (cellular (discrete 1)) 0)) => zeroClass.coord 1 (h (zeroClass 2 z)))
+              (cellHomologyMap.of-approximation.{u} (toPointCW.{u} (discrete 2)) 0 {\lam z => unit-structure.{u}.2 ((\lam (_ : Sphere 0) => ()) (sphere0-structure.{u}.2.ret z))}
+                                                 (\lam _ => discrete.point-isProp _ _))
+
+    \lemma augment.{u} {z : ZFree 2} (p : structureMap.{u} 0 (\lam (_ : Sphere 0) => ()) sphere0-structure.{u} unit-structure.{u} (zeroClass 2 z) = AddMonoid.zro {Homology (cellular (discrete 1)) 0})
+      : ZFree.augment z = 0
+      => inv (toPointCW.augment.{u} (discrete 2) z) *> pmap ZFree.one (inv (toPoint.{u} z) *> pmap (zeroClass.coord 1) p *> AddGroupHom.func-zro) *> AddGroupHom.func-zro
+
+    \func lift (w : ZFree 1) : ZFree 2 => negative (ZFree.augment w) :: w
+
+    \lemma lift-augment (w : ZFree 1) : ZFree.augment (lift w) = 0
+      => ZFree.augment-uncons (lift w) *> negative-left
+
+    \lemma kills.{u} (w : ZFree 1) : structureMap.{u} 0 (\lam (_ : Sphere 0) => ()) sphere0-structure.{u} unit-structure.{u} (zeroClass 2 (lift w)) = AddMonoid.zro {Homology (cellular (discrete 1)) 0}
+      => inv ((zeroClass.equiv 1).f_sec _)
+         *> pmap (zeroClass 1) (toPoint.{u} (lift w) *> ZFree.one-equiv.isInj (toPointCW.augment.{u} (discrete 2) (lift w) *> lift-augment w *> inv AddGroupHom.func-zro))
+         *> AddGroupHom.func-zro
+
+    \lemma lift-uncons {z : ZFree 2} (p : ZFree.augment z = 0) : lift (ZFree.uncons z).2 = z
+      => pmap (\lam a => a :: (ZFree.uncons z).2) (inv (AddMonoid.negative-unique (ZFree.augment (ZFree.uncons z).2) (inv (ZFree.augment-uncons z) *> p) negative-right))
+         *> ZFree.uncons-equiv.ret_f z
+
+    \func equiv.{u} : QEquiv reducedZero.{u} \cowith
+      | ret w => (zeroClass 2 (lift w), kills.{u} w)
+      | ret_f x => ext (pmap (zeroClass 2) (lift-uncons (augment.{u} (pmap (structureMap.{u} 0 (\lam (_ : Sphere 0) => ()) sphere0-structure.{u} unit-structure.{u}) ((zeroClass.equiv 2).f_sec x.1) *> x.2)))
+                        *> (zeroClass.equiv 2).f_sec x.1)
+      | f_sec w => pmap __.2 (ZFree.uncons-equiv.f_sec (negative (ZFree.augment w), w))
+  }
+
+\sfunc sphereHomology.{u} (n : Nat) : Iso {AbGroupCat.{0}} {ZFree 1} {CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n))} \elim n
+  | 0 => Iso.composite (Iso.composite (Iso.reverse {AbGroupCat.isoOfEquiv reducedZero.{u} reducedZero.equiv.{u}})
+                                      (ReducedCWHomology.compare.{u} 0 (sphere-isCW.{u} 0) sphere0-structure.{u} unit-structure.{u}))
+                       (suspension.{u} 0 (IsFinCWUpTo.toFinCW (sphere-isFinCW.{u} 0)) (sphere-isCW.{u} 1))
+  | suc n => Iso.composite (Iso.composite (sphereHomology n) (Iso.reverse {ReducedCWHomology.unreduced.{u} n (sphere-isCW.{u} (suc n))}))
+                           (suspension.{u} (suc n) (IsFinCWUpTo.toFinCW (sphere-isFinCW.{u} (suc n))) (sphere-isCW.{u} (suc (suc n))))
+
+\func sphereClass.{u} (n : Nat) : CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n)) => Iso.f {sphereHomology.{u} n} (ZFree.basis 0)
+
+\func sphereCoord.{u} (n : Nat) : AddGroupHom (CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n))) IntRing
+  => ZFree.one AddGroupHom.∘ Iso.hinv {sphereHomology.{u} n}
+  \where {
+    \lemma inj.{u} (n : Nat) {y : CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n))} (p : sphereCoord.{u} n y = 0)
+      : y = AddMonoid.zro {CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n))}
+      => inv ((AbGroupCat.equivOfIso (sphereHomology.{u} n)).f_ret y)
+         *> pmap (Iso.f {sphereHomology.{u} n}) (ZFree.one-equiv.isInj (p *> inv AddGroupHom.func-zro)) *> AddGroupHom.func-zro
+
+    \lemma class.{u} (n : Nat) : sphereCoord.{u} n (sphereClass.{u} n) = 1
+      => pmap ZFree.one ((AbGroupCat.equivOfIso (sphereHomology.{u} n)).ret_f (ZFree.basis 0)) *> ZFree.basis-diagonal {1} {0}
+  }
+
+\lemma bouquet-isFinCW.{u} (n g : Nat) : IsFinCWUpTo.{u} (suc n) (Bouquet (suc n) g) \elim g
+  | 0 => IsFinCWUpTo.raise zero<=_ unit-isFinCW.{u}
+  | suc g => wedge-isFinCW (sphere-isFinCW.{u} (suc n)) (bouquet-isFinCW n g)
+
+\lemma bouquet-isCW.{u} (n g : Nat) : IsCW.{u} (Bouquet (suc n) g) => IsFinCW.toCW (IsFinCWUpTo.toFinCW (bouquet-isFinCW.{u} n g))
+
+\lemma wedge-inj.{u} (n : Nat) {A B : Pointed.{u}} (cA : IsFinCW.{u} A) (cB : IsCW.{u} B) (cW : IsCW.{u} (Wedge A B)) (x : CWHomology.{u} (suc n) cW)
+                     (p : CWHomology.map.{u} (suc n) cW (IsFinCW.toCW cA) (\lam w => (wedgeToProduct A B w).1) x = AddMonoid.zro {CWHomology.{u} (suc n) (IsFinCW.toCW cA)})
+                     (q : CWHomology.map.{u} (suc n) cW cB (Wedge.cofLeft.toRight A B) x = AddMonoid.zro {CWHomology.{u} (suc n) cB})
+  : x = AddMonoid.zro {CWHomology.{u} (suc n) cW}
+  => \case AbExactAt.lift (cofiber-exact.{u} (Wedge.left A B).1 cA cW (cofCW.{u} cB) n) (cof-zero.{u} n cB cW x q) \with {
+    | inP (z, e) => inv e *> pmap (CWHomology.map.{u} (suc n) (IsFinCW.toCW cA) cW (Wedge.left A B).1)
+                                  (inv (CWHomology.map-id-at.{u} (suc n) (IsFinCW.toCW cA) (\lam _ => idp) z)
+                                   *> CWHomology.map-comp-at.{u} (suc n) (IsFinCW.toCW cA) cW (IsFinCW.toCW cA) (\lam w => (wedgeToProduct A B w).1) (Wedge.left A B).1 z
+                                   *> pmap (CWHomology.map.{u} (suc n) cW (IsFinCW.toCW cA) (\lam w => (wedgeToProduct A B w).1)) e *> p)
+                    *> AddGroupHom.func-zro
+  }
+  \where {
+    \lemma cofCW.{u} {A B : Pointed.{u}} (cB : IsCW.{u} B) : IsCW.{u} (Cof (Wedge.left A B).1)
+      => IsCW.transport (symQEquiv (Wedge.cofLeft A B)) cB
+
+    \lemma cof-zero.{u} (n : Nat) {A B : Pointed.{u}} (cB : IsCW.{u} B) (cW : IsCW.{u} (Wedge A B)) (x : CWHomology.{u} (suc n) cW)
+                        (q : CWHomology.map.{u} (suc n) cW cB (Wedge.cofLeft.toRight A B) x = AddMonoid.zro {CWHomology.{u} (suc n) cB})
+      : CWHomology.map.{u} (suc n) cW (cofCW.{u} cB) pinl x = AddMonoid.zro {CWHomology.{u} (suc n) (cofCW.{u} cB)}
+      => (CWHomology.map-equiv.{u} (suc n) (cofCW.{u} cB) cB (Wedge.cofLeft A B)).isInj
+           (inv (CWHomology.map-comp-at.{u} (suc n) cW (cofCW.{u} cB) cB (Wedge.cofLeft.down A B) pinl x) *> q *> inv AddGroupHom.func-zro)
+  }
+
+\func bouquetHom.{u} (n g : Nat) : AddGroupHom (CWHomology.{u} (suc n) (bouquet-isCW.{u} n g)) (ZFree g) \cowith
+  | func x => mkArray \lam b => sphereCoord.{u} n (CWHomology.map.{u} (suc n) (bouquet-isCW.{u} n g) (sphere-isCW.{u} (suc n)) (Bouquet.project b).1 x)
+  | func-+ => exts \lam _ => pmap (sphereCoord.{u} n) AddGroupHom.func-+ *> AddGroupHom.func-+
+  \where {
+    \lemma inj.{u} (n g : Nat) {x : CWHomology.{u} (suc n) (bouquet-isCW.{u} n g)} (p : bouquetHom.{u} n g x = AddMonoid.zro {ZFree g})
+      : x = AddMonoid.zro {CWHomology.{u} (suc n) (bouquet-isCW.{u} n g)} \elim g
+      | 0 => ReducedCWHomology.point-trivial.{u} n x
+      | suc g => wedge-inj.{u} n (IsFinCWUpTo.toFinCW (sphere-isFinCW.{u} (suc n))) (bouquet-isCW.{u} n g) (bouquet-isCW.{u} n (suc g)) x
+                   (sphereCoord.inj.{u} n (pmap (\lam (a : ZFree (suc g)) => a 0) p))
+                   (inj.{u} n g (exts \lam b => inv (pmap (sphereCoord.{u} n) (CWHomology.map-comp-at.{u} (suc n) (bouquet-isCW.{u} n (suc g)) (bouquet-isCW.{u} n g) (sphere-isCW.{u} (suc n))
+                                                                                                          (Bouquet.project b).1 (Bouquet.fold2 {suc n} {g}).1 x))
+                                                 *> pmap (\lam (a : ZFree (suc g)) => a (suc b)) p))
+
+    \func petal.{u} (n : Nat) {g : Nat} (a b : Fin g)
+      : sphereCoord.{u} n (CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) (sphere-isCW.{u} (suc n))
+                                         (\lam x => (Bouquet.project {suc n} b).1 ((Bouquet.include {suc n} a).1 x)) (sphereClass.{u} n)) = ZFree.basis a b \elim g, a, b
+      | suc g, 0, 0 => pmap (sphereCoord.{u} n) (CWHomology.map-id-at.{u} (suc n) (sphere-isCW.{u} (suc n)) (\lam _ => idp) _) *> sphereCoord.class.{u} n
+                       *> inv (ZFree.basis-diagonal {suc g} {0})
+      | suc g, suc a, 0 => pmap (sphereCoord.{u} n) (CWHomology.map-const.{u} n (sphere-isCW.{u} (suc n)) (sphere-isCW.{u} (suc n)) _ _) *> AddGroupHom.func-zro
+                           *> inv (ZFree.basis-coordinate {suc g} {suc a} {0} fsuc/=0)
+      | suc g, 0, suc b => pmap (sphereCoord.{u} n) (CWHomology.map-const.{u} n (sphere-isCW.{u} (suc n)) (sphere-isCW.{u} (suc n)) _ _) *> AddGroupHom.func-zro
+                           *> inv (ZFree.basis-coordinate {suc g} {0} {suc b} \lam q => fsuc/=0 {g} {b} (inv q))
+      | suc g, suc a, suc b => petal.{u} n a b *> inv ZFree.basis-suc
+
+    \func section.{u} (n g : Nat) : AddGroupHom (ZFree g) (CWHomology.{u} (suc n) (bouquet-isCW.{u} n g))
+      => ZFree.extend \lam a => CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n g) (Bouquet.include a).1 (sphereClass.{u} n)
+
+    \lemma section-at.{u} (n g : Nat) (a : Fin g)
+      : section.{u} n g (ZFree.basis a) = CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n g) (Bouquet.include a).1 (sphereClass.{u} n)
+      => ZFree.extend-basis _ a
+
+    \lemma section-basis.{u} (n g : Nat) (a : Fin g) : bouquetHom.{u} n g (section.{u} n g (ZFree.basis a)) = ZFree.basis a
+      => pmap (bouquetHom.{u} n g) (ZFree.extend-basis _ a)
+         *> exts \lam b => inv (pmap (sphereCoord.{u} n) (CWHomology.map-comp-at.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n g) (sphere-isCW.{u} (suc n))
+                                                                                   (Bouquet.project b).1 (Bouquet.include a).1 (sphereClass.{u} n)))
+                           *> petal.{u} n a b
+
+    \lemma section-right.{u} (n g : Nat) (z : ZFree g) : bouquetHom.{u} n g (section.{u} n g z) = z
+      => pmap (\lam (h : AddGroupHom (ZFree g) (ZFree g)) => h z) (ZFree.hom-ext (bouquetHom.{u} n g AddGroupHom.∘ section.{u} n g) AddGroupHom.id (section-basis.{u} n g))
+
+    \func equiv.{u} (n g : Nat) : QEquiv (bouquetHom.{u} n g) \cowith
+      | ret => section.{u} n g
+      | ret_f x => AddGroup.fromZero (inj.{u} n g (AddGroupHom.func-minus {bouquetHom.{u} n g}
+                                                   *> pmap (\lam (t : ZFree g) => (-) {ZFree g} t (bouquetHom.{u} n g x)) (section-right.{u} n g (bouquetHom.{u} n g x))
+                                                   *> AddGroup.negative-right {ZFree g} {bouquetHom.{u} n g x}))
+      | f_sec => section-right.{u} n g
+  }
+
+\lemma bouquet-low.{u} (n A : Nat) (c : IsCW.{u} (Bouquet (suc n) A)) (y : ReducedCWHomology.{u} n c) : y = AddMonoid.zro {ReducedCWHomology.{u} n c}
+  => inv (ReducedCWHomology.map-id.{u} n c y) *> inv (ReducedCWHomology.map-homotopy.{u} n c c (susp n A).f_sec y)
+     *> ReducedCWHomology.map-comp.{u} n c (susp-isCW.{u} n A c) c (susp n A) (susp n A).ret y
+     *> pmap (ReducedCWHomology.map.{u} n (susp-isCW.{u} n A c) c (susp n A))
+             (susp-low.{u} n A (susp-isCW.{u} n A c) (ReducedCWHomology.map.{u} n c (susp-isCW.{u} n A c) (susp n A).ret y))
+     *> AddGroupHom.func-zro
+  \where {
+    \func susp (n A : Nat) : QEquiv {Susp (Bouquet n A)} {Bouquet (suc n) A} => IsEquiv.toQEquiv (PointedEquiv.map-isEquiv {Bouquet.suspEquiv n A})
+
+    \lemma susp-isCW.{u} (n A : Nat) (c : IsCW.{u} (Bouquet (suc n) A)) : IsCW.{u} (Susp (Bouquet n A)) => IsCW.transport (symQEquiv (susp n A)) c
+
+    \lemma flat-isCW.{u} (A : Nat) : IsCW.{u} (Bouquet 0 A) \elim A
+      | 0 => unit-isCW.{u}
+      | suc A => wedge-isCW (sphere-isCW.{u} 0) (flat-isCW A)
+
+    \lemma susp-low.{u} (n A : Nat) (cS : IsCW.{u} (Susp (Bouquet n A))) (z : ReducedCWHomology.{u} n cS) : z = AddMonoid.zro {ReducedCWHomology.{u} n cS} \elim n
+      | 0 => susp-bottom.{u} (Bouquet 0 A) (flat-isCW.{u} A) cS z
+      | suc m => ext (inv ((AbGroupCat.equivOfIso (suspension.{u} m (IsFinCWUpTo.toFinCW (bouquet-isFinCW.{u} m A)) cS)).f_ret z.1)
+                      *> pmap (Iso.f {suspension.{u} m (IsFinCWUpTo.toFinCW (bouquet-isFinCW.{u} m A)) cS})
+                              (bouquet-low.{u} m A (IsFinCW.toCW (IsFinCWUpTo.toFinCW (bouquet-isFinCW.{u} m A))) _)
+                      *> AddGroupHom.func-zro)
+  }
+
+\lemma cofiber-surj.{u} (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (cC : IsCW.{u} (Cof f.1))
+  : IsSurj (CWHomology.map.{u} (suc n) (bouquet-isCW.{u} n B) cC pinl)
+  => \lam _ => AbExactAt.lift (cofiber-exact.{u} pinl (IsFinCWUpTo.toFinCW (bouquet-isFinCW.{u} n B)) cC (rot-isCW.{u} n f cC) n) (rot-trivial.{u} n f cC _)
+  \where {
+    \func rot (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) : QEquiv {Cof (Cof.inc f).1} {Susp (Bouquet (suc n) A)}
+      => IsEquiv.toQEquiv (PointedEquiv.map-isEquiv {Cof.rotate f})
+
+    \lemma susp-isCW.{u} (n A : Nat) : IsCW.{u} (Susp (Bouquet (suc n) A)) => IsFinCW.toCW (IsFinCWUpTo.toFinCW (susp-isFinCW (bouquet-isFinCW.{u} n A)))
+
+    \lemma rot-isCW.{u} (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (_ : IsCW.{u} (Cof f.1)) : IsCW.{u} (Cof (Cof.inc f).1)
+      => IsCW.transport (symQEquiv (rot n f)) (susp-isCW.{u} n A)
+
+    \lemma susp-trivial.{u} (n A : Nat) (v : CWHomology.{u} (suc n) (susp-isCW.{u} n A)) : v = AddMonoid.zro {CWHomology.{u} (suc n) (susp-isCW.{u} n A)}
+      => inv ((AbGroupCat.equivOfIso (suspension.{u} n (IsFinCWUpTo.toFinCW (bouquet-isFinCW.{u} n A)) (susp-isCW.{u} n A))).f_ret v)
+         *> pmap (Iso.f {suspension.{u} n (IsFinCWUpTo.toFinCW (bouquet-isFinCW.{u} n A)) (susp-isCW.{u} n A)})
+                 (bouquet-low.{u} n A (IsFinCW.toCW (IsFinCWUpTo.toFinCW (bouquet-isFinCW.{u} n A))) _)
+         *> AddGroupHom.func-zro
+
+    \lemma rot-trivial.{u} (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (cC : IsCW.{u} (Cof f.1))
+                           (w : CWHomology.{u} (suc n) (rot-isCW.{u} n f cC)) : w = AddMonoid.zro {CWHomology.{u} (suc n) (rot-isCW.{u} n f cC)}
+      => (CWHomology.map-equiv.{u} (suc n) (rot-isCW.{u} n f cC) (susp-isCW.{u} n A) (rot n f)).isInj (susp-trivial.{u} n A _ *> inv AddGroupHom.func-zro)
+  }

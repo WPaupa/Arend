@@ -81,6 +81,26 @@
   }
 
 \func generator (n : Nat) : pi (suc n) (Sphere.pointed (suc n)) => generatorHom n 1
+  \where {
+    \lemma sphere (n : Nat) : piSphereEquiv (suc n) (Sphere.pointed (suc n)) (in0 ->*.id) = inverse {PiGroup n (Sphere.pointed (suc n))} (generator n) \elim n
+      | 0 => pmap in0 circle
+      | suc n => pmap in0 (pmap (\lam h => (omegaShift (suc n) (Sphere.pointed (suc (suc n)))).1 (omegaSphere (suc n) (Loop (Sphere.pointed (suc (suc n)))) h)) (unit n)
+                           *> pmap (omegaShift (suc n) (Sphere.pointed (suc (suc n)))).1 (omegaSphere.natural (suc n) {Sphere.pointed (suc n)} {Loop (Sphere.pointed (suc (suc n)))} (SuspLoopEquiv.unit (Sphere.pointed (suc n))) ->*.id))
+                 *> pmap (piStabilization (suc n) (Sphere.pointed (suc n))) (sphere n)
+                 *> GroupHom.func-inverse {piStabilization.hom n (Sphere.pointed (suc n))}
+
+    \func circle : (SuspLoopEquiv.fromSusp {Sphere.pointed 0} {Sphere.pointed 1} ->*.id).1 (south {Empty}) = inv ((Loop-Func PiGroup_S1.circleMap).1 (wind 1))
+      => idp_*> (pmerid {Sphere 0} south *> inv (pmerid {Sphere 0} north))
+         *> inv (pmap (\lam t => inv (idp *> t)) (pmap_idp_*> Sphere1-equiv.CircleSusp (path loop)) *> pmap inv (idp_*> _)
+                 *> *>_inv-comm (pmerid {Sphere 0} north) (inv (pmerid {Sphere 0} south))
+                 *> pmap (`*> inv (pmerid {Sphere 0} north)) (inv_inv (pmerid {Sphere 0} south)))
+
+    \func unit (n : Nat)
+      : SuspLoopEquiv.fromSusp {Sphere.pointed (suc n)} {Sphere.pointed (suc (suc n))} ->*.id = SuspLoopEquiv.unit (Sphere.pointed (suc n)) ->*.∘* ->*.id
+      => ->*.ext {_} {_} {SuspLoopEquiv.fromSusp {Sphere.pointed (suc n)} {Sphere.pointed (suc (suc n))} ->*.id} {SuspLoopEquiv.unit (Sphere.pointed (suc n))}
+                 (\lam _ => idp_*> _) idp
+         *> inv (->*.compose-id (SuspLoopEquiv.unit (Sphere.pointed (suc n))))
+  }
 
 \func degree {n : Nat} (f : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : Int
   => IsEquiv.ret (generatorHom.isEquiv n) (piMap (suc n) f (generator n))

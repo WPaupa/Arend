@@ -1,0 +1,150 @@
+\import Algebra.Group
+\import Algebra.Group.Abelianization
+\import Algebra.Group.Cokernel
+\import Algebra.Group.Exact
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupHom
+\import Algebra.Monoid
+\import Equiv
+\import Function (IsInj, IsSurj)
+\import Homotopy.Cofiber
+\import Homotopy.CW
+\import Homotopy.CW.Homology
+\import Homotopy.CW.Homology.Exact (cofiber-exact)
+\import Homotopy.CW.Homology.Hurewicz.Map
+\import Homotopy.CW.Homology.Sphere
+\import Homotopy.HomotopyGroup
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Sphere.Bouquet.Circle (bottom1)
+\import Homotopy.Sphere.Bouquet.Cofiber (cofiberBottom, cofiberBottom1)
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence (in~)
+
+\lemma degree-compat (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (y : CWHomology.{0} (suc n) (bouquet-isCW.{0} n A))
+  : bouquetHom.{0} n B (CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n A) (bouquet-isCW.{0} n B) f.1 y) = degreeHom f (bouquetHom.{0} n A y)
+  => pmap (\lam y' => bouquetHom.{0} n B (CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n A) (bouquet-isCW.{0} n B) f.1 y')) (inv ((bouquetHom.equiv.{0} n A).ret_f y))
+     *> pmap (\lam (h : AddGroupHom (ZFree A) (ZFree B)) => h (bouquetHom.{0} n A y))
+             (ZFree.hom-ext (bouquetHom.{0} n B AddGroupHom.∘ CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n A) (bouquet-isCW.{0} n B) f.1 AddGroupHom.∘ bouquetHom.section.{0} n A)
+                            (degreeHom f) (on-basis n f))
+  \where
+    \lemma on-basis (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (a : Fin A)
+      : bouquetHom.{0} n B (CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n A) (bouquet-isCW.{0} n B) f.1 (bouquetHom.section.{0} n A (ZFree.basis a)))
+        = degreeHom f (ZFree.basis a)
+      => pmap (\lam z => bouquetHom.{0} n B (CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n A) (bouquet-isCW.{0} n B) f.1 z)) (bouquetHom.section-at.{0} n A a)
+         *> exts \lam b => pmap (sphereCoord.{0} n)
+                                (pmap (CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n B) (sphere-isCW.{0} (suc n)) (Bouquet.project b).1)
+                                      (inv (CWHomology.map-comp-at.{0} (suc n) (sphere-isCW.{0} (suc n)) (bouquet-isCW.{0} n A) (bouquet-isCW.{0} n B)
+                                                                      f.1 (Bouquet.include a).1 (sphereClass.{0} n)))
+                                 *> inv (CWHomology.map-comp-at.{0} (suc n) (sphere-isCW.{0} (suc n)) (bouquet-isCW.{0} n B) (sphere-isCW.{0} (suc n))
+                                                                   (Bouquet.project b).1 (\lam x => f.1 ((Bouquet.include a).1 x)) (sphereClass.{0} n)))
+                           *> degH.eq-degree.{0} n (Bouquet.project b ->*.∘* (f ->*.∘* Bouquet.include a))
+                           *> inv (degreeMatrix.eval f b a) *> inv (ZFree.columnActionBasis (degreeMatrix f) a b)
+
+\func cofiberMap (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (cC : IsCW.{0} (Cof f.1))
+  : AddGroupHom (Coker (degreeHom f)) (CWHomology.{0} (suc n) cC)
+  => Coker.desc (CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n B) cC pinl AddGroupHom.∘ bouquetHom.section.{0} n B AddGroupHom.∘ AddGroupHom.negate {ZFree B})
+                (kills n f cC)
+  \where {
+    \lemma lift (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (r : ZFree A)
+      : bouquetHom.section.{0} n B (AddGroup.negative {ZFree B} (degreeHom f r))
+        = CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n A) (bouquet-isCW.{0} n B) f.1 (bouquetHom.section.{0} n A (AddGroup.negative {ZFree A} r))
+      => (bouquetHom.equiv.{0} n B).isInj (bouquetHom.section-right.{0} n B _ *> inv (AddGroupHom.func-negative {degreeHom f})
+                                           *> inv (degree-compat n f _ *> pmap (degreeHom f) (bouquetHom.section-right.{0} n A _)))
+
+    \lemma kills (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (cC : IsCW.{0} (Cof f.1)) (r : ZFree A)
+      : CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n B) cC pinl (bouquetHom.section.{0} n B (AddGroup.negative {ZFree B} (degreeHom f r)))
+        = AddMonoid.zro {CWHomology.{0} (suc n) cC}
+      => pmap (CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n B) cC pinl) (lift n f r)
+         *> AbExactAt.zero (cofiber-exact.{0} f.1 (IsFinCWUpTo.toFinCW (bouquet-isFinCW.{0} n A)) (bouquet-isCW.{0} n B) cC n)
+                           (bouquetHom.section.{0} n A (AddGroup.negative {ZFree A} r))
+
+    \lemma inj (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (cC : IsCW.{0} (Cof f.1)) : IsInj (cofiberMap n f cC)
+      => AddGroupHom.injective {cofiberMap n f cC} \lam {c} q => \case Coker.proj-surj c \with {
+        | inP (z, e) => \case AbExactAt.lift (cofiber-exact.{0} f.1 (IsFinCWUpTo.toFinCW (bouquet-isFinCW.{0} n A)) (bouquet-isCW.{0} n B) cC n)
+                                             {bouquetHom.section.{0} n B (AddGroup.negative {ZFree B} z)} (pmap (cofiberMap n f cC) e *> q) \with {
+          | inP (v, ev) => inv e *> pmap (Coker.proj (degreeHom f)) (kernel n f z v ev) *> Coker.proj-kills _
+        }
+      }
+
+    \lemma kernel (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (z : ZFree B) (v : CWHomology.{0} (suc n) (bouquet-isCW.{0} n A))
+                  (ev : CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n A) (bouquet-isCW.{0} n B) f.1 v = bouquetHom.section.{0} n B (AddGroup.negative {ZFree B} z))
+      : z = degreeHom f (AddGroup.negative {ZFree A} (bouquetHom.{0} n A v))
+      => inv (AddGroup.negative-isInv {ZFree B} {z})
+         *> pmap (AddGroup.negative {ZFree B}) (inv (bouquetHom.section-right.{0} n B (AddGroup.negative {ZFree B} z)) *> pmap (bouquetHom.{0} n B) (inv ev) *> degree-compat n f v)
+         *> inv (AddGroupHom.func-negative {degreeHom f} {bouquetHom.{0} n A v})
+
+    \lemma surj (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (cC : IsCW.{0} (Cof f.1)) : IsSurj (cofiberMap n f cC)
+      => \lam y => \case cofiber-surj.{0} n f cC y \with {
+        | inP (w, e) => inP (Coker.proj (degreeHom f) (AddGroup.negative {ZFree B} (bouquetHom.{0} n B w)),
+                             pmap (CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n B) cC pinl)
+                                  (pmap (bouquetHom.section.{0} n B) (AddGroup.negative-isInv {ZFree B} {bouquetHom.{0} n B w}) *> (bouquetHom.equiv.{0} n B).ret_f w) *> e)
+      }
+
+    \func equiv (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (cC : IsCW.{0} (Cof f.1)) : QEquiv (cofiberMap n f cC)
+      => QEquiv.fromInjSurj (inj n f cC) (surj n f cC)
+
+    \lemma section-natural (n : Nat) {B : Nat} {X : Pointed.{0}} (cX : IsCW.{0} X) (g : Bouquet (suc n) B ->* X) (w : pi (suc n) (Bouquet (suc n) B))
+                           (z : ZFree B) (p : hurewiczAt.{0} n (bouquet-isCW.{0} n B) (sphereClass.{0} n) w = bouquetHom.section.{0} n B (AddGroup.negative {ZFree B} z))
+      : hurewiczAt.{0} n cX (sphereClass.{0} n) (piMap (suc n) g w) = CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n B) cX g.1 (bouquetHom.section.{0} n B (AddGroup.negative {ZFree B} z))
+      => hurewiczAt.natural.{0} n {Bouquet (suc n) B} {X} (bouquet-isCW.{0} n B) cX (sphereClass.{0} n) g w *> pmap (CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n B) cX g.1) p
+
+    \lemma compat (n : Nat) {B : Nat} {X : Pointed.{0}} (cX : IsCW.{0} X) (g : Bouquet (suc n) B ->* X) (w : pi (suc n) (Bouquet (suc n) B)) {z : ZFree B}
+                  (q : bottomAny n B w = z)
+      : hurewiczAt.{0} n {X} cX (sphereClass.{0} n) (piMap (suc n) g w)
+        = CWHomology.map.{0} (suc n) (bouquet-isCW.{0} n B) cX g.1 (bouquetHom.section.{0} n B (AddGroup.negative {ZFree B} z))
+      => section-natural n cX g w z (hurewicz-bouquet.section n B w q)
+
+    \lemma bottom-compat (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (cC : IsCW.{0} (Cof f.1))
+                         (bot : Coker (degreeHom f) -> pi (suc n) (Cof.pointed f)) (w : ZFree B -> pi (suc n) (Bouquet (suc n) B))
+                         (wq : \Pi (z : ZFree B) -> bottomAny n B (w z) = z) (bq : \Pi (z : ZFree B) -> bot (in~ z) = piMap (suc n) (Cof.inc f) (w z))
+                         (c : Coker (degreeHom f))
+      : hurewiczAt.{0} n {Cof.pointed f} cC (sphereClass.{0} n) (bot c) = cofiberMap n f cC c \elim c
+      | in~ z => pmap (hurewiczAt.{0} n {Cof.pointed f} cC (sphereClass.{0} n)) (bq z) *> compat n {B} {Cof.pointed f} cC (Cof.inc f) (w z) (wq z)
+
+    \func bottom-equiv (n : Nat) {A B : Nat} (f : Bouquet (suc n) A ->* Bouquet (suc n) B) (cC : IsCW.{0} (Cof f.1))
+                       (bot : Coker (degreeHom f) -> pi (suc n) (Cof.pointed f)) (be : QEquiv bot) (w : ZFree B -> pi (suc n) (Bouquet (suc n) B))
+                       (wq : \Pi (z : ZFree B) -> bottomAny n B (w z) = z) (bq : \Pi (z : ZFree B) -> bot (in~ z) = piMap (suc n) (Cof.inc f) (w z))
+      : QEquiv (hurewiczAt.{0} n {Cof.pointed f} cC (sphereClass.{0} n))
+      => QEquiv.rightFactor be (transport (\lam (k : Coker (degreeHom f) -> CWHomology.{0} (suc n) cC) => QEquiv k)
+                                          (inv (ext (bottom-compat n f cC bot w wq bq))) (equiv n f cC))
+  }
+
+\func hurewicz-cofiber (p : Nat) {A B : Nat} (f : Bouquet (suc (suc p)) A ->* Bouquet (suc (suc p)) B) (cC : IsCW.{0} (Cof f.1))
+  : QEquiv (hurewiczAt.{0} (suc p) {Cof.pointed f} cC (sphereClass.{0} (suc p)))
+  => cofiberMap.bottom-equiv (suc p) f cC (bot p f) (botEquiv p f) (cofiberBottom.unbottom p B) (unbottom-coord p B) (botEq p f)
+  \where {
+    \func bot (p : Nat) {A B : Nat} (f : Bouquet (suc (suc p)) A ->* Bouquet (suc (suc p)) B) (c : Coker (degreeHom f)) : pi (suc (suc p)) (Cof.pointed f)
+      => cofiberBottom f c
+
+    \func botEquiv (p : Nat) {A B : Nat} (f : Bouquet (suc (suc p)) A ->* Bouquet (suc (suc p)) B) : QEquiv (bot p f)
+      => IsEquiv.toQEquiv (cofiberBottom.isEquiv f)
+
+    \lemma botEq (p : Nat) {A B : Nat} (f : Bouquet (suc (suc p)) A ->* Bouquet (suc (suc p)) B) (z : ZFree B)
+      : bot p f (in~ z) = piMap (suc (suc p)) (Cof.inc f) (cofiberBottom.unbottom p B z)
+      => idp
+
+    \lemma unbottom-coord (p B : Nat) (z : ZFree B) : bottomAny (suc p) B (cofiberBottom.unbottom p B z) = z
+      => (IsEquiv.toQEquiv (bottom.isEquiv p B)).f_ret z
+  }
+
+\lemma ab-section (B : Nat) (w : Ab (PiGroup 0 (Bouquet 1 B))) {z : ZFree B} (q : bottom1 B w = z)
+  : Ab.desc (hurewicz-hom.group 0 {Bouquet 1 B} (bouquet-isCW.{0} 0 B)) w = bouquetHom.section.{0} 0 B (AddGroup.negative {ZFree B} z) \elim w
+  | in~ x => hurewicz-bouquet.section 0 B x q
+
+\lemma naturalAb {A B : Nat} (f : Bouquet 1 A ->* Bouquet 1 B) (cC : IsCW.{0} (Cof f.1)) (w : Ab (PiGroup 0 (Bouquet 1 B)))
+  : Ab.desc (hurewicz-hom.group 0 {Cof.pointed f} cC) (Ab.map (piGroupMap 0 (Cof.inc f)) w)
+    = CWHomology.map.{0} 1 (bouquet-isCW.{0} 0 B) cC pinl (Ab.desc (hurewicz-hom.group 0 {Bouquet 1 B} (bouquet-isCW.{0} 0 B)) w) \elim w
+  | in~ x => hurewiczAt.natural.{0} 0 {Bouquet 1 B} {Cof.pointed f} (bouquet-isCW.{0} 0 B) cC (sphereClass.{0} 0) (Cof.inc f) x
+
+\lemma hurewicz-cofiber1-compat {A B : Nat} (f : Bouquet 1 A ->* Bouquet 1 B) (cC : IsCW.{0} (Cof f.1)) (c : Coker (degreeHom f))
+  : Ab.desc (hurewicz-hom.group 0 {Cof.pointed f} cC) (cofiberBottom1 f c) = cofiberMap 0 f cC c \elim c
+  | in~ z => naturalAb f cC (bottom1.back B z) *> pmap (CWHomology.map.{0} 1 (bouquet-isCW.{0} 0 B) cC pinl) (ab-section B (bottom1.back B z) ((bottom1.isEquiv B).f_sec z))
+
+\func hurewicz-cofiber1 {A B : Nat} (f : Bouquet 1 A ->* Bouquet 1 B) (cC : IsCW.{0} (Cof f.1)) : QEquiv (Ab.desc (hurewicz-hom.group 0 {Cof.pointed f} cC))
+  => QEquiv.rightFactor (cofiberBottom1.isEquiv f)
+       (transport (\lam (k : Coker (degreeHom f) -> CWHomology.{0} 1 cC) => QEquiv k) (inv (ext (hurewicz-cofiber1-compat f cC))) (cofiberMap.equiv 0 f cC))

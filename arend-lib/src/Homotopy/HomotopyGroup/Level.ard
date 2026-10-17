@@ -1,0 +1,54 @@
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Equiv
+\import Homotopy.HomotopyGroup
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Sphere
+\import Logic
+\import Paths
+\import Set (Trunc0, in0)
+
+\func omegaLift.{u} (n : Nat) (Y : Pointed.{0}) : Omega^.{0} n Y ->* Omega^.{u} n Y \elim n
+  | 0 => ->*.id
+  | suc n => Loop-Func (omegaLift n Y)
+  \where {
+    \func equiv.{u} (n : Nat) (Y : Pointed.{0}) : QEquiv (omegaLift.{u} n Y).1 \elim n
+      | 0 => idEquiv
+      | suc n => IsEquiv.toQEquiv (Loop-Func.isEquiv (omegaLift n Y) (inP (equiv n Y)))
+
+    \func shift.{u} (n : Nat) (Y : Pointed.{0})
+      : Loop-Func (omegaLift.{u} n Y) ->*.∘* omegaShift.{0} n Y = omegaShift.{u} n Y ->*.∘* omegaLift.{u} n (Loop Y) \elim n
+      | 0 => pmap (->*.∘* ->*.id) Loop-Func-id
+      | suc n => inv (Loop-Func-comp (Loop-Func (omegaLift.{u} n Y)) (omegaShift.{0} n Y)) *> pmap Loop-Func (shift n Y)
+                 *> Loop-Func-comp (omegaShift.{u} n Y) (omegaLift.{u} n (Loop Y))
+
+    \func sphere.{u} (n : Nat) (Y : Pointed.{0}) (k : Sphere.pointed n ->* Y) : (omegaLift.{u} n Y).1 (omegaSphere.{0} n Y k) = omegaSphere.{u} n Y k \elim n
+      | 0 => idp
+      | suc n => pmap (\lam (h : Omega^.{0} n (Loop Y) ->* Omega^.{u} (suc n) Y) => h.1 (omegaSphere.{0} n (Loop Y) (SuspLoopEquiv.fromSusp k))) (shift n Y)
+                 *> pmap (omegaShift.{u} n Y).1 (sphere n (Loop Y) (SuspLoopEquiv.fromSusp k))
+  }
+
+\func piLevel.{u} (n : Nat) (Y : Pointed.{0}) : GroupHom (PiGroup.{0} n Y) (PiGroup.{u} n Y) \cowith
+  | func t => Trunc0.map t (omegaLift.{u} (suc n) Y).1
+  | func-* {x} {y} => \case \elim x, \elim y \with {
+    | in0 a, in0 b => pmap in0 (Loop-Func_*> (omegaLift.{u} n Y) a b)
+  }
+  \where {
+    \func equiv.{u} (n : Nat) (Y : Pointed.{0}) : QEquiv (piLevel.{u} n Y)
+      => Trunc0.mapEquiv (omegaLift.equiv.{u} (suc n) Y)
+
+    \lemma sphere.{u} (n : Nat) (Y : Pointed.{0}) (t : Trunc0 (Sphere.pointed (suc n) ->* Y))
+      : piLevel.{u} n Y (piSphereEquiv.{0} (suc n) Y t) = piSphereEquiv.{u} (suc n) Y t \elim t
+      | in0 k => pmap in0 (omegaLift.sphere.{u} (suc n) Y k)
+
+    \lemma natural.{u} (n : Nat) {X Y : Pointed.{0}} (g : X ->* Y) (x : pi.{0} (suc n) X)
+      : piLevel.{u} n Y (piMap.{0} (suc n) g x) = piMap.{u} (suc n) g (piLevel.{u} n X x)
+      => transport (\lam x' => piLevel.{u} n Y (piMap.{0} (suc n) g x') = piMap.{u} (suc n) g (piLevel.{u} n X x'))
+                   ((piSphereEquiv.{0} (suc n) X).f_sec x) (on-class n g ((piSphereEquiv.{0} (suc n) X).ret x))
+      \where
+        \lemma on-class.{u} (n : Nat) {X Y : Pointed.{0}} (g : X ->* Y) (t : Trunc0 (Sphere.pointed (suc n) ->* X))
+          : piLevel.{u} n Y (piMap.{0} (suc n) g (piSphereEquiv.{0} (suc n) X t)) = piMap.{u} (suc n) g (piLevel.{u} n X (piSphereEquiv.{0} (suc n) X t)) \elim t
+          | in0 k => pmap (piLevel.{u} n Y) (inv (piSphereEquiv.natural.{0} (suc n) g (in0 k))) *> sphere n Y (in0 (g ->*.∘* k))
+                     *> piSphereEquiv.natural.{u} (suc n) g (in0 k) *> inv (pmap (piMap.{u} (suc n) g) (sphere n X (in0 k)))
+  }

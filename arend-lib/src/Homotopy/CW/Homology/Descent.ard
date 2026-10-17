@@ -17,7 +17,7 @@
 
 \func Datum.{u} (n : Nat) (X : \Type u)
   => \Sigma (G : AbGroup.{0}) (c : \Pi (s : HasCWStructure X) -> Iso {AbGroupCat.{0}} {Homology (cellular s.1) n} {G})
-            (\Pi (s t : HasCWStructure X) (x : Homology (cellular s.1) n) -> Iso.f {c t} (structureMap n (\lam x => x) s t x) = Iso.f {c s} x)
+            (\property \Pi (s t : HasCWStructure X) (x : Homology (cellular s.1) n) -> Iso.f {c t} (structureMap n (\lam x => x) s t x) = Iso.f {c s} x)
   \where {
     \func at.{u} (n : Nat) {X : \Type u} (s0 : HasCWStructure X) => \Sigma (G : AbGroup.{0}) (Iso {AbGroupCat.{0}} {Homology (cellular s0.1) n} {G})
 
@@ -37,7 +37,7 @@
       | inP s0 => Contr.make (spread n s0 (Contr.center {at-contr n s0}))
                              (\lam D => pmap (spread n s0) (Contr.contraction {at-contr n s0} (D.1, D.2 s0)) *> retract n s0 D)
 
-    \func canonical.{u} (n : Nat) {X : \Type u} (cw : IsCW X) : Datum n X
+    \sfunc canonical.{u} (n : Nat) {X : \Type u} (cw : IsCW X) : Datum n X
       => Contr.center {contr n cw}
 
     \lemma f-hinv.{u} {n : Nat} {X : \Type u} (D : Datum n X) (s : HasCWStructure X) (y : D.1) : Iso.f {D.2 s} (Iso.hinv {D.2 s} y) = y
@@ -49,7 +49,7 @@
 
 \func MapDatum.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y)
   => \Sigma (u : AddGroupHom (Datum.canonical n cX).1 (Datum.canonical n cY).1)
-            (\Pi (s : HasCWStructure X) (t : HasCWStructure Y) (x : Homology (cellular s.1) n)
+            (\property \Pi (s : HasCWStructure X) (t : HasCWStructure Y) (x : Homology (cellular s.1) n)
               -> u (Iso.f {(Datum.canonical n cX).2 s} x) = Iso.f {(Datum.canonical n cY).2 t} (structureMap n f s t x))
   \where {
     \lemma prop.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y) : isProp (MapDatum n cX cY f)
@@ -71,4 +71,10 @@
 
     \lemma contr.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y) : Contr (MapDatum n cX cY f)
       => isProp'=>isContr (prop n cX cY f) (inhabited n cX cY f)
+
+    \sfunc canonical.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y) : MapDatum n cX cY f
+      => Contr.center {contr n cX cY f}
+
+    \lemma unique.{u} (n : Nat) {X Y : \Type u} (cX : IsCW X) (cY : IsCW Y) (f : X -> Y) (D : MapDatum n cX cY f) : canonical n cX cY f = D
+      => (\peval canonical n cX cY f) *> Contr.contraction {contr n cX cY f} D
   }

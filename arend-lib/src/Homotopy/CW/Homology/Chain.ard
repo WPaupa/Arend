@@ -309,6 +309,37 @@
                        (eval G) (eval F))
   }
 
+\func chainStep-equiv.{u} {C D : RelCW.{u}} {n : Nat} (F : CellStep C D n) (e0 : QEquiv F.low) (e1 : QEquiv F.high) : QEquiv (chainStep F) \cowith
+  | ret => degreeHom (Bouquet.suspend (PointedEquiv.inverse (bouquetEquiv.{u} F e0 e1)).map)
+  | ret_f x => pmap (\lam (h : AddGroupHom (ZFree (C.count n)) (ZFree (D.count n))) => degreeHom (Bouquet.suspend (PointedEquiv.inverse (bouquetEquiv.{u} F e0 e1)).map) (h x))
+                    (chainStep.eval F)
+               *> inverse-degree (bouquetMap F) (PointedEquiv.inverse (bouquetEquiv.{u} F e0 e1)).map (PointedEquiv.inverse-ret (bouquetEquiv.{u} F e0 e1)) x
+  | f_sec y => pmap (\lam (h : AddGroupHom (ZFree (C.count n)) (ZFree (D.count n))) => h (degreeHom (Bouquet.suspend (PointedEquiv.inverse (bouquetEquiv.{u} F e0 e1)).map) y))
+                    (chainStep.eval F)
+               *> inverse-degree (PointedEquiv.inverse (bouquetEquiv.{u} F e0 e1)).map (bouquetMap F) (PointedEquiv.inverse-sec (bouquetEquiv.{u} F e0 e1)) y
+  \where {
+    \func quotientEquiv.{u} {C D : RelCW.{u}} {n : Nat} (F : CellStep C D n) (e0 : QEquiv F.low) (e1 : QEquiv F.high) : QEquiv (quotientMap F).1
+      => IsEquiv.toQEquiv (PushoutData.congr.isEquiv.{u} (C.inclusion n) (\lam _ => ()) (D.inclusion n) (\lam _ => ()) e0 e1 idEquiv F.square (\lam _ => idp))
+
+    \func pointedEquiv {X Y : Pointed} {f : X ->* Y} {g : Y ->* X} (p : g ->*.∘* f = ->*.id) (q : f ->*.∘* g = ->*.id) : QEquiv f.1 \cowith
+      | ret => g.1
+      | ret_f => ->*.happly p
+      | f_sec => ->*.happly q
+
+    \func bouquetEquiv.{u} {C D : RelCW.{u}} {n : Nat} (F : CellStep C D n) (e0 : QEquiv F.low) (e1 : QEquiv F.high)
+      : PointedEquiv (Bouquet n (C.count n)) (Bouquet n (D.count n)) \cowith
+      | map => bouquetMap F
+      | map-isEquiv => inP (pointedEquiv {_} {_} {Quotient.expand {C} n} {Quotient.collapse {C} n} (Quotient.collapse-expand {C} n) (Quotient.expand-collapse {C} n)
+                              `transQEquiv` quotientEquiv.{u} F e0 e1
+                              `transQEquiv` pointedEquiv {_} {_} {Quotient.collapse {D} n} {Quotient.expand {D} n} (Quotient.expand-collapse {D} n) (Quotient.collapse-expand {D} n))
+
+    \lemma inverse-degree {n g h : Nat} (P : Bouquet n g ->* Bouquet n h) (Q : Bouquet n h ->* Bouquet n g) (p : Q ->*.∘* P = ->*.id) (x : ZFree g)
+      : degreeHom (Bouquet.suspend Q) (degreeHom (Bouquet.suspend P) x) = x
+      => inv (pmap (\lam (t : AddGroupHom (ZFree g) (ZFree g)) => t x) (degreeHom.comp (Bouquet.suspend Q) (Bouquet.suspend P)))
+         *> pmap (\lam f => degreeHom f x) (inv (Bouquet.suspend.comp Q P) *> pmap Bouquet.suspend p *> Bouquet.suspend.id)
+         *> pmap (\lam (t : AddGroupHom (ZFree g) (ZFree g)) => t x) degreeHom.id
+  }
+
 \func cellularMap {C D : RelCW} (F : SeqMap C.seq D.seq) : ChainMap (cellular C) (cellular D) \cowith
   | f n => chainStep (CellStep.of F n)
   | comm n x => chainStep.comm (CellSteps.of F n) x

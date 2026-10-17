@@ -166,9 +166,14 @@
 
     \func fromSusp {X Z : Pointed} (k : Susp.pointed X ->* Z) : X ->* Loop Z
       => (\lam x => inv k.2 *> pmap k.1 (pmerid x) *> inv (pmap k.1 (pmerid base)) *> k.2, cancel k.2 (pmap k.1 (pmerid base)))
-      \where
+      \where {
         \func cancel {T : \Type} {a b c : T} (k2 : a = c) (e : a = b) : inv k2 *> e *> inv e *> k2 = idp \elim k2
           | idp => idp_*> _ *> *>_inv e
+
+        \func natural {X Z W : Pointed} (g : Z ->* W) (k : Susp.pointed X ->* Z) : fromSusp (g ->*.∘* k) = Loop-Func g ->*.∘* fromSusp k
+          => pmap (\lam t => fromSusp (g ->*.∘* t)) (inv (QEquiv.ret_f {adjoint X Z} k)) *> pmap fromSusp (toSusp.post g (fromSusp k))
+             *> QEquiv.f_sec {adjoint X W} (Loop-Func g ->*.∘* fromSusp k)
+      }
   }
 
 \func SphereLoopEquiv.{u} (n : Nat) (B : Pointed.{u}) : (Sphere.pointed n ->* B) = iterl {Pointed.{u}} (Loop __) n B \elim n
@@ -298,5 +303,13 @@
                    *> pmap2 (*>) (right (suc n) X u) (right (suc n) X v)))
   }
 
-\func omegaSphere.{u} (n : Nat) (X : Pointed.{u}) : (Sphere.pointed n ->* X) = Omega^ n X
-  => SphereLoopEquiv n X *> pmap (BaseSpace.E {__}) (iterl=iterr {Pointed.{u}} (Loop __) n X)
+\func omegaSphere.{u} (n : Nat) (X : Pointed.{u}) : QEquiv {Sphere.pointed n ->* X} {Omega^ n X} \elim n
+  | 0 => SphereLoopEquiv.zero X
+  | suc n => SuspLoopEquiv.adjoint (Sphere.pointed n) X `transQEquiv` omegaSphere n (Loop X) `transQEquiv` IsEquiv.toQEquiv (omegaShift.isEquiv n X)
+  \where
+    \func natural.{u} (n : Nat) {X Y : Pointed.{u}} (g : X ->* Y) (k : Sphere.pointed n ->* X)
+      : omegaSphere n Y (g ->*.∘* k) = (Omega^-Func n g).1 (omegaSphere n X k) \elim n
+      | 0 => idp
+      | suc n => pmap (\lam h => (omegaShift n Y).1 (omegaSphere n (Loop Y) h)) (SuspLoopEquiv.fromSusp.natural g k)
+                 *> pmap (omegaShift n Y).1 (natural n {Loop X} {Loop Y} (Loop-Func g) (SuspLoopEquiv.fromSusp k))
+                 *> pmap (\lam (h : Omega^ n (Loop X) ->* Omega^ (suc n) Y) => h.1 (omegaSphere n (Loop X) (SuspLoopEquiv.fromSusp k))) (omegaShift.natural n g)

@@ -15,6 +15,7 @@
 \import Homotopy.Connectivity
 \import Homotopy.FiberSequence.Connectivity
 \import Homotopy.HomotopyGroup
+\import Homotopy.HomotopyGroup.Level
 \import Homotopy.Loop
 \import Homotopy.Pointed
 \import Homotopy.Pushout \hiding (PushoutPointed)
@@ -48,34 +49,17 @@
     }
   }
   \where {
-    \func lift.{u} (n : Nat) (Y : Pointed.{0}) : Omega^.{0} n Y ->* Omega^.{u} n Y \elim n
-      | 0 => ->*.id
-      | suc n => Loop-Func (lift n Y)
-
-    \func lift-equiv.{u} (n : Nat) (Y : Pointed.{0}) : QEquiv (lift.{u} n Y).1 \elim n
-      | 0 => idEquiv
-      | suc n => IsEquiv.toQEquiv (Loop-Func.isEquiv (lift n Y) (inP (lift-equiv n Y)))
-
-    \func relevelHom.{u} (n : Nat) (Y : Pointed.{0}) : GroupHom (PiGroup.{0} n Y) (PiGroup.{u} n Y) \cowith
-      | func t => Trunc0.map t (lift.{u} (suc n) Y).1
-      | func-* {x} {y} => \case \elim x, \elim y \with {
-        | in0 a, in0 b => pmap in0 (Loop-Func_*> (lift.{u} n Y) a b)
-      }
-
-    \func relevel-equiv.{u} (n : Nat) (Y : Pointed.{0}) : QEquiv (relevelHom.{u} n Y)
-      => Trunc0.mapEquiv (lift-equiv.{u} (suc n) Y)
-
     \lemma relevel.{u} (p : Nat) (Y : Pointed.{0}) (h : IsFP (AbGroup.fromCGroup (PiCGroup.{0} p Y)))
       : IsFP (AbGroup.fromCGroup (PiCGroup.{u} p Y))
       => IsFP.transport {AbGroup.fromCGroup (PiCGroup.{0} p Y)} {AbGroup.fromCGroup (PiCGroup.{u} p Y)}
-                        (AddGroupHom.inverse (AddGroupHom.fromGroupHom (relevelHom.{u} (suc p) Y)) (relevel-equiv.{u} (suc p) Y))
-                        (inP (symQEquiv (relevel-equiv.{u} (suc p) Y))) h
+                        (AddGroupHom.inverse (AddGroupHom.fromGroupHom (piLevel.{u} (suc p) Y)) (piLevel.equiv.{u} (suc p) Y))
+                        (inP (symQEquiv (piLevel.equiv.{u} (suc p) Y))) h
 
     \lemma relevel1.{u} (Y : Pointed.{0}) (h : IsFP (Ab (PiGroup.{0} 0 Y))) : IsFP (Ab (PiGroup.{u} 0 Y))
-      => IsFP.transport (AddGroupHom.inverse (Ab.map (relevelHom.{u} 0 Y)) (Ab.map.equiv _ (relevel-equiv.{u} 0 Y)))
-                        (inP (symQEquiv (Ab.map.equiv _ (relevel-equiv.{u} 0 Y)))) h
+      => IsFP.transport (AddGroupHom.inverse (Ab.map (piLevel.{u} 0 Y)) (Ab.map.equiv _ (piLevel.equiv.{u} 0 Y)))
+                        (inP (symQEquiv (Ab.map.equiv _ (piLevel.equiv.{u} 0 Y)))) h
 
-    \func start.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
+    \sfunc start.{u} {C : CW.{u}} {m : Nat} (one : C.count 0 = 1) (gap : \Pi (k : Nat) -> suc k < suc m -> C.count (suc k) = 0)
       : C.stage (suc (suc (suc m)))
       => C.inclusion (suc (suc m)) ((bouquetStage one gap).ret base)
 
@@ -101,7 +85,7 @@
                   {f : Bouquet (suc m) (C.count (suc (suc m))) ->* Bouquet (suc m) (C.count (suc m))} (s : QEquiv {C.stage (suc (suc (suc m)))} {Cof f.1})
                   (compat : \Pi (y : C.stage (suc (suc m))) -> s (C.inclusion (suc (suc m)) y) = pinl (bouquetStage one gap y))
       : Start.{u} one gap ->* Cof.pointed f
-      => (s.f, compat _ *> pmap pinl ((bouquetStage one gap).f_sec base))
+      => (s.f, pmap s.f (\peval start.{u} one gap) *> compat _ *> pmap pinl ((bouquetStage one gap).f_sec base))
   }
 
 \lemma weakHurewicz1.{u} (X : Pointed.{u}) (cw : IsCW X) (c : isNConnectedType 1 X)

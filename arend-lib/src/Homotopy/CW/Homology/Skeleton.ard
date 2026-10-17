@@ -1,0 +1,102 @@
+\import Algebra.Group.Chain
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Meta
+\import Arith.Nat
+\import Category (Iso)
+\import Data.Bool
+\import Data.SeqColimit
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Homology
+\import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Homology.Map
+\import Homotopy.CW.Maps.Approximation
+\import Homotopy.CW.Structure.Skeleton
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Logic
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+
+\lemma cap-low {k d : Nat} (_ : k <= suc d) : cap k d = k \elim k, d
+  | 0, _ => idp
+  | 1, 0 => idp
+  | suc (suc k), 0 => absurd linarith
+  | suc k, suc d => pmap suc (cap-low {k} {d} linarith)
+
+\lemma keep-low {k d : Nat} (_ : k <= d) : keep k d = true \elim k, d
+  | 0, _ => idp
+  | suc k, 0 => absurd linarith
+  | suc k, suc d => keep-low {k} {d} linarith
+
+\func skeletonApprox.{u} (C : CW.{u}) (d : Nat) : FiniteCellularMap.{u} (freeze C d) C (suc d)
+  => (tr C (cap.top d), tower C d (suc d) <=-refl (cap.top d))
+  \where {
+    \func tr.{v} (C : CW.{v}) {m k : Nat} (p : m = k) (x : C.stage m) : C.stage k => transport C.stage p x
+
+    \func trEquiv.{v} (C : CW.{v}) {m k : Nat} (p : m = k) : QEquiv (tr C p) \elim p
+      | idp => idEquiv
+
+    \func tower.{v} (C : CW.{v}) (d k : Nat) (_ : k <= suc d) (p : cap k d = k) : FiniteTower.{v} {freeze C d} {C} k (tr C p) \elim k
+      | 0 => ()
+      | suc k => (tr C (cap-low {k} {d} linarith), tower C d k linarith (cap-low {k} {d} linarith), square C d k linarith (cap-low {k} {d} linarith) p)
+
+    \func buildTrans-pinl.{v} {C : CW.{v}} {n m m' : Nat} (p : m = n) (q : m' = suc n) (x : C.stage m)
+      : freeze.buildTrans {C} p q (pinl x) = transport C.stage (inv q) (C.inclusion n (transport C.stage p x)) \elim p, q
+      | idp, idp => idp
+
+    \func bld-pinl.{v} {C : CW.{v}} {d : Nat} (k : Nat) (b : Bool) (e : keep k d = b) (t : b = true) (x : C.stage (cap k d))
+      : freeze.bld {C} {d} k b e (pinl x) = transport C.stage (inv (cap.keep-cap-suc (e *> t))) (C.inclusion k (transport C.stage (cap.keep-cap (e *> t)) x)) \elim t
+      | idp => buildTrans-pinl {C} (cap.keep-cap e) (cap.keep-cap-suc e) x
+
+    \func cancel.{v} (C : CW.{v}) {m' k : Nat} (b b' : m' = suc k) (y : C.stage (suc k)) : y = transport C.stage b' (transport C.stage (inv b) y)
+      => inv (back b y) *> pmap (\lam t => transport C.stage t (transport C.stage (inv b) y)) (set-pi {Nat} {m'} {suc k} {b} {b'})
+      \where
+        \func back {m' k : Nat} (b : m' = suc k) (y : C.stage (suc k)) : transport C.stage b (transport C.stage (inv b) y) = y \elim b
+          | idp => idp
+
+    \func square.{v} (C : CW.{v}) (d k : Nat) (q : k <= d) (p' : cap k d = k) (p : cap (suc k) d = suc k) (x : C.stage (cap k d))
+      : C.inclusion k (tr C p' x) = tr C p (RelCW.inclusion {freeze C d} k x)
+      => pmap (\lam t => C.inclusion k (transport C.stage t x)) (set-pi {Nat} {cap k d} {k} {p'} {cap.keep-cap (idp *> keep-low q)})
+         *> cancel C (cap.keep-cap-suc (idp *> keep-low q)) p _
+         *> inv (pmap (tr C p) (bld-pinl {C} {d} k (keep k d) idp (keep-low q) x))
+
+    \func stage-ret.{v} {C : CW.{v}} {m m' : Nat} (q : m = m') (y : C.stage m') : QEquiv.ret {freeze.stageEquiv {C} q} y = transport C.stage (inv q) y \elim q
+      | idp => idp
+
+    \func approx.{v} (C : CW.{v}) (d : Nat) (x : RelCW.stage {freeze C d} (suc d)) : inSC {C.seq} {suc d} (tr C (cap.top d) x) = skeleton C d (inSC x)
+      => inv (pmap (\lam y => inSC {C.seq} {suc d} (QEquiv.ret {freeze.stageEquiv {C} (inv (cap.top d))} y)) ((RelCW.stableRealization (freeze.bound {C} {d})).ret_f x)
+              *> pmap (inSC {C.seq} {suc d}) (stage-ret {C} (inv (cap.top d)) x *> pmap (\lam t => transport C.stage t x) (set-pi {Nat} {cap (suc d) d} {suc d} {inv (inv (cap.top d))} {cap.top d})))
+  }
+
+\func skeletonHomology.{u} (C : CW.{u}) (N : Nat) : QEquiv (cellHomologyMap.{u} N (skeleton.{u} C (suc N)))
+  => transport (\lam (h : AddGroupHom (Homology (cellular (freeze C (suc N))) N) (Homology (cellular C) N)) => QEquiv h) (inv (eval.{u} C N)) (tower.{u} C N)
+  \where {
+    \lemma eval.{v} (C : CW.{v}) (N : Nat) : cellHomologyMap.{v} N (skeleton.{v} C (suc N)) = towerHomologyMap.{v} {freeze C (suc N)} {C} {N} (skeletonApprox.{v} C (suc N))
+      => cellHomologyMap.eval.{v} {freeze C (suc N)} {C} {N} {skeleton.{v} C (suc N)} (skeletonApprox.{v} C (suc N), skeletonApprox.approx.{v} C (suc N))
+
+    \func tower.{v} (C : CW.{v}) (N : Nat) : QEquiv (towerHomologyMap.{v} {freeze C (suc N)} {C} {N} (skeletonApprox.{v} C (suc N)))
+      => towerHomologyMap.equiv.{v} {freeze C (suc N)} {C} {N} (skeletonApprox.{v} C (suc N)) (upper.{v} C N) (lower.{v} C N) (below.{v} C N)
+
+    \func upper.{v} (C : CW.{v}) (N : Nat) : QEquiv (chainStep (CellSteps.upper (towerSteps.{v} (skeletonApprox.{v} C (suc N)))))
+      => chainStep-equiv (CellSteps.upper (towerSteps.{v} (skeletonApprox.{v} C (suc N)))) (skeletonApprox.trEquiv.{v} C _) (skeletonApprox.trEquiv.{v} C (cap.top (suc N)))
+
+    \func lower.{v} (C : CW.{v}) (N : Nat) : QEquiv (chainStep (CellSteps.lower (towerSteps.{v} (skeletonApprox.{v} C (suc N)))))
+      => chainStep-equiv (CellSteps.lower (towerSteps.{v} (skeletonApprox.{v} C (suc N)))) (skeletonApprox.trEquiv.{v} C _) (skeletonApprox.trEquiv.{v} C _)
+
+    \func structure.{v} (C : CW.{v}) (N : Nat) : HasCWStructure.{v} (C.stage (suc (suc N))) => (freeze C (suc N), skeletonEquiv.{v} C (suc N))
+
+    \lemma inclusion-equiv.{v} (C : CW.{v}) (N : Nat)
+      : IsEquiv (CWHomology.map.{v} N (inP (structure.{v} C N)) (inP (C, idEquiv)) (inSC {C.seq} {suc (suc N)}))
+      => CWHomology.map-isEquiv.{v} N (inP (structure.{v} C N)) (inP (C, idEquiv)) (inSC {C.seq} {suc (suc N)}) (structure.{v} C N) (C, idEquiv)
+           (transport (\lam (h : AddGroupHom (Homology (cellular (freeze C (suc N))) N) (Homology (cellular C) N)) => IsEquiv h)
+                      (cellHomologyMap.homotopy.{v} {freeze C (suc N)} {C} N {\lam z => (C, idEquiv).2 (inSC {C.seq} {suc (suc N)} ((structure.{v} C N).2.ret z))}
+                                                    {skeleton.{v} C (suc N)} (\lam _ => idp))
+                      (inP (skeletonHomology.{v} C N)))
+
+    \lemma below.{v} (C : CW.{v}) (N : Nat) : towerHomologyMap.Below.{v} (skeletonApprox.{v} C (suc N)) \elim N
+      | 0 => ()
+      | suc b => \lam p => (chainStep-equiv (CellSteps.lower (towerSteps.{v} (FiniteCellularMap.restrict.{v} (skeletonApprox.{v} C (suc (suc b))))))
+                                            (skeletonApprox.trEquiv.{v} C _) (skeletonApprox.trEquiv.{v} C _)).isInj p
+  }

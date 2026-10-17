@@ -1,0 +1,232 @@
+\import Algebra.Group
+\import Algebra.Group.FreeAbelian
+\import Algebra.Group.GroupHom
+\import Algebra.Monoid
+\import Arith.Int
+\import Data.Array (mkArray)
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Homology
+\import Homotopy.CW.Homology.Sphere
+\import Homotopy.HomotopyGroup
+\import Homotopy.Pointed
+\import Homotopy.Sphere
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Sphere.Bouquet.Circle (bottom1)
+\import Homotopy.Sphere.Degree
+\import Homotopy.Wedge
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Set (Trunc0, in0)
+
+\sfunc hurewiczAt.{u} (n : Nat) {X : Pointed.{u}} (cX : IsCW.{u} X) (s : CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n))) (x : pi (suc n) X)
+  : CWHomology.{u} (suc n) cX
+  => Trunc0.remove' (Trunc0.map ((piSphereEquiv (suc n) X).ret x) (\lam k => CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) cX k.1 s))
+  \where {
+    \lemma on-sphere.{u} (n : Nat) {X : Pointed.{u}} (cX : IsCW.{u} X) (s : CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n))) (k : Sphere.pointed (suc n) ->* X)
+      : hurewiczAt.{u} n cX s (piSphereEquiv (suc n) X (in0 k)) = CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) cX k.1 s
+      => (\peval hurewiczAt.{u} n cX s (piSphereEquiv (suc n) X (in0 k)))
+         *> pmap (\lam t => Trunc0.remove' (Trunc0.map t (\lam k => CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) cX k.1 s)))
+                 ((piSphereEquiv (suc n) X).ret_f (in0 k))
+
+    \lemma natural.{u} (n : Nat) {X Y : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (s : CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n)))
+                       (g : X ->* Y) (x : pi (suc n) X)
+      : hurewiczAt.{u} n cY s (piMap (suc n) g x) = CWHomology.map.{u} (suc n) cX cY g.1 (hurewiczAt.{u} n cX s x)
+      => transport (\lam x' => hurewiczAt.{u} n cY s (piMap (suc n) g x') = CWHomology.map.{u} (suc n) cX cY g.1 (hurewiczAt.{u} n cX s x'))
+                   ((piSphereEquiv (suc n) X).f_sec x) (on-class.{u} n cX cY s g ((piSphereEquiv (suc n) X).ret x))
+
+    \lemma on-class.{u} (n : Nat) {X Y : Pointed.{u}} (cX : IsCW.{u} X) (cY : IsCW.{u} Y) (s : CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n)))
+                        (g : X ->* Y) (t : Trunc0 (Sphere.pointed (suc n) ->* X))
+      : hurewiczAt.{u} n cY s (piMap (suc n) g (piSphereEquiv (suc n) X t)) = CWHomology.map.{u} (suc n) cX cY g.1 (hurewiczAt.{u} n cX s (piSphereEquiv (suc n) X t)) \elim t
+      | in0 k => pmap (hurewiczAt.{u} n cY s) (inv (piSphereEquiv.natural (suc n) g (in0 k))) *> on-sphere.{u} n cY s (g ->*.∘* k)
+                 *> CWHomology.map-comp-at.{u} (suc n) (sphere-isCW.{u} (suc n)) cX cY g.1 k.1 s
+                 *> inv (pmap (CWHomology.map.{u} (suc n) cX cY g.1) (on-sphere.{u} n cX s k))
+  }
+
+\func degH.{u} (n : Nat) (k : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : Int
+  => sphereCoord.{u} n (CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) (sphere-isCW.{u} (suc n)) k.1 (sphereClass.{u} n))
+  \where {
+    \lemma id.{u} (n : Nat) : degH.{u} n ->*.id = 1
+      => pmap (sphereCoord.{u} n) (CWHomology.map-id-at.{u} (suc n) (sphere-isCW.{u} (suc n)) (\lam _ => idp) (sphereClass.{u} n)) *> sphereCoord.class.{u} n
+
+    \lemma pinch-coord.{u} (n : Nat) (b : Fin 2)
+      : sphereCoord.{u} n (CWHomology.map.{u} (suc n) (bouquet-isCW.{u} n 2) (sphere-isCW.{u} (suc n)) (Bouquet.project {suc n} {2} b).1
+                                          (CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n 2) (pinch n).1 (sphereClass.{u} n)))
+        = ZFree.basis {2} 0 b + ZFree.basis {2} 1 b \elim b
+      | 0 => inv (pmap (sphereCoord.{u} n) (CWHomology.map-comp-at.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n 2) (sphere-isCW.{u} (suc n))
+                                                                     (Bouquet.project {suc n} {2} 0).1 (pinch n).1 (sphereClass.{u} n)))
+             *> pmap (\lam (h : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) => degH.{u} n h) (pinch.project0 n) *> id.{u} n
+      | 1 => inv (pmap (sphereCoord.{u} n) (CWHomology.map-comp-at.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n 2) (sphere-isCW.{u} (suc n))
+                                                                     (Bouquet.project {suc n} {2} 1).1 (pinch n).1 (sphereClass.{u} n)))
+             *> pmap (\lam (h : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) => degH.{u} n h) (pinch.project1 n) *> id.{u} n
+
+    \lemma pinch-split.{u} (n : Nat)
+      : CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n 2) (pinch n).1 (sphereClass.{u} n)
+        = bouquetHom.section.{u} n 2 ((AddMonoid.+ {ZFree 2}) (ZFree.basis {2} 0) (ZFree.basis {2} 1))
+      => inv ((bouquetHom.equiv.{u} n 2).ret_f _) *> pmap (bouquetHom.section.{u} n 2) (pinch-hom.{u} n)
+
+    \lemma pinch-hom.{u} (n : Nat)
+      : bouquetHom.{u} n 2 (CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n 2) (pinch n).1 (sphereClass.{u} n))
+        = (AddMonoid.+ {ZFree 2}) (ZFree.basis {2} 0) (ZFree.basis {2} 1)
+      => exts (pinch-coord.{u} n)
+
+    \lemma sum.{u} (n : Nat) (k k' : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : degH.{u} n (sumTo k k') = degH.{u} n k + degH.{u} n k'
+      => pmap (sphereCoord.{u} n) (sum-map.{u} n (sphere-isCW.{u} (suc n)) k k') *> AddGroupHom.func-+
+
+    \lemma sum-map.{u} (n : Nat) {X : Pointed.{u}} (cX : IsCW.{u} X) (k k' : Sphere.pointed (suc n) ->* X)
+      : CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) cX (sumTo k k').1 (sphereClass.{u} n)
+        = (AddMonoid.+ {CWHomology.{u} (suc n) cX}) (CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) cX k.1 (sphereClass.{u} n))
+                                                    (CWHomology.map.{u} (suc n) (sphere-isCW.{u} (suc n)) cX k'.1 (sphereClass.{u} n))
+      => CWHomology.map-comp-at.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n 2) cX (sumTo.copair k k').1 (pinch n).1 (sphereClass.{u} n)
+         *> pmap (CWHomology.map.{u} (suc n) (bouquet-isCW.{u} n 2) cX (sumTo.copair k k').1)
+                 (pinch-split.{u} n *> AddGroupHom.func-+ {bouquetHom.section.{u} n 2} {ZFree.basis {2} 0} {ZFree.basis {2} 1})
+         *> AddGroupHom.func-+ {CWHomology.map.{u} (suc n) (bouquet-isCW.{u} n 2) cX (sumTo.copair k k').1}
+         *> pmap2 (AddMonoid.+ {CWHomology.{u} (suc n) cX})
+              (pmap (CWHomology.map.{u} (suc n) (bouquet-isCW.{u} n 2) cX (sumTo.copair k k').1) (bouquetHom.section-at.{u} n 2 0)
+               *> inv (CWHomology.map-comp-at.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n 2) cX (sumTo.copair k k').1 (Bouquet.include {suc n} {2} 0).1 (sphereClass.{u} n)))
+              (pmap (CWHomology.map.{u} (suc n) (bouquet-isCW.{u} n 2) cX (sumTo.copair k k').1) (bouquetHom.section-at.{u} n 2 1)
+               *> inv (CWHomology.map-comp-at.{u} (suc n) (sphere-isCW.{u} (suc n)) (bouquet-isCW.{u} n 2) cX (sumTo.copair k k').1 (Bouquet.include {suc n} {2} 1).1 (sphereClass.{u} n)))
+
+    \lemma degree-sum (n : Nat) (k k' : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : degree (sumTo k k') = degree k + degree k' \elim n
+      | 0 => bottom1.degree-sum k k'
+      | suc p => sumTo.degree-sum {p} k k'
+
+    \lemma sphereInt-class (n : Nat) (k : Sphere.pointed (suc n) ->* Sphere.pointed (suc n))
+      : sphereInt n (piSphereEquiv (suc n) (Sphere.pointed (suc n)) (in0 k)) = negative (degree k)
+      => pmap (\lam h => sphereInt n (piSphereEquiv (suc n) (Sphere.pointed (suc n)) (in0 h))) (inv (->*.compose-id k))
+         *> pmap (sphereInt n) (piSphereEquiv.natural (suc n) k (in0 ->*.id) *> pmap (piMap (suc n) k) (generator.sphere n)
+                                *> GroupHom.func-inverse {piGroupMap n k})
+         *> AddGroupHom.func-negative {sphereInt n}
+
+    \func degT (n : Nat) (c : Trunc0 (Sphere.pointed (suc n) ->* Sphere.pointed (suc n))) : Int => Trunc0.remove' (Trunc0.map c degree)
+
+    \func degHT.{u} (n : Nat) (c : Trunc0 (Sphere.pointed (suc n) ->* Sphere.pointed (suc n))) : Int => Trunc0.remove' (Trunc0.map c (degH.{u} n))
+
+    \lemma sphereInt-classT (n : Nat) (c : Trunc0 (Sphere.pointed (suc n) ->* Sphere.pointed (suc n)))
+      : sphereInt n (piSphereEquiv (suc n) (Sphere.pointed (suc n)) c) = negative (degT n c) \elim c
+      | in0 k => sphereInt-class n k
+
+    \lemma sphereInt-inj (n : Nat) {z z' : pi (suc n) (Sphere.pointed (suc n))} (q : sphereInt n z = sphereInt n z') : z = z'
+      => inv (IsEquiv.f_ret (generatorHom.isEquiv n)) *> pmap (generatorHom n) q *> IsEquiv.f_ret (generatorHom.isEquiv n)
+
+    \lemma class-eq (n : Nat) {c c' : Trunc0 (Sphere.pointed (suc n) ->* Sphere.pointed (suc n))} (p : degT n c = degT n c') : c = c'
+      => (piSphereEquiv (suc n) (Sphere.pointed (suc n))).isInj (sphereInt-inj n (sphereInt-classT n c *> pmap negative p *> inv (sphereInt-classT n c')))
+
+    \func canon (n : Nat) (m : Int) : Trunc0 (Sphere.pointed (suc n) ->* Sphere.pointed (suc n))
+      => (piSphereEquiv (suc n) (Sphere.pointed (suc n))).ret (generatorHom n (negative m))
+
+    \lemma canon-degree (n : Nat) (m : Int) : degT n (canon n m) = m
+      => inv AddGroup.negative-isInv *> pmap negative (inv (sphereInt-classT n (canon n m)) *> pmap (sphereInt n) ((piSphereEquiv (suc n) (Sphere.pointed (suc n))).f_sec _)
+                                                         *> IsEquiv.ret_f (generatorHom.isEquiv n))
+         *> AddGroup.negative-isInv
+
+    \func sumT (n : Nat) (c c' : Trunc0 (Sphere.pointed (suc n) ->* Sphere.pointed (suc n))) : Trunc0 (Sphere.pointed (suc n) ->* Sphere.pointed (suc n))
+      => Trunc0.map2 c c' sumTo
+
+    \lemma sumT-degree (n : Nat) (c c' : Trunc0 (Sphere.pointed (suc n) ->* Sphere.pointed (suc n))) : degT n (sumT n c c') = degT n c + degT n c' \elim c, c'
+      | in0 k, in0 k' => degree-sum n k k'
+
+    \lemma sumT-degH.{u} (n : Nat) (c c' : Trunc0 (Sphere.pointed (suc n) ->* Sphere.pointed (suc n))) : degHT.{u} n (sumT n c c') = degHT.{u} n c + degHT.{u} n c' \elim c, c'
+      | in0 k, in0 k' => sum.{u} n k k'
+
+    \func phi.{u} (n : Nat) : GroupHom (AddGroup.toGroup IntRing) (AddGroup.toGroup IntRing) \cowith
+      | func m => degHT.{u} n (canon n m)
+      | func-* {m} {m'} => pmap (degHT.{u} n) (class-eq n (canon-degree n (m + m') *> inv (pmap2 (+) (canon-degree n m) (canon-degree n m')) *> inv (sumT-degree n _ _)))
+                           *> sumT-degH.{u} n _ _
+
+    \lemma phi-one.{u} (n : Nat) : phi.{u} n 1 = 1
+      => pmap (degHT.{u} n) (class-eq n {canon n 1} {in0 ->*.id} (canon-degree n 1 *> inv (degree.id {n}))) *> id.{u} n
+
+    \lemma phi-id.{u} (n : Nat) (m : Int) : phi.{u} n m = m
+      => generatorHom.int-hom-ext (phi.{u} n) GroupHom.id (phi-one.{u} n) m
+
+    \lemma eq-degree.{u} (n : Nat) (k : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : degH.{u} n k = degree k
+      => pmap (degHT.{u} n) (class-eq n {in0 k} {canon n (degree k)} (inv (canon-degree n (degree k)))) *> phi-id.{u} n (degree k)
+  }
+
+\func bottomAny (n g : Nat) : AddGroupHom (AddGroup.fromGroup (PiGroup n (Bouquet (suc n) g))) (ZFree g) \cowith
+  | func x => mkArray \lam b => sphereInt n (piMap (suc n) (Bouquet.project b) x)
+  | func-+ => exts \lam b => pmap (sphereInt n) (GroupHom.func-* {piGroupMap n (Bouquet.project b)}) *> AddGroupHom.func-+ {sphereInt n}
+
+\lemma hurewicz-sphere (n : Nat) (y : pi (suc n) (Sphere.pointed (suc n)))
+  : sphereCoord.{0} n (hurewiczAt.{0} n (sphere-isCW.{0} (suc n)) (sphereClass.{0} n) y) = negative (sphereInt n y)
+  => transport (\lam y' => sphereCoord.{0} n (hurewiczAt.{0} n (sphere-isCW.{0} (suc n)) (sphereClass.{0} n) y') = negative (sphereInt n y'))
+               ((piSphereEquiv (suc n) (Sphere.pointed (suc n))).f_sec y) (on-class n ((piSphereEquiv (suc n) (Sphere.pointed (suc n))).ret y))
+  \where
+    \lemma on-class (n : Nat) (t : Trunc0 (Sphere.pointed (suc n) ->* Sphere.pointed (suc n)))
+      : sphereCoord.{0} n (hurewiczAt.{0} n (sphere-isCW.{0} (suc n)) (sphereClass.{0} n) (piSphereEquiv (suc n) (Sphere.pointed (suc n)) t))
+        = negative (sphereInt n (piSphereEquiv (suc n) (Sphere.pointed (suc n)) t)) \elim t
+      | in0 k => pmap (sphereCoord.{0} n) (hurewiczAt.on-sphere.{0} n (sphere-isCW.{0} (suc n)) (sphereClass.{0} n) k) *> degH.eq-degree.{0} n k
+                 *> inv (pmap negative (degH.sphereInt-class n k) *> AddGroup.negative-isInv)
+
+\lemma hurewicz-bouquet (n g : Nat) (x : pi (suc n) (Bouquet (suc n) g))
+  : bouquetHom.{0} n g (hurewiczAt.{0} n (bouquet-isCW.{0} n g) (sphereClass.{0} n) x) = AddGroup.negative {ZFree g} (bottomAny n g x)
+  => exts \lam b => pmap (sphereCoord.{0} n) (inv (hurewiczAt.natural.{0} n {Bouquet (suc n) g} {Sphere.pointed (suc n)} (bouquet-isCW.{0} n g) (sphere-isCW.{0} (suc n))
+                                                                         (sphereClass.{0} n) (Bouquet.project b) x))
+                    *> hurewicz-sphere n _
+  \where {
+    \lemma section (n g : Nat) (x : pi (suc n) (Bouquet (suc n) g)) {z : ZFree g} (p : bottomAny n g x = z)
+      : hurewiczAt.{0} n (bouquet-isCW.{0} n g) (sphereClass.{0} n) x = bouquetHom.section.{0} n g (AddGroup.negative {ZFree g} z)
+      => (bouquetHom.equiv.{0} n g).isInj (hurewicz-bouquet n g x *> pmap (AddGroup.negative {ZFree g}) p
+                                           *> inv (bouquetHom.section-right.{0} n g (AddGroup.negative {ZFree g} z)))
+
+    \lemma hom (n g : Nat) (x y : pi (suc n) (Bouquet (suc n) g))
+      : hurewiczAt.{0} n (bouquet-isCW.{0} n g) (sphereClass.{0} n) ((Group.* {PiGroup n (Bouquet (suc n) g)}) x y)
+        = hurewiczAt.{0} n (bouquet-isCW.{0} n g) (sphereClass.{0} n) x + hurewiczAt.{0} n (bouquet-isCW.{0} n g) (sphereClass.{0} n) y
+      => (bouquetHom.equiv.{0} n g).isInj
+           (hurewicz-bouquet n g _ *> pmap (AddGroup.negative {ZFree g}) (AddGroupHom.func-+ {bottomAny n g} {x} {y})
+            *> AddGroup.negative_+ {ZFree g} {bottomAny n g x} {bottomAny n g y}
+            *> AbGroup.+-comm {ZFree g} {AddGroup.negative {ZFree g} (bottomAny n g y)} {AddGroup.negative {ZFree g} (bottomAny n g x)}
+            *> inv (AddGroupHom.func-+ {bouquetHom.{0} n g} *> pmap2 (AddMonoid.+ {ZFree g}) (hurewicz-bouquet n g x) (hurewicz-bouquet n g y)))
+  }
+
+\lemma hurewicz-hom (n : Nat) {X : Pointed.{0}} (cX : IsCW.{0} X) (x y : pi (suc n) X)
+  : hurewiczAt.{0} n cX (sphereClass.{0} n) ((Group.* {PiGroup n X}) x y) = hurewiczAt.{0} n cX (sphereClass.{0} n) x + hurewiczAt.{0} n cX (sphereClass.{0} n) y
+  => of.{0} n cX (sphereClass.{0} n) (hurewicz-bouquet.hom n 2 (inc.{0} n 0) (inc.{0} n 1)) x y
+  \where {
+    \func inc.{u} (n : Nat) (a : Fin 2) : pi.{u} (suc n) (Bouquet (suc n) 2) => piSphereEquiv.{u} (suc n) (Bouquet (suc n) 2) (in0 (Bouquet.include {suc n} {2} a))
+
+    \lemma side.{u} (n : Nat) {X : Pointed.{u}} (k k' : Sphere.pointed (suc n) ->* X) (a : Fin 2) (h : Sphere.pointed (suc n) ->* X)
+                    (p : ->*.compose {Sphere.pointed (suc n)} {Bouquet (suc n) 2} {X} (sumTo.copair k k') (Bouquet.include {suc n} {2} a) = h)
+      : piMap.{u} (suc n) (sumTo.copair k k') (inc.{u} n a) = piSphereEquiv.{u} (suc n) X (in0 h)
+      => inv (piSphereEquiv.natural.{u} (suc n) {Bouquet (suc n) 2} {X} (sumTo.copair k k') (in0 (Bouquet.include {suc n} {2} a)))
+         *> pmap (\lam t => piSphereEquiv.{u} (suc n) X (in0 t)) p
+
+    \lemma left.{u} (n : Nat) {X : Pointed.{u}} (k k' : Sphere.pointed (suc n) ->* X) : piMap.{u} (suc n) (sumTo.copair k k') (inc.{u} n 0) = piSphereEquiv.{u} (suc n) X (in0 k)
+      => side.{u} n k k' 0 k (Wedge.copair.left-eq k (Wedge.copair k' (->*.zero (Pointed.make ()) X)))
+
+    \lemma right.{u} (n : Nat) {X : Pointed.{u}} (k k' : Sphere.pointed (suc n) ->* X) : piMap.{u} (suc n) (sumTo.copair k k') (inc.{u} n 1) = piSphereEquiv.{u} (suc n) X (in0 k')
+      => side.{u} n k k' 1 k' (sumTo.right k k')
+
+    \func Additive.{u} (n : Nat) (s : CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n))) : \Prop
+      => hurewiczAt.{u} n (bouquet-isCW.{u} n 2) s ((Group.* {PiGroup n (Bouquet (suc n) 2)}) (inc.{u} n 0) (inc.{u} n 1))
+         = hurewiczAt.{u} n (bouquet-isCW.{u} n 2) s (inc.{u} n 0) + hurewiczAt.{u} n (bouquet-isCW.{u} n 2) s (inc.{u} n 1)
+
+    \lemma of.{u} (n : Nat) {X : Pointed.{u}} (cX : IsCW.{u} X) (s : CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n))) (add : Additive.{u} n s) (x y : pi (suc n) X)
+      : hurewiczAt.{u} n cX s ((Group.* {PiGroup n X}) x y) = hurewiczAt.{u} n cX s x + hurewiczAt.{u} n cX s y
+      => transport2 (\lam x' y' => hurewiczAt.{u} n cX s ((Group.* {PiGroup n X}) x' y') = hurewiczAt.{u} n cX s x' + hurewiczAt.{u} n cX s y')
+                    ((piSphereEquiv (suc n) X).f_sec x) ((piSphereEquiv (suc n) X).f_sec y)
+                    (on-class.{u} n cX s add ((piSphereEquiv (suc n) X).ret x) ((piSphereEquiv (suc n) X).ret y))
+
+    \lemma on-class.{u} (n : Nat) {X : Pointed.{u}} (cX : IsCW.{u} X) (s : CWHomology.{u} (suc n) (sphere-isCW.{u} (suc n))) (add : Additive.{u} n s)
+                        (t t' : Trunc0 (Sphere.pointed (suc n) ->* X))
+      : hurewiczAt.{u} n cX s ((Group.* {PiGroup n X}) (piSphereEquiv (suc n) X t) (piSphereEquiv (suc n) X t'))
+        = hurewiczAt.{u} n cX s (piSphereEquiv (suc n) X t) + hurewiczAt.{u} n cX s (piSphereEquiv (suc n) X t') \elim t, t'
+      | in0 k, in0 k' =>
+        pmap2 (\lam z z' => hurewiczAt.{u} n cX s ((Group.* {PiGroup n X}) z z')) (inv (left.{u} n k k')) (inv (right.{u} n k k'))
+        *> pmap (hurewiczAt.{u} n cX s) (inv (GroupHom.func-* {piGroupMap n {Bouquet (suc n) 2} {X} (sumTo.copair k k')} {inc.{u} n 0} {inc.{u} n 1}))
+        *> hurewiczAt.natural.{u} n {Bouquet (suc n) 2} {X} (bouquet-isCW.{u} n 2) cX s (sumTo.copair k k')
+                                  ((Group.* {PiGroup n (Bouquet (suc n) 2)}) (inc.{u} n 0) (inc.{u} n 1))
+        *> pmap (CWHomology.map.{u} (suc n) (bouquet-isCW.{u} n 2) cX (sumTo.copair k k').1) add
+        *> AddGroupHom.func-+
+        *> inv (pmap2 (AddMonoid.+ {CWHomology.{u} (suc n) cX})
+                      (pmap (hurewiczAt.{u} n cX s) (inv (left.{u} n k k'))
+                       *> hurewiczAt.natural.{u} n {Bouquet (suc n) 2} {X} (bouquet-isCW.{u} n 2) cX s (sumTo.copair k k') (inc.{u} n 0))
+                      (pmap (hurewiczAt.{u} n cX s) (inv (right.{u} n k k'))
+                       *> hurewiczAt.natural.{u} n {Bouquet (suc n) 2} {X} (bouquet-isCW.{u} n 2) cX s (sumTo.copair k k') (inc.{u} n 1)))
+
+    \func group (n : Nat) {X : Pointed.{0}} (cX : IsCW.{0} X) : GroupHom (PiGroup n X) (CWHomology.{0} (suc n) cX) \cowith
+      | func => hurewiczAt.{0} n cX (sphereClass.{0} n)
+      | func-* {x} {y} => hurewicz-hom n cX x y
+  }

@@ -4,6 +4,7 @@
 \import Arith.Nat
 \import Equiv
 \import Equiv.Univalence
+\import Homotopy.Cofiber
 \import Homotopy.Connectivity
 \import Homotopy.Fibration
 \import Homotopy.Join
@@ -63,6 +64,29 @@
     \sfunc ext.{l} {A B : Pointed.{l}} {Z : Pointed} {h k : pointed A B ->* Z}
                    (p : h ->*.∘* left A B = k ->*.∘* left A B) (q : h ->*.∘* right A B = k ->*.∘* right A B) : h = k
       => inv (copair.eta h) *> pmap2 copair p q *> copair.eta k
+
+    \func cofLeft.{l} (A B : Pointed.{l}) : QEquiv {Cof (left A B).1} {B} \cowith
+      | f => down A B
+      | ret b => pinl (pinr b)
+      | ret_f => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam c => pinl (pinr (down A B c))} {\lam c => c} (back A B)
+                                      (\lam _ => pmap pinl (inv (ppglue ())) *> ppglue base) (\lam _ => cancel _ _ _)
+      | f_sec _ => idp
+      \where {
+        \func toRight.{l} (A B : Pointed.{l}) (w : Wedge A B) : B => (wedgeToProduct A B w).2
+
+        \func down.{l} (A B : Pointed.{l}) (c : Cof (left A B).1) : B => rec (toRight A B) (\lam _ => base) (\lam _ => idp) c
+
+        \func back.{l} (A B : Pointed.{l}) (w : Wedge A B) : pinl {_} {_} {_} {(left A B).1} {\lam _ => ()} (pinr (toRight A B w)) = pinl w
+          => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam w => pinl {_} {_} {_} {(left A B).1} {\lam _ => ()} (pinr (toRight A B w))} {pinl}
+                                  (\lam a => pmap pinl (inv (ppglue ())) *> ppglue base *> inv (ppglue a)) (\lam _ => idp)
+                                  (\lam _ => square pinl (ppglue ()) (ppglue base)) w
+
+        \func square {X Y : \Type} (f : X -> Y) {x x' : X} (G : x = x') {y : Y} (K : f x = y) : (pmap f (inv G) *> K *> inv K) *> pmap f G = idp \elim G, K
+          | idp, idp => idp
+
+        \func cancel {Y : \Type} {y0 y1 y2 y3 : Y} (P : y0 = y1) (K : y1 = y2) (R : y3 = y2) : (P *> K *> inv R) *> R = idp *> (P *> K) \elim R
+          | idp => inv (idp_*> _)
+      }
 
     \func map.{l} {A A' B B' : Pointed.{l}} (f : A ->* A') (g : B ->* B') : pointed A B ->* pointed A' B'
       => (congr _ _ _ _ (\lam c => c) f.1 g.1 (\lam _ => inv f.2) (\lam _ => inv g.2), pmap pinl f.2)

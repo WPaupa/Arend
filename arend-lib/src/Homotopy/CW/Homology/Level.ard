@@ -1,0 +1,80 @@
+\import Algebra.Group
+\import Algebra.Group.Chain
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Category (Iso)
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Homology
+\import Homotopy.CW.Homology.Chain
+\import Homotopy.CW.Homology.Map
+\import Homotopy.CW.Maps.Approximation
+\import Logic
+\import Paths
+\import Paths.Meta
+
+\func liftTower.{u} {C D : CW.{0}} (k : Nat) (top : C.stage k -> D.stage k) (T : FiniteTower.{0} {C} {D} k top) : FiniteTower.{u} {C} {D} k top \elim k
+  | 0 => ()
+  | suc k => (T.1, liftTower k T.1 T.2, T.3)
+
+\func liftMap.{u} {C D : CW.{0}} {k : Nat} (F : FiniteCellularMap.{0} C D k) : FiniteCellularMap.{u} C D k => (F.1, liftTower k F.1 F.2)
+
+\lemma cellHomologyMap-level.{u} {C D : CW.{0}} (n : Nat) (f : C.Space -> D.Space) : cellHomologyMap.{0} n f = cellHomologyMap.{u} n f
+  => \case approximateThrough.{0} (suc n) f \with {
+    | inP A => cellHomologyMap.eval.{0} A *> inv (cellHomologyMap.eval.{u} {C} {D} {n} {f} (liftMap A.1, A.2))
+  }
+
+\lemma structureMap-level.{u} (n : Nat) {X Y : \Type0} (f : X -> Y) (s : HasCWStructure.{0} X) (t : HasCWStructure.{0} Y)
+  : structureMap.{0} n f s t = structureMap.{u} n f s t
+  => cellHomologyMap-level.{u} n (\lam z => t.2 (f (s.2.ret z)))
+
+\func homologyLevel.{u} (n : Nat) {X : \Type0} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) : Iso {AbGroupCat.{0}} {CWHomology.{0} n cX} {CWHomology.{u} n cX'}
+  => (TruncP.rec-set cX (byStructure.{u} n cX cX') (independent.{u} n cX cX')).1
+  \where {
+    \func byStructure.{u} (n : Nat) {X : \Type0} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (s : HasCWStructure.{0} X)
+      : Iso {AbGroupCat.{0}} {CWHomology.{0} n cX} {CWHomology.{u} n cX'}
+      => Iso.composite (Iso.reverse {CWHomology.compare.{0} n cX s}) (CWHomology.compare.{u} n cX' s)
+
+    \lemma agree.{u} (n : Nat) {X : \Type0} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (s t : HasCWStructure.{0} X) (y : CWHomology.{0} n cX)
+      : Iso.f {CWHomology.compare.{u} n cX' t} (Iso.hinv {CWHomology.compare.{0} n cX t} y) = Iso.f {CWHomology.compare.{u} n cX' s} (Iso.hinv {CWHomology.compare.{0} n cX s} y)
+      => pmap (Iso.f {CWHomology.compare.{u} n cX' t}) (inverse-transition.{u} n cX s t y)
+         *> pmap (\lam (h : AddGroupHom (Homology (cellular s.1) n) (Homology (cellular t.1) n)) => Iso.f {CWHomology.compare.{u} n cX' t} (h (Iso.hinv {CWHomology.compare.{0} n cX s} y)))
+                 (structureMap-level.{u} n (\lam x => x) s t)
+         *> CWHomology.compare-transition.{u} n cX' s t _
+
+    \lemma inverse-transition.{u} (n : Nat) {X : \Type0} (cX : IsCW.{0} X) (s t : HasCWStructure.{0} X) (y : CWHomology.{0} n cX)
+      : Iso.hinv {CWHomology.compare.{0} n cX t} y = structureMap.{0} n (\lam x => x) s t (Iso.hinv {CWHomology.compare.{0} n cX s} y)
+      => (AbGroupCat.equivOfIso (CWHomology.compare.{0} n cX t)).isInj
+           (CWHomology.compare-inverse.{0} n cX t y *> inv (CWHomology.compare-inverse.{0} n cX s y) *> inv (CWHomology.compare-transition.{0} n cX s t _))
+
+    \lemma independent.{u} (n : Nat) {X : \Type0} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (s t : HasCWStructure.{0} X)
+      : byStructure.{u} n cX cX' s = byStructure.{u} n cX cX' t
+      => Iso.equals (byStructure.{u} n cX cX' s) (byStructure.{u} n cX cX' t) (AddGroupHom.equals (\lam y => inv (agree.{u} n cX cX' s t y)))
+
+    \lemma eval.{u} (n : Nat) {X : \Type0} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (s : HasCWStructure.{0} X)
+      : homologyLevel.{u} n cX cX' = byStructure.{u} n cX cX' s
+      => \case (TruncP.rec-set cX (byStructure.{u} n cX cX') (independent.{u} n cX cX')).2 \with {
+        | inP (a, q) => inv q *> independent.{u} n cX cX' a s
+      }
+
+    \lemma eval-at.{u} (n : Nat) {X : \Type0} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (s : HasCWStructure.{0} X) (y : CWHomology.{0} n cX)
+      : Iso.f {homologyLevel.{u} n cX cX'} y = Iso.f {CWHomology.compare.{u} n cX' s} (Iso.hinv {CWHomology.compare.{0} n cX s} y)
+      => pmap (\lam (e : Iso {AbGroupCat.{0}} {CWHomology.{0} n cX} {CWHomology.{u} n cX'}) => Iso.f {e} y) (eval.{u} n cX cX' s)
+
+    \lemma natural.{u} (n : Nat) {X Y : \Type0} (cX : IsCW.{0} X) (cX' : IsCW.{u} X) (cY : IsCW.{0} Y) (cY' : IsCW.{u} Y) (f : X -> Y) (y : CWHomology.{0} n cX)
+      : Iso.f {homologyLevel.{u} n cY cY'} (CWHomology.map.{0} n cX cY f y) = CWHomology.map.{u} n cX' cY' f (Iso.f {homologyLevel.{u} n cX cX'} y)
+      => \case cX, cY \with {
+        | inP s, inP t => eval-at.{u} n cY cY' t _
+                          *> pmap (Iso.f {CWHomology.compare.{u} n cY' t}) (inverse-natural.{u} n cX cY f s t y)
+                          *> pmap (\lam (h : AddGroupHom (Homology (cellular s.1) n) (Homology (cellular t.1) n)) => Iso.f {CWHomology.compare.{u} n cY' t} (h (Iso.hinv {CWHomology.compare.{0} n cX s} y)))
+                                  (structureMap-level.{u} n f s t)
+                          *> inv (CWHomology.natural.{u} n cX' cY' f s t _)
+                          *> inv (pmap (CWHomology.map.{u} n cX' cY' f) (eval-at.{u} n cX cX' s y))
+      }
+
+    \lemma inverse-natural.{u} (n : Nat) {X Y : \Type0} (cX : IsCW.{0} X) (cY : IsCW.{0} Y) (f : X -> Y) (s : HasCWStructure.{0} X) (t : HasCWStructure.{0} Y) (y : CWHomology.{0} n cX)
+      : Iso.hinv {CWHomology.compare.{0} n cY t} (CWHomology.map.{0} n cX cY f y) = structureMap.{0} n f s t (Iso.hinv {CWHomology.compare.{0} n cX s} y)
+      => (AbGroupCat.equivOfIso (CWHomology.compare.{0} n cY t)).isInj
+           (CWHomology.compare-inverse.{0} n cY t _ *> pmap (CWHomology.map.{0} n cX cY f) (inv (CWHomology.compare-inverse.{0} n cX s y))
+            *> CWHomology.natural.{0} n cX cY f s t _)
+  }

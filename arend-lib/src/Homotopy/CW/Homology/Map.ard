@@ -9,6 +9,7 @@
 \import Data.SeqColimit
 \import Data.SeqColimit.Map
 \import Equiv
+\import Function (IsInj)
 \import Homotopy.CW
 \import Homotopy.CW.Homology.Chain
 \import Homotopy.CW.Homology.ChainHomotopy (CellHtpyStep, CellHtpySteps, kappa)
@@ -68,6 +69,28 @@
                       *> AddMonoidHom.func-zro {degreeHom (kappa.down {C} {D} {b} {S {C} {D} {b} F} {S {C} {D} {b} G} W)})
              *> zro-right {ZFree (D.count (suc b))}
       }
+
+    \func Below.{u} {C D : CW.{u}} {n : Nat} (F : FiniteCellularMap C D (suc (suc n))) : \Prop \elim n
+      | 0 => \Sigma
+      | suc b => IsInj (chainStep (CellSteps.lower (towerSteps (FiniteCellularMap.restrict F))))
+
+    \lemma back.{u} {C D : CW.{u}} {n : Nat} (F : FiniteCellularMap C D (suc (suc n))) (e0 : QEquiv (chainStep (CellSteps.lower (towerSteps F)))) (inj : Below F)
+                    (x : ZFree (D.count n)) (p : ChainComplex.dOut {cellular D} n x = AddMonoid.zro {ChainComplex.C {cellular D} (pred n)})
+      : ChainComplex.dOut {cellular C} n (e0.ret x) = AddMonoid.zro {ChainComplex.C {cellular C} (pred n)} \elim n
+      | 0 => idp
+      | suc b => inj (inv (chainStep.comm (towerSteps (FiniteCellularMap.restrict F)) (e0.ret x)) *> pmap (degreeHom (boundaryMap {D} b)) (e0.f_ret x) *> p
+                      *> inv AddGroupHom.func-zro)
+
+    \func cycles-equiv.{u} {C D : CW.{u}} {n : Nat} (F : FiniteCellularMap C D (suc (suc n))) (e0 : QEquiv (chainStep (CellSteps.lower (towerSteps F)))) (inj : Below F)
+      : QEquiv (cycles F) \cowith
+      | ret z => (e0.ret z.1, back F e0 inj z.1 z.2)
+      | ret_f x => ext (e0.ret_f x.1)
+      | f_sec z => ext (e0.f_ret z.1)
+
+    \func equiv.{u} {C D : CW.{u}} {n : Nat} (F : FiniteCellularMap C D (suc (suc n))) (e1 : QEquiv (chainStep (CellSteps.upper (towerSteps F))))
+                    (e0 : QEquiv (chainStep (CellSteps.lower (towerSteps F)))) (inj : Below F) : QEquiv (towerHomologyMap F)
+      => Coker.mapEquiv (ChainComplex.boundary {cellular C} n) (ChainComplex.boundary {cellular D} n) (chainStep (CellSteps.upper (towerSteps F))) (cycles F)
+                        (\lam x => ext (inv (chainStep.comm (towerSteps F) x))) e1 (cycles-equiv F e0 inj)
 
     \lemma id.{u} {C : CW.{u}} (n : Nat) : towerHomologyMap (FiniteCellularMap.fromCellular (SeqMap.id C.seq) (suc (suc n))) = AddGroupHom.id
       => Coker.hom-ext (towerHomologyMap (FiniteCellularMap.fromCellular (SeqMap.id C.seq) (suc (suc n)))) AddGroupHom.id \lam z => pmap in~ (ext (pmap (\lam (h : AddGroupHom (ZFree (C.count n)) (ZFree (C.count n))) => h z.1) (chainStep.id n)))
