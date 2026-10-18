@@ -1,7 +1,9 @@
 \import Equiv
 \import Equiv.Sigma
 \import Homotopy.Connectivity
+\import Homotopy.Fibration
 \import Homotopy.HLevel
+\import Homotopy.Join
 \import Homotopy.Pushout \hiding (PushoutPointed)
 \import Homotopy.Suspension
 \import Logic
@@ -96,6 +98,63 @@
                    (IsEquiv.trans (inP (depEquiv Q))
                                   (IsEquiv.trans (Phi-isEquiv u v u' v' eJ eA eB alpha beta cJ cA cB Q lv)
                                                  (inP (symQEquiv (depEquiv (\lam x => Q (congr u v u' v' eJ eA eB alpha beta x)))))))
+  }
+
+\lemma congr-nconnected0.{u} {J A B J' A' B' : \Type u} (u : J -> A) (v : J -> B) (u' : J' -> A') (v' : J' -> B')
+                             (eJ : J -> J') (eA : A -> A') (eB : B -> B')
+                             (alpha : \Pi (c : J) -> u' (eJ c) = eA (u c)) (beta : \Pi (c : J) -> v' (eJ c) = eB (v c))
+                             (cA : isNConnectedMap 0 eA) (cB : isNConnectedMap 0 eB)
+  : isNConnectedMap 0 (congr u v u' v' eJ eA eB alpha beta)
+  => section=>nconnected 0 _ \lam Q lv g =>
+      \let | rA => IsEquiv.splitSurj (nconnected-ext {0} cA (\lam a => Q (pinl a)) (\lam a => lv (pinl a))) (\lam a => g (pinl a))
+           | rB => IsEquiv.splitSurj (nconnected-ext {0} cB (\lam b => Q (pinr b)) (\lam b => lv (pinr b))) (\lam b => g (pinr b))
+      \in (drec Q rA.1 rB.1 (\lam c => pathOver (ToProp.fromProp (lv (pinr (v' c))) _ _)), \lam _ => ToProp.fromProp (lv _) _ _)
+
+\lemma join-map-nconnected.{u} {r s : Nat} {A A' B : \Type u} {f : A -> A'} (cf : isNConnectedMap r f) (cB : isNConnectedType s B)
+  : isNConnectedMap (suc (r Nat.+ s)) (Join.map f (\lam (b : B) => b))
+  => transportInv (\lam (k : Join A B -> Join A' B) => isNConnectedMap (suc (r Nat.+ s)) k) (ext (factor f))
+       (nconnected-map-comp-right (suc (r Nat.+ s)) (symQEquiv (PushoutData.paste (\lam (t : \Sigma A B) => t.1) (prod f) (\lam (t : \Sigma A' B) => t.2)))
+         (congr-nconnected pinr (\lam (t : \Sigma A' B) => t.2) (\lam t => t.1) (\lam t => t.2) (\lam t => t) (collapse f) (\lam b => b) (\lam _ => idp) (\lam _ => idp)
+                           (nconnected-map-equiv (r Nat.+ s) (inP idEquiv)) (collapse-nconnected cf cB) (nconnected-map-equiv (suc (r Nat.+ s)) (inP idEquiv))))
+  \where {
+    \func prod {A A' B : \Type} (f : A -> A') (t : \Sigma A B) : \Sigma A' B => (f t.1, t.2)
+
+    \func Q {A A' B : \Type} (f : A -> A') => PushoutData (\lam (t : \Sigma A B) => t.1) (prod f)
+
+    \func collapse {A A' B : \Type} (f : A -> A') (q : Q {A} {A'} {B} f) : A'
+      => PushoutData.rec f (\lam t => t.1) (\lam _ => idp) q
+
+    \func psi {A A' B : \Type} (f : A -> A') (x : PushoutData {\Sigma A' B} {Q {A} {A'} {B} f} {B} pinr (\lam t => t.2)) : Join A' B
+      => congr pinr (\lam (t : \Sigma A' B) => t.2) (\lam t => t.1) (\lam t => t.2) (\lam t => t) (collapse f) (\lam b => b) (\lam _ => idp) (\lam _ => idp) x
+
+    \func factor {A A' B : \Type} (f : A -> A') (x : Join A B)
+      : Join.map f (\lam b => b) x = psi f (PushoutData.paste.from (\lam (t : \Sigma A B) => t.1) (prod f) (\lam (t : \Sigma A' B) => t.2) x)
+      => PushoutData.homotopy (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _ *> pmap_*>-comm (psi f) _ _ *> idp_*> _) x
+
+    \func reassoc {A A' B : \Type} {f : A -> A'} (a' : A') : QEquiv {\Sigma (x : \Sigma A B) (f x.1 = a')} {\Sigma (Fib f a') B} \cowith
+      | f p => (((p.1.1, p.2) : Fib f a'), p.1.2)
+      | ret t => ((t.1.1, t.2), t.1.2)
+      | ret_f _ => idp
+      | f_sec _ => idp
+
+    \func contract {A' B : \Type} (a' : A') : QEquiv {\Sigma (z : \Sigma A' B) (z.1 = a')} {B} \cowith
+      | f p => p.1.2
+      | ret b => ((a', b), idp)
+      | ret_f p => contract-ret p.1.1 p.1.2 p.2
+      | f_sec _ => idp
+
+    \func contract-ret {A' B : \Type} {a' : A'} (x : A') (b : B) (q : x = a') : (((a', b), idp) : \Sigma (z : \Sigma A' B) (z.1 = a')) = ((x, b), q) \elim q
+      | idp => idp
+
+    \lemma collapse-nconnected.{v} {r s : Nat} {A A' B : \Type v} {f : A -> A'} (cf : isNConnectedMap r f) (cB : isNConnectedType s B)
+      : isNConnectedMap (suc (r Nat.+ s)) (collapse {A} {A'} {B} f)
+      => \lam a' => Paths.transport (isNConnectedType (suc (r Nat.+ s))) (PushoutData.flattening (\lam q => collapse {A} {A'} {B} f q = a'))
+           (nconnected-equiv (suc (r Nat.+ s))
+             (symQEquiv (IsEquiv.toQEquiv (congr.isEquiv (\lam (p : \Sigma (x : \Sigma A B) (f x.1 = a')) => ((p.1.1, p.2) : Fib f a'))
+                                                         (\lam p => ((prod f p.1, p.2) : \Sigma (z : \Sigma A' B) (z.1 = a')))
+                                                         (\lam (t : \Sigma (Fib f a') B) => t.1) (\lam t => t.2)
+                                                         (reassoc a') idEquiv (contract a') (\lam _ => idp) (\lam _ => idp))))
+             (nconnected_join (Fib f a') B (cf a') cB))
   }
 
 \lemma susp-map-nconnected.{u} {n : Nat} {A B : \Type u} {f : A -> B} (c : isNConnectedMap n f) : isNConnectedMap (suc n) (Susp.map f)

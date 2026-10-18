@@ -2,6 +2,7 @@
 \import Function.Iterate
 \import Logic.Unique
 \import Homotopy.Cube
+\import Homotopy.Pointed
 \import Homotopy.Pushout
 \import Homotopy.Sphere
 \import Homotopy.Suspension
@@ -18,6 +19,28 @@
     \lemma from-|| {A B : \Prop} (x : A || B) : Join A B \level levelProp \elim x
       | byLeft a => jinl a
       | byRight b => jinr b
+
+    \func map {A A' B B' : \Type} (f : A -> A') (g : B -> B') : Join A B -> Join A' B'
+      => PushoutData.congr (\lam (t : \Sigma A B) => t.1) (\lam t => t.2) (\lam (t : \Sigma A' B') => t.1) (\lam t => t.2)
+                           (\lam t => (f t.1, g t.2)) f g (\lam _ => idp) (\lam _ => idp)
+
+    \func pointed (A : Pointed) (B : \Type) => \new Pointed (Join A B) (jinl base)
+
+    \func fin.{u} {k : Nat} (X : Fin (suc k) -> \Type u) : \Type u \elim k
+      | 0 => X 0
+      | suc k => Join (X 0) (fin (\lam j => X (suc j)))
+      \where {
+        \func point.{v} {k : Nat} (X : Fin (suc k) -> Pointed.{v}) : fin.{v} (\lam j => X j) \elim k
+          | 0 => base
+          | suc k => jinl base
+
+        \func pointed.{v} {k : Nat} (X : Fin (suc k) -> Pointed.{v}) : Pointed.{v}
+          => \new Pointed (fin.{v} (\lam j => X j)) (point X)
+
+        \func weight {k : Nat} (r : Fin k -> Nat) : Nat \elim k
+          | 0 => 0
+          | suc k => suc (r 0) Nat.+ weight (\lam j => r (suc j))
+      }
   }
 
 \cons jinl {A B : \Type} (a : A) : Join A B => pinl a
@@ -260,3 +283,4 @@
 
 \func Join_Sphere_Sphere (m n : Nat) : Join (Sphere m) (Sphere n) = Sphere (suc (m Nat.+ n))
   => Join_Sphere (Sphere n) m *> inv (iterr_+ {\Type0} (Susp __) (suc m) (suc n) Empty)
+

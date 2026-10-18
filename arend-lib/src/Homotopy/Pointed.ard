@@ -39,6 +39,10 @@
     \func proj1 {X Y : Pointed} : PointedProduct X Y ->* X => (\lam t => t.1, idp)
 
     \func proj2 {X Y : Pointed} : PointedProduct X Y ->* Y => (\lam t => t.2, idp)
+
+    \func fin.{l} {k : Nat} (X : Fin k -> Pointed.{l}) : Pointed.{l} \elim k
+      | 0 => Pointed.make ()
+      | suc k => PointedProduct (X 0) (fin (\lam j => X (suc j)))
   }
 
 \func \infixr 1 ->* (A B : Pointed) => \Sigma (f : A -> B) (f base = base)

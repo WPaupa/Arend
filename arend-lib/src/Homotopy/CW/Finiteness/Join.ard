@@ -1,0 +1,84 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Data.Or
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Finiteness
+\import Homotopy.CW.Structure.Span (join-isFinCW)
+\import Homotopy.Connectivity
+\import Homotopy.Homology (Susp^)
+\import Homotopy.Join
+\import Homotopy.Pointed
+\import Homotopy.Pushout.Connectivity (join-map-nconnected)
+\import Homotopy.Suspension
+\import Logic
+\import Order.LinearOrder
+\import Order.PartialOrder
+\import Paths
+
+\lemma joinNF.{u} {p q r s k : Nat} {A B : \Type u} (cA : isNConnectedType r A) (cB : isNConnectedType s B) (hA : NF p A) (hB : NF q B)
+                  (rp : r <= p) (kp : k <= suc (p Nat.+ s)) (kq : k <= suc (q Nat.+ r)) : NF k (Join A B) \elim hA, hB
+  | inP (C, f, cf), inP (D, g, cg) =>
+    NF.intro {k} (join-isFinCW (inP (C.1, (C.2, idEquiv))) (inP (D.1, (D.2, idEquiv)))) (comparison f g)
+             (comparison-nconnected (nconnected-map-mono kp (join-map-nconnected cf cB)) (nconnected-map-mono kq (join-map-nconnected cg (source cA rp cf))))
+  \where {
+    \lemma source.{v} {r p : Nat} {A C : \Type v} (cA : isNConnectedType r A) (rp : r <= p) {f : C -> A} (cf : isNConnectedMap p f) : isNConnectedType r C
+      => nconnected-unit.2 (nconnected-map-comp {r} {C} {A} {\Sigma} {f} {\lam _ => ()} (nconnected-map-mono rp cf) (nconnected-unit.1 cA))
+
+    \func comparison {A B C D : \Type} (f : C -> A) (g : D -> B) (x : Join C D) : Join A B
+      => Join.map f (\lam b => b) (Join-sym B C (Join.map g (\lam c => c) (Join-sym C D x)))
+
+    \lemma comparison-nconnected.{v} {k : Nat} {A B C D : \Type v} {f : C -> A} {g : D -> B}
+                                     (cf : isNConnectedMap k (Join.map f (\lam (b : B) => b))) (cg : isNConnectedMap k (Join.map g (\lam (c : C) => c)))
+      : isNConnectedMap k (comparison f g)
+      => nconnected-map-comp {k} {Join C D} {Join C B} {Join A B} {\lam x => Join-sym B C (Join.map g (\lam c => c) (Join-sym C D x))} {Join.map f (\lam b => b)}
+           (nconnected-map-comp {k} {Join C D} {Join B C} {Join C B} {\lam x => Join.map g (\lam c => c) (Join-sym C D x)} {\lam y => Join-sym B C y}
+             (nconnected-map-comp {k} {Join C D} {Join D C} {Join B C} {\lam x => Join-sym C D x} {Join.map g (\lam c => c)}
+               (nconnected-map-equiv k (inP (Join-sym C D))) cg)
+             (nconnected-map-equiv k (inP (Join-sym B C))))
+           cf
+  }
+
+\lemma joinSNF.{u} {p q r s k : Nat} {A B : Pointed.{u}} (cA : isNConnectedType r A) (cB : isNConnectedType s B) (hA : SNF p A) (hB : SNF q B)
+                   (_ : r <= p) (_ : k <= suc (p Nat.+ s)) (_ : k <= suc (q Nat.+ r)) : SNF k (Join.pointed A B) \elim hA, hB
+  | inP (u, x), inP (v, y) => inP (v Nat.+ u, susp u v
+      (joinNF {p Nat.+ u} {q Nat.+ v} {r Nat.+ u} {s Nat.+ v} {k Nat.+ (v Nat.+ u)} (Susp^.connected' u cA) (Susp^.connected' v cB) x y linarith linarith linarith))
+  \where {
+    \func joinSusp.{w} (u : Nat) (X : Pointed.{w}) (Y : \Type w) : Join (Susp^ u X) Y = {\Type w} Susp^ u (Join.pointed X Y) \elim u
+      | 0 => idp
+      | suc u => Join_Susp (Susp^ u X) Y *> pmap (\lam (T : \Type w) => Susp T) (joinSusp u X Y)
+
+    \func swap.{w} (v : Nat) (X Y : Pointed.{w}) : QEquiv {Join X (Susp^ v Y)} {Susp^ v (Join.pointed X Y)}
+      => Join-sym X (Susp^ v Y)
+           `transQEquiv` Paths.transport (\lam (T : \Type w) => QEquiv {Join (Susp^ v Y) X} {T}) (joinSusp v Y X) idEquiv
+           `transQEquiv` Susp^.equiv v {Join.pointed Y X} {Join.pointed X Y} (Join-sym Y X)
+
+    \lemma susp.{w} {K : Nat} (u v : Nat) {X Y : Pointed.{w}} (h : NF K (Join (Susp^ u X) (Susp^ v Y))) : NF K (Susp^ (v Nat.+ u) (Join.pointed X Y))
+      => Paths.transport (\lam (Z : Pointed.{w}) => NF K Z) (Susp^.add u v (Join.pointed X Y))
+           (NF.transport (Susp^.equiv u (swap v X Y)) (Paths.transport (\lam (T : \Type w) => NF K T) (joinSusp u X (Susp^ v Y)) h))
+  }
+
+\lemma finJoinSNF.{u} {k K : Nat} {X : Fin (suc k) -> Pointed.{u}} {p r : Fin (suc k) -> Nat}
+                      (cX : \Pi (j : Fin (suc k)) -> isNConnectedType (r j) (X j)) (hX : \Pi (j : Fin (suc k)) -> SNF (p j) (X j))
+                      (rp : \Pi (j : Fin (suc k)) -> r j <= p j) (bound : \Pi (j : Fin (suc k)) -> K Nat.+ suc (r j) <= p j Nat.+ Join.fin.weight r)
+  : SNF K (Join.fin.pointed X) \elim k
+  | 0 => \have b => bound 0 \in SNF.lower {K} {p 0} linarith (hX 0)
+  | suc k => \have b => bound 0 \in \case LinearOrder.dec<_<= K (suc (r 0)) \with {
+    | inl K<r => joinSNF {p 0} {0} {r 0} {r 1 Nat.+ Join.fin.weight (\lam j => r (suc (suc j)))} {K} {X 0} {Join.fin.pointed (\lam j => X (suc j))} (cX 0) (nconnected-join-fin (\lam j => cX (suc j))) (hX 0)
+                         (finJoinSNF {k} {0} {\lam j => X (suc j)} {\lam j => p (suc j)} {\lam j => r (suc j)}
+                                     (\lam j => cX (suc j)) (\lam j => hX (suc j)) (\lam j => rp (suc j))
+                                     (\lam j => \have m => member (\lam i => r (suc i)) j \in linarith))
+                         (rp 0) linarith linarith
+    | inr r<=K => \have e => <=_exists r<=K \in
+      joinSNF {p 0} {K -' suc (r 0)} {r 0} {r 1 Nat.+ Join.fin.weight (\lam j => r (suc (suc j)))} {K} {X 0} {Join.fin.pointed (\lam j => X (suc j))} (cX 0) (nconnected-join-fin (\lam j => cX (suc j))) (hX 0)
+              (finJoinSNF {k} {K -' suc (r 0)} {\lam j => X (suc j)} {\lam j => p (suc j)} {\lam j => r (suc j)}
+                          (\lam j => cX (suc j)) (\lam j => hX (suc j)) (\lam j => rp (suc j)) (\lam j => \have b' => bound (suc j) \in linarith))
+              (rp 0) linarith linarith
+  }
+  \where
+    \lemma member {k : Nat} (r : Fin k -> Nat) (j : Fin k) : suc (r j) <= Join.fin.weight r \elim k, j
+      | suc k, 0 => linarith
+      | suc k, suc j => \have m => member (\lam i => r (suc i)) j \in linarith
+
+\lemma joinSAF.{u} {A B : Pointed.{u}} (hA : SAF A) (hB : SAF B) : SAF (Join.pointed A B)
+  => \lam n => SNF.lower id<=suc (joinSNF {n} {n} {0} {0} {suc n} (inhabited=>nconnected0 base) (inhabited=>nconnected0 base) (hA n) (hB n) zero<=_ <=-refl <=-refl)

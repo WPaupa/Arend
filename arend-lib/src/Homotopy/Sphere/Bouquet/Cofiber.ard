@@ -89,7 +89,7 @@
 
     \lemma gap-connected {p g h : Nat} (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h) : isNConnectedMap (suc (suc p)) (gap f).1
       => nconnected-map-mono {suc (suc p)} {suc (p Nat.+ suc p)} linarith (gap.nconnected p (suc p) f
-           (nconnected-map-between {suc p} f.1 (Bouquet.connected (suc p) g) (Bouquet.connected (suc p) h)) (Bouquet.connected (suc p) g))
+           (nconnected-map-between {suc p} f.1 (nconnected-mono {suc p} id<=suc (Bouquet.connected (suc p) g)) (Bouquet.connected (suc p) h)) (Bouquet.connected (suc p) g))
 
     \lemma isEquiv {p g h : Nat} (f : Bouquet (suc (suc p)) g ->* Bouquet (suc (suc p)) h) : IsEquiv (cofiberBottom f)
       => IsEquiv.fromInjSurj (AddGroupHom.injective \lam {y} q => \case Coker.proj-surj {_} {_} {degreeHom f} y \with {

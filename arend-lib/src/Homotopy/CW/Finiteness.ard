@@ -1,0 +1,203 @@
+{- | Finite approximations and stable finiteness, after ``SAF.agda`` in ``CMU-HoTT/serre-finiteness``.
+     The degree of {NF} is that of {isNConnectedMap}, one below the source's ``nFinite``; see {NFinite}.
+ -}
+
+\import Algebra.Meta
+\import Arith.Nat
+\import Equiv
+\import Equiv.Sigma
+\import Homotopy.CW
+\import Homotopy.CW.Maps.Lifting
+\import Homotopy.CW.Structure.Connectivity
+\import Homotopy.CW.Structure.Finite (discrete, sphere0-structure, unit-isFinCW)
+\import Homotopy.CW.Structure.Resize
+\import Homotopy.CW.Structure.Skeleton
+\import Homotopy.CW.Structure.Span (susp-isFinCW)
+\import Homotopy.Connectivity
+\import Homotopy.Connectivity.Map
+\import Homotopy.Homology (Susp^)
+\import Homotopy.Pointed
+\import Homotopy.Pushout
+\import Homotopy.Pushout.Connectivity (susp-map-nconnected)
+\import Homotopy.Sphere
+\import Homotopy.Suspension
+\import Homotopy.Whitehead.Connected (nconnected0-iff-surj)
+\import Logic
+\import Order.PartialOrder
+\import Paths
+\import Paths.Meta
+
+\func NF.{u} (n : Nat) (X : \Type u) : \Prop
+  => TruncP (\Sigma (C : FinCW.{u}) (f : CW.Space {C.2.1} -> X) (isNConnectedMap n f))
+  \where {
+    \lemma intro.{u} {n : Nat} {X C : \Type u} (c : IsFinCW C) (f : C -> X) (cf : isNConnectedMap n f) : NF n X
+      => TruncP.map c (\lam s => ((s.1, s.2.1), \lam z => f (s.2.2.ret z), nconnected-map-comp-right n (symQEquiv s.2.2) cf))
+
+    \lemma map.{u} {n : Nat} {X Y : \Type u} {f : X -> Y} (cf : isNConnectedMap n f) (h : NF n X) : NF n Y
+      => TruncP.map h (\lam w => (w.1, \lam z => f (w.2 z), nconnected-map-comp w.3 cf))
+
+    \lemma lower.{u} {m n : Nat} {X : \Type u} (p : m <= n) (h : NF n X) : NF m X
+      => TruncP.map h (\lam w => (w.1, w.2, nconnected-map-mono p w.3))
+
+    \lemma transport.{u} {n : Nat} {X Y : \Type u} (e : QEquiv {X} {Y}) (h : NF n X) : NF n Y
+      => map (nconnected-map-equiv n (inP e)) h
+
+    \lemma level.{u, v} {n : Nat} {X : \Type u} : NF.{u} n X <-> NF.{\max u v} n X
+      => (TruncP.map __ (\lam w => (w.1, w.2, nconnected-map-level.{u, v}.1 w.3)),
+          TruncP.map __ (\lam w => ((w.1.1, (resize.{u, \max u v} w.1.2.1, resize.bound.{u, \max u v} w.1.2.2)), \lam z => w.2 (resize.equiv w.1.2.1 z),
+                                    nconnected-map-level.{u, v}.2 (nconnected-map-comp-right n (resize.equiv w.1.2.1) w.3))))
+
+    \lemma finite.{u} {X : \Type u} (c : IsFinCW X) (n : Nat) : NF n X
+      => intro c (\lam x => x) (nconnected-map-equiv n (inP idEquiv))
+
+    \lemma bounded.{u} (n : Nat) {X : \Type u}
+      : NF n X <-> TruncP (\Sigma (C : FinCWUpTo.{u} n) (f : CW.Space {C.1} -> X) (isNConnectedMap n f))
+      => (TruncP.map __ (\lam w => ((freeze w.1.2.1 n, freeze.bound), \lam z => w.2 (skeleton w.1.2.1 n z),
+                                     nconnected-map-comp (nconnected-map-comp-right n (symQEquiv (skeletonEquiv w.1.2.1 n)) (skeleton-nconnected w.1.2.1 n)) w.3)),
+          TruncP.map __ (\lam w => ((n, w.1), w.2, w.3)))
+
+    \lemma backward.{u} {n : Nat} {X Y : \Type u} {f : X -> Y} (cf : isNConnectedMap (suc n) f) (h : NF n Y) : NF n X
+      => \case (bounded n).1 h \with {
+        | inP (C, g, cg) => TruncP.map (finiteLift C.2 f (nconnected-map-mono id<=suc cf) g) \lam L =>
+            ((n, C), L.1, nconnected-map-cancel-left cf (Paths.transport (\lam (k : CW.Space {C.1} -> Y) => isNConnectedMap n k) (ext \lam z => inv (L.2 z)) cg))
+      }
+
+    \lemma pointed.{u} {n : Nat} {X : Pointed.{u}}
+      : NF n X <-> TruncP (\Sigma (C : FinCW.{u}) (c : CW.Space {C.2.1}) (f : CW.Space {C.2.1} -> X) (f c = base) (isNConnectedMap n f))
+      => (\lam h => \case h \with {
+            | inP (C, f, cf) => TruncP.map (Paths.transport (\lam P => P) (nconnected0-iff-surj f) (nconnected-map-mono zero<=_ cf) base) (\lam t => (C, t.1, f, t.2, cf))
+          },
+          TruncP.map __ (\lam w => (w.1, w.3, w.5)))
+
+    \lemma connected.{u} {n : Nat} {X : \Type u} (x : X) (c : isNConnectedType (suc n) X) : NF n X
+      => intro {n} (IsFinCWUpTo.toFinCW unit-isFinCW.{u}) (\lam _ => x)
+               (\lam y => nconnected-equiv n (symQEquiv (contr-left unit-isContr {\lam _ => x = y})) (nconnected-path c x y))
+
+    \lemma susp.{u} {n : Nat} {X : \Type u} (h : NF n X) : NF (suc n) (Susp X) \elim h
+      | inP (C, f, cf) => intro {suc n} (IsFinCWUpTo.toFinCW (susp-isFinCW (inP (C.2, idEquiv)))) (Susp.map f) (susp-map-nconnected cf)
+
+    \lemma susp0.{u} {X : \Type u} : NF 0 (Susp X)
+      => intro {0} (inP (0, ((discrete 2, discrete.bound 2), sphere0-structure.{u}.2))) (Susp.map (\lam (e : Empty) => absurd {X} e))
+               (transportInv (\lam P => P) (nconnected0-iff-surj _) pole)
+      \where
+        \lemma pole {X : \Type} (s : Susp X) : TruncP (\Sigma (t : Sphere 0) (Susp.map (\lam (e : Empty) => absurd {X} e) t = s)) \elim s
+          | pinl _ => inP (north, idp)
+          | pinr _ => inP (south, idp)
+
+    \lemma iterate.{u} {n m : Nat} (t : Nat) {X : Pointed.{u}} (h : NF (n Nat.+ m) (Susp^ m X)) : NF (n Nat.+ (m Nat.+ t)) (Susp^ (m Nat.+ t) X) \elim t
+      | 0 => h
+      | suc t => susp (iterate t h)
+
+    \lemma bottom.{u} (k : Nat) (X : Pointed.{u}) : NF k (Susp^ (suc k) X)
+      => NF.transport (symQEquiv (IsEquiv.toQEquiv (Susp^.shift-isEquiv k X))) (iterate {0} {0} k {Susp.pointed X} susp0)
+  }
+
+-- | The degree convention of ``SAF.agda``.
+\func NFinite.{u} (n : Nat) (X : \Type u) : \Prop \elim n
+  | 0 => TruncP (\Sigma (C : FinCW.{u}) (CW.Space {C.2.1} -> X))
+  | suc n => NF n X
+  \where {
+    \lemma zero.{u} {X : \Type u} : NFinite 0 X
+      => inP ((0, (discrete 0, discrete.bound 0)), \lam z => \case (RelCW.stableRealization {discrete 0} (discrete.bound 0)).ret z \with {})
+
+    \lemma fromNF.{u} {n : Nat} {X : \Type u} (h : NF n X) : NFinite n X \elim n
+      | 0 => zero
+      | suc n => NF.lower id<=suc h
+  }
+
+\func StablyNFinite.{u} (n : Nat) (X : Pointed.{u}) : \Prop
+  => TruncP (\Sigma (m : Nat) (NFinite (n Nat.+ m) (Susp^ m X)))
+  \where {
+    \lemma zero.{u} {X : Pointed.{u}} : StablyNFinite 0 X
+      => inP (0, NFinite.zero)
+
+    \lemma positive.{u} {n : Nat} {X : Pointed.{u}} : StablyNFinite (suc n) X <-> SNF n X
+      => (TruncP.map __ (\lam w => (w.1, w.2)), TruncP.map __ (\lam w => (w.1, w.2)))
+  }
+
+\func SNF.{u} (n : Nat) (X : Pointed.{u}) : \Prop
+  => TruncP (\Sigma (m : Nat) (NF (n Nat.+ m) (Susp^ m X)))
+  \where {
+    \lemma flat.{u} {n : Nat} {X : Pointed.{u}}
+      : SNF n X <-> TruncP (\Sigma (m : Nat) (C : FinCW.{u}) (f : CW.Space {C.2.1} -> Susp^ m X) (isNConnectedMap (n Nat.+ m) f))
+      => (\lam h => \case h \with {
+            | inP (m, inP (C, f, cf)) => inP (m, C, f, cf)
+          },
+          TruncP.map __ (\lam w => (w.1, inP (w.2, w.3, w.4))))
+
+    \lemma level.{u, v} {n : Nat} {X : Pointed.{u}} : SNF.{u} n X <-> SNF.{\max u v} n X
+      => (TruncP.map __ (\lam w => (w.1, Paths.transport (\lam (Z : Pointed.{\max u v}) => NF.{\max u v} (n Nat.+ w.1) Z) (Susp^.level.{u, v} w.1 X)
+                                                         (NF.level.{u, v}.1 w.2))),
+          TruncP.map __ (\lam w => (w.1, NF.level.{u, v}.2 (transportInv (\lam (Z : Pointed.{\max u v}) => NF.{\max u v} (n Nat.+ w.1) Z)
+                                                                           (Susp^.level.{u, v} w.1 X) w.2))))
+
+    \lemma lower.{u} {k n : Nat} {X : Pointed.{u}} (_ : k <= n) (h : SNF n X) : SNF k X
+      => TruncP.map h (\lam w => (w.1, NF.lower linarith w.2))
+
+    \lemma transport.{u} {n : Nat} {X Y : Pointed.{u}} (e : QEquiv {X} {Y}) (h : SNF n X) : SNF n Y
+      => TruncP.map h (\lam w => (w.1, NF.transport (Susp^.equiv w.1 e) w.2))
+
+    \lemma align.{u} {a b : Nat} {X Y : Pointed.{u}} (hX : SNF a X) (hY : SNF b Y)
+      : TruncP (\Sigma (M : Nat) (NF (a Nat.+ M) (Susp^ M X)) (NF (b Nat.+ M) (Susp^ M Y))) \elim hX, hY
+      | inP (u, x), inP (v, y) => inP (u Nat.+ v, NF.iterate v x,
+                                       Paths.transport (\lam k => NF (b Nat.+ k) (Susp^ k Y)) NatSemiring.+-comm (NF.iterate u y))
+
+    \lemma susp.{u} {n : Nat} {X : Pointed.{u}} (h : SNF n X) : SNF (suc n) (Susp.pointed X)
+      => TruncP.map h (\lam w => (w.1, NF.transport {suc n Nat.+ w.1} (IsEquiv.toQEquiv (Susp^.shift-isEquiv w.1 X)) (NF.susp w.2)))
+
+    \lemma unsusp.{u} {n : Nat} {X : Pointed.{u}} (h : SNF (suc n) (Susp.pointed X)) : SNF n X
+      => TruncP.map h (\lam w => (suc w.1, NF.transport {suc n Nat.+ w.1} (symQEquiv (IsEquiv.toQEquiv (Susp^.shift-isEquiv w.1 X))) w.2))
+
+    \lemma map.{u} {n : Nat} {X Y : Pointed.{u}} {f : X ->* Y} (cf : isNConnectedMap n f.1) (h : SNF n X) : SNF n Y
+      => TruncP.map h (\lam w => (w.1, NF.map (Susp^.map-nconnected w.1 cf) w.2))
+
+    \lemma backward.{u} {n : Nat} {X Y : Pointed.{u}} {f : X ->* Y} (cf : isNConnectedMap (suc n) f.1) (h : SNF n Y) : SNF n X
+      => TruncP.map h (\lam w => (w.1, NF.backward (Susp^.map-nconnected {suc n} w.1 cf) w.2))
+
+    \lemma stableMap.{u} {n : Nat} {X Y : Pointed.{u}} {f : X ->* Y}
+                         (cf : TruncP (\Sigma (r : Nat) (isNConnectedMap (n Nat.+ r) (Susp^.map r f).1))) (h : SNF n X) : SNF n Y \elim cf, h
+      | inP (r, c), inP (m, a) => inP (r Nat.+ m, Paths.transport (\lam (Z : Pointed.{u}) => NF (n Nat.+ (r Nat.+ m)) Z) (Susp^.add m r Y)
+          (NF.map (Paths.transport (\lam k => isNConnectedMap k (Susp^.map m (Susp^.map r f)).1) NatSemiring.+-assoc (Susp^.map-nconnected m c))
+                  (aligned r a)))
+
+    \lemma stableBackward.{u} {n : Nat} {X Y : Pointed.{u}} {f : X ->* Y}
+                              (cf : TruncP (\Sigma (r : Nat) (isNConnectedMap (suc (n Nat.+ r)) (Susp^.map r f).1))) (h : SNF n Y) : SNF n X \elim cf, h
+      | inP (r, c), inP (m, b) => inP (r Nat.+ m, Paths.transport (\lam (Z : Pointed.{u}) => NF (n Nat.+ (r Nat.+ m)) Z) (Susp^.add m r X)
+          (NF.backward (Paths.transport (\lam k => isNConnectedMap (suc k) (Susp^.map m (Susp^.map r f)).1) NatSemiring.+-assoc (Susp^.map-nconnected {suc (n Nat.+ r)} m c))
+                       (aligned r b)))
+
+    \lemma aligned.{u} {n m : Nat} (r : Nat) {X : Pointed.{u}} (h : NF (n Nat.+ m) (Susp^ m X)) : NF (n Nat.+ (r Nat.+ m)) (Susp^ m (Susp^ r X))
+      => transportInv (\lam (Z : Pointed.{u}) => NF (n Nat.+ (r Nat.+ m)) Z) (Susp^.add m r X)
+                      (Paths.transport (\lam k => NF (n Nat.+ k) (Susp^ k X)) NatSemiring.+-comm (NF.iterate r h))
+  }
+
+\func SAF.{u} (X : Pointed.{u}) : \Prop
+  => \Pi (n : Nat) -> SNF n X
+  \where {
+    \lemma finite.{u} {X : Pointed.{u}} (c : IsFinCW X) : SAF X
+      => \lam n => inP (0, NF.finite c n)
+
+    \lemma transport.{u} {X Y : Pointed.{u}} (e : QEquiv {X} {Y}) (h : SAF X) : SAF Y
+      => \lam n => SNF.transport e (h n)
+
+    \lemma level.{u, v} {X : Pointed.{u}} : SAF.{u} X <-> SAF.{\max u v} X
+      => (\lam h n => SNF.level.{u, v}.1 (h n), \lam h n => SNF.level.{u, v}.2 (h n))
+
+    \lemma susp.{u} {X : Pointed.{u}} : SAF X <-> SAF (Susp.pointed X)
+      => (\lam h n => SNF.lower id<=suc (SNF.susp (h n)), \lam h n => SNF.unsusp (h (suc n)))
+
+    \lemma iterate.{u} (k : Nat) {X : Pointed.{u}} : SAF X <-> SAF (Susp^ k X) \elim k
+      | 0 => (\lam h => h, \lam h => h)
+      | suc k => (\lam h => susp.1 ((iterate k).1 h), \lam h => (iterate k).2 (susp.2 h))
+
+    \lemma map.{u} {X Y : Pointed.{u}} {f : X ->* Y} (cf : \Pi (n : Nat) -> TruncP (\Sigma (r : Nat) (isNConnectedMap (n Nat.+ r) (Susp^.map r f).1)))
+                   (h : SAF X) : SAF Y
+      => \lam n => SNF.stableMap (cf n) (h n)
+
+    \lemma backward.{u} {X Y : Pointed.{u}} {f : X ->* Y} (cf : \Pi (n : Nat) -> TruncP (\Sigma (r : Nat) (isNConnectedMap (suc (n Nat.+ r)) (Susp^.map r f).1)))
+                        (h : SAF Y) : SAF X
+      => \lam n => SNF.stableBackward (cf n) (h n)
+
+    \lemma StablyNFinite-iff.{u} {X : Pointed.{u}} : SAF X <-> (\Pi (n : Nat) -> StablyNFinite n X)
+      => (\lam h n => TruncP.map (h n) (\lam w => (w.1, NFinite.fromNF w.2)), \lam h n => StablyNFinite.positive.1 (h (suc n)))
+  }

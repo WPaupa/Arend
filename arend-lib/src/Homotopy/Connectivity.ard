@@ -50,6 +50,10 @@
   : isNConnectedMap n f = (\Pi (b : B) -> Contr (Trunc_-1+ n (Fib f b)))
   => path \lam i => \Pi (b : B) -> nconnected-iff-trunc-contr n (Fib f b) @ i
 
+\lemma nconnected-map-level.{u, v} {n : Nat} {A B : \Type u} {f : A -> B} : isNConnectedMap.{u} n f <-> isNConnectedMap.{\max u v} n f
+  => (\lam c => propExt.conv (nconnected-map-fibers.{\max u v} n f) (propExt.dir (nconnected-map-fibers.{u} n f) c),
+      \lam c => propExt.conv (nconnected-map-fibers.{u} n f) (propExt.dir (nconnected-map-fibers.{\max u v} n f) c))
+
 \lemma nconnected-equiv.{u} (n : Nat) {A B : \Type u} (e : QEquiv {A} {B}) (c : isNConnectedType n A) : isNConnectedType n B
   => isConnected-equiv {truncUniverse n} e c
 
@@ -132,6 +136,12 @@
   \where
     \lemma toSphereNull.{u} (n : Nat) (X : \Type u) : isNConnectedType n X = isConnectedType {nullTypeUniverse (Sphere n)} X
       => connectedType-local-cong {truncUniverse n} {nullTypeUniverse (Sphere n)} (\lam Z => inv (sphereNull_iff_truncated n Z)) X
+
+\lemma nconnected-join-fin.{u} {k : Nat} {X : Fin (suc k) -> \Type u} {r : Fin (suc k) -> Nat}
+                              (c : \Pi (j : Fin (suc k)) -> isNConnectedType (r j) (X j))
+  : isNConnectedType (r 0 Nat.+ Join.fin.weight (\lam j => r (suc j))) (Join.fin X) \elim k
+  | 0 => c 0
+  | suc k => nconnected_join (X 0) (Join.fin (\lam j => X (suc j))) (c 0) (nconnected-join-fin (\lam j => c (suc j)))
 
 -- | {genBlakersMassey} in the numeric indexing.
 \lemma nBlakersMassey.{u} (r s : Nat) {X Y : \Type u} (Q : X -> Y -> \Type u)
@@ -242,11 +252,11 @@
 \lemma nconnected-product.{u} {n : Nat} {A B : \Type u} (ca : isNConnectedType n A) (cb : isNConnectedType n B) : isNConnectedType n (\Sigma A B)
   => nconnected-unit.2 (nconnected-map-comp {n} {\Sigma A B} {A} {\Sigma} {\lam t => t.1} {\lam _ => ()} (nconnected-proj (\lam _ => B) (\lam _ => cb)) (nconnected-unit.1 ca))
 
-\lemma nconnected-map-between.{u} {n : Nat} {A B : \Type u} (f : A -> B) (ca : isNConnectedType (suc n) A) (cb : isNConnectedType (suc n) B)
+\lemma nconnected-map-between.{u} {n : Nat} {A B : \Type u} (f : A -> B) (ca : isNConnectedType n A) (cb : isNConnectedType (suc n) B)
   : isNConnectedMap n f
   => \lam b => nconnected-unit.2 (nconnected-map-comp {n} {Fib f b} {A} {\Sigma} {\lam t => t.1} {\lam _ => ()}
                                    (nconnected-proj (\lam a => f a = b) (\lam a => nconnected-path cb (f a) b))
-                                   (nconnected-unit.1 (nconnected-mono id<=suc ca)))
+                                   (nconnected-unit.1 ca))
 
 \lemma nconnected-total.{u} {n : Nat} {J : \Type u} {A B : J -> \Type u} (f : \Pi (j : J) -> A j -> B j)
                             (c : \Pi (j : J) -> isNConnectedMap n (f j)) : isNConnectedMap n (totalEquiv.total f)

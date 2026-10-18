@@ -1,0 +1,109 @@
+\import Equiv
+\import Homotopy.Cofiber.Suspension (cofSusp)
+\import Homotopy.Join
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Pushout.Grid
+\import Homotopy.Smash
+\import Homotopy.Suspension
+\import Homotopy.Wedge
+\import Paths
+
+\open PushoutData (ppglue, congr, swap, collapse)
+
+\func joinSmash.{u} (A B : Pointed.{u}) : QEquiv {Join A B} {Susp (Smash A B)}
+  => symQEquiv (columns A B) `transQEquiv` symQEquiv (Grid.comparison (grid A B)) `transQEquiv` rows A B
+  \where {
+    \func p.{v} (A B : Pointed.{v}) (w : Wedge A B) : A => (wedgeToProduct A B w).1
+
+    \func q.{v} (A B : Pointed.{v}) (w : Wedge A B) : B => (wedgeToProduct A B w).2
+
+    \func cone {X : \Type} : QEquiv {PushoutData {X} {X} {\Sigma} (\lam x => x) (\lam _ => ())} {\Sigma}
+      => swap (\lam (x : X) => x) (\lam _ => ()) `transQEquiv` collapse (\lam (_ : X) => ())
+
+    \func grid.{v} (A B : Pointed.{v}) : Grid \cowith
+      | A00 => A
+      | A01 => A
+      | A02 => \Sigma
+      | A10 => \Sigma A B
+      | A11 => Wedge A B
+      | A12 => \Sigma
+      | A20 => B
+      | A21 => B
+      | A22 => \Sigma
+      | f01 a => a
+      | f03 _ => ()
+      | f11 => wedgeToProduct A B
+      | f13 _ => ()
+      | f21 b => b
+      | f23 _ => ()
+      | g10 t => t.1
+      | g30 t => t.2
+      | g11 => p A B
+      | g31 => q A B
+      | g12 _ => ()
+      | g32 _ => ()
+      | s00 _ => idp
+      | s02 _ => idp
+      | s20 _ => idp
+      | s22 _ => idp
+
+    \func rows.{v} (A B : Pointed.{v}) : QEquiv {Grid.Prows {grid A B}} {Susp (Smash A B)}
+      => IsEquiv.toQEquiv (congr.isEquiv (Grid.r0 {grid A B}) (Grid.r2 {grid A B}) (\lam _ => ()) (\lam _ => ())
+                                         idEquiv cone cone (\lam _ => idp) (\lam _ => idp))
+
+    \func columns.{v} (A B : Pointed.{v}) : QEquiv {Grid.Pcols (grid A B)} {Join A B}
+      => IsEquiv.toQEquiv (congr.isEquiv (Grid.r0 {Grid.transpose (grid A B)}) (Grid.r2 {Grid.transpose (grid A B)})
+                                         (\lam _ => Grid.r0 {Grid.transpose (grid A B)} ((contr A B).ret ())) (\lam _ => ())
+                                         (contr A B) idEquiv (collapse (\lam (_ : \Sigma) => ()))
+                                         (\lam c => pmap (Grid.r0 {Grid.transpose (grid A B)}) ((contr A B).ret_f c)) (\lam _ => idp))
+         `transQEquiv` collapse (\lam (_ : \Sigma) => Grid.r0 {Grid.transpose (grid A B)} ((contr A B).ret ()))
+
+    \func aux.{v} (A B : Pointed.{v}) : Grid \cowith
+      | A00 => A
+      | A01 => \Sigma
+      | A02 => \Sigma
+      | A10 => A
+      | A11 => \Sigma
+      | A12 => B
+      | A20 => \Sigma
+      | A21 => \Sigma
+      | A22 => B
+      | f01 _ => base
+      | f03 _ => ()
+      | f11 _ => base
+      | f13 _ => base
+      | f21 _ => ()
+      | f23 _ => base
+      | g10 a => a
+      | g30 _ => ()
+      | g11 _ => ()
+      | g31 _ => ()
+      | g12 _ => ()
+      | g32 b => b
+      | s00 _ => idp
+      | s02 _ => idp
+      | s20 _ => idp
+      | s22 _ => idp
+
+    \func contr.{v} (A B : Pointed.{v}) : QEquiv {PushoutData {Wedge A B} (p A B) (q A B)} {\Sigma}
+      => IsEquiv.toQEquiv (congr.isEquiv (p A B) (q A B) (Grid.r0 {aux A B}) (Grid.r2 {aux A B}) idEquiv (left A) (right B) (left-eq A B) (right-eq A B))
+         `transQEquiv` Grid.comparison (aux A B)
+         `transQEquiv` IsEquiv.toQEquiv (congr.isEquiv (Grid.r0 {Grid.transpose (aux A B)}) (Grid.r2 {Grid.transpose (aux A B)}) (\lam _ => ()) (\lam _ => ())
+                                                       (collapse (\lam (_ : \Sigma) => ())) cone (collapse (\lam (_ : B) => ())) (\lam _ => idp) (\lam _ => idp))
+         `transQEquiv` symQEquiv Susp.unit
+
+    \func left.{v} (A : Pointed.{v}) : QEquiv {A} {PushoutData {\Sigma} {A} {\Sigma} (\lam _ => base) (\lam _ => ())}
+      => symQEquiv (collapse (\lam (_ : \Sigma) => base {A}))
+
+    \func right.{v} (B : Pointed.{v}) : QEquiv {B} {PushoutData {\Sigma} {\Sigma} {B} (\lam _ => ()) (\lam _ => base)}
+      => symQEquiv (swap (\lam (_ : \Sigma) => ()) (\lam _ => base {B}) `transQEquiv` collapse (\lam (_ : \Sigma) => base {B}))
+
+    \func left-eq.{v} (A B : Pointed.{v}) (w : Wedge A B) : Grid.r0 {aux A B} w = left A (p A B w)
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Grid.r0 {aux A B}} {\lam w => left A (p A B w)}
+                              (\lam _ => idp) (\lam _ => inv (ppglue ())) (\lam _ => cofSusp.cancel (ppglue ())) w
+
+    \func right-eq.{v} (A B : Pointed.{v}) (w : Wedge A B) : Grid.r2 {aux A B} w = right B (q A B w)
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Grid.r2 {aux A B}} {\lam w => right B (q A B w)}
+                              (\lam _ => ppglue ()) (\lam _ => idp) (\lam _ => inv (idp_*> _)) w
+  }

@@ -1,0 +1,33 @@
+\import Arith.Nat
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Finiteness
+\import Homotopy.CW.Finiteness.Cofiber
+\import Homotopy.CW.Finiteness.Smash
+\import Homotopy.CW.Finiteness.Wedge
+\import Homotopy.CW.Structure.Finite (unit-isFinCW)
+\import Homotopy.CW.Structure.Span (product-isFinCW)
+\import Homotopy.Connectivity
+\import Homotopy.Connectivity.Map (product-nconnected)
+\import Homotopy.Pointed
+\import Homotopy.Wedge
+\import Logic
+\import Order.PartialOrder
+
+\lemma productSNF.{u} {n : Nat} {A B : Pointed.{u}} (hA : SNF n A) (hB : SNF n B) : SNF n (PointedProduct A B)
+  => cofiberSNF.target {n} (Wedge.toProduct A B) (wedgeSNF hA hB)
+       (smashSNF {n} {n} {0} {0} (inhabited=>nconnected0 base) (inhabited=>nconnected0 base) hA hB zero<=_ <=-refl <=-refl)
+
+\lemma productSAF.{u} {A B : Pointed.{u}} (hA : SAF A) (hB : SAF B) : SAF (PointedProduct A B)
+  => cofiberSAF.target (Wedge.toProduct A B) (wedgeSAF hA hB) (smashSAF hA hB)
+
+\lemma finProductSNF.{u} {n k : Nat} {X : Fin k -> Pointed.{u}} (h : \Pi (j : Fin k) -> SNF n (X j)) : SNF n (PointedProduct.fin X) \elim k
+  | 0 => SAF.finite (IsFinCWUpTo.toFinCW unit-isFinCW.{u}) n
+  | suc k => productSNF (h 0) (finProductSNF (\lam j => h (suc j)))
+
+\lemma finProductSAF.{u} {k : Nat} {X : Fin k -> Pointed.{u}} (h : \Pi (j : Fin k) -> SAF (X j)) : SAF (PointedProduct.fin X)
+  => \lam n => finProductSNF (\lam j => h j n)
+
+\lemma productNF.{u} {n : Nat} {A B : \Type u} (hA : NF n A) (hB : NF n B) : NF n (\Sigma A B) \elim hA, hB
+  | inP (C, f, cf), inP (D, g, cg) => NF.intro {n} (product-isFinCW (inP (C.1, (C.2, idEquiv))) (inP (D.1, (D.2, idEquiv))))
+                                               (\lam (t : \Sigma (CW.Space {C.2.1}) (CW.Space {D.2.1})) => (f t.1, g t.2)) (product-nconnected cf cg)

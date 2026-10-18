@@ -5,6 +5,7 @@
 \import Homotopy.Connectivity
 \import Homotopy.Fibration
 \import Homotopy.HLevel
+\import Homotopy.Join
 \import Homotopy.Loop
 \import Homotopy.Pointed
 \import Homotopy.Truncation
@@ -19,6 +20,37 @@
       \let | r => IsEquiv.splitSurj (nconnected-ext cgf P lv) (\lam a => s (f a))
            | q => IsEquiv.isInj (nconnected-ext cf (\lam b => P (g b)) (\lam b => lv (g b))) {\lam b => r.1 (g b)} {s} r.2
       \in (r.1, \lam b => path ((q @ __) b))
+
+\lemma nconnected-map-cancel-left.{u} {n : Nat} {A B C : \Type u} {f : A -> B} {g : B -> C}
+                                      (cg : isNConnectedMap (suc n) g) (cgf : isNConnectedMap n (\lam a => g (f a))) : isNConnectedMap n f
+  => \lam b => nconnected-equiv n (symQEquiv (fibEquiv b idp)) (nconnected-map-between (lift {_} {_} {_} {f} {g} {g b}) (cgf (g b)) (cg (g b)) ((b, idp) : Fib g (g b)))
+  \where {
+    \func lift {A B C : \Type} {l : A -> B} {k : B -> C} {c : C} (t : Fib (\lam a => k (l a)) c) : Fib k c
+      => (l t.1, t.2)
+
+    \func to {A B C : \Type} {l : A -> B} {k : B -> C} {c : C} (a : A) {b : B} (p : l a = b) (q : k b = c)
+      : Fib (lift {A} {B} {C} {l} {k} {c}) ((b, q) : Fib k c) \elim p
+      | idp => ((a, q), idp)
+
+    \func ret-to {A B C : \Type} {l : A -> B} {k : B -> C} {c : C} (a : A) {b : B} (p : l a = b) (q : k b = c)
+      : ((to {A} {B} {C} {l} {k} a p q).1.1, pmap __.1 (to {A} {B} {C} {l} {k} a p q).2) = {Fib l b} (a, p) \elim p
+      | idp => idp
+
+    \func to-ret {A B C : \Type} {l : A -> B} {k : B -> C} {c : C} {t : Fib (\lam a => k (l a)) c} (w : Fib k c) (r : lift t = w)
+      : to {A} {B} {C} {l} {k} t.1 (pmap __.1 r) w.2 = (t, r) \elim r
+      | idp => idp
+
+    \func fibEquiv {A B C : \Type} {l : A -> B} {k : B -> C} {c : C} (b : B) (q : k b = c)
+      : QEquiv {Fib l b} {Fib (lift {A} {B} {C} {l} {k} {c}) ((b, q) : Fib k c)} \cowith
+      | f t => to t.1 t.2 q
+      | ret s => (s.1.1, pmap __.1 s.2)
+      | ret_f t => ret-to {A} {B} {C} {l} {k} t.1 t.2 q
+      | f_sec s => to-ret ((b, q) : Fib k c) s.2
+  }
+
+\lemma nconnected-join-left.{u} {m : Nat} {X : \Type u} (Y : \Type u) (c : isNConnectedType m X) : isNConnectedType m (Join X Y)
+  => nconnected-unit.2 (nconnected-map-cancel {m} {X} {Join X Y} {\Sigma} {jinl} {\lam _ => ()} (nconnected-unit.1 c)
+       (nconnected-pinl (\lam (t : \Sigma X Y) => t.1) (nconnected-map-comp-right m product-nconnected.swap (nconnected-proj (\lam (_ : Y) => X) (\lam _ => c)))))
 
 \lemma paths=>nconnected.{u} {n : Nat} {A : \Type u} (a : A) (c : \Pi (x y : A) -> isNConnectedType n (x = y)) : isNConnectedType (suc n) A
   => propExt.conv (nconnected-iff-trunc-contr (suc n) A)

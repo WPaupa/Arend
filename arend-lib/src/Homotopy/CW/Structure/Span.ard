@@ -5,12 +5,15 @@
 \import Data.SeqColimit.Map
 \import Data.SeqColimit.Pushout
 \import Equiv
+\import Equiv.Sigma (contr-left, sigma-equiv, unit-isContr)
 \import Homotopy.CW
 \import Homotopy.CW.Maps.Approximation
 \import Homotopy.CW.Maps.Cellular
-\import Homotopy.CW.Structure.Finite (unit-isFinCW)
+\import Homotopy.CW.Structure.Finite (empty-isFinCW, finiteCWInduction, unit-isFinCW)
 \import Homotopy.Cofiber
+\import Homotopy.Join
 \import Homotopy.Pointed
+\import Homotopy.Smash
 \import Homotopy.Pushout \hiding (PushoutPointed)
 \import Homotopy.Pushout.Grid
 \import Homotopy.Suspension
@@ -485,6 +488,28 @@
     \case approximateBounded bS (\lam z => eY (f (eX.ret z))), approximateBounded bS (\lam z => eZ (g (eX.ret z))) \with {
       | inP (F, hF), inP (G, hG) => inP ((spanCW F G, span.bound F G bS bT bU p), spanCW.model f g eX eY eZ F hF G hG)
     }
+  \where
+    \lemma unbounded.{u} {X Y Z : \Type u} (f : X -> Y) (g : X -> Z) (cX : IsFinCW X) (cY : IsFinCW Y) (cZ : IsFinCW Z)
+      : IsFinCW (PushoutData f g) \elim cX, cY, cZ
+      | inP (a, sX), inP (b, sY), inP (c, sZ) => IsFinCWUpTo.toFinCW (pushout-isFinCW f g {a} {suc (a Nat.+ b Nat.+ c)} (inP sX)
+                                                   (IsFinCWUpTo.raise linarith (inP sY)) (IsFinCWUpTo.raise linarith (inP sZ)) linarith)
+
+\lemma product-isFinCW.{u} {X Y : \Type u} (cX : IsFinCW X) (cY : IsFinCW Y) : IsFinCW (\Sigma X Y)
+  => finiteCWInduction (\lam T => IsFinCW (\Sigma T Y))
+       (\lam e => IsFinCW.transport (sigma-equiv e (\lam _ => idEquiv)))
+       (IsFinCW.transport (emptyEquiv (\lam e => e) (\lam t => t.1)) (IsFinCWUpTo.toFinCW empty-isFinCW))
+       (IsFinCW.transport (symQEquiv (contr-left unit-isContr {\lam _ => Y})) cY)
+       (\lam {A} f g cA cB cE => Paths.transport IsFinCW (PushoutData.flattening (\lam _ => Y))
+                                   (pushout-isFinCW.unbounded (\lam (p : \Sigma A Y) => (f p.1, p.2)) (\lam p => (g p.1, p.2)) cA cB cE))
+       cX
+
+\lemma join-isFinCW.{u} {X Y : \Type u} (cX : IsFinCW X) (cY : IsFinCW Y) : IsFinCW (Join X Y)
+  => pushout-isFinCW.unbounded __.1 __.2 (product-isFinCW cX cY) cX cY
+
+\lemma smash-isFinCW.{u} {X Y : Pointed.{u}} (cX : IsFinCW X) (cY : IsFinCW Y) : IsFinCW (Smash X Y)
+  => pushout-isFinCW.unbounded (wedgeToProduct X Y) (\lam _ => ())
+       (pushout-isFinCW.unbounded (\lam _ => base) (\lam _ => base) (IsFinCWUpTo.toFinCW unit-isFinCW.{u}) cX cY)
+       (product-isFinCW cX cY) (IsFinCWUpTo.toFinCW unit-isFinCW.{u})
 
 \lemma cofiber-isCW.{u} {X Y : \Type u} (f : X -> Y) {a : Nat} (cX : IsFinCWUpTo a X) (cY : IsCW Y) : IsCW (Cof f)
   => pushout-isCW f (\lam _ => ()) cX cY (IsFinCW.toCW (IsFinCWUpTo.toFinCW unit-isFinCW.{u}))

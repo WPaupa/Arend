@@ -1,0 +1,64 @@
+\import Arith.Nat
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Finiteness
+\import Homotopy.CW.Maps.Lifting
+\import Homotopy.CW.Structure.Finite (empty-isFinCW)
+\import Homotopy.CW.Structure.Span (cofiber-isFinCW)
+\import Homotopy.Cofiber
+\import Homotopy.Connectivity
+\import Homotopy.Homology (Susp^)
+\import Homotopy.Pointed
+\import Homotopy.Pushout
+\import Homotopy.Pushout.Connectivity
+\import Homotopy.Suspension
+\import Logic
+\import Paths
+
+\open PushoutData (congr)
+
+\lemma cofiberNF.{u} {k : Nat} {A B : \Type u} (u : A -> B) (hA : NF k A) (hB : NF (suc k) B) : NF (suc k) (Cof u)
+  => \case (NF.bounded k).1 hA, (NF.bounded (suc k)).1 hB \with {
+    | inP (C, a, ca), inP (D, b, cb) => \case finiteLift C.2 b (nconnected-map-mono id<=suc cb) (\lam x => u (a x)) \with {
+      | inP (v, H) => NF.intro {suc k} (IsFinCWUpTo.toFinCW (cofiber-isFinCW v (inP (C, idEquiv)) (inP (D, idEquiv)) id<suc))
+                               (congr v (\lam _ => ()) u (\lam _ => ()) a b (\lam t => t) (\lam x => inv (H x)) (\lam _ => idp))
+                               (congr-nconnected v (\lam _ => ()) u (\lam _ => ()) a b (\lam t => t) (\lam x => inv (H x)) (\lam _ => idp)
+                                                 ca cb (nconnected-map-equiv (suc k) (inP idEquiv)))
+    }
+  }
+  \where
+    \lemma zero.{u} {A B : \Type u} (u : A -> B) (hB : NF 0 B) : NF 0 (Cof u) \elim hB
+      | inP ((d, D), b, cb) => NF.intro {0} (IsFinCWUpTo.toFinCW (cofiber-isFinCW (\lam (e : Empty) => absurd {CW.Space {D.1}} e) empty-isFinCW
+                                                                             (IsFinCWUpTo.raise id<=suc (inP (D, idEquiv))) NatOrder.zero<suc))
+                                        (congr (\lam e => absurd e) (\lam _ => ()) u (\lam _ => ()) (\lam e => absurd e) b (\lam t => t) (\lam e => absurd e) (\lam e => absurd e))
+                                        (congr-nconnected0 (\lam e => absurd e) (\lam _ => ()) u (\lam _ => ()) (\lam e => absurd e) b (\lam t => t) (\lam e => absurd e) (\lam e => absurd e)
+                                                           cb (nconnected-map-equiv 0 (inP idEquiv)))
+
+\lemma cofiberSNF.{u} {k : Nat} {X Y : Pointed.{u}} (f : X ->* Y) (hX : SNF k X) (hY : SNF (suc k) Y) : SNF (suc k) (Cof.pointed f)
+  => \case SNF.align {k} {suc k} hX hY \with {
+    | inP (M, x, y) => inP (M, NF.transport {suc k Nat.+ M} (Susp^.cof M f) (cofiberNF {k Nat.+ M} (Susp^.map M f).1 x y))
+  }
+  \where {
+    \lemma zero.{u} {X Y : Pointed.{u}} (f : X ->* Y) (hY : SNF 0 Y) : SNF 0 (Cof.pointed f) \elim hY
+      | inP (v, y) => inP (suc v, NF.transport {suc v} (Susp^.cof (suc v) f) (cofiberNF {v} (Susp^.map (suc v) f).1 (NF.bottom v X) (NF.susp y)))
+
+    \lemma source.{u} {k : Nat} {X Y : Pointed.{u}} (f : X ->* Y) (hY : SNF k Y) (hC : SNF (suc k) (Cof.pointed f)) : SNF k X
+      => SNF.unsusp {k} (SNF.transport {suc k} (rotation f) (cofiberSNF {k} (Cof.inc f) hY hC))
+
+    \lemma target.{u} {k : Nat} {X Y : Pointed.{u}} (f : X ->* Y) (hX : SNF k X) (hC : SNF k (Cof.pointed f)) : SNF k Y
+      => SNF.unsusp {k} (SNF.transport {suc k} (rotation (Cof.inc f))
+                                       (cofiberSNF {k} (Cof.inc (Cof.inc f)) hC (SNF.transport {suc k} (symQEquiv (rotation f)) (SNF.susp {k} hX))))
+
+    \func rotation.{u} {X Y : Pointed.{u}} (f : X ->* Y) : QEquiv {Cof.pointed (Cof.inc f)} {Susp.pointed X}
+      => IsEquiv.toQEquiv (PointedEquiv.map-isEquiv {Cof.rotate f})
+  }
+
+\lemma cofiberSAF.{u} {X Y : Pointed.{u}} (f : X ->* Y) (hX : SAF X) (hY : SAF Y) : SAF (Cof.pointed f)
+  => \lam n => SNF.lower id<=suc (cofiberSNF {n} f (hX n) (hY (suc n)))
+  \where {
+    \lemma source.{u} {X Y : Pointed.{u}} (f : X ->* Y) (hY : SAF Y) (hC : SAF (Cof.pointed f)) : SAF X
+      => \lam n => cofiberSNF.source f (hY n) (hC (suc n))
+
+    \lemma target.{u} {X Y : Pointed.{u}} (f : X ->* Y) (hX : SAF X) (hC : SAF (Cof.pointed f)) : SAF Y
+      => \lam n => cofiberSNF.target f (hX n) (hC n)
+  }

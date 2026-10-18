@@ -1,0 +1,40 @@
+\import Arith.Nat
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Finiteness
+\import Homotopy.CW.Finiteness.Join
+\import Homotopy.CW.Structure.Span (smash-isFinCW)
+\import Homotopy.Connectivity
+\import Homotopy.Pointed
+\import Homotopy.Smash
+\import Homotopy.Smash.Connectivity (smash-left, smashSwap)
+\import Homotopy.Smash.Join
+\import Logic
+\import Order.PartialOrder
+
+\lemma smashNF.{u} {p q r s k : Nat} {A B : Pointed.{u}} (cA : isNConnectedType r A) (cB : isNConnectedType s B) (hA : NF p A) (hB : NF q B)
+                   (rp : r <= p) (kp : k <= p Nat.+ s) (kq : k <= q Nat.+ r) : NF k (Smash A B)
+  => \case NF.pointed.1 hA, NF.pointed.1 hB \with {
+    | inP (C, c, a, pa, ca), inP (D, d, b, pb, cb) =>
+      approx (Pointed.make c) (Pointed.make d) (inP (C.1, (C.2, idEquiv))) (inP (D.1, (D.2, idEquiv))) (a, pa) (b, pb) ca cb cB (joinNF.source cA rp ca) kp kq
+  }
+  \where
+    \lemma approx.{v} {p q r s k : Nat} {A B : Pointed.{v}} (C D : Pointed.{v}) (cC : IsFinCW C) (cD : IsFinCW D) (a : C ->* A) (b : D ->* B)
+                      (ca : isNConnectedMap p a.1) (cb : isNConnectedMap q b.1) (cB : isNConnectedType s B) (cC' : isNConnectedType r C)
+                      (kp : k <= p Nat.+ s) (kq : k <= q Nat.+ r) : NF k (Smash A B)
+      => NF.intro {k} (smash-isFinCW cC cD)
+           (\lam x => (smash-left a ca cB).1 (smashSwap B C (((smash-left b cb cC').1 (smashSwap C D x)))))
+           (nconnected-map-comp {k} {Smash C D} {Smash C B} {Smash A B}
+             {\lam x => smashSwap B C ((smash-left b cb cC').1 (smashSwap C D x))} {(smash-left a ca cB).1}
+             (nconnected-map-comp {k} {Smash C D} {Smash B C} {Smash C B} {\lam x => (smash-left b cb cC').1 (smashSwap C D x)} {\lam y => smashSwap B C y}
+               (nconnected-map-comp {k} {Smash C D} {Smash D C} {Smash B C} {\lam x => smashSwap C D x} {(smash-left b cb cC').1}
+                 (nconnected-map-equiv k (inP (smashSwap C D))) (nconnected-map-mono kq (smash-left b cb cC').2))
+               (nconnected-map-equiv k (inP (smashSwap B C))))
+             (nconnected-map-mono kp (smash-left a ca cB).2))
+
+\lemma smashSNF.{u} {p q r s k : Nat} {A B : Pointed.{u}} (cA : isNConnectedType r A) (cB : isNConnectedType s B) (hA : SNF p A) (hB : SNF q B)
+                    (rp : r <= p) (kp : k <= p Nat.+ s) (kq : k <= q Nat.+ r) : SNF k (Smash A B)
+  => SNF.unsusp {k} (SNF.transport {suc k} (joinSmash A B) (joinSNF {p} {q} {r} {s} {suc k} cA cB hA hB rp (suc<=suc kp) (suc<=suc kq)))
+
+\lemma smashSAF.{u} {A B : Pointed.{u}} (hA : SAF A) (hB : SAF B) : SAF (Smash A B)
+  => \lam n => smashSNF {n} {n} {0} {0} (inhabited=>nconnected0 base) (inhabited=>nconnected0 base) (hA n) (hB n) zero<=_ <=-refl <=-refl

@@ -26,6 +26,10 @@
     \func pointed.{l} (A B : Pointed.{l}) : Pointed.{l}
       => \new Pointed (Wedge A B) (pinl base)
 
+    \func fin.{l} {k : Nat} (X : Fin k -> Pointed.{l}) : Pointed.{l} \elim k
+      | 0 => Pointed.make ()
+      | suc k => pointed (X 0) (fin (\lam j => X (suc j)))
+
     \func left.{l} (A B : Pointed.{l}) : A ->* pointed A B
       => (pinl, idp)
 

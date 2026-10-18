@@ -22,6 +22,7 @@
 \import Homotopy.Pushout.Connectivity
 \import Homotopy.Sphere.Bouquet.Cofiber (cofiber-exact, gap)
 \import Homotopy.Suspension
+\import Homotopy.Wedge
 \import Logic
 \import Logic.Unique
 \import Order.PartialOrder
@@ -49,6 +50,26 @@
     \func shift.{u} (k : Nat) (X : Pointed.{u}) : Susp^ (suc k) X ->* Susp^ k (Susp.pointed X) \elim k
       | 0 => ->*.id {Susp.pointed X}
       | suc k => Susp-Func {Susp^ (suc k) X} {Susp^ k (Susp.pointed X)} (shift k X)
+
+    \func add.{u} (a b : Nat) (X : Pointed.{u}) : Susp^ a (Susp^ b X) = Susp^ (b Nat.+ a) X \elim a
+      | 0 => idp
+      | suc a => pmap (\lam (Y : Pointed.{u}) => Susp.pointed Y) (add a b X)
+
+    \func level.{u, v} (k : Nat) (X : Pointed.{u}) : Susp^.{u} k X = {Pointed.{\max u v}} Susp^.{\max u v} k X \elim k
+      | 0 => idp
+      | suc k => pmap (\lam (Y : Pointed.{\max u v}) => Susp.pointed Y) (level k X)
+
+    \func equiv.{u} (k : Nat) {X Y : Pointed.{u}} (e : QEquiv {X} {Y}) : QEquiv {Susp^ k X} {Susp^ k Y} \elim k
+      | 0 => e
+      | suc k => Susp.mapEquiv (equiv k e)
+
+    \func cof.{u} (k : Nat) {X Y : Pointed.{u}} (f : X ->* Y) : QEquiv {Cof (map k f).1} {Susp^ k (Cof.pointed f)} \elim k
+      | 0 => idEquiv
+      | suc k => IsEquiv.toQEquiv (PointedEquiv.map-isEquiv {cofSusp (map k f)}) `transQEquiv` Susp.mapEquiv (cof k f)
+
+    \func wedge.{u} (k : Nat) (X Y : Pointed.{u}) : QEquiv {Susp^ k (Wedge.pointed X Y)} {Wedge (Susp^ k X) (Susp^ k Y)} \elim k
+      | 0 => idEquiv
+      | suc k => Susp.mapEquiv (wedge k X Y) `transQEquiv` IsEquiv.toQEquiv (PointedEquiv.map-isEquiv {Wedge.susp (Susp^ k X) (Susp^ k Y)})
 
     \lemma shift-isEquiv.{u} (k : Nat) (X : Pointed.{u}) : IsEquiv (shift k X).1 \elim k
       | 0 => inP (idEquiv {Susp X})
@@ -282,7 +303,7 @@
   => suspExact (dbl m) (suc (suc m)) f
        (transport (\lam k => isNConnectedMap (suc (suc k)) (gap {Susp^ (suc (suc m)) X} {Susp^ (suc (suc m)) Y} (Susp^.map (suc (suc m)) f)).1) (inv (dbl.eval m))
          (gap.nconnected m (suc m) {Susp^ (suc (suc m)) X} {Susp^ (suc (suc m)) Y} (Susp^.map (suc (suc m)) f)
-                         (nconnected-map-between {suc m} (Susp^.map.{u} (suc (suc m)) f).1 (Susp^.connected (suc (suc m)) X) (Susp^.connected (suc (suc m)) Y))
+                         (nconnected-map-between {suc m} (Susp^.map.{u} (suc (suc m)) f).1 (nconnected-mono {suc m} id<=suc (Susp^.connected (suc (suc m)) X)) (Susp^.connected (suc (suc m)) Y))
                          (Susp^.connected (suc (suc m)) X)))
 
 \lemma suspExact.{u} (d j : Nat) {X Y : Pointed.{u}} (f : X ->* Y) (c : isNConnectedMap (suc (suc d)) (gap (Susp^.map j f)).1)

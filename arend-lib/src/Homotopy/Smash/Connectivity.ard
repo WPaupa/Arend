@@ -3,11 +3,21 @@
 \import Equiv.Sigma
 \import Homotopy.Connectivity
 \import Homotopy.Connectivity.Map
+\import Homotopy.Fibration
+\import Homotopy.Join
 \import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
 \import Homotopy.Pushout.Connectivity
+\import Homotopy.Pushout.Grid
+\import Homotopy.Smash
+\import Homotopy.Smash.Join (joinSmash)
 \import Homotopy.Smash.Pushout
+\import Homotopy.Wedge
 \import Logic
 \import Logic.Unique
+\import Paths
+
+\open PushoutData (ppglue, congr, collapse)
 
 \lemma map-nconnected.{u} {n : Nat} {X X' Y Y' : Pointed.{u}} (f : X ->* X') (g : Y ->* Y')
                           (cf : isNConnectedMap (suc n) f.1) (cg : isNConnectedMap (suc n) g.1)
@@ -26,3 +36,131 @@
   \where
     \func unit.{v} (Y : Pointed.{v}) : Y ->* UnitPointed
       => (\lam _ => (), idp)
+
+\func smashSwap.{u} (X Y : Pointed.{u}) : QEquiv {Smash X Y} {Smash Y X}
+  => IsEquiv.toQEquiv (congr.isEquiv (wedgeToProduct X Y) (\lam _ => ()) (wedgeToProduct Y X) (\lam _ => ())
+                                     (PushoutData.swap (\lam (_ : \Sigma) => base {X}) (\lam _ => base {Y})) product-nconnected.swap idEquiv
+                                     (\lam w => PushoutData.homotopy {_} {_} {_} {_} {_} {_}
+                                                  {\lam w => wedgeToProduct Y X (PushoutData.swap.map (\lam (_ : \Sigma) => base {X}) (\lam _ => base {Y}) w)}
+                                                  {\lam w => product-nconnected.swap (wedgeToProduct X Y w)}
+                                                  (\lam _ => idp) (\lam _ => idp) (\lam _ => inv (pmap_inv-comm (wedgeToProduct Y X) (ppglue ()))) w)
+                                     (\lam _ => idp))
+
+\func smash-left.{u} {r s : Nat} {C A B : Pointed.{u}} (f : C ->* A) (cf : isNConnectedMap r f.1) (cB : isNConnectedType s B)
+  : \Sigma (phi : Smash C B -> Smash A B) (isNConnectedMap (r Nat.+ s) phi)
+  => (\lam x => compare {C} {A} {B} f (equiv f x),
+      nconnected-map-comp-right (r Nat.+ s) (equiv {C} {A} {B} f) (compare-nconnected {r Nat.+ s} {C} {A} {B} f (fibers f cf cB)))
+  \where {
+    \func grid.{v} {C A B : Pointed.{v}} (m : C ->* A) : Grid \cowith
+      | A00 => \Sigma C B
+      | A01 => B
+      | A02 => B
+      | A10 => C
+      | A11 => \Sigma
+      | A12 => B
+      | A20 => A
+      | A21 => A
+      | A22 => \Sigma
+      | f01 b => (base, b)
+      | f03 b => b
+      | f11 _ => base
+      | f13 _ => base
+      | f21 a => a
+      | f23 _ => ()
+      | g10 c => (c, base)
+      | g30 => m.1
+      | g11 _ => base
+      | g31 _ => base
+      | g12 b => b
+      | g32 _ => ()
+      | s00 _ => idp
+      | s02 _ => idp
+      | s20 _ => inv m.2
+      | s22 _ => idp
+
+    \func rows.{v} {C A B : Pointed.{v}} (m : C ->* A) : QEquiv {Grid.Prows {grid {C} {A} {B} m}} {Smash C B}
+      => IsEquiv.toQEquiv (congr.isEquiv (Grid.r0 {grid m}) (Grid.r2 {grid m}) (wedgeToProduct C B) (\lam _ => ())
+                                         idEquiv (collapse (\lam (b : B) => (base {C}, b))) joinSmash.cone (rows-eq m) (\lam _ => idp))
+
+    \func rows-eq.{v} {C A B : Pointed.{v}} (m : C ->* A) (w : Wedge C B)
+      : wedgeToProduct C B w = collapse.map (\lam (b : B) => (base {C}, b)) (Grid.r0 {grid m} w)
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {wedgeToProduct C B} {\lam w => collapse.map (\lam (b : B) => (base {C}, b)) (Grid.r0 {grid m} w)}
+                              (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _ *> pmap_*>-comm (collapse.map (\lam (b : B) => (base {C}, b))) idp (ppglue base)) w
+
+    \func T.{v} {C A B : Pointed.{v}} (m : C ->* A) => Grid.transpose (grid {C} {A} {B} m)
+
+    \func P.{v} {C A B : Pointed.{v}} (m : C ->* A) => PushoutData {Grid.R1 {T {C} {A} {B} m}} {Grid.R0 {T m}} {\Sigma} (Grid.r0 {T m}) (\lam _ => ())
+
+    \func cols.{v} {C A B : Pointed.{v}} (m : C ->* A) : QEquiv {Grid.Pcols (grid {C} {A} {B} m)} {P m}
+      => IsEquiv.toQEquiv (congr.isEquiv (Grid.r0 {T m}) (Grid.r2 {T m}) (Grid.r0 {T m}) (\lam _ => ()) idEquiv idEquiv joinSmash.cone (\lam _ => idp) (\lam _ => idp))
+
+    \func equiv.{v} {C A B : Pointed.{v}} (m : C ->* A) : QEquiv {Smash C B} {P {C} {A} {B} m}
+      => symQEquiv (rows m) `transQEquiv` Grid.comparison (grid m) `transQEquiv` cols m
+
+    \func h.{v} {C A B : Pointed.{v}} (m : C ->* A) (x : Grid.R0 {T {C} {A} {B} m}) : \Sigma A B
+      => PushoutData.rec (\lam (t : \Sigma C B) => (m.1 t.1, t.2)) (\lam a => (a, base)) (\lam _ => idp) x
+
+    \func wswap.{v} (A B : Pointed.{v}) => PushoutData.swap.map (\lam (_ : \Sigma) => base {B}) (\lam _ => base {A})
+
+    \func compare.{v} {C A B : Pointed.{v}} (m : C ->* A) (x : P {C} {A} {B} m) : Smash A B
+      => congr (Grid.r0 {T m}) (\lam _ => ()) (wedgeToProduct A B) (\lam _ => ()) (wswap A B) (h m) (\lam t => t) (compare-eq m) (\lam _ => idp) x
+
+    \func compare-eq.{v} {C A B : Pointed.{v}} (m : C ->* A) (w : Grid.R1 {T {C} {A} {B} m}) : wedgeToProduct A B (wswap A B w) = h m (Grid.r0 {T m} w)
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam w => wedgeToProduct A B (wswap A B w)} {\lam w => h m (Grid.r0 {T m} w)}
+                              (\lam b => pmap (\lam x => (x, b)) (inv m.2)) (\lam _ => idp)
+                              (\lam _ => pmap (pmap (\lam x => (x, base {B})) (inv m.2) *>) (pmap_*>-comm (h m) _ _)
+                                         *> pmap (\lam z => pmap (\lam x => (x, base {B})) (inv m.2) *> (z *> _)) (pmap_*>-comm (h m) idp (ppglue base))
+                                         *> coh (\lam x => (x, base {B})) m.2 *> inv (pmap_inv-comm (wedgeToProduct A B) (ppglue ()))) w
+
+    \func coh {X Y : \Type} (Q : X -> Y) {x y : X} (e : x = y) : pmap Q (inv e) *> (idp *> pmap Q (inv (inv e))) = idp \elim e
+      | idp => idp
+
+    \lemma compare-nconnected.{v} {n : Nat} {C A B : Pointed.{v}} (m : C ->* A) (c : isNConnectedMap n (h {C} {A} {B} m)) : isNConnectedMap n (compare {C} {A} {B} m) \elim n
+      | 0 => congr-nconnected0 (Grid.r0 {T m}) (\lam _ => ()) (wedgeToProduct A B) (\lam _ => ()) (wswap A B) (h m) (\lam t => t) (compare-eq m) (\lam _ => idp)
+                               c (nconnected-map-equiv 0 (inP idEquiv))
+      | suc n => congr-nconnected (Grid.r0 {T m}) (\lam _ => ()) (wedgeToProduct A B) (\lam _ => ()) (wswap A B) (h m) (\lam t => t) (compare-eq m) (\lam _ => idp)
+                                  (nconnected-map-equiv n (inP (PushoutData.swap (\lam (_ : \Sigma) => base {B}) (\lam _ => base {A})))) c
+                                  (nconnected-map-equiv (suc n) (inP idEquiv))
+
+    \lemma fibers.{v} {r s : Nat} {C A B : Pointed.{v}} (m : C ->* A) (cf : isNConnectedMap r m.1) (cB : isNConnectedType s B)
+      : isNConnectedMap (r Nat.+ s) (h {C} {A} {B} m)
+      => \lam t => Paths.transport (isNConnectedType (r Nat.+ s)) (PushoutData.flattening (\lam x => h {C} {A} {B} m x = t))
+           (nconnected-equiv (r Nat.+ s)
+             (symQEquiv (IsEquiv.toQEquiv (congr.isEquiv (\lam (p : \Sigma (c : C) ((m.1 c, base {B}) = t)) => (((p.1, base), p.2) : \Sigma (y : \Sigma C B) ((m.1 y.1, y.2) = t)))
+                                                         (\lam p => ((m.1 p.1, p.2) : \Sigma (a : A) ((a, base {B}) = t)))
+                                                         (\lam (q : \Sigma (Fib m.1 t.1) (base {B} = t.2)) => q.1) (\lam q => q.2)
+                                                         (splitJ m.1 t) (splitA m.1 t) (splitB t) (\lam _ => idp) (\lam _ => idp))))
+             (join-conn (cf t.1) cB (base {B}) t.2))
+
+    \func splitJ {C A B : \Type} {b0 : B} (k : C -> A) (t : \Sigma A B)
+      : QEquiv {\Sigma (c : C) ((k c, b0) = t)} {\Sigma (Fib k t.1) (b0 = t.2)} \cowith
+      | f p => (((p.1, pmap __.1 p.2) : Fib k t.1), pmap __.2 p.2)
+      | ret q => (q.1.1, path (\lam i => (q.1.2 @ i, q.2 @ i)))
+      | ret_f _ => idp
+      | f_sec _ => idp
+
+    \func splitA {C A B : \Type} (k : C -> A) (t : \Sigma A B) : QEquiv {\Sigma (y : \Sigma C B) ((k y.1, y.2) = t)} {Fib k t.1} \cowith
+      | f p => (p.1.1, pmap __.1 p.2)
+      | ret q => ((q.1, t.2), path (\lam i => (q.2 @ i, t.2)))
+      | ret_f p => splitA-ret k t p.2
+      | f_sec _ => idp
+
+    \func splitA-ret {C A B : \Type} (k : C -> A) {y : \Sigma C B} (t : \Sigma A B) (e : (k y.1, y.2) = t)
+      : (((y.1, t.2), path (\lam i => (pmap __.1 e @ i, t.2))) : \Sigma (y' : \Sigma C B) ((k y'.1, y'.2) = t)) = (y, e) \elim e
+      | idp => idp
+
+    \func splitB {A B : \Type} {b0 : B} (t : \Sigma A B) : QEquiv {\Sigma (a : A) ((a, b0) = t)} {b0 = t.2} \cowith
+      | f p => pmap __.2 p.2
+      | ret q => (t.1, path (\lam i => (t.1, q @ i)))
+      | ret_f p => splitB-ret t p.2
+      | f_sec _ => idp
+
+    \func splitB-ret {A B : \Type} {b0 : B} {a : A} (t : \Sigma A B) (e : (a, b0) = t)
+      : ((t.1, path (\lam i => (t.1, pmap __.2 e @ i))) : \Sigma (a' : A) ((a', b0) = t)) = (a, e) \elim e
+      | idp => idp
+
+    \lemma join-conn.{v} {r s : Nat} {X B : \Type v} (cX : isNConnectedType r X) (cB : isNConnectedType s B) (b b' : B)
+      : isNConnectedType (r Nat.+ s) (Join X (b = b')) \elim s
+      | 0 => nconnected-join-left (b = b') cX
+      | suc s => nconnected_join X (b = b') cX (nconnected-path cB b b')
+  }

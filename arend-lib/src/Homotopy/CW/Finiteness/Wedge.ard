@@ -1,0 +1,55 @@
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Finiteness
+\import Homotopy.CW.Homology.Sphere (sphere-isFinCW)
+\import Homotopy.CW.Structure.Finite (unit-isFinCW)
+\import Homotopy.CW.Structure.Span (pushout-isFinCW)
+\import Homotopy.Connectivity
+\import Homotopy.Homology (Susp^)
+\import Homotopy.Pointed
+\import Homotopy.Pushout
+\import Homotopy.Pushout.Connectivity
+\import Homotopy.Sphere
+\import Homotopy.Sphere.Bouquet
+\import Homotopy.Wedge
+\import Logic
+\import Paths
+
+\open PushoutData (congr)
+
+\lemma wedgeNF.{u} {n : Nat} {A B : Pointed.{u}} (hA : NF n A) (hB : NF n B) : NF n (Wedge A B)
+  => \case NF.pointed.1 hA, NF.pointed.1 hB \with {
+    | inP (C, c, a, pa, ca), inP (D, d, b, pb, cb) =>
+      NF.intro {n} (pushout-isFinCW.unbounded (\lam _ => c) (\lam _ => d) (IsFinCWUpTo.toFinCW unit-isFinCW.{u}) (inP (C.1, (C.2, idEquiv))) (inP (D.1, (D.2, idEquiv))))
+               (congr (\lam _ => c) (\lam _ => d) (\lam _ => base) (\lam _ => base) (\lam t => t) a b (\lam _ => inv pa) (\lam _ => inv pb))
+               (connected n pa pb ca cb)
+  }
+  \where
+    \lemma connected.{u} (n : Nat) {A B C D : \Type u} {a0 : A} {b0 : B} {c : C} {d : D} {a : C -> A} {b : D -> B} (pa : a c = a0) (pb : b d = b0)
+                         (ca : isNConnectedMap n a) (cb : isNConnectedMap n b)
+      : isNConnectedMap n (congr (\lam (_ : \Sigma) => c) (\lam _ => d) (\lam (_ : \Sigma) => a0) (\lam _ => b0) (\lam t => t) a b (\lam _ => inv pa) (\lam _ => inv pb)) \elim n
+      | 0 => congr-nconnected0 (\lam _ => c) (\lam _ => d) (\lam _ => a0) (\lam _ => b0) (\lam t => t) a b (\lam _ => inv pa) (\lam _ => inv pb) ca cb
+      | suc n => congr-nconnected (\lam _ => c) (\lam _ => d) (\lam _ => a0) (\lam _ => b0) (\lam t => t) a b (\lam _ => inv pa) (\lam _ => inv pb)
+                                  (nconnected-map-equiv n (inP idEquiv)) ca cb
+
+\lemma wedgeSNF.{u} {n : Nat} {A B : Pointed.{u}} (hA : SNF n A) (hB : SNF n B) : SNF n (Wedge.pointed A B)
+  => \case SNF.align {n} {n} hA hB \with {
+    | inP (M, x, y) => inP (M, NF.transport {n Nat.+ M} (symQEquiv (Susp^.wedge M A B)) (wedgeNF x y))
+  }
+
+\lemma wedgeSAF.{u} {A B : Pointed.{u}} (hA : SAF A) (hB : SAF B) : SAF (Wedge.pointed A B)
+  => \lam n => wedgeSNF (hA n) (hB n)
+
+\lemma finWedgeSNF.{u} {n k : Nat} {X : Fin k -> Pointed.{u}} (h : \Pi (j : Fin k) -> SNF n (X j)) : SNF n (Wedge.fin X) \elim k
+  | 0 => SAF.finite (IsFinCWUpTo.toFinCW unit-isFinCW.{u}) n
+  | suc k => wedgeSNF (h 0) (finWedgeSNF (\lam j => h (suc j)))
+
+\lemma finWedgeSAF.{u} {k : Nat} {X : Fin k -> Pointed.{u}} (h : \Pi (j : Fin k) -> SAF (X j)) : SAF (Wedge.fin X)
+  => \lam n => finWedgeSNF (\lam j => h j n)
+
+\lemma sphere-SAF.{u} (k : Nat) : SAF.{u} (Sphere.pointed k)
+  => SAF.finite (IsFinCWUpTo.toFinCW (sphere-isFinCW.{u} k))
+
+\lemma bouquet-SAF (n g : Nat) : SAF (Bouquet n g) \elim g
+  | 0 => SAF.finite (IsFinCWUpTo.toFinCW unit-isFinCW.{0})
+  | suc g => wedgeSAF (sphere-SAF.{0} n) (bouquet-SAF n g)

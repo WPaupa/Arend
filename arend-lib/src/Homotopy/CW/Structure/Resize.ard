@@ -1,0 +1,34 @@
+\import Data.SeqColimit
+\import Data.SeqColimit.Map
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.Pushout
+\import Logic
+\import Paths
+
+\func resize.{u, v} (C : CW.{v}) : CW.{u} \cowith
+  | stage n => (resizedStage.{u, v} C n).1
+  | count => C.count
+  | attach n a => QEquiv.ret {(resizedStage.{u, v} C n).2} (C.attach n a)
+  | build _ => idEquiv
+  | empty x => x
+  \where {
+    \func map.{w, t} (C : CW.{t}) : SeqMap (RelCW.seq {resize.{w, t} C}) C.seq \cowith
+      | func n => (resizedStage.{w, t} C n).2
+      | natural _ _ => idp
+
+    \func equiv.{w, t} (C : CW.{t}) : QEquiv {CW.Space {resize.{w, t} C}} {C.Space}
+      => IsEquiv.toQEquiv (realize.isEquiv (map.{w, t} C) (\lam n => inP (resizedStage.{w, t} C n).2))
+
+    \lemma bound.{w, t} {C : CW.{t}} {d : Nat} (b : C.Bound d) : CW.Bound {resize.{w, t} C} d
+      => b
+  }
+
+\func resizedStage.{u, v} (C : CW.{v}) (n : Nat) : \Sigma (T : \Type u) (QEquiv {T} {C.stage n}) \elim n
+  | 0 => (Empty, emptyEquiv (\lam e => e) C.empty)
+  | suc n => next C n (resizedStage.{u, v} C n).2
+  \where
+    \func next.{w, t} (C : CW.{t}) (n : Nat) {T : \Type w} (e : QEquiv {T} {C.stage n}) : \Sigma (T' : \Type w) (QEquiv {T'} {C.stage (suc n)})
+      => (PushoutData (\lam a => e.ret (C.attach n a)) (\lam (p : \Sigma (Fin (C.count n)) (boundary n)) => p.1),
+          IsEquiv.toQEquiv (PushoutData.congr.isEquiv _ _ (C.attach n) (\lam p => p.1) idEquiv e idEquiv (\lam c => inv (e.f_ret (C.attach n c))) (\lam _ => idp))
+            `transQEquiv` C.build n)
