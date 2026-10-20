@@ -1,0 +1,35 @@
+\import Algebra.Group
+\import Arith.Int
+\import Equiv
+\import Homotopy.Connectivity
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.K1 (K1, movePath1)
+\import Homotopy.K1.Basic
+\import Homotopy.Loop
+\import Homotopy.Pointed \hiding (base)
+\import Homotopy.Sphere.Circle
+\import Homotopy.Whitehead.Path
+\import Logic
+\import Paths
+\import Paths.Meta
+
+\func circleK (x : Sphere1) : K1 (AbGroup.toCGroup IntRing) \elim x
+  | base1 => K1.base
+  | Sphere1.loop i => K1.loop (pos 1) i
+  \where {
+    \lemma isEquiv : IsEquiv circleK
+      => whiteheadPointed {Pointed.make base1} {K (AbGroup.toCGroup IntRing) 1} (circleK, idp)
+                          (nconnected-equiv 1 (symQEquiv Sphere1-equiv) (sphere-nconnected 1)) K1-connected loops
+
+    \lemma loops : IsEquiv (Loop-Func {Pointed.make base1} {K (AbGroup.toCGroup IntRing) 1} (circleK, idp)).1
+      => transport IsEquiv (ext \lam z => inv (wind-loop (encode base1 z)) *> pmap (pmap circleK) (encode_decode z) *> inv (idp_*> _))
+                   (IsEquiv.trans (inP Loop_S1-equiv) (inP K1-loopEquiv))
+
+    \func wind-loop (n : Int) : pmap circleK (wind n) = path (K1.loop n) \elim n
+      | pos 0 => inv K1.loop-ide
+      | pos (suc n) => pmap_*>-comm circleK (wind (pos n)) Sphere1.ploop *> pmap (`*> path (K1.loop (pos 1))) (wind-loop (pos n))
+                       *> K1.loop-comp (pos n) (pos 1)
+      | neg (suc n) => pmap_*>-comm circleK (wind (neg n)) (inv Sphere1.ploop)
+                       *> pmap2 (*>) (wind-loop (neg n)) (pmap_inv-comm circleK Sphere1.ploop)
+                       *> inv (movePath1 (K1.loop-comp (neg (suc n)) (pos 1)))
+  }

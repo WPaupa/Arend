@@ -1,0 +1,53 @@
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Product
+\import Arith.Nat
+\import Equiv
+\import Homotopy.Connectivity
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Functor
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Whitehead.Path
+\import Logic
+\import Paths
+
+\func KProductMap.{u} {G H : CGroup.{u}} (n : Nat) : K (ProductCGroup G H) n ->* PointedProduct (K G n) (K H n)
+  => (\lam x => ((KMap n proj1).1 x, (KMap n proj2).1 x), pmap2 (__,__) (KMap n proj1).2 (KMap n proj2).2)
+  \where {
+    \func proj1.{u} {G H : CGroup.{u}} : GroupHom (ProductCGroup G H) G \cowith
+      | func p => p.1
+      | func-* => idp
+
+    \func proj2.{u} {G H : CGroup.{u}} : GroupHom (ProductCGroup G H) H \cowith
+      | func p => p.2
+      | func-* => idp
+
+    \lemma isEquiv.{u} {G H : CGroup.{u}} (n : Nat) : IsEquiv (KProductMap {G} {H} n).1 \elim n
+      | 0 => inP idEquiv
+      | suc n => whiteheadPointed (KProductMap (suc n)) (nconnected-mono (suc<=suc zero<=_) (K-connected n))
+                                  (nconnected-product {1} (nconnected-mono (suc<=suc zero<=_) (K-connected n)) (nconnected-mono (suc<=suc zero<=_) (K-connected n)))
+                                  (loops n)
+
+    \lemma loops.{u} {G H : CGroup.{u}} (n : Nat) : IsEquiv (Loop-Func (KProductMap {G} {H} (suc n))).1
+      => propExt.dir (IsEquiv.parallelEquiv (K-loopUnit-isEquiv n) (IsEquiv.trans (unitPair-isEquiv n) (inP (symQEquiv (LoopProductMap.equiv (K G (suc n)) (K H (suc n))))))
+                        (\lam x => pmap (LoopProductMap.equiv (K G (suc n)) (K H (suc n))).ret
+                                        (pmap2 (__,__) (inv (->*.happly (KMap_loopUnit n proj1) x) *> component (KProductMap (suc n)) __.1 ((K-loopUnit n).1 x))
+                                                       (inv (->*.happly (KMap_loopUnit n proj2) x) *> component (KProductMap (suc n)) __.2 ((K-loopUnit n).1 x)))))
+                     (isEquiv n)
+
+    \lemma unitPair-isEquiv.{u} {G H : CGroup.{u}} (n : Nat)
+      : IsEquiv (\lam (t : \Sigma (K G n) (K H n)) => ((K-loopUnit n).1 t.1, (K-loopUnit n).1 t.2))
+      => \case K-loopUnit-isEquiv {G} n, K-loopUnit-isEquiv {H} n \with {
+        | inP e, inP e' => inP \new QEquiv {
+          | ret s => (e.ret s.1, e'.ret s.2)
+          | ret_f t => pmap2 (__,__) (e.ret_f t.1) (e'.ret_f t.2)
+          | f_sec s => pmap2 (__,__) (e.f_sec s.1) (e'.f_sec s.2)
+        }
+      }
+
+    \func component {X Y : Pointed} {Z : \Type} (P : X ->* Y) (pr : Y -> Z) (w : Loop X)
+      : loopMap (\lam x => pr (P.1 x)) (pmap pr P.2) w = pmap pr (loopMap P.1 P.2 w)
+      => loopMap.comp P.1 P.2 pr idp w *> idp_*> _
+  }

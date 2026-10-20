@@ -1,0 +1,87 @@
+-- | After ``CorollariesToGanea.agda`` in ``CMU-HoTT/serre-finiteness``.
+
+\import Algebra.Meta
+\import Arith.Nat
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Finiteness
+\import Homotopy.CW.Finiteness.Cofiber
+\import Homotopy.CW.Finiteness.Join
+\import Homotopy.CW.Structure.Finite (unit-isFinCW)
+\import Homotopy.Connectivity
+\import Homotopy.FiberSequence (FiberSequence, PointedFib, fibProj)
+\import Homotopy.Ganea
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Logic
+\import Meta
+\import Order.PartialOrder
+\import Order.StrictOrder
+
+\open ganeaTower (fiber, fiberEquiv)
+
+\lemma descend.{u} {k : Nat} {E B : Pointed.{u}} (p : E ->* B) (s d : Nat) (h : \Pi (j : Nat) -> j < d -> SNF k (fiber p (s Nat.+ j)))
+                   (top : SNF k (ganeaTower.stage p (s Nat.+ d))) : SNF k (ganeaTower.stage p s) \elim d
+  | 0 => top
+  | suc d => descend p s d (\lam j q => h j (<-transitive q id<suc)) (cofiberSNF.target {k} (fibProj (ganeaTower.proj p (s Nat.+ d))) (h d id<suc) top)
+
+\lemma deloopSAF.{u} {B : Pointed.{u}} (cB : isNConnectedType 1 B) (h : SAF (Loop B)) : SAF B
+  => \lam n => SNF.map {n} {_} {B} {ganeaTower.proj (->*.zero UnitPointed B) (suc n)}
+                 (nconnected-map-mono {n} {0 Nat.+ 1 Nat.* suc n} (later linarith)
+                   (ganeaTower.proj-nconnected {0} {0} (->*.zero UnitPointed B) cB (inhabited=>nconnected0 (base {PointedFib (->*.zero UnitPointed B)}))
+                                          (inhabited=>nconnected0 (base {Loop B})) (suc n)))
+                 (stageSAF h (suc n) n)
+  \where {
+    \lemma fiberSAF.{u} {B : Pointed.{u}} (h : SAF (Loop B)) (t : Nat) : SAF (fiber (->*.zero UnitPointed B) t) \elim t
+      | 0 => SAF.transport {Loop B} (ganea.loopUnit B) h
+      | suc t => SAF.transport (fiberEquiv (->*.zero UnitPointed B) t) (joinSAF (fiberSAF h t) h)
+
+    \lemma stageSAF.{u} {B : Pointed.{u}} (h : SAF (Loop B)) (t : Nat) : SAF (ganeaTower.stage (->*.zero UnitPointed B) t) \elim t
+      | 0 => SAF.finite (IsFinCWUpTo.toFinCW unit-isFinCW.{u})
+      | suc t => cofiberSAF (fibProj (ganeaTower.proj (->*.zero UnitPointed B) t)) (fiberSAF h t) (stageSAF h t)
+  }
+
+\lemma loopSAF.{u} {B : Pointed.{u}} (cB : isNConnectedType 2 B) (h : SAF B) : SAF (Loop B)
+  => degree cB h
+  \where {
+    \lemma degree.{u} {B : Pointed.{u}} (cB : isNConnectedType 2 B) (h : SAF B) (n : Nat) : SNF n (Loop B) \elim n
+      | 0 => inP (0, NF.connected {0} base (loop-nconnected {1} B cB))
+      | suc n => SNF.unsusp {suc n} {Loop B} (SNF.transport {suc (suc n)} (ganeaTower.suspension B)
+          (descend {suc (suc n)} (->*.zero UnitPointed B) 1 (suc n) (\lam j _ => positive cB n (degree cB h n) j)
+             (SNF.backward {suc (suc n)} {_} {B} {ganeaTower.proj (->*.zero UnitPointed B) (suc (suc n))}
+                           (nconnected-map-mono {suc (suc (suc n))} {1 Nat.+ 2 Nat.* suc (suc n)} (later linarith)
+                              (ganeaTower.proj-nconnected {1} {1} (->*.zero UnitPointed B) (nconnected-mono {1} {2} (suc<=suc zero<=_) cB) (base-nconnected cB)
+                                                     (loop-nconnected {1} B cB) (suc (suc n))))
+                           (h (suc (suc n))))))
+
+    \lemma base-nconnected.{u} {B : Pointed.{u}} (cB : isNConnectedType 2 B) : isNConnectedType 1 (PointedFib (->*.zero UnitPointed B))
+      => nconnected-equiv 1 (ganea.loopUnit B) (loop-nconnected {1} B cB)
+
+    \lemma fiber-nconnected.{u} {B : Pointed.{u}} (cB : isNConnectedType 2 B) (j : Nat) : isNConnectedType (1 Nat.+ 2 Nat.* j) (fiber (->*.zero UnitPointed B) j)
+      => ganeaTower.fiber-nconnected {1} {1} (->*.zero UnitPointed B) (base-nconnected cB) (loop-nconnected {1} B cB) j
+
+    \lemma positive.{u} {B : Pointed.{u}} (cB : isNConnectedType 2 B) (n : Nat) (hn : SNF n (Loop B)) (j : Nat)
+      : SNF (suc (suc n)) (fiber (->*.zero UnitPointed B) (suc j)) \elim n, j
+      | 0, j => inP (0, NF.connected {2} (base {fiber (->*.zero UnitPointed B) (suc j)})
+                                     (nconnected-mono {3} {1 Nat.+ 2 Nat.* suc j} (later linarith) (fiber-nconnected cB (suc j))))
+      | suc n, 0 => SNF.transport {suc (suc (suc n))} (fiberEquiv (->*.zero UnitPointed B) 0)
+          (joinSNF {suc n} {suc n} {1} {1} {suc (suc (suc n))} {fiber (->*.zero UnitPointed B) 0} {Loop B} (base-nconnected cB) (loop-nconnected {1} B cB)
+                   (SNF.transport {suc n} {Loop B} (ganea.loopUnit B) hn) hn (suc<=suc zero<=_) <=-refl <=-refl)
+      | suc n, suc j => SNF.transport {suc (suc (suc n))} (fiberEquiv (->*.zero UnitPointed B) (suc j))
+          (joinSNF {suc (suc (suc n))} {suc n} {1} {1} {suc (suc (suc n))} {fiber (->*.zero UnitPointed B) (suc j)} {Loop B}
+                   (nconnected-mono {1} {1 Nat.+ 2 Nat.* suc j} (later linarith) (fiber-nconnected cB (suc j))) (loop-nconnected {1} B cB)
+                   (positive cB (suc n) hn j) hn (suc<=suc zero<=_) (later linarith) <=-refl)
+  }
+
+\lemma totalSAF.{u} {F E B : Pointed.{u}} (S : FiberSequence F E B) (cB : isNConnectedType 2 B) (hF : SAF F) (hB : SAF B) : SAF E
+  => \lam n => descend {n} S.proj 0 (suc n) (\lam j _ => fiberSAF S cB hF hB j n)
+                 (SNF.backward {n} {_} {B} {ganeaTower.proj S.proj (suc n)}
+                   (nconnected-map-mono {suc n} {0 Nat.+ 2 Nat.* suc n} (later linarith)
+                     (ganeaTower.proj-nconnected {0} {1} S.proj (nconnected-mono {1} {2} (suc<=suc zero<=_) cB) (inhabited=>nconnected0 (base {PointedFib S.proj}))
+                                            (loop-nconnected {1} B cB) (suc n)))
+                   (hB n))
+  \where
+    \lemma fiberSAF.{u} {F E B : Pointed.{u}} (S : FiberSequence F E B) (cB : isNConnectedType 2 B) (hF : SAF F) (hB : SAF B) (j : Nat)
+      : SAF (fiber S.proj j) \elim j
+      | 0 => SAF.transport (IsEquiv.toQEquiv S.gap-isEquiv) hF
+      | suc j => SAF.transport (fiberEquiv S.proj j) (joinSAF {fiber S.proj j} {Loop B} (fiberSAF S cB hF hB j) (loopSAF cB hB))

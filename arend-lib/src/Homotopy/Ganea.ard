@@ -1,0 +1,123 @@
+-- | The Ganea construction, after ``Cubical/HITs/Join/Properties.agda`` in agda/cubical and ``CorollariesToGanea.agda`` in ``CMU-HoTT/serre-finiteness``.
+
+\import Arith.Nat
+\import Equiv
+\import Equiv.Sigma (sigma-equiv)
+\import Equiv.Univalence (transport-isEquiv)
+\import Homotopy.Cofiber
+\import Homotopy.Connectivity
+\import Homotopy.FiberSequence
+\import Homotopy.Fibration
+\import Homotopy.Join
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pushout
+\import Homotopy.Suspension
+\import Logic
+\import Paths
+
+\open PushoutData (ppglue, congr, flattening)
+
+\func ganeaMap {E B : Pointed} (p : E ->* B) : Cof.pointed (fibProj p) ->* B
+  => Cof.extend {_} {_} {_} {fibProj p} p (\lam x => x.2)
+
+\func ganea.{u} {E B : Pointed.{u}} (p : E ->* B) : FiberSequence (Join.pointed (PointedFib p) (Loop B)) (Cof.pointed (fibProj p)) B
+  => fiberSequenceOfGap {Join.pointed (PointedFib p) (Loop B)} (ganeaMap p) (gap p, gap.jinl-comp p (base {PointedFib p})) (gap.isEquiv p)
+  \where {
+    \func Fam {E B : Pointed} (p : E ->* B) (z : Cof (fibProj p).1) => (ganeaMap p).1 z = base
+
+    \func gap.{u} {E B : Pointed.{u}} (p : E ->* B) (x : Join (PointedFib p) (Loop B)) : Fib (ganeaMap p).1 base
+      => transport (\lam T => T) (flattening (Fam p)) (span p x)
+      \where {
+        \func jinl-comp.{u} {E B : Pointed.{u}} (p : E ->* B) (c : Fib p.1 base)
+          : gap p (jinl c) = ((pinl c.1, c.2) : Fib (ganeaMap p).1 base)
+          => flattening.pinl-comp c.1 c.2
+
+        \lemma isEquiv.{u} {E B : Pointed.{u}} (p : E ->* B) : IsEquiv (gap p)
+          => IsEquiv.trans (congr.isEquiv (\lam (t : \Sigma (PointedFib p) (Loop B)) => t.1) (\lam t => t.2)
+                                          (\lam (t : \Sigma (x : Fib p.1 base) (Fam p (pinl x.1))) => (((fibProj p).1 t.1, t.2) : Fib p.1 base))
+                                          (\lam (t : \Sigma (x : Fib p.1 base) (Fam p (pinl x.1))) => ((), transport (Fam p) (ppglue t.1) t.2))
+                                          (shear p) idEquiv (loopUnit B) (\lam _ => idp) (glue p))
+                           (transport-isEquiv (flattening (Fam p)))
+      }
+
+    \func span {E B : Pointed} (p : E ->* B) (x : Join (PointedFib p) (Loop B))
+      => congr (\lam (t : \Sigma (PointedFib p) (Loop B)) => t.1) (\lam t => t.2)
+               (\lam (t : \Sigma (x : Fib p.1 base) (Fam p (pinl x.1))) => (((fibProj p).1 t.1, t.2) : Fib p.1 base))
+               (\lam (t : \Sigma (x : Fib p.1 base) (Fam p (pinl x.1))) => ((), transport (Fam p) (ppglue t.1) t.2))
+               (shear p) idEquiv (loopUnit B) (\lam _ => idp) (glue p) x
+
+    \func shear {E B : Pointed} (p : E ->* B)
+      : QEquiv {\Sigma (PointedFib p) (Loop B)} {\Sigma (x : Fib p.1 base) (Fam p (pinl x.1))} \cowith
+      | f c => ((c.1.1, c.1.2 *> inv c.2), c.1.2)
+      | ret t => ((t.1.1, t.2), inv t.1.2 *> t.2)
+      | ret_f c => pmap (c.1, __) (cancel-left c.1.2 c.2)
+      | f_sec t => pmap (\lam q => ((((t.1.1, q) : Fib p.1 base), t.2) : \Sigma (x : Fib p.1 base) (Fam p (pinl x.1)))) (cancel-right t.1.2 t.2)
+
+    \func loopUnit (B : Pointed) : QEquiv {Loop B} {\Sigma (_ : \Sigma) (base = {B} base)} \cowith
+      | f w => ((), w)
+      | ret t => t.2
+      | ret_f _ => idp
+      | f_sec _ => idp
+
+    \func glue {E B : Pointed} (p : E ->* B) (c : \Sigma (PointedFib p) (Loop B))
+      : ((), transport (Fam p) (ppglue (shear p c).1) (shear p c).2) = ((), c.2)
+      => pmap ((), __) (glue-transport p (shear p c).1 c.1.2 *> cancel-left c.1.2 c.2)
+
+    \func glue-transport {E B : Pointed} (p : E ->* B) (x : Fib p.1 base) (d : p.1 x.1 = base)
+      : transport (Fam p) (ppglue x) d = inv x.2 *> d
+      => inv (transport_pmap (\lam (b : B) => b = base) (ganeaMap p).1 (ppglue x) d) *> transport_path-left (pmap (ganeaMap p).1 (ppglue x)) d
+
+    \func cancel-left {A : \Type} {a b c : A} (d : a = b) (w : c = b) : inv (d *> inv w) *> d = w \elim w
+      | idp => inv_*> d
+
+    \func cancel-right {A : \Type} {a b c : A} (g : a = b) (d : a = c) : d *> inv (inv g *> d) = g \elim d
+      | idp => idp_*> _ *> inv_inv g
+  }
+
+\func ganeaSequence.{u} {F E B : Pointed.{u}} (S : FiberSequence F E B) : FiberSequence (Join.pointed F (Loop B)) (Cof.pointed S.incl) B
+  => fiberSequence-fiber (fiberSequence-total (ganea S.proj) (cofiber S)) (join S)
+  \where {
+    \func gapEquiv.{u} {F E B : Pointed.{u}} (S : FiberSequence F E B) : QEquiv {F} {Fib S.proj.1 base}
+      => IsEquiv.toQEquiv S.gap-isEquiv
+
+    \func cofiber.{u} {F E B : Pointed.{u}} (S : FiberSequence F E B) : PointedEquiv (Cof.pointed S.incl) (Cof.pointed (fibProj S.proj)) \cowith
+      | map => (congr S.incl.1 (\lam _ => ()) (fibProj S.proj).1 (\lam _ => ()) (gapEquiv S) idEquiv idEquiv (\lam _ => idp) (\lam _ => idp), idp)
+      | map-isEquiv => congr.isEquiv S.incl.1 (\lam _ => ()) (fibProj S.proj).1 (\lam _ => ()) (gapEquiv S) idEquiv idEquiv (\lam _ => idp) (\lam _ => idp)
+
+    \func join.{u} {F E B : Pointed.{u}} (S : FiberSequence F E B) : PointedEquiv (Join.pointed F (Loop B)) (Join.pointed (PointedFib S.proj) (Loop B)) \cowith
+      | map => (Join.map (gapEquiv S) (\lam w => w), pmap jinl (PointedShortSeq.gap S).2)
+      | map-isEquiv => congr.isEquiv (\lam (t : \Sigma F (Loop B)) => t.1) (\lam t => t.2) (\lam (t : \Sigma (PointedFib S.proj) (Loop B)) => t.1) (\lam t => t.2)
+                                     (sigma-equiv (gapEquiv S) (\lam _ => idEquiv)) (gapEquiv S) idEquiv (\lam _ => idp) (\lam _ => idp)
+  }
+
+\func ganeaTower.{u} {E B : Pointed.{u}} (p : E ->* B) (t : Nat) : \Sigma (X : Pointed.{u}) (X ->* B) \elim t
+  | 0 => (E, p)
+  | suc t => (Cof.pointed (fibProj (ganeaTower p t).2), ganeaMap (ganeaTower p t).2)
+  \where {
+    \func stage.{u} {E B : Pointed.{u}} (p : E ->* B) (t : Nat) : Pointed.{u} => (ganeaTower p t).1
+
+    \func proj.{u} {E B : Pointed.{u}} (p : E ->* B) (t : Nat) : stage p t ->* B => (ganeaTower p t).2
+
+    \func fiber.{u} {E B : Pointed.{u}} (p : E ->* B) (t : Nat) : Pointed.{u} => PointedFib (proj p t)
+
+    \func fiberEquiv.{u} {E B : Pointed.{u}} (p : E ->* B) (t : Nat) : QEquiv {Join (fiber p t) (Loop B)} {fiber p (suc t)}
+      => IsEquiv.toQEquiv (ganea.gap.isEquiv (proj p t))
+
+    \lemma fiber-nconnected.{u} {a b : Nat} {E B : Pointed.{u}} (p : E ->* B) (c0 : isNConnectedType a (PointedFib p))
+                                (cL : isNConnectedType b (Loop B)) (t : Nat)
+      : isNConnectedType (a Nat.+ suc b Nat.* t) (fiber p t) \elim t
+      | 0 => c0
+      | suc t => nconnected-equiv (a Nat.+ suc b Nat.* suc t) (fiberEquiv p t)
+          (transport (isNConnectedType __ _) (pmap suc NatSemiring.+-assoc) (nconnected_join _ _ (fiber-nconnected p c0 cL t) cL))
+
+    \lemma proj-nconnected.{u} {a b : Nat} {E B : Pointed.{u}} (p : E ->* B) (cB : isNConnectedType 1 B)
+                               (c0 : isNConnectedType a (PointedFib p)) (cL : isNConnectedType b (Loop B)) (t : Nat)
+      : isNConnectedMap (a Nat.+ suc b Nat.* t) (proj p t).1
+      => \lam y => \case nconnected1-path cB base y \with {
+        | inP q => transport (\lam y => isNConnectedType _ (Fib (proj p t).1 y)) q (fiber-nconnected p c0 cL t)
+      }
+
+    \func suspension.{u} (B : Pointed.{u}) : QEquiv {stage (->*.zero UnitPointed B) 1} {Susp (Loop B)}
+      => Susp.mapEquiv (symQEquiv (ganea.loopUnit B))
+  }

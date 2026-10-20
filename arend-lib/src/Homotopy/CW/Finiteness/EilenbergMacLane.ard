@@ -1,0 +1,46 @@
+-- | After ``CorollariesToGanea.agda`` in ``CMU-HoTT/serre-finiteness``.
+
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.FinitePresentation
+\import Algebra.Group.Product
+\import Algebra.Semiring
+\import Arith.Int
+\import Arith.Nat
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Finiteness
+\import Homotopy.CW.Finiteness.Ganea
+\import Homotopy.CW.Finiteness.Product
+\import Homotopy.CW.Finiteness.Wedge (sphere-SAF)
+\import Homotopy.CW.Structure.Finite (zero-dim)
+\import Homotopy.Connectivity
+\import Homotopy.EilenbergMacLane.Circle
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.EilenbergMacLane.Product
+\import Homotopy.K1.Basic (K1-connected)
+\import Homotopy.Loop
+\import Homotopy.Sphere.Circle (Sphere1-equiv)
+\import Logic
+
+\lemma K-SAF.{u} {A : AbGroup.{u}} (fp : IsFP A) (n : Nat) : SAF (K A (suc n))
+  => fpInduction (\lam (A : AbGroup.{u}) => \Pi (n : Nat) -> SAF.{u} (K.{u} A (suc n))) cyclic (\lam hA hB n => product (suc n) (hA n) (hB n)) fp n
+  \where {
+    \lemma deloop.{u} {G : CGroup.{u}} (h : SAF (K G 1)) (n : Nat) : SAF (K G (suc n)) \elim n
+      | 0 => h
+      | suc n => deloopSAF (nconnected-mono {1} {suc (suc n)} (suc<=suc zero<=_) (K-connected (suc n)))
+                           (SAF.transport {K G (suc n)} {Loop (K G (suc (suc n)))} (IsEquiv.toQEquiv (K-loopUnit-isEquiv (suc n))) (deloop h n))
+
+    \lemma cyclic.{u} (d n : Nat) : SAF.{u} (K.{u} (Zmod d) (suc n)) \elim d
+      | 0 => fpInduction.transportEquiv (\lam (A : AbGroup.{u}) => \Pi (n : Nat) -> SAF.{u} (K.{u} A (suc n))) (Coker.proj (mulHom 0))
+                                        (symQEquiv (Coker.zeroEquiv \lam _ => zro_*-left)) int n
+      | suc d => deloop (deloopSAF K1-connected (SAF.transport {K (Zmod (suc d)) 0} {Loop (K (Zmod (suc d)) 1)} (IsEquiv.toQEquiv (K-loopUnit-isEquiv 0))
+                                                              (SAF.finite (IsFinCWUpTo.toFinCW (zero-dim.2 (inP (suc d, Zmod.finEquiv d))))))) n
+
+    \lemma int.{u} (n : Nat) : SAF.{u} (K.{u} IntRing (suc n))
+      => deloop (SAF.transport (transQEquiv (symQEquiv Sphere1-equiv) (IsEquiv.toQEquiv circleK.isEquiv)) (sphere-SAF 1)) n
+
+    \lemma product.{u} {G H : CGroup.{u}} (n : Nat) (hG : SAF (K G n)) (hH : SAF (K H n)) : SAF (K (ProductCGroup G H) n)
+      => SAF.transport (symQEquiv (IsEquiv.toQEquiv (KProductMap.isEquiv n))) (productSAF hG hH)
+  }

@@ -1,4 +1,4 @@
-\import Algebra.Domain.Euclidean (IntDomain)
+\import Algebra.Domain.Euclidean (IntDomain, IntEuclidean)
 \import Algebra.Group
 \import Algebra.Group.Cokernel
 \import Algebra.Group.FreeAbelian
@@ -7,13 +7,15 @@
 \import Algebra.Group.Product
 \import Algebra.Linear.Matrix
 \import Algebra.Linear.Matrix.Smith
+\import Algebra.Meta
 \import Algebra.Monoid
 \import Algebra.Monoid.MonoidHom
 \import Algebra.Pointed
 \import Algebra.Ring
 \import Algebra.Semiring
+\import Arith.Fin (FinRing, int_n*_+_mod_n)
 \import Arith.Int
-\import Arith.Nat (pred, suc/=0)
+\import Arith.Nat (NatOrder, fin_mod_id, pred, suc/=0)
 \import Category \hiding (id, o)
 \import Data.Fin (fsuc/=0)
 \import Equiv
@@ -22,6 +24,7 @@
 \import Meta
 \import Paths
 \import Paths.Meta
+\import Relation.Equivalence (in~)
 \open ZFree
 
 \func mulHom (d : Int) : AddGroupHom IntRing IntRing \cowith
@@ -29,6 +32,21 @@
   | func-+ => ldistr
 
 \func Zmod (d : Nat) => Coker (mulHom d)
+  \where {
+    \func finEquiv (n : Nat) : QEquiv {Zmod (suc n)} {Fin (suc n)} \cowith
+      | f => Coker.desc {_} {_} {FinRing {n}} FinRing.intHom
+               (\lam x => pmap Fin.fromNat (pmap (\lam (y : Int) => y IntEuclidean.mod suc n) (inv (IntRing.zro-right {pos (suc n) * x}))
+                                            *> int_n*_+_mod_n {n} {0} {x} NatOrder.zero<suc) *> fin_mod_id 0)
+      | ret k => Coker.proj (mulHom (suc n)) (pos k)
+      | ret_f c => \case \elim c \with {
+        | in~ x => pmap (\lam (r : Nat) => Coker.proj (mulHom (suc n)) (pos r)) FinRing.mod-mod
+                   *> Coker.proj-equality.2 (inP (negative (x IntEuclidean.div suc n), remainder (IntEuclidean.natDivModProp x n)))
+      }
+      | f_sec k => inv (FinRing.intCoef-char n (pos k)) *> FinRing.intCoef_pos-char k *> fin_mod_id k
+      \where
+        \lemma remainder {R : CRing} {b d r x : R} (p : b * d + r = x) : b * negative d = r - x
+          => rewriteI p equation.cRing
+  }
 
 \func FinitePresentation (A : AbGroup)
   => \Sigma (g r : Nat) (M : AddGroupHom (ZFree r) (ZFree g)) (f : AddGroupHom A (Coker M)) (IsEquiv f)
