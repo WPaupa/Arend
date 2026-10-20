@@ -1,0 +1,79 @@
+-- | After ``CorollariesToHurewicz.agda`` and ``SerreFinitenessTheorem.agda`` in ``CMU-HoTT/serre-finiteness``.
+
+\import Algebra.Group.Abelianization
+\import Algebra.Group.FinitePresentation
+\import Algebra.Group.GroupHom
+\import Arith.Nat
+\import Equiv
+\import Homotopy.CW
+\import Homotopy.CW.Connected.WeakHurewicz
+\import Homotopy.CW.Finiteness
+\import Homotopy.CW.Finiteness.EilenbergMacLane
+\import Homotopy.CW.Finiteness.Ganea
+\import Homotopy.CW.Finiteness.Wedge (sphere-SAF)
+\import Homotopy.CW.Homology.Sphere (sphere-isCW)
+\import Homotopy.CW.Structure.Finite (sphere0-equiv)
+\import Homotopy.ConnectedCover
+\import Homotopy.Connectivity
+\import Homotopy.FiberSequence.Connectivity
+\import Homotopy.Homology
+\import Homotopy.HomotopyGroup
+\import Homotopy.HLevel
+\import Homotopy.HomotopyGroup.Circle (circle-pi-high-contr)
+\import Homotopy.HomotopyGroup.Connectivity (pi-vanishes-above)
+\import Homotopy.HomotopyGroup.Connectivity
+\import Homotopy.Pointed
+\import Homotopy.Sphere
+\import Logic
+\import Logic.Unique
+\import Meta
+\import Order.PartialOrder
+\import Paths
+\import Relation.Equivalence
+
+\lemma bottomFP.{u} (p : Nat) {X : Pointed.{u}} (c : isNConnectedType (suc (suc p)) X) (h : SNF (suc (suc (suc p))) X) : IsFP (PiAb p X) \elim h
+  | inP (m, nf) => \case (NF.pointed {suc (suc (suc p)) Nat.+ m} {Susp^ m X}).1 nf \with {
+    | inP (C, x, f, fx, cf) =>
+      \let | q => suc (suc (p Nat.+ m))
+           | S => Pointed.make {CW.Space {C.2.1}} x
+           | e => IsEquiv.toQEquiv (PiAb.map.pi-isEquiv (p Nat.+ m) {S} {Susp^ m X} (f, fx) (nconnected-piMap-isEquiv {_} {q} (f, fx) cf id<suc))
+      \in IsFP.transport (PiAb.stab^ p m X) (PiAb.stab^-isEquiv p m c)
+            (IsFP.transport (AddGroupHom.inverse (PiAb.map (p Nat.+ m) (f, fx)) e) (inP (symQEquiv e))
+              (weakHurewicz (p Nat.+ m) S (inP (C.2.1, idEquiv))
+                 ((nconnected-unit {q} {S}).2 (nconnected-map-comp {q} {S} {Susp^ m X} {\Sigma} {f} {\lam _ => ()} (nconnected-map-mono {q} id<=suc cf)
+                                                         ((nconnected-unit {q} {Susp^ m X}).1 (Susp^.connected' {suc (suc p)} m c))))))
+  }
+
+\lemma homotopyGroupsFP.{u} {X : Pointed.{u}} (c : isNConnectedType 2 X) (h : SAF X) (n : Nat) : IsFP (PiAb n X)
+  => (induction c h n).2
+  \where {
+    \lemma induction.{u} {X : Pointed.{u}} (c : isNConnectedType 2 X) (h : SAF X) (k : Nat)
+      : \Sigma (SAF (ConnCover (suc k) X)) (IsFP (PiAb k X)) \elim k
+      | 0 => \let s => SAF.transport (symQEquiv (IsEquiv.toQEquiv (PointedEquiv.map-isEquiv {ConnCover.equiv {1} c}))) h
+             \in (s, coverFP 0 (bottomFP 0 (ConnCover.connected 1 X) (s 3)))
+      | suc k => \let | r => induction c h k
+                      | s => totalSAF (ConnCover.sequence k X) (nconnected-mono (suc<=suc (suc<=suc zero<=_)) (ConnCover.connected (suc k) X)) (K-SAF r.2 k) r.1
+                 \in (s, coverFP (suc k) (bottomFP (suc k) (ConnCover.connected (suc (suc k)) X) (s (suc (suc (suc (suc k)))))))
+
+    \lemma coverFP.{u} (d : Nat) {X : Pointed.{u}} (h : IsFP (PiAb d (ConnCover (suc d) X))) : IsFP (PiAb d X)
+      => \let e => IsEquiv.toQEquiv (PiAb.map.pi-isEquiv d (ConnCover.proj (suc d) X) (ConnCover.pi-isEquiv {suc d} {suc (suc d)} X <=-refl))
+         \in IsFP.transport (AddGroupHom.inverse (PiAb.map d (ConnCover.proj (suc d) X)) e) (inP (symQEquiv e)) h
+  }
+
+\lemma sphere-homotopyGroupsFP.{u} (n k : Nat) : IsFP (PiAb.{u} k (Sphere.pointed n)) \elim n
+  | 0 => IsFP.trivial \lam x => isContr=>isProp (pi-vanishes-above {1} {suc (suc k)} sphere0-level (suc<=suc zero<=_)) x _
+  | 1 => IsFP.trivial \lam x => isContr=>isProp (circle-pi-high-contr.{u} k) x _
+  | suc (suc n) => homotopyGroupsFP (nconnected-mono {2} {suc (suc n)} (suc<=suc (suc<=suc zero<=_)) (sphere-nconnected.{u} (suc (suc n)))) (sphere-SAF.{u} (suc (suc n))) k
+  \where {
+    \lemma fundamental.{u} (n : Nat) : IsFP (Ab (PiGroup.{u} 0 (Sphere.pointed n))) \elim n
+      | 0 => IsFP.trivial {Ab (PiGroup.{u} 0 (Sphere.pointed 0))} \lam x => cases x \with {
+        | in~ a => pmap in~ (isContr=>isProp (pi-vanishes-above.{u} {1} {1} {Sphere.pointed 0} sphere0-level <=-refl) a _)
+      }
+      | suc n => weakHurewicz1 (Sphere.pointed (suc n)) (sphere-isCW.{u} (suc n)) (nconnected-mono {1} {suc n} (suc<=suc zero<=_) (sphere-nconnected.{u} (suc n)))
+
+    \private \lemma sphere0-level : Sphere 0 ofHLevel_-1+ 1
+      => HLevel-retracts sphere0-equiv {1} \lam _ _ => toProp \lam _ _ => prop-pi
+  }
+
+\lemma coversSAF.{u} {X : Pointed.{u}} (c : isNConnectedType 2 X) (h : SAF X) (k : Nat) : SAF (ConnCover (suc k) X)
+  => (homotopyGroupsFP.induction c h k).1

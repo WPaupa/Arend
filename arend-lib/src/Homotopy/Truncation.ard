@@ -68,6 +68,15 @@
              | p : f x = p0 => path (\lam j => (isContr=>isProp c (f,idp) (\lam _ => p0, idp) @ j).1 x)
         \in pathOver p
 
+    \func pointed.{u} (n : Nat) (X : Pointed.{u}) : Pointed.{u}
+      => Pointed.make {Trunc_-1+ n X} (inT base)
+
+    \func unit.{u} (n : Nat) (X : Pointed.{u}) : X ->* pointed n X
+      => (inT, idp)
+
+    \func drop.{u} {n : Nat} {A : \Type u} (t : Trunc_-1+ (suc n) A) : Trunc_-1+ n A
+      => elim (\lam _ => Truncated_-1+.up (level n A)) inT t
+
     \func elim2.{u} {n : Nat} {A : \Type}
                     (P : Trunc_-1+ n A -> Trunc_-1+ n A -> Truncated_-1+.{u} n)
                     (g : \Pi (a a' : A) -> P (inT a) (inT a'))

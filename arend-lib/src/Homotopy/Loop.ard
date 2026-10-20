@@ -173,6 +173,12 @@
         \func natural {X Z W : Pointed} (g : Z ->* W) (k : Susp.pointed X ->* Z) : fromSusp (g ->*.∘* k) = Loop-Func g ->*.∘* fromSusp k
           => pmap (\lam t => fromSusp (g ->*.∘* t)) (inv (QEquiv.ret_f {adjoint X Z} k)) *> pmap fromSusp (toSusp.post g (fromSusp k))
              *> QEquiv.f_sec {adjoint X W} (Loop-Func g ->*.∘* fromSusp k)
+
+        \func id-unit (X : Pointed) : fromSusp {X} {Susp.pointed X} ->*.id = SuspLoopEquiv.unit X
+          => ->*.ext {_} {_} {fromSusp ->*.id} {SuspLoopEquiv.unit X} (\lam _ => idp_*> _) idp
+
+        \func loop-unit {X Z : Pointed} (k : Susp.pointed X ->* Z) : Loop-Func k ->*.∘* SuspLoopEquiv.unit X = fromSusp k
+          => pmap (Loop-Func k ->*.∘*) (inv (id-unit X)) *> inv (natural k ->*.id) *> pmap fromSusp (->*.compose-id k)
       }
   }
 

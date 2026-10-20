@@ -153,6 +153,14 @@
     \lemma stab-isEquiv.{u} (r d : Nat) (X : Pointed.{u}) (c : isNConnectedType (suc r) X) (h : suc (suc d) <= r Nat.+ r)
       : IsEquiv (stab.{u} d X)
       => transport IsEquiv (ext \lam t => inv (stab.eval.{u} d X t)) (piStabilization.isEquiv.{u} r (suc (suc d)) X c h)
+
+    \func stab^.{u} (d m : Nat) (X : Pointed.{u}) : AddGroupHom (PiAb.{u} d X) (PiAb.{u} (d Nat.+ m) (Susp^ m X)) \elim m
+      | 0 => AddGroupHom.id
+      | suc m => stab (d Nat.+ m) (Susp^ m X) AddGroupHom.∘ stab^ d m X
+
+    \lemma stab^-isEquiv.{u} (d m : Nat) {X : Pointed.{u}} (c : isNConnectedType (suc (suc d)) X) : IsEquiv (stab^ d m X) \elim m
+      | 0 => inP idEquiv
+      | suc m => IsEquiv.trans (stab^-isEquiv d m c) (stab-isEquiv (suc (d Nat.+ m)) (d Nat.+ m) (Susp^ m X) (Susp^.connected' {suc (suc d)} m c) linarith)
   }
 
 \private \sfunc dbl (m : Nat) : Nat => m Nat.+ m

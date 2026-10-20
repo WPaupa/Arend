@@ -1,0 +1,94 @@
+-- | After ``ConnectedCovers/K-G-n-facts.agda`` in ``CMU-HoTT/serre-finiteness``, by induction on the truncated-suspension model.
+
+\import Algebra.Group
+\import Algebra.Group.GroupCat
+\import Algebra.Group.GroupHom
+\import Algebra.Monoid
+\import Arith.Nat
+\import Category
+\import Equiv
+\import Homotopy.Connectivity
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.HomotopyGroups
+\import Homotopy.EilenbergMacLane.Loop
+\import Homotopy.HLevel
+\import Homotopy.HomotopyGroup
+\import Homotopy.HomotopyGroup.PathComparison
+\import Homotopy.K1.Basic
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Suspension
+\import Homotopy.Truncation
+\import Homotopy.Whitehead.Path
+\import Logic
+\import Order.PartialOrder
+\import Paths
+\import Paths.Meta
+\import Set
+
+\func K-recognize.{u} {G : CGroup.{u}} (r : Nat) {Y : Pointed.{u}} (c : isNConnectedType (suc r) Y) (h : Y ofHLevel_-1+ suc (suc r))
+                      (phi : Iso {GroupCat.{u}} {G} {PiGroup r Y})
+  : PointedEquiv (K G (suc r)) Y \cowith
+  | map => map r h phi
+  | map-isEquiv => isEquiv r c h phi
+  \where {
+    \func map.{u} {G : CGroup.{u}} (r : Nat) {Y : Pointed.{u}} (h : Y ofHLevel_-1+ suc (suc r)) (phi : Iso {GroupCat.{u}} {G} {PiGroup r Y})
+      : K G (suc r) ->* Y \elim r
+      | 0 => (K1-gpdRec h base (loops h phi) (loops-comp h phi), idp)
+      | suc r => extend h (map r (h base base) (shift phi))
+
+    \func extend.{u} {G : CGroup.{u}} {r : Nat} {Y : Pointed.{u}} (h : Y ofHLevel_-1+ suc (suc (suc r))) (e : K G (suc r) ->* Loop Y)
+      : K G (suc (suc r)) ->* Y
+      => (Trunc_-1+.elim (\lam _ => \new Truncated_-1+ (suc (suc (suc r))) Y h) (SuspLoopEquiv.toSusp e).1, idp)
+
+    \func triangle.{u} {G : CGroup.{u}} {r : Nat} {Y : Pointed.{u}} (h : Y ofHLevel_-1+ suc (suc (suc r))) (e : K G (suc r) ->* Loop Y)
+      : ->*.compose {K G (suc r)} {Loop (K G (suc (suc r)))} {Loop Y} (Loop-Func {K G (suc (suc r))} {Y} (extend h e)) (K-loopUnit (suc r)) = e
+      => ->*.compose-assoc {K G (suc r)} {Loop (Susp.pointed (K G (suc r)))} {Loop (K G (suc (suc r)))} {Loop Y}
+                           (Loop-Func {K G (suc (suc r))} {Y} (extend h e)) (Loop-Func {Susp.pointed (K G (suc r))} {K G (suc (suc r))} (K-susp (suc r)))
+                           (SuspLoopEquiv.unit (K G (suc r)))
+         *> pmap (\lam (f : Loop (Susp.pointed (K G (suc r))) ->* Loop Y) => ->*.compose {K G (suc r)} {Loop (Susp.pointed (K G (suc r)))} {Loop Y} f (SuspLoopEquiv.unit (K G (suc r))))
+                 (inv (Loop-Func-comp {Susp.pointed (K G (suc r))} {K G (suc (suc r))} {Y} (extend h e) (K-susp (suc r))))
+         *> SuspLoopEquiv.fromSusp.loop-unit (SuspLoopEquiv.toSusp e)
+         *> QEquiv.f_sec {SuspLoopEquiv.adjoint (K G (suc r)) Y} e
+
+    \lemma pi-hom.{u} {G : CGroup.{u}} (r : Nat) {Y : Pointed.{u}} (h : Y ofHLevel_-1+ suc (suc r)) (phi : Iso {GroupCat.{u}} {G} {PiGroup r Y})
+      : piGroupMap r (map r h phi) GroupHom.∘ PiGroup_K.hom r = Iso.f {phi} \elim r
+      | 0 => exts \lam g => pmap in0 (idp_*> (loops h phi g)) *> QEquiv.f_sec {in0Equiv h} (Iso.f {phi} g)
+      | suc r => exts \lam t =>
+          inv (piMap-loopShift.square {suc r} {K G (suc (suc r))} {Y} {map (suc r) h phi}
+                                      (piMap (suc r) {K G (suc r)} {Loop (K G (suc (suc r)))} (K-loopUnit (suc r)) (PiGroup_K.hom r t)))
+          *> pmap (\lam w => Trunc0.map w (omegaShift (suc r) Y).1)
+               (inv (piMap-comp (suc r) {K G (suc r)} {Loop (K G (suc (suc r)))} {Loop Y} (Loop-Func {K G (suc (suc r))} {Y} (map (suc r) h phi))
+                                (K-loopUnit (suc r)) (PiGroup_K.hom r t))
+                *> pmap (\lam (f : K G (suc r) ->* Loop Y) => piMap (suc r) {K G (suc r)} {Loop Y} f (PiGroup_K.hom r t)) (triangle h (map r (h base base) (shift phi)))
+                *> pmap (\lam (F : GroupHom G (PiGroup r (Loop Y))) => F t) (pi-hom r (h base base) (shift phi)))
+          *> path (\lam i => (Iso.f_hinv {PiGroup_LoopShift.iso r Y} @ i) (Iso.f {phi} t))
+
+    \func shift.{u} {G : CGroup.{u}} {r : Nat} {Y : Pointed.{u}} (phi : Iso {GroupCat.{u}} {G} {PiGroup (suc r) Y})
+      : Iso {GroupCat.{u}} {G} {PiGroup r (Loop Y)}
+      => oIso phi (Iso.reverse {PiGroup_LoopShift.iso r Y})
+
+    \func in0Equiv {Y : Pointed} (h : Y ofHLevel_-1+ 2) : QEquiv (in0 {base {Y} = base})
+      => IsEquiv.toQEquiv (Trunc0.in0-isEquiv \lam p q => ToProp.fromProp (h base base p q))
+
+    \func loops.{u} {G : CGroup.{u}} {Y : Pointed.{u}} (h : Y ofHLevel_-1+ 2) (phi : Iso {GroupCat.{u}} {G} {PiGroup 0 Y}) (g : G) : base {Y} = base
+      => QEquiv.ret {in0Equiv h} (Iso.f {phi} g)
+
+    \func loops-comp.{u} {G : CGroup.{u}} {Y : Pointed.{u}} (h : Y ofHLevel_-1+ 2) (phi : Iso {GroupCat.{u}} {G} {PiGroup 0 Y}) (g g' : G)
+      : loops h phi g *> loops h phi g' = loops h phi (g * g')
+      => QEquiv.isInj {in0Equiv h} (pmap2 (Semigroup.* {PiGroup 0 Y}) (QEquiv.f_sec {in0Equiv h} _) (QEquiv.f_sec {in0Equiv h} _)
+                                     *> inv (GroupHom.func-* {Iso.f {phi}}) *> inv (QEquiv.f_sec {in0Equiv h} _))
+
+    \lemma isEquiv.{u} {G : CGroup.{u}} (r : Nat) {Y : Pointed.{u}} (c : isNConnectedType (suc r) Y) (h : Y ofHLevel_-1+ suc (suc r))
+                       (phi : Iso {GroupCat.{u}} {G} {PiGroup r Y})
+      : IsEquiv (map r h phi).1 \elim r
+      | 0 => whiteheadPointed {K G 1} {Y} (map 0 h phi) K1-connected c
+               (IsEquiv.rightFactor (inP K1-loopEquiv)
+                 (transport IsEquiv (ext \lam g => inv (idp_*> (loops h phi g)))
+                   (IsEquiv.trans (inP (GroupCat.equivOfIso phi)) (inP (symQEquiv (in0Equiv h))))))
+      | suc r => whiteheadPointed {K G (suc (suc r))} {Y} (map (suc r) h phi)
+                   (nconnected-mono {1} {suc (suc r)} (suc<=suc zero<=_) (K-connected {G} (suc r))) (nconnected-mono {1} {suc (suc r)} (suc<=suc zero<=_) c)
+                   (IsEquiv.rightFactor (K-loopUnit-isEquiv {G} (suc r))
+                     (transport IsEquiv (pmap __.1 (inv (triangle h (map r (h base base) (shift phi)))))
+                       (isEquiv r (loop-nconnected {suc r} Y c) (h base base) (shift phi))))
+  }

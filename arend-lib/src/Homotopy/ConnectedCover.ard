@@ -1,0 +1,81 @@
+-- | Connected covers, after ``ConnectedCovers/Base.agda`` and ``ConnectedCovers/EMIsFiber.agda`` in ``CMU-HoTT/serre-finiteness``.
+
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupCat
+\import Arith.Nat
+\import Category
+\import Equiv
+\import Equiv.Sigma
+\import Homotopy.Connectivity
+\import Homotopy.EilenbergMacLane.Definition
+\import Homotopy.EilenbergMacLane.Recognition
+\import Homotopy.Fibration
+\import Homotopy.FiberSequence
+\import Homotopy.FiberSequence.Connectivity
+\import Homotopy.FiberSequence.Exact
+\import Homotopy.HLevel
+\import Homotopy.HomotopyGroup
+\import Homotopy.HomotopyGroup.Connectivity
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Truncation
+\import Logic
+\import Logic.Unique
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+\import Set
+
+\func ConnCover.{u} (k : Nat) (X : Pointed.{u}) : Pointed.{u}
+  => PointedFib (Trunc_-1+.unit (suc k) X)
+  \where {
+    \func proj.{u} (k : Nat) (X : Pointed.{u}) : ConnCover k X ->* X
+      => fibProj (Trunc_-1+.unit (suc k) X)
+
+    \lemma connected.{u} (k : Nat) (X : Pointed.{u}) : isNConnectedType (suc k) (ConnCover k X)
+      => nconnected-fiber {suc k} (Trunc_-1+.unit (suc k) X) trunc-in-nconnected
+
+    \func equiv.{u} {k : Nat} {X : Pointed.{u}} (c : isNConnectedType (suc k) X) : PointedEquiv (ConnCover k X) X \cowith
+      | map => proj k X
+      | map-isEquiv => inP (fibProj-equiv (isContr=>isProp (propExt.dir (nconnected-iff-trunc-contr (suc k) X) c)))
+
+    \lemma pi-isEquiv.{u} {k i : Nat} (X : Pointed.{u}) (p : suc k <= i) : IsEquiv (piMap i (proj k X))
+      => Trunc0.map-isEquiv (transport IsEquiv (pmap __.1 (omegaFib-proj (Trunc_-1+.unit (suc k) X) i))
+           (IsEquiv.trans (omegaFibMap.isEquiv (Trunc_-1+.unit (suc k) X) i)
+                          (inP (fibProj-equiv (ToProp.fromProp (pi-vanishes-above.omega-level i 0
+                             (HLevel_-1_<= (suc k) i p (isTruncated {Trunc_-1+.level (suc k) X}))))))))
+
+    \func piIso.{u} {k n : Nat} (X : Pointed.{u}) (p : k <= n) : Iso {GroupCat.{u}} (piGroupMap n (proj k X))
+      => GroupCat.isoOfEquiv (piGroupMap n (proj k X)) (IsEquiv.toQEquiv (pi-isEquiv X (suc<=suc p)))
+
+    \func drops.{u} (k : Nat) (X : Pointed.{u}) (x : X) (p : inT x = {Trunc_-1+ (suc (suc k)) X} inT base) : inT x = {Trunc_-1+ (suc k) X} inT base
+      => pmap Trunc_-1+.drop p
+
+    \func step.{u} (k : Nat) (X : Pointed.{u}) : ConnCover (suc k) X ->* ConnCover k X
+      => (totalEquiv.total (drops k X), idp)
+
+    \lemma fiber-connected.{u} (k : Nat) (X : Pointed.{u}) : isNConnectedType k (PointedFib (step k X))
+      => nconnected-fiber (step k X) (nconnected-map-between (step k X).1 (nconnected-mono (<=-transitive id<=suc id<=suc) (connected (suc k) X)) (connected k X))
+
+    \lemma fiber-level.{u} (k : Nat) (X : Pointed.{u}) : PointedFib (step k X) ofHLevel_-1+ suc k
+      => transportInv (__ ofHLevel_-1+ suc k) (totalEquiv.totalFiber (drops k X) base idp)
+           (HLevels-sigma (\lam s => drops k X base s = idp) {suc k} (isTruncated {Trunc_-1+.level (suc (suc k)) X} (inT base) (inT base))
+                          (\lam s => HLevel_-1_suc {_} {suc (suc k)} (HLevel_-1_suc {_} {suc k} (isTruncated {Trunc_-1+.level (suc k) X})) (inT base) (inT base) (drops k X base s) idp))
+
+    \func boundaryIso.{u} (k : Nat) (X : Pointed.{u})
+      : Iso {GroupCat.{u}} (piBoundaryGroup.{u} k (canonicalFiberSequence (step (suc k) X)))
+      => exact-middle-iso {PiGroup (suc k) (ConnCover (suc (suc k)) X)} {PiGroup (suc k) (ConnCover (suc k) X)}
+                          {PiGroup k (PointedFib (step (suc k) X))} {PiGroup k (ConnCover (suc (suc k)) X)}
+           (piGroup-exact-boundary k (canonicalFiberSequence (step (suc k) X))) (piGroup-exact-fiber k (canonicalFiberSequence (step (suc k) X)))
+           (pi-vanishes-below {suc (suc (suc k))} {suc (suc k)} (connected (suc (suc k)) X) id<suc)
+           (pi-vanishes-below {suc (suc (suc k))} {suc k} (connected (suc (suc k)) X) (id<suc <∘ id<suc))
+
+    \func fiber.{u} (k : Nat) (X : Pointed.{u}) : PointedEquiv (K (PiCGroup k X) (suc k)) (PointedFib (step (suc k) X))
+      => K-recognize k (fiber-connected (suc k) X) (fiber-level (suc k) X) (oIso (Iso.reverse {piIso {suc k} {suc k} X <=-refl}) (boundaryIso k X))
+
+    \func sequence.{u} (k : Nat) (X : Pointed.{u}) : FiberSequence (K (PiCGroup k X) (suc k)) (ConnCover (suc (suc k)) X) (ConnCover (suc k) X)
+      => fiberSequence-fiber (canonicalFiberSequence (step (suc k) X)) (fiber k X)
+
+    \func fibProj-equiv {A B : \Type} {g : A -> B} {b : B} (h : isProp B) : QEquiv (\lam (t : Fib g b) => t.1)
+      => contr-right \lam a => isProp=>PathContr B h (g a) b
+  }

@@ -97,9 +97,7 @@
 
     \func unit (n : Nat)
       : SuspLoopEquiv.fromSusp {Sphere.pointed (suc n)} {Sphere.pointed (suc (suc n))} ->*.id = SuspLoopEquiv.unit (Sphere.pointed (suc n)) ->*.∘* ->*.id
-      => ->*.ext {_} {_} {SuspLoopEquiv.fromSusp {Sphere.pointed (suc n)} {Sphere.pointed (suc (suc n))} ->*.id} {SuspLoopEquiv.unit (Sphere.pointed (suc n))}
-                 (\lam _ => idp_*> _) idp
-         *> inv (->*.compose-id (SuspLoopEquiv.unit (Sphere.pointed (suc n))))
+      => SuspLoopEquiv.fromSusp.id-unit (Sphere.pointed (suc n)) *> inv (->*.compose-id (SuspLoopEquiv.unit (Sphere.pointed (suc n))))
   }
 
 \func degree {n : Nat} (f : Sphere.pointed (suc n) ->* Sphere.pointed (suc n)) : Int
