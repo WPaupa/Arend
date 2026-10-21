@@ -1,11 +1,15 @@
 \import Algebra.Group
+\import Algebra.Group.Cokernel
 \import Algebra.Group.GroupHom
+\import Algebra.Group.SubGroup
 \import Algebra.Module
 \import Algebra.Monoid
 \import Algebra.Pointed
 \import Algebra.Ring
 \import Algebra.Semiring
 \import Paths
+\import Paths.Meta
+\import Relation.Equivalence
 
 \record Pairing (A B C : AbGroup) (\coerce func : A -> B -> C)
   | ldistr {a : A} {b b' : B} : func a (b + b') = func a b + func a b'
@@ -44,4 +48,40 @@
       | func => M.*c
       | ldistr => M.*c-ldistr
       | rdistr => M.*c-rdistr
+
+    \func compose {A B C A' B' C' : AbGroup} (m : Pairing A B C) (f : AddGroupHom A' A) (g : AddGroupHom B' B) (h : AddGroupHom C C') : Pairing A' B' C' \cowith
+      | func a b => h (m (f a) (g b))
+      | ldistr => pmap h (pmap (m _) g.func-+ *> m.ldistr) *> h.func-+
+      | rdistr => pmap h (pmap (m __ _) f.func-+ *> m.rdistr) *> h.func-+
+
+    \func restrict {A B C : AbGroup} (m : Pairing A B C) {S : SubAddGroup A} {T : SubAddGroup B} {U : SubAddGroup C}
+                   (c : \Pi {a : A} {b : B} -> S a -> T b -> U (m a b)) : Pairing (IAbGroup S) (IAbGroup T) (IAbGroup U) \cowith
+      | func a b => (m a.1 b.1, c a.2 b.2)
+      | ldistr => ext m.ldistr
+      | rdistr => ext m.rdistr
+
+    \func quotient {A B C : AbGroup} (m : Pairing A B C) {S : SubAddGroup A} {T : SubAddGroup B} {U : SubAddGroup C}
+                   (l : \Pi {a : A} (b : B) -> S a -> U (m a b)) (r : \Pi (a : A) {b : B} -> T b -> U (m a b))
+      : Pairing (AbQuotient S) (AbQuotient T) (AbQuotient U) \cowith
+      | func (_ : AbQuotient S) (_ : AbQuotient T) : AbQuotient U \with {
+        | in~ a, in~ b => in~ (m a b)
+        | ~-equiv a a' h, in~ b => ~-pequiv (transport U.contains (AddGroupHom.func-minus {Pairing.right m b}) (l b h))
+        | in~ a, ~-equiv b b' h => ~-pequiv (transport U.contains (AddGroupHom.func-minus {Pairing.left m a}) (r a h))
+      }
+      | ldistr {x} {y} {y'} => \case \elim x, \elim y, \elim y' \with {
+        | in~ a, in~ b, in~ b' => pmap in~ m.ldistr
+      }
+      | rdistr {x} {x'} {y} => \case \elim x, \elim x', \elim y \with {
+        | in~ a, in~ a', in~ b => pmap in~ m.rdistr
+      }
+      \where
+        \lemma natural {A B C A' B' C' : AbGroup} {m : Pairing A B C} {m' : Pairing A' B' C'}
+                       {S : SubAddGroup A} {T : SubAddGroup B} {U : SubAddGroup C} {S' : SubAddGroup A'} {T' : SubAddGroup B'} {U' : SubAddGroup C'}
+                       {l : \Pi {a : A} (b : B) -> S a -> U (m a b)} {r : \Pi (a : A) {b : B} -> T b -> U (m a b)}
+                       {l' : \Pi {a : A'} (b : B') -> S' a -> U' (m' a b)} {r' : \Pi (a : A') {b : B'} -> T' b -> U' (m' a b)}
+                       (f : AddGroupHom A A') (g : AddGroupHom B B') (h : AddGroupHom C C')
+                       {pf : \Pi {a : A} -> S a -> S' (f a)} {pg : \Pi {b : B} -> T b -> T' (g b)} {ph : \Pi {c : C} -> U c -> U' (h c)}
+                       (sq : \Pi (a : A) (b : B) -> h (m a b) = m' (f a) (g b)) (x : AbQuotient S) (y : AbQuotient T)
+          : AbQuotient.map h ph (quotient m l r x y) = quotient m' l' r' (AbQuotient.map f pf x) (AbQuotient.map g pg y) \elim x, y
+          | in~ a, in~ b => pmap in~ (sq a b)
   }

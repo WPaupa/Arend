@@ -1,0 +1,113 @@
+\import Algebra.Group
+\import Algebra.Group.Cochain
+\import Algebra.Module
+\import Algebra.Module.Graded
+\import Algebra.Module.LinearMap
+\import Algebra.Module.Quotient
+\import Algebra.Module.SubLModule
+\import Algebra.Ring
+\import Algebra.Ring.DGA
+\import Arith.Nat (pred)
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\record LCochainComplex (R : Ring) \extends CochainComplex {
+  \override D : Nat -> LModule R
+  | delta-*c {n : Nat} {r : R} {x : D n} : delta n (r *c x) = r *c delta n x
+
+  \lemma deltaIn-*c (n : Nat) {r : R} {x : D (pred n)} : deltaIn n (r *c x) = r *c deltaIn n x \elim n
+    | 0 => inv LModule.*c_zro-right
+    | suc n => delta-*c
+
+  \func LCocycles (n : Nat) : SubLModule R (D n) \cowith
+    | SubAddGroup => Cocycles n
+    | contains_*c c => delta-*c *> pmap (_ *c) c *> LModule.*c_zro-right
+
+  \func lcoboundary (n : Nat) : LinearMap (D (pred n)) (IModule (LCocycles n)) \cowith
+    | AddGroupHom => coboundary n
+    | func-*c => ext (deltaIn-*c n)
+
+  \func LCoboundaries (n : Nat) => ImageLModule (lcoboundary n)
+}
+
+\func LCohomology {R : Ring} (X : LCochainComplex R) (n : Nat) => QuotientLModule (X.LCoboundaries n)
+
+\record LCochainMap {R : Ring} (LX LY : LCochainComplex R) \extends CochainMap {
+  | X => LX
+  | Y => LY
+  | g-*c {n : Nat} {r : R} {x : LX.D n} : g n (r *c x) = r *c g n x
+} \where
+  \func lcohomology {R : Ring} {X Y : LCochainComplex R} (f : LCochainMap X Y) (n : Nat) : LinearMap (LCohomology X n) (LCohomology Y n) \cowith
+    | AddGroupHom => f.cohomology n
+    | func-*c {_} {x} => \case \elim x \with {
+      | in~ z => pmap in~ (ext f.g-*c)
+    }
+
+\record LCochainPairing {R : Ring} (LX LY LZ : LCochainComplex R) \extends CochainPairing {
+  | X => LX
+  | Y => LY
+  | Z => LZ
+  | *c-mul-left {p q : Nat} {r : R} {a : LX.D p} {b : LY.D q} : mul p q (r *c a) b = r *c mul p q a b
+  | *c-mul-right {p q : Nat} {r : R} {a : LX.D p} {b : LY.D q} : mul p q a (r *c b) = r *c mul p q a b
+
+  \func graded : LGradedPairing R \cowith
+    | H => LX.D
+    | K => LY.D
+    | L => LZ.D
+    | mul => mul
+    | *c-left => *c-mul-left
+    | *c-right => *c-mul-right
+
+  \func lcohomologyPairing : LGradedPairing R
+    => LGradedPairing.quotient (LGradedPairing.sub graded LX.LCocycles LY.LCocycles LZ.LCocycles cocycle-mul)
+                               LX.LCoboundaries LY.LCoboundaries LZ.LCoboundaries coboundary-left coboundary-right
+}
+
+\record LDGA \extends LCochainComplex, DGA {
+  | mul-*c-left {p q : Nat} {r : R} {a : D p} {b : D q} : mul p q (r *c a) b = r *c mul p q a b
+  | mul-*c-right {p q : Nat} {r : R} {a : D p} {b : D q} : mul p q a (r *c b) = r *c mul p q a b
+} \where {
+  \func lpairing {R : Ring} (A : LDGA R) : LCochainPairing A A A \cowith
+    | CochainPairing => A.pairing
+    | *c-mul-left => A.mul-*c-left
+    | *c-mul-right => A.mul-*c-right
+
+  \func graded {R : Ring} (A : LDGA R) : LGradedProduct R \cowith
+    | H => A.D
+    | mul => A.mul
+    | one => A.one
+    | mul-assoc => A.mul-assoc
+    | one-left => A.one-left
+    | one-right => A.one-right
+    | *c-left => A.mul-*c-left
+    | *c-right => A.mul-*c-right
+
+  \func lcohomologyProduct {R : Ring} (A : LDGA R) : LGradedProduct R
+    => LGradedProduct.quotient (LGradedProduct.sub (graded A) A.LCocycles A.pairing.cocycle-mul A.one-cocycle) A.LCoboundaries
+                               A.pairing.coboundary-left A.pairing.coboundary-right
+}
+
+\record LDGModule \extends DGModule, LCochainComplex {
+  \override A : LDGA
+  | R => LDGA.R {A}
+  | act-*c-left {p q : Nat} {r : R} {a : A.D p} {x : D q} : mul p q (r *c a) x = r *c mul p q a x
+  | act-*c-right {p q : Nat} {r : R} {a : A.D p} {x : D q} : mul p q a (r *c x) = r *c mul p q a x
+} \where {
+  \func lpairing {B : LDGA} (M : LDGModule B) : LCochainPairing B M M \cowith
+    | CochainPairing => M.pairing
+    | *c-mul-left => M.act-*c-left
+    | *c-mul-right => M.act-*c-right
+
+  \func graded {B : LDGA} (M : LDGModule B) : LGradedModule (LDGA.graded B) \cowith
+    | K => M.D
+    | mul => M.mul
+    | act-assoc => M.act-assoc
+    | act-ide => M.act-ide
+    | *c-act-left => M.act-*c-left
+    | *c-act-right => M.act-*c-right
+
+  \func lcohomologyModule {B : LDGA} (M : LDGModule B) : LGradedModule (LDGA.lcohomologyProduct B)
+    => LGradedModule.quotient (LGradedModule.sub (graded M) B.LCocycles B.pairing.cocycle-mul B.one-cocycle M.LCocycles M.pairing.cocycle-mul)
+                              B.LCoboundaries B.pairing.coboundary-left B.pairing.coboundary-right M.LCoboundaries M.pairing.coboundary-left M.pairing.coboundary-right
+}

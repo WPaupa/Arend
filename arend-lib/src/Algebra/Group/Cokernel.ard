@@ -70,6 +70,26 @@
       => exts \lam x => \case \elim x \with {
         | in~ a => p a
       }
+
+    \func map {G H : AbGroup} {S : SubAddGroup G} {T : SubAddGroup H} (f : AddGroupHom G H) (p : \Pi {x : G} -> S.contains x -> T.contains (f x))
+      : AddGroupHom (AbQuotient S) (AbQuotient T)
+      => desc (proj T AddGroupHom.∘ f) \lam c => ~-pequiv (transportInv T.contains AddGroup.minus_zro (p c))
+      \where {
+        \lemma id {G : AbGroup} {S : SubAddGroup G} (x : AbQuotient S) : map AddGroupHom.id (\lam c => c) x = x \elim x
+          | in~ a => idp
+
+        \lemma comp {G H K : AbGroup} {S : SubAddGroup G} {T : SubAddGroup H} {U : SubAddGroup K} (g : AddGroupHom H K) (f : AddGroupHom G H)
+                    {q : \Pi {y : H} -> T.contains y -> U.contains (g y)} {p : \Pi {x : G} -> S.contains x -> T.contains (f x)} (x : AbQuotient S)
+          : map g q (map f p x) = map (g AddGroupHom.∘ f) (\lam c => q (p c)) x \elim x
+          | in~ a => idp
+      }
+
+    \lemma trivial {G : AbGroup} {S : SubAddGroup G} (c : \Pi (x : G) -> x = 0) (y : AbQuotient S) : y = in~ 0 \elim y
+      | in~ a => pmap in~ (c a)
+
+    \lemma transport-in~ {G : Nat -> AbGroup} (S : \Pi (n : Nat) -> SubAddGroup (G n)) {n m : Nat} (e : n = m) (x : G n)
+      : transport (\lam k => AbQuotient (S k)) e (in~ x) = in~ (transport (\lam k => G k) e x) \elim m, e
+      | _, idp => idp
   }
 
 \func Coker {R G : AbGroup} (M : AddGroupHom R G) => AbQuotient (ImageAddGroup M)

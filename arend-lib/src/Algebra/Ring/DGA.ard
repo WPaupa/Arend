@@ -1,0 +1,104 @@
+\import Algebra.Group
+\import Algebra.Group.Cochain
+\import Algebra.Group.Cokernel
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Pairing
+\import Algebra.Group.SubGroup
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Pointed.SubPointed
+\import Algebra.Ring.DirectSum
+\import Algebra.Ring.RingHom
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\record CochainPairing (X Y Z : CochainComplex) \extends GradedPairing {
+  | H => X.D
+  | K => Y.D
+  | L => Z.D
+  | leibniz (p q : Nat) (a : X.D p) (b : Y.D q)
+    : Z.delta (p Nat.+ q) (mul p q a b) = mul (suc p) q (X.delta p a) b + signed p (mul p (suc q) a (Y.delta q b))
+
+  \lemma cocycle-mul {p q : Nat} {a : X.D p} {b : Y.D q} (ca : X.Cocycles p a) (cb : Y.Cocycles q b) : Z.Cocycles (p Nat.+ q) (mul p q a b)
+    => leibniz p q a b *> pmap2 (+) (pmap (mul (suc p) q __ b) ca *> Pairing.zro-left (mul (suc p) q))
+                                    (pmap (\lam y => signed p (mul p (suc q) a y)) cb *> pmap (signed p) (Pairing.zro-right (mul p (suc q))) *> signed.zro p) *> zro-left
+
+  \lemma coboundary-left {p q : Nat} {a : IAbGroup (X.Cocycles p)} (b : IAbGroup (Y.Cocycles q)) (h : X.Coboundaries p a)
+    : Z.Coboundaries (p Nat.+ q) (Pairing.restrict (mul p q) (cocycle-mul {\this} {p} {q}) a b) => \case \elim p, \elim a, \elim h \with {
+      | 0, a, inP (u, e) => transport (Z.Coboundaries q) (ext (inv (Pairing.zro-left (mul 0 q)) *> pmap (\lam x => mul 0 q x.1 b.1) e))
+                                      (SubAddPointed.contains_zro {Z.Coboundaries q})
+      | suc p, a, inP (u, e) => inP (mul p q u b.1, ext (leibniz p q u b.1
+          *> pmap2 (+) (pmap (\lam x => mul (suc p) q x.1 b.1) e)
+                       (pmap (\lam y => signed p (mul p (suc q) u y)) b.2 *> pmap (signed p) (Pairing.zro-right (mul p (suc q))) *> signed.zro p)
+          *> zro-right))
+    }
+
+  \lemma coboundary-right {p q : Nat} (a : IAbGroup (X.Cocycles p)) {b : IAbGroup (Y.Cocycles q)} (h : Y.Coboundaries q b)
+    : Z.Coboundaries (p Nat.+ q) (Pairing.restrict (mul p q) (cocycle-mul {\this} {p} {q}) a b) => \case \elim q, \elim b, \elim h \with {
+      | 0, b, inP (v, e) => transport (Z.Coboundaries p) (ext (inv (Pairing.zro-right (mul p 0)) *> pmap (\lam y => mul p 0 a.1 y.1) e))
+                                      (SubAddPointed.contains_zro {Z.Coboundaries p})
+      | suc q, b, inP (v, e) => inP (signed p (mul p q a.1 v), ext (signed.hom (Z.delta (p Nat.+ q)) p _
+          *> pmap (signed p) (leibniz p q a.1 v *> pmap (`+ _) (pmap (mul (suc p) q __ v) a.2 *> Pairing.zro-left (mul (suc p) q)) *> zro-left)
+          *> signed.twice p _ *> pmap (\lam y => mul p (suc q) a.1 y.1) e))
+    }
+
+  \func cohomologyPairing : GradedPairing (Cohomology X) (Cohomology Y) (Cohomology Z)
+    => GradedPairing.quotient (GradedPairing.sub \this X.Cocycles Y.Cocycles Z.Cocycles cocycle-mul) X.Coboundaries Y.Coboundaries Z.Coboundaries coboundary-left coboundary-right
+} \where
+  \lemma cohomology-natural {X Y Z X' Y' Z' : CochainComplex} (P : CochainPairing X Y Z) (P' : CochainPairing X' Y' Z')
+                            (f : CochainMap X X') (g : CochainMap Y Y') (h : CochainMap Z Z')
+                            (sq : \Pi (p q : Nat) (a : X.D p) (b : Y.D q) -> h.g (p Nat.+ q) (P.mul p q a b) = P'.mul p q (f.g p a) (g.g q b))
+                            {p q : Nat} (x : Cohomology X p) (y : Cohomology Y q)
+    : h.cohomology (p Nat.+ q) (P.cohomologyPairing.mul p q x y) = P'.cohomologyPairing.mul p q (f.cohomology p x) (g.cohomology q y)
+    => Pairing.quotient.natural (IAbGroup.map (f.g p) f.cocycle) (IAbGroup.map (g.g q) g.cocycle) (IAbGroup.map (h.g (p Nat.+ q)) h.cocycle)
+                                (\lam a b => ext (sq p q a.1 b.1)) x y
+
+\record DGA \extends CochainComplex, GradedProduct {
+  | H => D
+  | delta-mul (p q : Nat) (a : D p) (b : D q) : delta (p Nat.+ q) (mul p q a b) = mul (suc p) q (delta p a) b + signed p (mul p (suc q) a (delta q b))
+
+  \func pairing : CochainPairing \this \this \this \cowith
+    | mul => mul
+    | leibniz => delta-mul
+
+  \lemma one-cocycle : Cocycles 0 one
+    => AddGroup.cancel-left (delta 0 one) (inv (inv (pmap (delta 0) (one-left 0 one)) *> delta-mul 0 0 one one *> pmap2 (+) (one-right 1 _) (one-left 1 _))
+                                           *> inv zro-right)
+
+  \func cohomologyProduct : GradedProduct (Cohomology \this)
+    => GradedProduct.quotient (GradedProduct.sub \this Cocycles pairing.cocycle-mul one-cocycle) Coboundaries pairing.coboundary-left pairing.coboundary-right
+}
+
+\record CDGA \extends DGA, GradedCommProduct {
+  \func cohomologyCommProduct : GradedCommProduct (Cohomology \this)
+    => GradedCommProduct.quotient (GradedCommProduct.sub \this Cocycles pairing.cocycle-mul one-cocycle) Coboundaries pairing.coboundary-left pairing.coboundary-right
+}
+
+\record DGAMap (A B : DGA) \extends CochainMap {
+  | X => A
+  | Y => B
+  | g-mul (p q : Nat) (a : A.D p) (b : A.D q) : g (p Nat.+ q) (A.mul p q a b) = B.mul p q (g p a) (g q b)
+  | g-one : g 0 A.one = B.one
+} \where {
+  \lemma cohomology-mul {A B : DGA} (f : DGAMap A B) (p q : Nat) (x : Cohomology A p) (y : Cohomology A q)
+    : f.cohomology (p Nat.+ q) (A.cohomologyProduct.mul p q x y) = B.cohomologyProduct.mul p q (f.cohomology p x) (f.cohomology q y)
+    => CochainPairing.cohomology-natural A.pairing B.pairing f f f f.g-mul x y
+
+  \func cohomologyRing {A B : DGA} (f : DGAMap A B) : RingHom (DirectSum A.cohomologyProduct) (DirectSum B.cohomologyProduct)
+    => DirectSum.ringMap {A.cohomologyProduct} {B.cohomologyProduct} f.cohomology (cohomology-mul f) (pmap in~ (ext f.g-one))
+}
+
+\record DGModule (A : DGA) \extends CochainComplex, GradedModule {
+  | Alg => A
+  | K => D
+  | delta-act (p q : Nat) (a : A.D p) (x : D q) : delta (p Nat.+ q) (mul p q a x) = mul (suc p) q (A.delta p a) x + signed p (mul p (suc q) a (delta q x))
+
+  \func pairing : CochainPairing A \this \this \cowith
+    | mul => mul
+    | leibniz => delta-act
+} \where
+  \func cohomologyModule {A : DGA} (M : DGModule A) : GradedModule A.cohomologyProduct
+    => GradedModule.quotient (GradedModule.sub M A.Cocycles A.pairing.cocycle-mul A.one-cocycle M.Cocycles M.pairing.cocycle-mul)
+                             A.Coboundaries A.pairing.coboundary-left A.pairing.coboundary-right M.Coboundaries M.pairing.coboundary-left M.pairing.coboundary-right

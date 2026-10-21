@@ -1,0 +1,71 @@
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.Pairing
+\import Algebra.Module
+\import Algebra.Module.BilinearMap
+\import Algebra.Module.LinearMap
+\import Algebra.Module.SubLModule
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Paths
+\import Relation.Equivalence
+
+\instance QuotientLModule {R : Ring} {M : LModule R} (S : SubLModule R M) : LModule R
+  | AbGroup => AbQuotient S
+  | *c (s : R) (x : AbQuotient S) : AbQuotient S \elim x {
+    | in~ a => in~ (s M.*c a)
+    | ~-equiv a a' h => ~-pequiv (transport S.contains M.*c-ldistr_- (S.contains_*c h))
+  }
+  | *c-assoc {_} {_} {x} => \case \elim x \with {
+    | in~ a => pmap in~ M.*c-assoc
+  }
+  | *c-ldistr {_} {x} {y} => \case \elim x, \elim y \with {
+    | in~ a, in~ b => pmap in~ M.*c-ldistr
+  }
+  | *c-rdistr {_} {_} {x} => \case \elim x \with {
+    | in~ a => pmap in~ M.*c-rdistr
+  }
+  | ide_*c {x} => \case \elim x \with {
+    | in~ a => pmap in~ M.ide_*c
+  }
+  \where {
+    \func proj {R : Ring} {M : LModule R} (S : SubLModule R M) : LinearMap M (QuotientLModule S) \cowith
+      | AddGroupHom => AbQuotient.proj S
+      | func-*c => idp
+
+    \func desc {R : Ring} {M N : LModule R} {S : SubLModule R M} (f : LinearMap M N) (p : \Pi {x : M} -> S x -> f x = 0)
+      : LinearMap (QuotientLModule S) N \cowith
+      | AddGroupHom => AbQuotient.desc f p
+      | func-*c {_} {x} => \case \elim x \with {
+        | in~ a => f.func-*c
+      }
+
+    \func map {R : Ring} {M N : LModule R} {S : SubLModule R M} {T : SubLModule R N} (f : LinearMap M N) (p : \Pi {x : M} -> S x -> T (f x))
+      : LinearMap (QuotientLModule S) (QuotientLModule T) \cowith
+      | AddGroupHom => AbQuotient.map f p
+      | func-*c {_} {x} => \case \elim x \with {
+        | in~ a => pmap in~ f.func-*c
+      }
+  }
+
+\func bilinearQuotient {R : Ring} {A B C : LModule R} (f : BilinearMap A B C) {S : SubLModule R A} {T : SubLModule R B} {U : SubLModule R C}
+                       (l : \Pi {a : A} (b : B) -> S a -> U (f a b)) (r : \Pi (a : A) {b : B} -> T b -> U (f a b))
+  : BilinearMap (QuotientLModule S) (QuotientLModule T) (QuotientLModule U) \cowith
+  | func => Pairing.quotient (pairing f) l r
+  | linear-left {y} => \new LinearMap {
+    | func-+ => Pairing.rdistr {Pairing.quotient (pairing f) l r}
+    | func-*c {_} {x} => \case \elim x, \elim y \with {
+      | in~ a, in~ b => pmap in~ f.linear-left.func-*c
+    }
+  }
+  | linear-right {x} => \new LinearMap {
+    | func-+ => Pairing.ldistr {Pairing.quotient (pairing f) l r}
+    | func-*c {_} {y} => \case \elim x, \elim y \with {
+      | in~ a, in~ b => pmap in~ f.linear-right.func-*c
+    }
+  }
+  \where
+    \func pairing {R : Ring} {A B C : LModule R} (f : BilinearMap A B C) : Pairing A B C \cowith
+      | func => f
+      | ldistr => f.linear-right.func-+
+      | rdistr => f.linear-left.func-+

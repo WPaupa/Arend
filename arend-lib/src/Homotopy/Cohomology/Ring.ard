@@ -19,8 +19,8 @@
   | one => cup.one R X
   | mul-assoc p q r a b c => cup.ring-assoc p q r a b c *> CoHom.cast.transport _ _
                              *> pmap (\lam e => transport (\lam n => CoHom n X R) e (cup (Pairing.mul R) p (q Nat.+ r) X a (cup (Pairing.mul R) q r X b c))) prop-pi
-  | ide-left q b => cup.ide-left q b
-  | ide-right p a => cup.ide-right p a
+  | one-left q b => cup.ide-left q b
+  | one-right p a => cup.ide-right p a
 
 \func cohomologyCommProduct.{u} (X : \Type u) (R : CRing.{u}) : GradedCommProduct (\lam n => CoHom n X R) \cowith
   | GradedProduct => cohomologyProduct X R

@@ -1,0 +1,214 @@
+\import Algebra.Group
+\import Algebra.Group.Cochain
+\import Algebra.Group.Cokernel
+\import Algebra.Group.Filtration
+\import Algebra.Group.GroupHom
+\import Algebra.Group.Pairing
+\import Algebra.Group.SubGroup
+\import Algebra.Module
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Algebra.Ring.DGA
+\import Algebra.Ring.DirectSum
+\import Algebra.Ring.RingHom
+\import Arith.Nat
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\func grPairing {A B C : AbGroup} {X : Filtration A} {Y : Filtration B} {Z : Filtration C} (m : Pairing A B C)
+                (c : \Pi {p q : Nat} {a : A} {b : B} -> X.F p a -> Y.F q b -> Z.F (p Nat.+ q) (m a b))
+  : GradedPairing X.gr Y.gr Z.gr
+  => GradedPairing.quotient (GradedPairing.sub (GradedPairing.const m) X.F Y.F Z.F c) X.Next Y.Next Z.Next (\lam b h => c h b.2) (\lam a h => c a.2 h)
+  \where
+    \lemma natural {A B C A' B' C' : AbGroup} {X : Filtration A} {Y : Filtration B} {Z : Filtration C} {X' : Filtration A'} {Y' : Filtration B'} {Z' : Filtration C'}
+                   {m : Pairing A B C} {m' : Pairing A' B' C'}
+                   {c : \Pi {p q : Nat} {a : A} {b : B} -> X.F p a -> Y.F q b -> Z.F (p Nat.+ q) (m a b)}
+                   {c' : \Pi {p q : Nat} {a : A'} {b : B'} -> X'.F p a -> Y'.F q b -> Z'.F (p Nat.+ q) (m' a b)}
+                   (f : AddGroupHom A A') (pf : \Pi {p : Nat} {a : A} -> X.F p a -> X'.F p (f a))
+                   (g : AddGroupHom B B') (pg : \Pi {p : Nat} {b : B} -> Y.F p b -> Y'.F p (g b))
+                   (h : AddGroupHom C C') (ph : \Pi {p : Nat} {x : C} -> Z.F p x -> Z'.F p (h x))
+                   (sq : \Pi (a : A) (b : B) -> h (m a b) = m' (f a) (g b)) {p q : Nat} (x : X.gr p) (y : Y.gr q)
+      : Filtration.map h ph (p Nat.+ q) ((grPairing m c).mul p q x y) = (grPairing m' c').mul p q (Filtration.map f pf p x) (Filtration.map g pg q y)
+      => Pairing.quotient.natural (IAbGroup.map f pf) (IAbGroup.map g pg) (IAbGroup.map h ph) (\lam a b => ext (sq a.1 b.1)) x y
+
+\record FilteredRing (R : Ring) \extends Filtration {
+  | M => R
+  | F-mul {p q : Nat} {a b : R} : F p a -> F q b -> F (p Nat.+ q) (a * b)
+  | F-ide : F 0 1
+} \where {
+  \func grProduct (A : FilteredRing) : GradedProduct A.gr
+    => GradedProduct.quotient (GradedProduct.sub (GradedProduct.const A.R) A.F A.F-mul A.F-ide) A.Next (\lam b h => A.F-mul h b.2) (\lam a h => A.F-mul a.2 h)
+
+  \lemma map-mul {A B : FilteredRing} (f : RingHom A.R B.R) (pf : \Pi {p : Nat} {x : A.R} -> A.F p x -> B.F p (f x)) {p q : Nat} (x : A.gr p) (y : A.gr q)
+    : Filtration.map f pf (p Nat.+ q) ((grProduct A).mul p q x y) = (grProduct B).mul p q (Filtration.map f pf p x) (Filtration.map f pf q y)
+    => Pairing.quotient.natural (IAbGroup.map f pf) (IAbGroup.map f pf) (IAbGroup.map f pf) (\lam _ _ => ext f.func-*) x y
+
+  \func grRingMap {A B : FilteredRing} (f : RingHom A.R B.R) (pf : \Pi {p : Nat} {x : A.R} -> A.F p x -> B.F p (f x))
+    : RingHom (DirectSum (grProduct A)) (DirectSum (grProduct B))
+    => DirectSum.ringMap {grProduct A} {grProduct B} (Filtration.map f pf) (\lam p q => map-mul f pf {p} {q}) (pmap in~ (ext f.func-ide))
+}
+
+\record FilteredModule (A : FilteredRing) (N : LModule A.R) \extends Filtration {
+  | M => N
+  | F-act {p q : Nat} {a : A.R} {x : N} : A.F p a -> F q x -> F (p Nat.+ q) (a *c x)
+} \where
+  \func grModule {A : FilteredRing} {N : LModule A.R} (X : FilteredModule A N) : GradedModule (FilteredRing.grProduct A)
+    => GradedModule.quotient (GradedModule.sub (GradedModule.const N) A.F A.F-mul A.F-ide X.F X.F-act)
+                             A.Next (\lam b h => A.F-mul h b.2) (\lam a h => A.F-mul a.2 h) X.Next (\lam x h => X.F-act h x.2) (\lam a h => X.F-act a.2 h)
+
+\func bicast {G : Nat -> Nat -> AbGroup} {p p' n n' : Nat} (e : p = p') (e' : n = n') (x : G p n) : G p' n'
+  => transport (\lam j => G j n') e (transport (\lam k => G p k) e' x)
+  \where {
+    \lemma quotient {G : Nat -> Nat -> AbGroup} (S : \Pi (p n : Nat) -> SubAddGroup (G p n)) {p p' n n' : Nat} (e : p = p') (e' : n = n') (x : G p n)
+      : bicast {\lam p n => AbQuotient (S p n)} e e' (in~ x) = in~ (bicast {G} e e' x) \elim p', n', e, e'
+      | _, _, idp, idp => idp
+
+    \lemma sub {G : Nat -> Nat -> AbGroup} (S : \Pi (p n : Nat) -> SubAddGroup (G p n)) {p p' n n' : Nat} (e : p = p') (e' : n = n') (x : IAbGroup (S p n))
+      : (bicast {\lam p n => IAbGroup (S p n)} e e' x).1 = bicast {G} e e' x.1 \elim p', n', e, e'
+      | _, _, idp, idp => idp
+  }
+
+\func IsFiltered {X Y Z : FilteredCochainComplex} (P : CochainPairing X Y Z) : \Prop
+  => \Pi {p q n m : Nat} {a : X.D n} {b : Y.D m} -> (X.filt n).F p a -> (Y.filt m).F q b -> (Z.filt (n Nat.+ m)).F (p Nat.+ q) (P.mul n m a b)
+
+\func grCochainPairing {X Y Z : FilteredCochainComplex} (P : CochainPairing X Y Z) (c : IsFiltered P)
+                       (p q : Nat) : CochainPairing (FilteredCochainComplex.gr X p) (FilteredCochainComplex.gr Y q) (FilteredCochainComplex.gr Z (p Nat.+ q)) \cowith
+  | mul n m => GradedPairing.mul {grPairing {_} {_} {_} {X.filt n} {Y.filt m} {Z.filt (n Nat.+ m)} (P.mul n m) (\lam {p'} {q'} => c {p'} {q'} {n} {m})} p q
+  | leibniz n m a b => \case \elim a, \elim b \with {
+    | in~ x, in~ y => pmap in~ (ext (P.leibniz n m x.1 y.1 *> pmap (_ +) (inv (signed.hom IAddGroup.embed n _)))) *> pmap (_ +) (signed.hom (AbQuotient.proj _) n _)
+  }
+  \where {
+    \lemma assoc {X Y Z W U V : FilteredCochainComplex} (P : CochainPairing X Y W) (c : IsFiltered P) (P' : CochainPairing W Z V) (c' : IsFiltered P')
+                 (Q : CochainPairing Y Z U) (d : IsFiltered Q) (Q' : CochainPairing X U V) (d' : IsFiltered Q')
+                 (h : \Pi (n m k : Nat) (a : X.D n) (b : Y.D m) (z : Z.D k)
+                   -> P'.mul (n Nat.+ m) k (P.mul n m a b) z = transport (\lam j => V.D j) (inv NatSemiring.+-assoc) (Q'.mul n (m Nat.+ k) a (Q.mul m k b z)))
+                 {p q r n m k : Nat} (x : (FilteredCochainComplex.gr X p).D n) (y : (FilteredCochainComplex.gr Y q).D m) (z : (FilteredCochainComplex.gr Z r).D k)
+      : (grCochainPairing P' c' (p Nat.+ q) r).mul (n Nat.+ m) k ((grCochainPairing P c p q).mul n m x y) z
+        = bicast {\lam p n => (FilteredCochainComplex.gr V p).D n} (inv NatSemiring.+-assoc) (inv NatSemiring.+-assoc)
+                 ((grCochainPairing Q' d' p (q Nat.+ r)).mul n (m Nat.+ k) x ((grCochainPairing Q d q r).mul m k y z)) \elim x, y, z
+      | in~ a, in~ b, in~ z' => pmap in~ (ext (h n m k a.1 b.1 z'.1 *> inv (bicast.sub {\lam _ n => V.D n} (\lam p n => (V.filt n).F p) _ _ _)))
+                                *> inv (bicast.quotient {\lam p n => IAbGroup ((V.filt n).F p)} (\lam p n => (V.filt n).Next p) _ _ _)
+
+    \lemma cohomology-assoc {X Y Z W U V : FilteredCochainComplex} (P : CochainPairing X Y W) (c : IsFiltered P) (P' : CochainPairing W Z V) (c' : IsFiltered P')
+                            (Q : CochainPairing Y Z U) (d : IsFiltered Q) (Q' : CochainPairing X U V) (d' : IsFiltered Q')
+                            (h : \Pi (n m k : Nat) (a : X.D n) (b : Y.D m) (z : Z.D k)
+                              -> P'.mul (n Nat.+ m) k (P.mul n m a b) z = transport (\lam j => V.D j) (inv NatSemiring.+-assoc) (Q'.mul n (m Nat.+ k) a (Q.mul m k b z)))
+                            {p q r n m k : Nat} (x : Cohomology (FilteredCochainComplex.gr X p) n) (y : Cohomology (FilteredCochainComplex.gr Y q) m)
+                            (z : Cohomology (FilteredCochainComplex.gr Z r) k)
+      : (grCochainPairing P' c' (p Nat.+ q) r).cohomologyPairing.mul (n Nat.+ m) k ((grCochainPairing P c p q).cohomologyPairing.mul n m x y) z
+        = bicast {\lam p n => Cohomology (FilteredCochainComplex.gr V p) n} (inv NatSemiring.+-assoc) (inv NatSemiring.+-assoc)
+                 ((grCochainPairing Q' d' p (q Nat.+ r)).cohomologyPairing.mul n (m Nat.+ k) x ((grCochainPairing Q d q r).cohomologyPairing.mul m k y z)) \elim x, y, z
+      | in~ a, in~ b, in~ z' => pmap in~ (ext (assoc P c P' c' Q d Q' d' h a.1 b.1 z'.1
+                                                *> inv (bicast.sub {\lam p n => (FilteredCochainComplex.gr V p).D n} (\lam p n => (FilteredCochainComplex.gr V p).Cocycles n) _ _ _)))
+                                *> inv (bicast.quotient {\lam p n => IAbGroup ((FilteredCochainComplex.gr V p).Cocycles n)}
+                                                        (\lam p n => (FilteredCochainComplex.gr V p).Coboundaries n) _ _ _)
+
+    \lemma comm {X Y Z : FilteredCochainComplex} (P : CochainPairing X Y Z) (c : IsFiltered P) (Q : CochainPairing Y X Z) (d : IsFiltered Q)
+                (h : \Pi (n m : Nat) (a : X.D n) (b : Y.D m) -> P.mul n m a b = signed (m Nat.* n) (transport (\lam j => Z.D j) NatSemiring.+-comm (Q.mul m n b a)))
+                {p q n m : Nat} (x : (FilteredCochainComplex.gr X p).D n) (y : (FilteredCochainComplex.gr Y q).D m)
+      : (grCochainPairing P c p q).mul n m x y
+        = signed (m Nat.* n) (bicast {\lam p n => (FilteredCochainComplex.gr Z p).D n} NatSemiring.+-comm NatSemiring.+-comm ((grCochainPairing Q d q p).mul m n y x)) \elim x, y
+      | in~ a, in~ b => pmap in~ (ext (h n m a.1 b.1 *> inv (signed.hom IAddGroup.embed _ _ *> pmap (signed _) (bicast.sub {\lam _ n => Z.D n} (\lam p n => (Z.filt n).F p) _ _ _))))
+                        *> signed.hom (AbQuotient.proj ((Z.filt (n Nat.+ m)).Next (p Nat.+ q))) _ _
+                        *> pmap (signed _) (inv (bicast.quotient {\lam p n => IAbGroup ((Z.filt n).F p)} (\lam p n => (Z.filt n).Next p) _ _ _))
+
+    \lemma cohomology-comm {X Y Z : FilteredCochainComplex} (P : CochainPairing X Y Z) (c : IsFiltered P) (Q : CochainPairing Y X Z) (d : IsFiltered Q)
+                           (h : \Pi (n m : Nat) (a : X.D n) (b : Y.D m) -> P.mul n m a b = signed (m Nat.* n) (transport (\lam j => Z.D j) NatSemiring.+-comm (Q.mul m n b a)))
+                           {p q n m : Nat} (x : Cohomology (FilteredCochainComplex.gr X p) n) (y : Cohomology (FilteredCochainComplex.gr Y q) m)
+      : (grCochainPairing P c p q).cohomologyPairing.mul n m x y
+        = signed (m Nat.* n) (bicast {\lam p n => Cohomology (FilteredCochainComplex.gr Z p) n} NatSemiring.+-comm NatSemiring.+-comm
+                                     ((grCochainPairing Q d q p).cohomologyPairing.mul m n y x)) \elim x, y
+      | in~ a, in~ b => pmap in~ (ext (comm P c Q d h a.1 b.1 *> inv (signed.hom IAddGroup.embed _ _
+                          *> pmap (signed _) (bicast.sub {\lam p n => (FilteredCochainComplex.gr Z p).D n} (\lam p n => (FilteredCochainComplex.gr Z p).Cocycles n) _ _ _))))
+                        *> signed.hom (AbQuotient.proj ((FilteredCochainComplex.gr Z (p Nat.+ q)).Coboundaries (n Nat.+ m))) _ _
+                        *> pmap (signed _) (inv (bicast.quotient {\lam p n => IAbGroup ((FilteredCochainComplex.gr Z p).Cocycles n)}
+                                                                 (\lam p n => (FilteredCochainComplex.gr Z p).Coboundaries n) _ _ _))
+  }
+
+\record FilteredDGA \extends DGA, FilteredCochainComplex {
+  | filt-mul {p q n m : Nat} {a : D n} {b : D m} : (filt n).F p a -> (filt m).F q b -> (filt (n Nat.+ m)).F (p Nat.+ q) (mul n m a b)
+  | filt-one : (filt 0).F 0 one
+} \where {
+  \func grPairing (A : FilteredDGA) (p q : Nat) => grCochainPairing A.pairing A.filt-mul p q
+
+  \lemma gr-assoc (A : FilteredDGA) {p q r n m k : Nat} (x : (FilteredCochainComplex.gr A p).D n) (y : (FilteredCochainComplex.gr A q).D m)
+                  (z : (FilteredCochainComplex.gr A r).D k)
+    : (grPairing A (p Nat.+ q) r).mul (n Nat.+ m) k ((grPairing A p q).mul n m x y) z
+      = bicast {\lam p n => (FilteredCochainComplex.gr A p).D n} (inv NatSemiring.+-assoc) (inv NatSemiring.+-assoc)
+               ((grPairing A p (q Nat.+ r)).mul n (m Nat.+ k) x ((grPairing A q r).mul m k y z))
+    => grCochainPairing.assoc A.pairing A.filt-mul A.pairing A.filt-mul A.pairing A.filt-mul A.pairing A.filt-mul A.mul-assoc x y z
+
+  \lemma cohomology-assoc (A : FilteredDGA) {p q r n m k : Nat} (x : Cohomology (FilteredCochainComplex.gr A p) n) (y : Cohomology (FilteredCochainComplex.gr A q) m)
+                          (z : Cohomology (FilteredCochainComplex.gr A r) k)
+    : (grPairing A (p Nat.+ q) r).cohomologyPairing.mul (n Nat.+ m) k ((grPairing A p q).cohomologyPairing.mul n m x y) z
+      = bicast {\lam p n => Cohomology (FilteredCochainComplex.gr A p) n} (inv NatSemiring.+-assoc) (inv NatSemiring.+-assoc)
+               ((grPairing A p (q Nat.+ r)).cohomologyPairing.mul n (m Nat.+ k) x ((grPairing A q r).cohomologyPairing.mul m k y z))
+    => grCochainPairing.cohomology-assoc A.pairing A.filt-mul A.pairing A.filt-mul A.pairing A.filt-mul A.pairing A.filt-mul A.mul-assoc x y z
+
+  \func grOne (A : FilteredDGA) : (FilteredCochainComplex.gr A 0).D 0
+    => in~ (A.one, A.filt-one)
+
+  \lemma grOne-left (A : FilteredDGA) {q m : Nat} (y : (FilteredCochainComplex.gr A q).D m) : (grPairing A 0 q).mul 0 m (grOne A) y = y \elim y
+    | in~ y' => pmap in~ (ext (A.one-left m y'.1))
+
+  \lemma grOne-right (A : FilteredDGA) {p n : Nat} (x : (FilteredCochainComplex.gr A p).D n) : (grPairing A p 0).mul n 0 x (grOne A) = x \elim x
+    | in~ x' => pmap in~ (ext (A.one-right n x'.1))
+
+  \func cohomologyOne (A : FilteredDGA) : Cohomology (FilteredCochainComplex.gr A 0) 0
+    => in~ (grOne A, pmap in~ (ext A.one-cocycle))
+
+  \lemma cohomologyOne-left (A : FilteredDGA) {q m : Nat} (y : Cohomology (FilteredCochainComplex.gr A q) m)
+    : (grPairing A 0 q).cohomologyPairing.mul 0 m (cohomologyOne A) y = y \elim y
+    | in~ z => pmap in~ (ext (grOne-left A z.1))
+
+  \lemma cohomologyOne-right (A : FilteredDGA) {p n : Nat} (x : Cohomology (FilteredCochainComplex.gr A p) n)
+    : (grPairing A p 0).cohomologyPairing.mul n 0 x (cohomologyOne A) = x \elim x
+    | in~ z => pmap in~ (ext (grOne-right A z.1))
+
+  \lemma grMap-cohomology-mul {A B : FilteredDGA} (f : DGAMap A B) (pf : \Pi {p n : Nat} {x : A.D n} -> (A.filt n).F p x -> (B.filt n).F p (f.g n x))
+                              {p q n m : Nat} (x : Cohomology (FilteredCochainComplex.gr A p) n) (y : Cohomology (FilteredCochainComplex.gr A q) m)
+    : (FilteredCochainComplex.grMap f pf (p Nat.+ q)).cohomology (n Nat.+ m) ((grPairing A p q).cohomologyPairing.mul n m x y)
+      = (grPairing B p q).cohomologyPairing.mul n m ((FilteredCochainComplex.grMap f pf p).cohomology n x) ((FilteredCochainComplex.grMap f pf q).cohomology m y)
+    => CochainPairing.cohomology-natural (grPairing A p q) (grPairing B p q) (FilteredCochainComplex.grMap f pf p) (FilteredCochainComplex.grMap f pf q)
+                                         (FilteredCochainComplex.grMap f pf (p Nat.+ q))
+                                         (\lam n m a b => \case \elim a, \elim b \with {
+                                           | in~ a', in~ b' => pmap in~ (ext (f.g-mul n m a'.1 b'.1))
+                                         }) x y
+}
+
+\record FilteredCDGA \extends FilteredDGA, CDGA
+  \where {
+    \lemma gr-comm (A : FilteredCDGA) {p q n m : Nat} (x : (FilteredCochainComplex.gr A p).D n) (y : (FilteredCochainComplex.gr A q).D m)
+      : (FilteredDGA.grPairing A p q).mul n m x y
+        = signed (m Nat.* n) (bicast {\lam p n => (FilteredCochainComplex.gr A p).D n} NatSemiring.+-comm NatSemiring.+-comm ((FilteredDGA.grPairing A q p).mul m n y x))
+      => grCochainPairing.comm A.pairing A.filt-mul A.pairing A.filt-mul A.koszul x y
+
+    \lemma cohomology-comm (A : FilteredCDGA) {p q n m : Nat} (x : Cohomology (FilteredCochainComplex.gr A p) n) (y : Cohomology (FilteredCochainComplex.gr A q) m)
+      : (FilteredDGA.grPairing A p q).cohomologyPairing.mul n m x y
+        = signed (m Nat.* n) (bicast {\lam p n => Cohomology (FilteredCochainComplex.gr A p) n} NatSemiring.+-comm NatSemiring.+-comm
+                                     ((FilteredDGA.grPairing A q p).cohomologyPairing.mul m n y x))
+      => grCochainPairing.cohomology-comm A.pairing A.filt-mul A.pairing A.filt-mul A.koszul x y
+  }
+
+\record FilteredDGModule \extends DGModule, FilteredCochainComplex {
+  \override A : FilteredDGA
+  | filt-act {p q n m : Nat} {a : A.D n} {x : D m} : (FilteredCochainComplex.filt {A} n).F p a -> (filt m).F q x -> (filt (n Nat.+ m)).F (p Nat.+ q) (mul n m a x)
+} \where {
+  \func grPairing {B : FilteredDGA} (M : FilteredDGModule B) (p q : Nat) => grCochainPairing M.pairing M.filt-act p q
+
+  \lemma gr-act-assoc {B : FilteredDGA} (M : FilteredDGModule B) {p q r n m k : Nat} (a : (FilteredCochainComplex.gr B p).D n)
+                      (b : (FilteredCochainComplex.gr B q).D m) (x : (FilteredCochainComplex.gr M r).D k)
+    : (grPairing M (p Nat.+ q) r).mul (n Nat.+ m) k ((FilteredDGA.grPairing B p q).mul n m a b) x
+      = bicast {\lam p n => (FilteredCochainComplex.gr M p).D n} (inv NatSemiring.+-assoc) (inv NatSemiring.+-assoc)
+               ((grPairing M p (q Nat.+ r)).mul n (m Nat.+ k) a ((grPairing M q r).mul m k b x))
+    => grCochainPairing.assoc B.pairing B.filt-mul M.pairing M.filt-act M.pairing M.filt-act M.pairing M.filt-act M.act-assoc a b x
+
+  \lemma cohomology-act-assoc {B : FilteredDGA} (M : FilteredDGModule B) {p q r n m k : Nat} (a : Cohomology (FilteredCochainComplex.gr B p) n)
+                              (b : Cohomology (FilteredCochainComplex.gr B q) m) (x : Cohomology (FilteredCochainComplex.gr M r) k)
+    : (grPairing M (p Nat.+ q) r).cohomologyPairing.mul (n Nat.+ m) k ((FilteredDGA.grPairing B p q).cohomologyPairing.mul n m a b) x
+      = bicast {\lam p n => Cohomology (FilteredCochainComplex.gr M p) n} (inv NatSemiring.+-assoc) (inv NatSemiring.+-assoc)
+               ((grPairing M p (q Nat.+ r)).cohomologyPairing.mul n (m Nat.+ k) a ((grPairing M q r).cohomologyPairing.mul m k b x))
+    => grCochainPairing.cohomology-assoc B.pairing B.filt-mul M.pairing M.filt-act M.pairing M.filt-act M.pairing M.filt-act M.act-assoc a b x
+}

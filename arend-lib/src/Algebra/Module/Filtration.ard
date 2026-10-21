@@ -1,0 +1,84 @@
+\import Algebra.Group
+\import Algebra.Group.Cochain
+\import Algebra.Group.Filtration
+\import Algebra.Module
+\import Algebra.Module.BilinearMap
+\import Algebra.Module.Cochain
+\import Algebra.Module.Graded
+\import Algebra.Module.LinearMap
+\import Algebra.Module.Quotient
+\import Algebra.Module.SubLModule
+\import Algebra.Ring
+\import Algebra.Ring.DGA
+\import Algebra.Ring.Filtration
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\record LFiltration {R : Ring} (N : LModule R) \extends Filtration {
+  | M => N
+  | F-*c {p : Nat} {r : R} {x : N} : F p x -> F p (r *c x)
+
+  \func LF (p : Nat) : SubLModule R N \cowith
+    | SubAddGroup => F p
+    | contains_*c => F-*c
+
+  \func LNext (p : Nat) : SubLModule R (IModule (LF p)) \cowith
+    | SubAddGroup => Next p
+    | contains_*c => F-*c
+
+  \func lgr (p : Nat) => QuotientLModule (LNext p)
+} \where {
+  \func lmap {R : Ring} {N N' : LModule R} {X : LFiltration N} {Y : LFiltration N'} (f : LinearMap N N') (pf : \Pi {p : Nat} {x : N} -> X.F p x -> Y.F p (f x)) (p : Nat)
+    : LinearMap (X.lgr p) (Y.lgr p) \cowith
+    | AddGroupHom => Filtration.map f pf p
+    | func-*c {_} {x} => \case \elim x \with {
+      | in~ a => pmap in~ (ext f.func-*c)
+    }
+
+  \func lgrPairing {R : Ring} {A B C : LModule R} {X : LFiltration A} {Y : LFiltration B} {Z : LFiltration C} (m : BilinearMap A B C)
+                   (c : \Pi {p q : Nat} {a : A} {b : B} -> X.F p a -> Y.F q b -> Z.F (p Nat.+ q) (m a b)) : LGradedPairing R
+    => LGradedPairing.quotient (LGradedPairing.sub (LGradedPairing.const m) X.LF Y.LF Z.LF c) X.LNext Y.LNext Z.LNext
+                               (\lam b h => c h b.2) (\lam a h => c a.2 h)
+}
+
+\record FilteredLCochainComplex \extends LCochainComplex, FilteredCochainComplex
+  | filt-*c {p n : Nat} {r : R} {x : D n} : (filt n).F p x -> (filt n).F p (r *c x)
+  \where {
+    \func lfilt (X : FilteredLCochainComplex) (n : Nat) : LFiltration (X.D n) \cowith
+      | Filtration => X.filt n
+      | F-*c => X.filt-*c
+
+    \func lgr (X : FilteredLCochainComplex) (p : Nat) : LCochainComplex X.R \cowith
+      | D n => (lfilt X n).lgr p
+      | delta n => Filtration.map (X.delta n) (\lam {q} => X.delta-F {q} {n}) p
+      | delta-delta n x => \case \elim x \with {
+        | in~ a => pmap in~ (ext (X.delta-delta n a.1))
+      }
+      | delta-*c {_} {_} {x} => \case \elim x \with {
+        | in~ a => pmap in~ (ext X.delta-*c)
+      }
+
+    \func lgrCochainPairing {R : Ring} {X Y Z : FilteredLCochainComplex R} (P : LCochainPairing X Y Z) (c : IsFiltered P) (p q : Nat)
+      : LCochainPairing (lgr X p) (lgr Y q) (lgr Z (p Nat.+ q)) \cowith
+      | CochainPairing => grCochainPairing P c p q
+      | *c-mul-left {_} {_} {_} {a} {b} => \case \elim a, \elim b \with {
+        | in~ a', in~ b' => pmap in~ (ext P.*c-mul-left)
+      }
+      | *c-mul-right {_} {_} {_} {a} {b} => \case \elim a, \elim b \with {
+        | in~ a', in~ b' => pmap in~ (ext P.*c-mul-right)
+      }
+  }
+
+\record FilteredLDGA \extends LDGA, FilteredDGA, FilteredLCochainComplex
+  \where
+    \func lgrPairing (A : FilteredLDGA) (p q : Nat)
+      : LCochainPairing (FilteredLCochainComplex.lgr A p) (FilteredLCochainComplex.lgr A q) (FilteredLCochainComplex.lgr A (p Nat.+ q))
+      => FilteredLCochainComplex.lgrCochainPairing (LDGA.lpairing A) A.filt-mul p q
+
+\record FilteredLDGModule \extends LDGModule, FilteredDGModule, FilteredLCochainComplex {
+  \override A : FilteredLDGA
+} \where
+  \func lgrPairing {C : FilteredLDGA} (M : FilteredLDGModule C) (p q : Nat)
+    : LCochainPairing (FilteredLCochainComplex.lgr C p) (FilteredLCochainComplex.lgr M q) (FilteredLCochainComplex.lgr M (p Nat.+ q))
+    => FilteredLCochainComplex.lgrCochainPairing {C.R} {C} {M} {M} (LDGModule.lpairing M) M.filt-act p q

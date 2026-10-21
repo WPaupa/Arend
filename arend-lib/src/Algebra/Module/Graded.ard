@@ -1,0 +1,196 @@
+\import Algebra.Algebra
+\import Algebra.Group
+\import Algebra.Group.Pairing
+\import Algebra.Module
+\import Algebra.Module.BilinearMap
+\import Algebra.Module.LinearMap
+\import Algebra.Module.Quotient
+\import Algebra.Module.SubLModule
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Algebra.Ring.DirectSum
+\import Algebra.Ring.FormalSeries
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+\open FSeriesRing (PairsFinSet)
+
+\record LGradedPairing (R : Ring) \extends GradedPairing {
+  \override H : Nat -> LModule R
+  \override K : Nat -> LModule R
+  \override L : Nat -> LModule R
+  | *c-left {p q : Nat} {r : R} {a : H p} {b : K q} : mul p q (r *c a) b = r *c mul p q a b
+  | *c-right {p q : Nat} {r : R} {a : H p} {b : K q} : mul p q a (r *c b) = r *c mul p q a b
+
+  \func bilinear (p q : Nat) : BilinearMap (H p) (K q) (L (p Nat.+ q)) \cowith
+    | func => mul p q
+    | linear-left => \new LinearMap {
+      | func-+ => Pairing.rdistr
+      | func-*c => *c-left
+    }
+    | linear-right => \new LinearMap {
+      | func-+ => Pairing.ldistr
+      | func-*c => *c-right
+    }
+} \where {
+  \func sub {R : Ring} (m : LGradedPairing R) (S : \Pi (n : Nat) -> SubLModule R (m.H n)) (T : \Pi (n : Nat) -> SubLModule R (m.K n))
+            (U : \Pi (n : Nat) -> SubLModule R (m.L n)) (c : \Pi {p q : Nat} {a : m.H p} {b : m.K q} -> S p a -> T q b -> U (p Nat.+ q) (m.mul p q a b))
+    : LGradedPairing R \cowith
+    | H n => IModule (S n)
+    | K n => IModule (T n)
+    | L n => IModule (U n)
+    | mul => GradedPairing.mul {GradedPairing.sub m S T U c}
+    | *c-left => ext m.*c-left
+    | *c-right => ext m.*c-right
+
+  \func quotient {R : Ring} (m : LGradedPairing R) (S : \Pi (n : Nat) -> SubLModule R (m.H n)) (T : \Pi (n : Nat) -> SubLModule R (m.K n))
+                 (U : \Pi (n : Nat) -> SubLModule R (m.L n))
+                 (l : \Pi {p q : Nat} {a : m.H p} (b : m.K q) -> S p a -> U (p Nat.+ q) (m.mul p q a b))
+                 (r : \Pi {p q : Nat} (a : m.H p) {b : m.K q} -> T q b -> U (p Nat.+ q) (m.mul p q a b))
+    : LGradedPairing R \cowith
+    | H n => QuotientLModule (S n)
+    | K n => QuotientLModule (T n)
+    | L n => QuotientLModule (U n)
+    | mul => GradedPairing.mul {GradedPairing.quotient m S T U l r}
+    | *c-left {_} {_} {_} {a} {b} => \case \elim a, \elim b \with {
+      | in~ x, in~ y => pmap in~ m.*c-left
+    }
+    | *c-right {_} {_} {_} {a} {b} => \case \elim a, \elim b \with {
+      | in~ x, in~ y => pmap in~ m.*c-right
+    }
+
+  \func const {R : Ring} {A B C : LModule R} (m : BilinearMap A B C) : LGradedPairing R \cowith
+    | H _ => A
+    | K _ => B
+    | L _ => C
+    | mul _ _ => bilinearQuotient.pairing m
+    | *c-left => m.linear-left.func-*c
+    | *c-right => m.linear-right.func-*c
+
+  \lemma transport-*c {R : Ring} {G : Nat -> LModule R} {n m : Nat} (e : n = m) {r : R} {a : G n}
+    : transport (\lam k => G k) e (r *c a) = r *c transport (\lam k => G k) e a \elim m, e
+    | _, idp => idp
+}
+
+\record LGradedProduct \extends LGradedPairing, GradedProduct
+  \where {
+    \func sub {R : Ring} (D : LGradedProduct R) (S : \Pi (n : Nat) -> SubLModule R (D.H n))
+              (c : \Pi {p q : Nat} {a : D.H p} {b : D.H q} -> S p a -> S q b -> S (p Nat.+ q) (D.mul p q a b)) (c1 : S 0 D.one)
+      : LGradedProduct R \cowith
+      | H n => IModule (S n)
+      | mul => GradedPairing.mul {GradedPairing.sub D S S S c}
+      | one => GradedProduct.one {GradedProduct.sub D S c c1}
+      | mul-assoc => GradedProduct.mul-assoc {GradedProduct.sub D S c c1}
+      | one-left => GradedProduct.one-left {GradedProduct.sub D S c c1}
+      | one-right => GradedProduct.one-right {GradedProduct.sub D S c c1}
+      | *c-left => ext D.*c-left
+      | *c-right => ext D.*c-right
+
+    \func quotient {R : Ring} (D : LGradedProduct R) (I : \Pi (n : Nat) -> SubLModule R (D.H n))
+                   (l : \Pi {p q : Nat} {a : D.H p} (b : D.H q) -> I p a -> I (p Nat.+ q) (D.mul p q a b))
+                   (r : \Pi {p q : Nat} (a : D.H p) {b : D.H q} -> I q b -> I (p Nat.+ q) (D.mul p q a b))
+      : LGradedProduct R \cowith
+      | H n => QuotientLModule (I n)
+      | mul => GradedPairing.mul {GradedPairing.quotient D I I I l r}
+      | one => GradedProduct.one {GradedProduct.quotient D I l r}
+      | mul-assoc => GradedProduct.mul-assoc {GradedProduct.quotient D I l r}
+      | one-left => GradedProduct.one-left {GradedProduct.quotient D I l r}
+      | one-right => GradedProduct.one-right {GradedProduct.quotient D I l r}
+      | *c-left => LGradedPairing.*c-left {LGradedPairing.quotient D I I I l r}
+      | *c-right => LGradedPairing.*c-right {LGradedPairing.quotient D I I I l r}
+
+    \func const {R : CRing} (A : AAlgebra R) : LGradedProduct R \cowith
+      | H _ => A
+      | mul _ _ => Pairing.mul A
+      | one => 1
+      | mul-assoc _ _ _ _ _ _ => A.*-assoc
+      | one-left _ _ => A.ide-left
+      | one-right _ _ => A.ide-right
+      | *c-left => inv A.*c-comm-left
+      | *c-right => inv A.*c-comm-right
+  }
+
+\record LGradedCommProduct \extends LGradedProduct, GradedCommProduct
+  \where {
+    \func sub {R : Ring} (D : LGradedCommProduct R) (S : \Pi (n : Nat) -> SubLModule R (D.H n))
+              (c : \Pi {p q : Nat} {a : D.H p} {b : D.H q} -> S p a -> S q b -> S (p Nat.+ q) (D.mul p q a b)) (c1 : S 0 D.one)
+      : LGradedCommProduct R \cowith
+      | LGradedProduct => LGradedProduct.sub D S c c1
+      | koszul => GradedCommProduct.koszul {GradedCommProduct.sub D S c c1}
+
+    \func quotient {R : Ring} (D : LGradedCommProduct R) (I : \Pi (n : Nat) -> SubLModule R (D.H n))
+                   (l : \Pi {p q : Nat} {a : D.H p} (b : D.H q) -> I p a -> I (p Nat.+ q) (D.mul p q a b))
+                   (r : \Pi {p q : Nat} (a : D.H p) {b : D.H q} -> I q b -> I (p Nat.+ q) (D.mul p q a b))
+      : LGradedCommProduct R \cowith
+      | LGradedProduct => LGradedProduct.quotient D I l r
+      | koszul => GradedCommProduct.koszul {GradedCommProduct.quotient D I l r}
+  }
+
+\record LGradedModule \extends GradedModule {
+  \override Alg : LGradedProduct
+  \override K : Nat -> LModule (LGradedProduct.R {Alg})
+  | *c-act-left {p q : Nat} {r : LGradedProduct.R {Alg}} {a : LGradedProduct.H {Alg} p} {x : K q} : mul p q (r *c a) x = r *c mul p q a x
+  | *c-act-right {p q : Nat} {r : LGradedProduct.R {Alg}} {a : LGradedProduct.H {Alg} p} {x : K q} : mul p q a (r *c x) = r *c mul p q a x
+
+  \func bilinear (p q : Nat) : BilinearMap (LGradedProduct.H {Alg} p) (K q) (K (p Nat.+ q)) \cowith
+    | func => mul p q
+    | linear-left => \new LinearMap {
+      | func-+ => Pairing.rdistr
+      | func-*c => *c-act-left
+    }
+    | linear-right => \new LinearMap {
+      | func-+ => Pairing.ldistr
+      | func-*c => *c-act-right
+    }
+} \where {
+  \func sub {R : Ring} {A : LGradedProduct R} (M : LGradedModule A) (SA : \Pi (n : Nat) -> SubLModule R (A.H n))
+            (cA : \Pi {p q : Nat} {a : A.H p} {b : A.H q} -> SA p a -> SA q b -> SA (p Nat.+ q) (A.mul p q a b)) (c1 : SA 0 A.one)
+            (S : \Pi (n : Nat) -> SubLModule R (M.K n)) (c : \Pi {p q : Nat} {a : A.H p} {x : M.K q} -> SA p a -> S q x -> S (p Nat.+ q) (M.mul p q a x))
+    : LGradedModule (LGradedProduct.sub A SA cA c1) \cowith
+    | K n => IModule (S n)
+    | mul => GradedPairing.mul {GradedPairing.sub M SA S S c}
+    | act-assoc => GradedModule.act-assoc {GradedModule.sub M SA cA c1 S c}
+    | act-ide => GradedModule.act-ide {GradedModule.sub M SA cA c1 S c}
+    | *c-act-left => ext M.*c-act-left
+    | *c-act-right => ext M.*c-act-right
+
+  \func quotient {R : Ring} {A : LGradedProduct R} (M : LGradedModule A) (IA : \Pi (n : Nat) -> SubLModule R (A.H n))
+                 (lA : \Pi {p q : Nat} {a : A.H p} (b : A.H q) -> IA p a -> IA (p Nat.+ q) (A.mul p q a b))
+                 (rA : \Pi {p q : Nat} (a : A.H p) {b : A.H q} -> IA q b -> IA (p Nat.+ q) (A.mul p q a b))
+                 (I : \Pi (n : Nat) -> SubLModule R (M.K n))
+                 (l : \Pi {p q : Nat} {a : A.H p} (x : M.K q) -> IA p a -> I (p Nat.+ q) (M.mul p q a x))
+                 (r : \Pi {p q : Nat} (a : A.H p) {x : M.K q} -> I q x -> I (p Nat.+ q) (M.mul p q a x))
+    : LGradedModule (LGradedProduct.quotient A IA lA rA) \cowith
+    | K n => QuotientLModule (I n)
+    | mul => GradedPairing.mul {GradedPairing.quotient M IA I I l r}
+    | act-assoc => GradedModule.act-assoc {GradedModule.quotient M IA lA rA I l r}
+    | act-ide => GradedModule.act-ide {GradedModule.quotient M IA lA rA I l r}
+    | *c-act-left {_} {_} {_} {a} {x} => \case \elim a, \elim x \with {
+      | in~ a', in~ x' => pmap in~ M.*c-act-left
+    }
+    | *c-act-right {_} {_} {_} {a} {x} => \case \elim a, \elim x \with {
+      | in~ a', in~ x' => pmap in~ M.*c-act-right
+    }
+}
+
+\func DirectSumAlgebra {R : CRing} (D : LGradedProduct R) : AAlgebra R \cowith
+  | Ring => DirectSum D
+  | *c r x => (\lam n => r *c x.1 n, \case x.2 \with {
+    | inP (N, z) => inP (N, \lam n le => pmap (r *c) (z n le) *> LModule.*c_zro-right)
+  })
+  | *c-assoc => DirectSum.sum-ext \lam n => LModule.*c-assoc {D.H n}
+  | *c-ldistr => DirectSum.sum-ext \lam n => LModule.*c-ldistr {D.H n}
+  | *c-rdistr => DirectSum.sum-ext \lam n => LModule.*c-rdistr {D.H n}
+  | ide_*c => DirectSum.sum-ext \lam n => LModule.ide_*c {D.H n}
+  | *c-comm-left {r} {a} {b} => DirectSum.sum-ext \lam n => LModule.*c_FinSum-ldistr {D.H n}
+      *> AbMonoid.FinSum-ext {D.H n} {PairsFinSet n} (\lam s => inv (LGradedPairing.transport-*c s.3) *> pmap (D.cast s.3) (inv (D.*c-left {s.1} {s.2} {r} {a.1 s.1} {b.1 s.2})))
+  | *c-comm-right {r} {a} {b} => DirectSum.sum-ext \lam n => LModule.*c_FinSum-ldistr {D.H n}
+      *> AbMonoid.FinSum-ext {D.H n} {PairsFinSet n} (\lam s => inv (LGradedPairing.transport-*c s.3) *> pmap (D.cast s.3) (inv (D.*c-right {s.1} {s.2} {r} {a.1 s.1} {b.1 s.2})))
+  \where
+    \lemma ringMap-*c {R : CRing} {D D' : LGradedProduct R} (phi : \Pi (n : Nat) -> LinearMap (D.H n) (D'.H n))
+                      (phi-mul : \Pi (p q : Nat) (a : D.H p) (b : D.H q) -> phi (p Nat.+ q) (D.mul p q a b) = D'.mul p q (phi p a) (phi q b))
+                      (phi-one : phi 0 D.one = D'.one) {r : R} {x : DirectSumAlgebra D}
+      : DirectSum.ringMap phi phi-mul phi-one (r *c {DirectSumAlgebra D} x) = r *c {DirectSumAlgebra D'} DirectSum.ringMap phi phi-mul phi-one x
+      => DirectSum.sum-ext {D'} \lam n => LinearMap.func-*c {phi n}

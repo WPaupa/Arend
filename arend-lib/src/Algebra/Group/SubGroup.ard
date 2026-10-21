@@ -128,6 +128,18 @@
 
   \func maxHom {A : AddGroup} : AddGroupHom A (IAddGroup max) \cowith
     | AddMonoidHom => SubAddMonoid.maxHom
+
+  \func preimage {A B : AddGroup} (f : AddGroupHom A B) (S : SubAddGroup B) : SubAddGroup A \cowith
+    | contains x => S (f x)
+    | contains_zro => transportInv S.contains f.func-zro S.contains_zro
+    | contains_+ c d => transportInv S.contains f.func-+ (S.contains_+ c d)
+    | contains_negative c => transportInv S.contains f.func-negative (S.contains_negative c)
+
+  \func restrict {A : AbGroup} (U V : SubAddGroup A) : SubAddGroup (IAbGroup U) \cowith
+    | contains x => V x.1
+    | contains_zro => V.contains_zro
+    | contains_+ => V.contains_+
+    | contains_negative => V.contains_negative
 }
 
 \instance IAddGroup (S : SubAddGroup {}) : AddGroup
@@ -142,6 +154,11 @@
 \instance IAbGroup {A : AbGroup} (S : SubAddGroup A) : AbGroup
   | AddGroup => IAddGroup S
   | +-comm => ext +-comm
+  \where
+    \func map {A B : AbGroup} {S : SubAddGroup A} {T : SubAddGroup B} (f : AddGroupHom A B) (p : \Pi {x : A} -> S x -> T (f x))
+      : AddGroupHom (IAbGroup S) (IAbGroup T) \cowith
+      | func x => (f x.1, p x.2)
+      | func-+ => ext f.func-+
 
 
 \func KernelGroup (f : GroupHom) : NormalSubGroup f.Dom \cowith

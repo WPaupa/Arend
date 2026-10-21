@@ -1,0 +1,94 @@
+\import Algebra.Group
+\import Algebra.Meta
+\import Algebra.Group.Cochain
+\import Algebra.Group.Cokernel
+\import Algebra.Group.GroupHom
+\import Algebra.Group.SubGroup
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Arith.Nat
+\import Equiv
+\import Logic
+\import Order.LinearOrder
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\record Filtration (M : AbGroup) {
+  | F : Nat -> SubAddGroup M
+  | F-suc {p : Nat} {x : M} : F (suc p) x -> F p x
+
+  \func Next (p : Nat) => SubAddGroup.restrict (F p) (F (suc p))
+
+  \func gr (p : Nat) => AbQuotient (Next p)
+
+  \lemma step {p : Nat} (z : \Pi (q : gr p) -> q = 0) (x : IAbGroup (F p)) : F (suc p) x.1
+    => transport (\lam y => F (suc p) y) AddGroup.minus_zro (AbQuotient.proj-equality.1 (z (in~ x)))
+
+  \lemma raise {p n k : Nat} (e : p Nat.+ n = k) (z : \Pi (j : Nat) -> p <= j -> j < k -> \Pi (q : gr j) -> q = 0) {x : M} (h : F p x) : F k x \elim n
+    | 0 => transport (\lam j => F j x) e h
+    | suc n => raise {\this} {suc p} {n} e (\lam j _ lt => z j linarith lt) (step (z p <=-refl linarith) (x, h))
+
+  \lemma trivial {N : Nat} (bottom : \Pi (x : M) -> F 0 x) (top : \Pi {x : M} -> F N x -> x = 0)
+                 (z : \Pi (j : Nat) -> j < N -> \Pi (q : gr j) -> q = 0) (x : M) : x = 0
+    => top (raise {\this} {0} idp (\lam j _ => z j) (bottom x))
+
+  \func concentrated {N k : Nat} (_ : k < N) (bottom : \Pi (x : M) -> F 0 x) (_ : \Pi {x : M} -> F N x -> x = 0)
+                     (z : \Pi (j : Nat) -> j < N -> j /= k -> \Pi (q : gr j) -> q = 0) : AddGroupHom M (gr k) \cowith
+    | func x => in~ (x, raise {\this} {0} idp (\lam j _ _ => z j linarith (\lam _ => absurd linarith)) (bottom x))
+    | func-+ => pmap in~ (ext idp)
+    \where {
+      \lemma upper-zero {N k : Nat} (k<N : k < N) (top : \Pi {x : M} -> F N x -> x = 0)
+                        (z : \Pi (j : Nat) -> j < N -> j /= k -> \Pi (q : gr j) -> q = 0) {x : M} (h : F (suc k) x) : x = 0
+        => top (raise {\this} {suc k} {N -' suc k} (<=_exists {suc k} {N} \lam h => <_suc_<= h k<N) (\lam j (le : suc k <= j) lt => z j lt (\lam p => le (transportInv (`< suc k) p id<suc))) h)
+
+      \func equiv {N k : Nat} (k<N : k < N) (bottom : \Pi (x : M) -> F 0 x) (top : \Pi {x : M} -> F N x -> x = 0)
+                  (z : \Pi (j : Nat) -> j < N -> j /= k -> \Pi (q : gr j) -> q = 0) : QEquiv (concentrated k<N bottom top z) \cowith
+        | ret => AbQuotient.desc {IAbGroup (F k)} {M} {Next k} (IAddGroup.embed {F k}) (\lam h => upper-zero {\this} k<N top z h)
+        | ret_f _ => idp
+        | f_sec q => \case \elim q \with {
+          | in~ u => pmap in~ (ext idp)
+        }
+    }
+} \where {
+  \func map {M N : AbGroup} {X : Filtration M} {Y : Filtration N} (f : AddGroupHom M N) (pf : \Pi {p : Nat} {x : M} -> X.F p x -> Y.F p (f x)) (p : Nat)
+    : AddGroupHom (X.gr p) (Y.gr p)
+    => AbQuotient.map {IAbGroup (X.F p)} {IAbGroup (Y.F p)} {X.Next p} {Y.Next p} (IAbGroup.map f (pf {p})) (\lam {x} c => pf {suc p} {x.1} c)
+    \where {
+      \lemma id {M : AbGroup} {X : Filtration M} {p : Nat} (x : X.gr p) : map AddGroupHom.id (\lam c => c) p x = x \elim x
+        | in~ a => idp
+
+      \lemma comp {M N K : AbGroup} {X : Filtration M} {Y : Filtration N} {Z : Filtration K} (g : AddGroupHom N K) (f : AddGroupHom M N)
+                  {pg : \Pi {p : Nat} {y : N} -> Y.F p y -> Z.F p (g y)} {pf : \Pi {p : Nat} {x : M} -> X.F p x -> Y.F p (f x)} {p : Nat} (x : X.gr p)
+        : map g pg p (map f pf p x) = map (g AddGroupHom.∘ f) (\lam c => pg (pf c)) p x \elim x
+        | in~ a => idp
+
+      \lemma concentrated-natural {M M' : AbGroup} {X : Filtration M} {Y : Filtration M'} (f : AddGroupHom M M') (pf : \Pi {p : Nat} {x : M} -> X.F p x -> Y.F p (f x))
+                                  {N N' k : Nat} (k<N : k < N) (k<N' : k < N') {bX : \Pi (x : M) -> X.F 0 x} {tX : \Pi {x : M} -> X.F N x -> x = 0}
+                                  {zX : \Pi (j : Nat) -> j < N -> j /= k -> \Pi (q : X.gr j) -> q = 0} {bY : \Pi (y : M') -> Y.F 0 y} {tY : \Pi {y : M'} -> Y.F N' y -> y = 0}
+                                  {zY : \Pi (j : Nat) -> j < N' -> j /= k -> \Pi (q : Y.gr j) -> q = 0} (x : M)
+        : map f pf k (X.concentrated k<N bX tX zX x) = Y.concentrated k<N' bY tY zY (f x)
+        => pmap in~ (ext idp)
+    }
+}
+
+\record FilteredCochainComplex \extends CochainComplex
+  | filt (n : Nat) : Filtration (D n)
+  | delta-F {p n : Nat} {x : D n} : (filt n).F p x -> (filt (suc n)).F p (delta n x)
+  \where {
+    \func gr (X : FilteredCochainComplex) (p : Nat) : CochainComplex \cowith
+      | D n => (X.filt n).gr p
+      | delta n => Filtration.map (X.delta n) (\lam {q} => X.delta-F {q} {n}) p
+      | delta-delta n x => \case \elim x \with {
+        | in~ a => pmap in~ (ext (X.delta-delta n a.1))
+      }
+
+    \func grMap {X Y : FilteredCochainComplex} (f : CochainMap X Y) (pf : \Pi {p n : Nat} {x : X.D n} -> (X.filt n).F p x -> (Y.filt n).F p (f.g n x))
+                (p : Nat) : CochainMap (gr X p) (gr Y p) \cowith
+      | g n => Filtration.map (f.g n) (\lam {q} => pf {q} {n}) p
+      | commute n x => \case \elim x \with {
+        | in~ a => pmap in~ (ext (f.commute n a.1))
+      }
+  }

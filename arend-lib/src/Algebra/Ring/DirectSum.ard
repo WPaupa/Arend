@@ -1,7 +1,11 @@
 \import Algebra.Group
+\import Algebra.Group.Cokernel
 \import Algebra.Group.GroupHom
 \import Algebra.Group.Pairing
+\import Algebra.Group.Product
+\import Algebra.Group.SubGroup
 \import Algebra.Meta
+\import Algebra.Module
 \import Algebra.Monoid
 \import Algebra.Monoid.MonoidHom
 \import Algebra.Pointed
@@ -19,6 +23,7 @@
 \import Order.StrictOrder
 \import Paths
 \import Paths.Meta
+\import Relation.Equivalence
 \import Set
 \import Set.Fin.Instances
 
@@ -50,7 +55,7 @@
 
     \lemma unique {G : AddMonoid} {f : Nat -> G} {N n : Nat} (n<N : n < N) (z : \Pi (k : Nat) -> k /= n -> f k = 0) : sum-below f N = f n \elim N
       | suc N => \case decideEq n N \with {
-        | yes e => pmap (`+ _) (zero \lam k k<N => z k \lam p => absurd linarith) *> zro-left *> pmap f (inv e)
+        | yes e => pmap (`+ _) (zero \lam k _ => z k \lam _ => absurd linarith) *> zro-left *> pmap f (inv e)
         | no ne => pmap2 (+) (unique (LinearOrder.<=_/= (<_suc_<= n<N) ne) z) (z N (\lam p => ne (inv p))) *> zro-right
       }
   }
@@ -83,15 +88,54 @@
     \lemma double {G : AddGroup} (k : Nat) (a : G) : signed (k Nat.+ k) a = a \elim k
       | 0 => idp
       | suc k => double k a
+
+    \lemma zro {G : AddGroup} (k : Nat) : signed {G} k 0 = 0 \elim k
+      | 0 => idp
+      | 1 => AddGroup.negative_zro
+      | suc (suc k) => zro k
+
+    \lemma odd-mul {G : AddGroup} (k l : Nat) (a : G) : signed (suc (k Nat.+ k) Nat.* suc (l Nat.+ l)) a = negative a
+      => step _ a *> pmap negative (add _ (k Nat.+ k) a *> pmap (signed _) (double k a) *> pmap (signed __ a) NatSemiring.ldistr *> double _ a)
   }
 
-\record GradedProduct (H : Nat -> AbGroup) {
-  | mul (p q : Nat) : Pairing (H p) (H q) (H (p Nat.+ q))
+\record GradedPairing (H K L : Nat -> AbGroup)
+  | mul (p q : Nat) : Pairing (H p) (K q) (L (p Nat.+ q))
+  \where {
+    \func sub (m : GradedPairing) (S : \Pi (n : Nat) -> SubAddGroup (m.H n)) (T : \Pi (n : Nat) -> SubAddGroup (m.K n)) (U : \Pi (n : Nat) -> SubAddGroup (m.L n))
+              (c : \Pi {p q : Nat} {a : m.H p} {b : m.K q} -> S p a -> T q b -> U (p Nat.+ q) (m.mul p q a b))
+      : GradedPairing (\lam n => IAbGroup (S n)) (\lam n => IAbGroup (T n)) (\lam n => IAbGroup (U n)) \cowith
+      | mul p q => Pairing.restrict (m.mul p q) (c {p} {q})
+
+    \func quotient (m : GradedPairing) (S : \Pi (n : Nat) -> SubAddGroup (m.H n)) (T : \Pi (n : Nat) -> SubAddGroup (m.K n)) (U : \Pi (n : Nat) -> SubAddGroup (m.L n))
+                   (l : \Pi {p q : Nat} {a : m.H p} (b : m.K q) -> S p a -> U (p Nat.+ q) (m.mul p q a b))
+                   (r : \Pi {p q : Nat} (a : m.H p) {b : m.K q} -> T q b -> U (p Nat.+ q) (m.mul p q a b))
+      : GradedPairing (\lam n => AbQuotient (S n)) (\lam n => AbQuotient (T n)) (\lam n => AbQuotient (U n)) \cowith
+      | mul p q => Pairing.quotient (m.mul p q) (l {p} {q}) (r {p} {q})
+
+    \func const {A B C : AbGroup} (m : Pairing A B C) : GradedPairing (\lam _ => A) (\lam _ => B) (\lam _ => C) \cowith
+      | mul _ _ => m
+
+    \func relabel (m : GradedPairing) {H' K' L' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (H' n) (m.H n))
+                  (g : \Pi (n : Nat) -> AddGroupHom (K' n) (m.K n)) (h : \Pi (n : Nat) -> AddGroupHom (m.L n) (L' n)) : GradedPairing H' K' L' \cowith
+      | mul p q => Pairing.compose (m.mul p q) (f p) (g q) (h (p Nat.+ q))
+
+    \lemma transport-hom {G G' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (G n) (G' n)) {n m : Nat} (e : n = m) (x : G n)
+      : f m (transport (\lam k => G k) e x) = transport (\lam k => G' k) e (f n x) \elim m, e
+      | _, idp => idp
+
+    \lemma transport-sub {G : Nat -> AbGroup} (S : \Pi (n : Nat) -> SubAddGroup (G n)) {n m : Nat} (e : n = m) (x : IAbGroup (S n))
+      : (transport (\lam k => IAbGroup (S k)) e x).1 = transport (\lam k => G k) e x.1 \elim m, e
+      | _, idp => idp
+  }
+
+\record GradedProduct \extends GradedPairing {
+  | K => H
+  | L => H
   | one : H 0
   | mul-assoc (p q r : Nat) (a : H p) (b : H q) (c : H r)
     : mul (p Nat.+ q) r (mul p q a b) c = transport (\lam n => H n) (inv NatSemiring.+-assoc) (mul p (q Nat.+ r) a (mul q r b c))
-  | ide-left (q : Nat) (b : H q) : mul 0 q one b = b
-  | ide-right (p : Nat) (a : H p) : mul p 0 a one = a
+  | one-left (q : Nat) (b : H q) : mul 0 q one b = b
+  | one-right (p : Nat) (a : H p) : mul p 0 a one = a
 
   \func cast {n m : Nat} (e : n = m) : AddGroupHom (H n) (H m) \cowith
     | func => transport (\lam k => H k) e
@@ -109,35 +153,257 @@
   \lemma cast-left {p p' : Nat} (e : p = p') (q : Nat) (a : H p) (b : H q)
     : mul p' q (cast e a) b = cast (pmap (Nat.`+ q) e) (mul p q a b) \elim p', e
     | _, idp => idp
+} \where {
+  \func sub (D : GradedProduct) (S : \Pi (n : Nat) -> SubAddGroup (D.H n))
+            (c : \Pi {p q : Nat} {a : D.H p} {b : D.H q} -> S p a -> S q b -> S (p Nat.+ q) (D.mul p q a b)) (c1 : S 0 D.one)
+    : GradedProduct (\lam n => IAbGroup (S n)) \cowith
+    | mul => GradedPairing.mul {GradedPairing.sub D S S S c}
+    | one => (D.one, c1)
+    | mul-assoc p q r a b c => ext (D.mul-assoc p q r a.1 b.1 c.1 *> inv (GradedPairing.transport-sub S _ _))
+    | one-left q b => ext (D.one-left q b.1)
+    | one-right p a => ext (D.one-right p a.1)
+
+  \func quotient (D : GradedProduct) (I : \Pi (n : Nat) -> SubAddGroup (D.H n))
+                 (l : \Pi {p q : Nat} {a : D.H p} (b : D.H q) -> I p a -> I (p Nat.+ q) (D.mul p q a b))
+                 (r : \Pi {p q : Nat} (a : D.H p) {b : D.H q} -> I q b -> I (p Nat.+ q) (D.mul p q a b))
+    : GradedProduct (\lam n => AbQuotient (I n)) \cowith
+    | mul => GradedPairing.mul {GradedPairing.quotient D I I I l r}
+    | one => in~ D.one
+    | mul-assoc p q k a b c => \case \elim a, \elim b, \elim c \with {
+      | in~ x, in~ y, in~ z => pmap in~ (D.mul-assoc p q k x y z) *> inv (AbQuotient.transport-in~ I _ _)
+    }
+    | one-left q b => \case \elim b \with {
+      | in~ y => pmap in~ (D.one-left q y)
+    }
+    | one-right p a => \case \elim a \with {
+      | in~ x => pmap in~ (D.one-right p x)
+    }
+
+  \func relabel (D : GradedProduct) {H' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (D.H n) (H' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+    : GradedProduct H' \cowith
+    | mul => GradedPairing.mul {GradedPairing.relabel D (inverse f e) (inverse f e) f}
+    | one => f 0 D.one
+    | mul-assoc p q r a _ c => pmap (\lam x => f _ (D.mul _ r x ((e r).ret c))) ((e _).ret_f _) *> pmap (f _) (D.mul-assoc p q r _ _ _)
+                               *> GradedPairing.transport-hom f _ _ *> pmap (transport (\lam n => H' n) _) (pmap (\lam y => f _ (D.mul p _ ((e p).ret a) y)) (inv ((e _).ret_f _)))
+    | one-left q b => pmap (\lam x => f q (D.mul 0 q x ((e q).ret b))) ((e 0).ret_f _) *> pmap (f q) (D.one-left q _) *> (e q).f_ret b
+    | one-right p a => pmap (\lam y => f p (D.mul p 0 ((e p).ret a) y)) ((e 0).ret_f _) *> pmap (f p) (D.one-right p _) *> (e p).f_ret a
+    \where {
+      \func inverse {G G' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (G n) (G' n)) (e : \Pi (n : Nat) -> QEquiv (f n)) (n : Nat) : AddGroupHom (G' n) (G n)
+        => AddGroupHom.inverse (f n) (e n)
+
+      \lemma mul-map (D : GradedProduct) {H' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (D.H n) (H' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+                     (p q : Nat) (a : D.H p) (b : D.H q) : f (p Nat.+ q) (D.mul p q a b) = (relabel D f e).mul p q (f p a) (f q b)
+        => inv (pmap2 (\lam x y => f (p Nat.+ q) (D.mul p q x y)) ((e p).ret_f a) ((e q).ret_f b))
+
+      \func ringMap (D : GradedProduct) {H' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (D.H n) (H' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+        : RingHom (DirectSum D) (DirectSum (relabel D f e))
+        => DirectSum.ringMap {D} {relabel D f e} f (mul-map D f e) idp
+
+      \func ringEquiv (D : GradedProduct) {H' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (D.H n) (H' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+        : QEquiv (ringMap D f e) \cowith
+        | ret => DirectSum.ringMap {relabel D f e} {D} (inverse f e) (\lam p q _ _ => (e (p Nat.+ q)).ret_f _) ((e 0).ret_f _)
+        | ret_f _ => DirectSum.sum-ext {D} \lam n => (e n).ret_f _
+        | f_sec _ => DirectSum.sum-ext {relabel D f e} \lam n => (e n).f_ret _
+
+      \func Sub {G G' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (G n) (G' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+                (S : \Pi (n : Nat) -> SubAddGroup (G n)) (n : Nat) : SubAddGroup (G' n)
+        => SubAddGroup.preimage (inverse f e n) (S n)
+
+      \func subMap {G G' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (G n) (G' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+                   (S : \Pi (n : Nat) -> SubAddGroup (G n)) (n : Nat) : AddGroupHom (IAbGroup (S n)) (IAbGroup (Sub f e S n))
+        => IAbGroup.map {G n} {G' n} {S n} {Sub f e S n} (f n) (\lam c => transportInv (S n).contains ((e n).ret_f _) c)
+
+      \func subEquiv {G G' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (G n) (G' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+                     (S : \Pi (n : Nat) -> SubAddGroup (G n)) (n : Nat) : QEquiv (subMap f e S n) \cowith
+        | ret => IAbGroup.map {G' n} {G n} {Sub f e S n} {S n} (inverse f e n) (\lam c => c)
+        | ret_f x => ext ((e n).ret_f x.1)
+        | f_sec y => ext ((e n).f_ret y.1)
+
+      \func quotientMap {G G' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (G n) (G' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+                        (S : \Pi (n : Nat) -> SubAddGroup (G n)) (n : Nat) : AddGroupHom (AbQuotient (S n)) (AbQuotient (Sub f e S n))
+        => AbQuotient.map {G n} {G' n} {S n} {Sub f e S n} (f n) (\lam c => transportInv (S n).contains ((e n).ret_f _) c)
+
+      \func quotientEquiv {G G' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (G n) (G' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+                          (S : \Pi (n : Nat) -> SubAddGroup (G n)) (n : Nat) : QEquiv (quotientMap f e S n) \cowith
+        | ret => AbQuotient.map {G' n} {G n} {Sub f e S n} {S n} (inverse f e n) (\lam c => c)
+        | ret_f x => \case \elim x \with {
+          | in~ a => pmap in~ ((e n).ret_f a)
+        }
+        | f_sec y => \case \elim y \with {
+          | in~ b => pmap in~ ((e n).f_ret b)
+        }
+
+      \lemma sub-mul (D : GradedProduct) {H' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (D.H n) (H' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+                     (S : \Pi (n : Nat) -> SubAddGroup (D.H n)) (c : \Pi {p q : Nat} {a : D.H p} {b : D.H q} -> S p a -> S q b -> S (p Nat.+ q) (D.mul p q a b))
+                     (c1 : S 0 D.one) {p q : Nat} (x : IAbGroup (Sub f e S p)) (y : IAbGroup (Sub f e S q))
+        : (sub (relabel D f e) (Sub f e S) (\lam sa sb => transportInv (S _).contains ((e _).ret_f _) (c sa sb)) (transportInv (S 0).contains ((e 0).ret_f _) c1)).mul p q x y
+          = (relabel (sub D S c c1) {\lam n => IAbGroup (Sub f e S n)} (subMap f e S) (subEquiv f e S)).mul p q x y
+        => idp
+
+      \lemma quotient-mul (D : GradedProduct) {H' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (D.H n) (H' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+                          (I : \Pi (n : Nat) -> SubAddGroup (D.H n))
+                          (l : \Pi {p q : Nat} {a : D.H p} (b : D.H q) -> I p a -> I (p Nat.+ q) (D.mul p q a b))
+                          (r : \Pi {p q : Nat} (a : D.H p) {b : D.H q} -> I q b -> I (p Nat.+ q) (D.mul p q a b))
+                          {p q : Nat} (x : AbQuotient (Sub f e I p)) (y : AbQuotient (Sub f e I q))
+        : (quotient (relabel D f e) (Sub f e I) (\lam _ h => transportInv (I _).contains ((e _).ret_f _) (l _ h))
+                                               (\lam _ h => transportInv (I _).contains ((e _).ret_f _) (r _ h))).mul p q x y
+          = (relabel (quotient D I l r) {\lam n => AbQuotient (Sub f e I n)} (quotientMap f e I) (quotientEquiv f e I)).mul p q x y \elim x, y
+        | in~ a, in~ b => idp
+    }
+
+  \func const (R : Ring) : GradedProduct (\lam _ => R) \cowith
+    | mul _ _ => Pairing.mul R
+    | one => 1
+    | mul-assoc _ _ _ _ _ _ => R.*-assoc
+    | one-left _ _ => R.ide-left
+    | one-right _ _ => R.ide-right
+
+  \func zero : GradedProduct (\lam _ => TrivialAbGroup) \cowith
+    | mul _ _ => Pairing.zero
+    | one => ()
+    | mul-assoc _ _ _ _ _ _ => idp
+    | one-left _ _ => idp
+    | one-right _ _ => idp
+
+  \func unit.{u} (R : Ring.{u}) : GradedProduct (unitFamily R) \cowith
+    | mul => unitMul R
+    | one => R.ide
+    | mul-assoc => assoc R
+    | one-left => unit-left R
+    | one-right => unit-right R
+    \where {
+      \func unitFamily.{u} (R : AbGroup.{u}) (n : Nat) : AbGroup.{u} \elim n
+        | 0 => R
+        | suc _ => TrivialAbGroup
+
+      \func unitMul.{u} (R : Ring.{u}) (p q : Nat) : Pairing (unitFamily R p) (unitFamily R q) (unitFamily R (p Nat.+ q)) \elim p, q
+        | 0, 0 => Pairing.mul R
+        | 0, suc q => Pairing.zero
+        | suc p, q => Pairing.zero
+
+      \lemma assoc.{u} (R : Ring.{u}) (p q r : Nat) (a : unitFamily R p) (b : unitFamily R q) (c : unitFamily R r)
+        : unitMul R (p Nat.+ q) r (unitMul R p q a b) c
+          = transport (\lam n => unitFamily R n) (inv NatSemiring.+-assoc) (unitMul R p (q Nat.+ r) a (unitMul R q r b c)) \elim p, q, r
+        | 0, 0, 0 => R.*-assoc *> pmap (transport (\lam n => unitFamily R n) __ (a R.* (b R.* c))) (prop-pi {_} {idp})
+        | 0, 0, suc r => idp
+        | 0, suc q, r => idp
+        | suc p, q, r => idp
+
+      \lemma unit-left.{u} (R : Ring.{u}) (q : Nat) (b : unitFamily R q) : unitMul R 0 q R.ide b = b \elim q
+        | 0 => R.ide-left
+        | suc q => idp
+
+      \lemma unit-right.{u} (R : Ring.{u}) (p : Nat) (a : unitFamily R p) : unitMul R p 0 a R.ide = a \elim p
+        | 0 => R.ide-right
+        | suc p => idp
+    }
 }
 
-\record GradedCommProduct \extends GradedProduct
+\record GradedCommProduct \extends GradedProduct {
   | koszul (p q : Nat) (a : H p) (b : H q) : mul p q a b = signed (q Nat.* p) (cast NatSemiring.+-comm (mul q p b a))
+
+  \lemma anticomm (p q : Nat) (a : H (suc (p Nat.+ p))) (b : H (suc (q Nat.+ q)))
+    : mul (suc (p Nat.+ p)) (suc (q Nat.+ q)) a b = negative (cast (NatSemiring.+-comm {suc (q Nat.+ q)} {suc (p Nat.+ p)}) (mul (suc (q Nat.+ q)) (suc (p Nat.+ p)) b a))
+    => koszul _ _ a b *> signed.odd-mul q p _
+
+  \lemma odd-square (p : Nat) (a : H (suc (p Nat.+ p)))
+    : mul (suc (p Nat.+ p)) (suc (p Nat.+ p)) a a + mul (suc (p Nat.+ p)) (suc (p Nat.+ p)) a a = 0
+    => pmap (_ +) (anticomm p p a a *> pmap negative (cast-unique _ idp _)) *> negative-right
+} \where {
+  \func sub (D : GradedCommProduct) (S : \Pi (n : Nat) -> SubAddGroup (D.H n))
+            (c : \Pi {p q : Nat} {a : D.H p} {b : D.H q} -> S p a -> S q b -> S (p Nat.+ q) (D.mul p q a b)) (c1 : S 0 D.one)
+    : GradedCommProduct (\lam n => IAbGroup (S n)) \cowith
+    | GradedProduct => GradedProduct.sub D S c c1
+    | koszul p q a b => ext (D.koszul p q a.1 b.1 *> inv (signed.hom IAddGroup.embed _ _ *> pmap (signed _) (GradedPairing.transport-sub S _ _)))
+
+  \func quotient (D : GradedCommProduct) (I : \Pi (n : Nat) -> SubAddGroup (D.H n))
+                 (l : \Pi {p q : Nat} {a : D.H p} (b : D.H q) -> I p a -> I (p Nat.+ q) (D.mul p q a b))
+                 (r : \Pi {p q : Nat} (a : D.H p) {b : D.H q} -> I q b -> I (p Nat.+ q) (D.mul p q a b))
+    : GradedCommProduct (\lam n => AbQuotient (I n)) \cowith
+    | GradedProduct => GradedProduct.quotient D I l r
+    | koszul p q a b => \case \elim a, \elim b \with {
+      | in~ x, in~ y => pmap in~ (D.koszul p q x y) *> signed.hom (AbQuotient.proj (I _)) _ _ *> pmap (signed _) (inv (AbQuotient.transport-in~ I _ _))
+    }
+
+  \func relabel (D : GradedCommProduct) {H' : Nat -> AbGroup} (f : \Pi (n : Nat) -> AddGroupHom (D.H n) (H' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+    : GradedCommProduct H' \cowith
+    | GradedProduct => GradedProduct.relabel D f e
+    | koszul p q _ _ => pmap (f _) (D.koszul p q _ _) *> signed.hom (f _) _ _ *> pmap (signed _) (GradedPairing.transport-hom f _ _)
+}
+
+\record GradedModule (Alg : GradedProduct) \extends GradedPairing {
+  | H => Alg.H
+  | L => K
+  | act-assoc (p q r : Nat) (a : Alg.H p) (b : Alg.H q) (x : K r)
+    : mul (p Nat.+ q) r (Alg.mul p q a b) x = transport (\lam n => K n) (inv NatSemiring.+-assoc) (mul p (q Nat.+ r) a (mul q r b x))
+  | act-ide (r : Nat) (x : K r) : mul 0 r Alg.one x = x
+} \where {
+  \func sub {A : GradedProduct} (M : GradedModule A) (SA : \Pi (n : Nat) -> SubAddGroup (A.H n))
+            (cA : \Pi {p q : Nat} {a : A.H p} {b : A.H q} -> SA p a -> SA q b -> SA (p Nat.+ q) (A.mul p q a b)) (c1 : SA 0 A.one)
+            (S : \Pi (n : Nat) -> SubAddGroup (M.K n)) (c : \Pi {p q : Nat} {a : A.H p} {x : M.K q} -> SA p a -> S q x -> S (p Nat.+ q) (M.mul p q a x))
+    : GradedModule (GradedProduct.sub A SA cA c1) \cowith
+    | K n => IAbGroup (S n)
+    | mul => GradedPairing.mul {GradedPairing.sub M SA S S c}
+    | act-assoc p q r a b x => ext (M.act-assoc p q r a.1 b.1 x.1 *> inv (GradedPairing.transport-sub S _ _))
+    | act-ide r x => ext (M.act-ide r x.1)
+
+  \func quotient {A : GradedProduct} (M : GradedModule A) (IA : \Pi (n : Nat) -> SubAddGroup (A.H n))
+                 (lA : \Pi {p q : Nat} {a : A.H p} (b : A.H q) -> IA p a -> IA (p Nat.+ q) (A.mul p q a b))
+                 (rA : \Pi {p q : Nat} (a : A.H p) {b : A.H q} -> IA q b -> IA (p Nat.+ q) (A.mul p q a b))
+                 (I : \Pi (n : Nat) -> SubAddGroup (M.K n))
+                 (l : \Pi {p q : Nat} {a : A.H p} (x : M.K q) -> IA p a -> I (p Nat.+ q) (M.mul p q a x))
+                 (r : \Pi {p q : Nat} (a : A.H p) {x : M.K q} -> I q x -> I (p Nat.+ q) (M.mul p q a x))
+    : GradedModule (GradedProduct.quotient A IA lA rA) \cowith
+    | K n => AbQuotient (I n)
+    | mul => GradedPairing.mul {GradedPairing.quotient M IA I I l r}
+    | act-assoc p q k a b x => \case \elim a, \elim b, \elim x \with {
+      | in~ a', in~ b', in~ x' => pmap in~ (M.act-assoc p q k a' b' x') *> inv (AbQuotient.transport-in~ I _ _)
+    }
+    | act-ide k x => \case \elim x \with {
+      | in~ x' => pmap in~ (M.act-ide k x')
+    }
+
+  \func const {R : Ring} (M : LModule R) : GradedModule (GradedProduct.const R) \cowith
+    | K _ => M
+    | mul _ _ => Pairing.action M
+    | act-assoc _ _ _ _ _ _ => M.*c-assoc
+    | act-ide _ _ => M.ide_*c
+
+  \func relabel {A : GradedProduct} (M : GradedModule A) {H' K' : Nat -> AbGroup}
+                (f : \Pi (n : Nat) -> AddGroupHom (A.H n) (H' n)) (e : \Pi (n : Nat) -> QEquiv (f n))
+                (g : \Pi (n : Nat) -> AddGroupHom (M.K n) (K' n)) (eg : \Pi (n : Nat) -> QEquiv (g n))
+    : GradedModule (GradedProduct.relabel A f e) \cowith
+    | K => K'
+    | mul => GradedPairing.mul {GradedPairing.relabel M (GradedProduct.relabel.inverse f e) (GradedProduct.relabel.inverse g eg) g}
+    | act-assoc p q r a _ x => pmap (\lam y => g _ (M.mul _ r y ((eg r).ret x))) ((e _).ret_f _) *> pmap (g _) (M.act-assoc p q r _ _ _)
+                               *> GradedPairing.transport-hom g _ _ *> pmap (transport (\lam n => K' n) _) (pmap (\lam y => g _ (M.mul p _ ((e p).ret a) y)) (inv ((eg _).ret_f _)))
+    | act-ide r x => pmap (\lam y => g r (M.mul 0 r y ((eg r).ret x))) ((e 0).ret_f _) *> pmap (g r) (M.act-ide r _) *> (eg r).f_ret x
+}
 
 \func DirectSum (D : GradedProduct) : Ring \cowith
   | E => \Sigma (x : \Pi (n : Nat) -> D.H n) (∃ (N : Nat) (\Pi (n : Nat) -> N <= n -> x n = 0))
   | zro => (\lam _ => 0, inP (0, \lam _ _ => idp))
   | + x y => (\lam n => x.1 n + y.1 n, \case x.2, y.2 \with {
-    | inP (N, f), inP (M, g) => inP (N Nat.+ M, \lam n le => pmap2 (+) (f n (left-le le)) (g n (right-le le)) *> zro-left)
+    | inP (N, f), inP (M, g) => inP (N Nat.+ M, \lam n _ => pmap2 (+) (f n linarith) (g n linarith) *> zro-left)
   })
-  | zro-left => sum-ext \lam n => zro-left
-  | +-assoc => sum-ext \lam n => +-assoc
-  | +-comm => sum-ext \lam n => +-comm
+  | zro-left => sum-ext \lam _ => zro-left
+  | +-assoc => sum-ext \lam _ => +-assoc
+  | +-comm => sum-ext \lam _ => +-comm
   | negative x => (\lam n => negative (x.1 n), \case x.2 \with {
     | inP (N, f) => inP (N, \lam n le => pmap negative (f n le) *> AddGroup.negative_zro)
   })
-  | negative-left => sum-ext \lam n => negative-left
-  | ide => (unit D, inP (1, \lam n le => unit-suc D (\lam p => absurd linarith)))
+  | negative-left => sum-ext \lam _ => negative-left
+  | ide => (unit D, inP (1, \lam _ _ => unit-suc D (\lam _ => absurd linarith)))
   | * x y => (\lam n => conv D x.1 y.1 n, \case x.2, y.2 \with {
-    | inP (N, f), inP (M, g) => inP (N Nat.+ M, \lam n le => AbMonoid.FinSum_zro {D.H n} {PairsFinSet n} \lam s => \case LinearOrder.dec<_<= s.1 N \with {
-      | inl s1<N => conv-zero-right D x.1 y.1 s (g s.2 (support-le le s.3 s1<N))
+    | inP (N, f), inP (M, g) => inP (N Nat.+ M, \lam n _ => AbMonoid.FinSum_zro {D.H n} {PairsFinSet n} \lam s => \case LinearOrder.dec<_<= s.1 N \with {
+      | inl s1<N => conv-zero-right D x.1 y.1 s (g s.2 (linarith s.3))
       | inr N<=s1 => conv-zero-left D x.1 y.1 s (f s.1 N<=s1)
     })
   })
   | ide-left {x} => sum-ext \lam n => AbMonoid.FinSum-unique {D.H n} {PairsFinSet n} (0, n, idp)
-      (\lam s s/=0 => conv-zero-left D (unit D) x.1 s (unit-suc D \lam p => s/=0 (ext (p, pmap (Nat.`+ s.2) (inv p) *> s.3)))) *> D.cast-unique _ idp _ *> D.ide-left n (x.1 n)
+      (\lam s s/=0 => conv-zero-left D (unit D) x.1 s (unit-suc D \lam p => s/=0 (ext (p, pmap (Nat.`+ s.2) (inv p) *> s.3)))) *> D.cast-unique _ idp _ *> D.one-left n (x.1 n)
   | ide-right {x} => sum-ext \lam n => AbMonoid.FinSum-unique {D.H n} {PairsFinSet n} (n, 0, idp)
-      (\lam s s/=0 => conv-zero-right D x.1 (unit D) s (unit-suc D \lam p => s/=0 (ext (pmap (s.1 Nat.+) (inv p) *> s.3, p)))) *> D.cast-unique _ idp _ *> D.ide-right n (x.1 n)
+      (\lam s s/=0 => conv-zero-right D x.1 (unit D) s (unit-suc D \lam p => s/=0 (ext (pmap (s.1 Nat.+) (inv p) *> s.3, p)))) *> D.cast-unique _ idp _ *> D.one-right n (x.1 n)
   | *-assoc {x} {y} {z} => sum-ext \lam n => conv-assoc D x.1 y.1 z.1 n
   | ldistr => sum-ext \lam n => AbMonoid.FinSum-ext {D.H n} {PairsFinSet n}
                                   (\lam s => pmap (D.cast s.3) (Pairing.ldistr {D.mul s.1 s.2}) *> AddGroupHom.func-+ {D.cast s.3})
@@ -147,7 +413,7 @@
                                 *> AbMonoid.FinSum_+
   \where {
     \func inc (D : GradedProduct) (n : Nat) : AddGroupHom (D.H n) (DirectSum D) \cowith
-      | func a => (\lam k => inc-at D n a k, inP (suc n, \lam k le => inc-at-other D a (\lam p => absurd linarith)))
+      | func a => (\lam k => inc-at D n a k, inP (suc n, \lam _ _ => inc-at-other D a (\lam _ => absurd linarith)))
       | func-+ {a} {b} => sum-ext \lam k => \case decideEq n k \with {
         | yes e => inc-at-same D _ e *> D.cast-+ e *> inv (pmap2 (+) (inc-at-same D a e) (inc-at-same D b e))
         | no ne => inc-at-other D _ ne *> inv (pmap2 (+) (inc-at-other D a ne) (inc-at-other D b ne) *> zro-left)
@@ -202,18 +468,18 @@
           : sum-below (\lam n => inc-at D n (x n) k) N = x k
           => \case LinearOrder.dec<_<= k N \with {
             | inl k<N => sum-below.unique k<N (\lam n ne => inc-at-other D (x n) ne) *> inc-at-same D (x k) idp
-            | inr N<=k => sum-below.zero (\lam n n<N => inc-at-other D (x n) (\lam p => absurd linarith)) *> inv (z k N<=k)
+            | inr N<=k => sum-below.zero (\lam n _ => inc-at-other D (x n) (\lam _ => absurd linarith)) *> inv (z k N<=k)
           }
 
     \func lift (D : GradedProduct) {G : AbGroup} (fs : \Pi (n : Nat) -> AddGroupHom (D.H n) G) : AddGroupHom (DirectSum D) G \cowith
       | func x => (lift-value D fs x).1
       | func-+ {x} {y} => \case x.2, y.2 \with {
         | inP (N, zx), inP (M, zy) =>
-          (lift-value D fs ((AddMonoid.+ {DirectSum D}) x y)).2 (N Nat.+ M) (\lam n le => pmap2 (+) (zx n (left-le le)) (zy n (right-le le)) *> zro-left)
+          (lift-value D fs ((AddMonoid.+ {DirectSum D}) x y)).2 (N Nat.+ M) (\lam n _ => pmap2 (+) (zx n linarith) (zy n linarith) *> zro-left)
           *> pmap (sum-below __ (N Nat.+ M)) (ext \lam n => AddGroupHom.func-+ {fs n})
           *> sum-below.add _ _ (N Nat.+ M)
-          *> inv (pmap2 (+) ((lift-value D fs x).2 (N Nat.+ M) (\lam n le => zx n (left-le le)))
-                            ((lift-value D fs y).2 (N Nat.+ M) (\lam n le => zy n (right-le le))))
+          *> inv (pmap2 (+) ((lift-value D fs x).2 (N Nat.+ M) (\lam n _ => zx n linarith))
+                            ((lift-value D fs y).2 (N Nat.+ M) (\lam n _ => zy n linarith)))
       }
       \where {
         \func Value (D : GradedProduct) {G : AbGroup} (fs : \Pi (n : Nat) -> AddGroupHom (D.H n) G) (x : DirectSum D)
@@ -221,7 +487,7 @@
 
         \sfunc lift-value (D : GradedProduct) {G : AbGroup} (fs : \Pi (n : Nat) -> AddGroupHom (D.H n) G) (x : DirectSum D) : Value D fs x
           => \scase x.2 \return Value D fs x \level value-prop D fs x \with {
-            | inP (N, z) => (sum-below (\lam n => fs n (x.1 n)) N, \lam M zM => sum-below.bounds (zero-image fs z) (zero-image fs zM))
+            | inP (N, z) => (sum-below (\lam n => fs n (x.1 n)) N, \lam _ zM => sum-below.bounds (zero-image fs z) (zero-image fs zM))
           }
 
         \lemma zero-image {D : GradedProduct} {G : AbGroup} (fs : \Pi (n : Nat) -> AddGroupHom (D.H n) G) {x : \Pi (n : Nat) -> D.H n} {N : Nat}
@@ -241,7 +507,7 @@
         | inP (N, z) => (lift.lift-value D (\lam n => h AddGroupHom.∘ inc D n) x).2 N z *> inv (sum-below.hom h _ N) *> pmap h (inv (decompose-at D x z))
       }
       | f_sec fs => ext \lam n => exts \lam a =>
-          (lift.lift-value D fs (inc D n a)).2 (suc n) (\lam k le => inc-at-other D a (\lam p => absurd linarith))
+          (lift.lift-value D fs (inc D n a)).2 (suc n) (\lam _ _ => inc-at-other D a (\lam _ => absurd linarith))
           *> sum-below.unique id<suc (\lam k ne => pmap (fs k) (inc-at-other D a (\lam p => ne (inv p))) *> AddGroupHom.func-zro {fs k})
           *> pmap (fs n) (inc-at-same D a idp)
 
@@ -262,8 +528,8 @@
           | suc n => AddGroupHom.func-zro {phi (suc n)}
 
         \lemma cast-map {D D' : GradedProduct} (phi : \Pi (n : Nat) -> AddGroupHom (D.H n) (D'.H n)) {n m : Nat} (e : n = m) (a : D.H n)
-          : phi m (D.cast e a) = D'.cast e (phi n a) \elim m, e
-          | _, idp => idp
+          : phi m (D.cast e a) = D'.cast e (phi n a)
+          => GradedPairing.transport-hom phi e a
 
         \lemma inc-map {D D' : GradedProduct} (phi : \Pi (n : Nat) -> AddGroupHom (D.H n) (D'.H n))
                        (phi-mul : \Pi (p q : Nat) (a : D.H p) (b : D.H q) -> phi (p Nat.+ q) (D.mul p q a b) = D'.mul p q (phi p a) (phi q b))
@@ -278,15 +544,6 @@
     \func sum-ext {D : GradedProduct} {x y : \Sigma (x : \Pi (n : Nat) -> D.H n) (∃ (N : Nat) (\Pi (n : Nat) -> N <= n -> x n = 0))}
                   (h : \Pi (n : Nat) -> x.1 n = y.1 n) : x = y
       => ext (ext h)
-
-    \lemma left-le {N M n : Nat} (le : N Nat.+ M <= n) : N <= n
-      => linarith
-
-    \lemma right-le {N M n : Nat} (le : N Nat.+ M <= n) : M <= n
-      => linarith
-
-    \lemma support-le {N M n i j : Nat} (le : N Nat.+ M <= n) (e : i Nat.+ j = n) (i<N : i < N) : M <= j
-      => linarith
 
     \func unit (D : GradedProduct) (n : Nat) : D.H n \elim n
       | 0 => D.one

@@ -1,5 +1,6 @@
 \import Algebra.Group
 \import Algebra.Group.Chain
+\import Algebra.Group.Cochain
 \import Algebra.Group.FreeAbelian
 \import Algebra.Group.GroupHom
 \import Algebra.Module
@@ -83,23 +84,6 @@
       | htpy n x => tensorRight.relation (F.f (suc n)) (G.f (suc n)) (Y.d (suc n) AddGroupHom.∘ H.K (suc n)) (H.K n AddGroupHom.∘ X.d n) (H.htpy n) x
                     *> pmap2 (AddMonoid.+ {Tensor (Y.C (suc n)) A}) (inv (tensorRight.comp (Y.d (suc n)) (H.K (suc n)) x)) (inv (tensorRight.comp (H.K n) (X.d n) x))
   }
-
-\record CochainComplex {
-  | D : Nat -> AbGroup
-  | delta (n : Nat) : AddGroupHom (D n) (D (suc n))
-  | delta-delta (n : Nat) (x : D n) : delta (suc n) (delta n x) = 0
-}
-
-\record CochainMap (X Y : CochainComplex) {
-  | g (n : Nat) : AddGroupHom (X.D n) (Y.D n)
-  | commute (n : Nat) (x : X.D n) : Y.delta n (g n x) = g (suc n) (X.delta n x)
-}
-
-\record CochainHomotopy {X Y : CochainComplex} (F G : CochainMap X Y) {
-  | L (n : Nat) : AddGroupHom (X.D (suc n)) (Y.D n)
-  | homotopy0 (x : X.D 0) : F.g 0 x - G.g 0 x = L 0 (X.delta 0 x)
-  | homotopy (n : Nat) (x : X.D (suc n)) : F.g (suc n) x - G.g (suc n) x = L (suc n) (X.delta (suc n) x) + Y.delta n (L n x)
-}
 
 \func Cochains (X : ChainComplex) (A : AbGroup) : CochainComplex \cowith
   | D n => LinearMapAbGroup (intModule (X.C n)) (intModule A)
