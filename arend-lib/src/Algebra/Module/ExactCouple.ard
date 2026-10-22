@@ -1,0 +1,288 @@
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.Exact
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Module.Differential
+\import Algebra.Module.GradedComplex
+\import Algebra.Module.LinearMap
+\import Algebra.Module.ModuleIso
+\import Algebra.Module.Quotient
+\import Algebra.Module.SubLModule
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+\open GradedMap (pre, source)
+\open AddMonoid (*n)
+
+\record Couple.{u} (R : Ring.{u}) (G : AbGroup.{u}) (di dj dk : G) {
+  | D : G -> LModule.{u} R
+  | E : G -> LModule.{u} R
+  | i {x y : G} : x + di = y -> LinearMap (D x) (D y)
+  | j {x y : G} : x + dj = y -> LinearMap (D x) (E y)
+  | k {x y : G} : x + dk = y -> LinearMap (E x) (D y)
+} \where
+    \func IsExact.{u} (C : Couple.{u}) : \Prop
+      => \Sigma (\Pi {x y z : C.G} (p : x + C.di = y) (q : y + C.dj = z) -> AbExactAt (C.i p) (C.j q))
+                (\Pi {x y z : C.G} (p : x + C.dj = y) (q : y + C.dk = z) -> AbExactAt (C.j p) (C.k q))
+                (\Pi {x y z : C.G} (p : x + C.dk = y) (q : y + C.di = z) -> AbExactAt (C.k p) (C.i q))
+
+\record ExactCouple.{u} \extends Couple.{u} {
+  | exact-ij {x y z : G} (p : x + di = y) (q : y + dj = z) : AbExactAt (i p) (j q)
+  | exact-jk {x y z : G} (p : x + dj = y) (q : y + dk = z) : AbExactAt (j p) (k q)
+  | exact-ki {x y z : G} (p : x + dk = y) (q : y + di = z) : AbExactAt (k p) (i q)
+
+  \lemma ji-zero {x y z : G} (p : x + di = y) (q : y + dj = z) (u : D x) : j q (i p u) = 0
+    => AbExactAt.zero (exact-ij p q) u
+
+  \lemma kj-zero {x y z : G} (p : x + dj = y) (q : y + dk = z) (u : D x) : k q (j p u) = 0
+    => AbExactAt.zero (exact-jk p q) u
+
+  \lemma ik-zero {x y z : G} (p : x + dk = y) (q : y + di = z) (u : E x) : i q (k p u) = 0
+    => AbExactAt.zero (exact-ki p q) u
+
+  \func complex : DiffModule G (dk + dj) R \cowith
+    | D => E
+    | d p => GradedMap.comp j k p
+    | d-d p q u => pmap (j (+-assoc *> q)) (kj-zero (+-assoc *> p) idp (k idp u)) *> (j (+-assoc *> q)).func-zro
+
+  \func D' (x : G) => IModule (GradedMap.image i x)
+
+  \func E' (y : G) => LHomology complex y
+
+  \func i' {x y : G} (p : x + di = y) : LinearMap (D' x) (D' y)
+    => IModule.map {_} {_} {_} {GradedMap.image i x} {GradedMap.image i y} (i p) \lam {z} _ => GradedMap.image-intro i p z
+
+  \lemma j-cycle {x y : G} (q : x + dj = y) (u : D x) : DiffModule.LIsCycle {complex} y (j q u)
+    => pmap (j (+-assoc *> idp)) (kj-zero q idp u) *> (j (+-assoc *> idp)).func-zro
+
+  \func jQ {x y : G} (q : x + dj = y) : LinearMap (D x) (E' y)
+    => LinearMap.compose {R} {D x} {IModule (DiffModule.LIsCycle {complex} y)} {E' y} (QuotientLModule.proj (DiffModule.LIsBoundary {complex} y))
+                         (IModule.corestrict (j q) (j-cycle q))
+
+  \lemma jQ-zero {x y : G} (q : x + dj = y) {u : D x} (c : DiffModule.LIsBoundary {complex} y (j q u, j-cycle q u)) : jQ q u = 0
+    => (AbQuotient.proj-zero {_} {DiffModule.LIsBoundary {complex} y}).2 c
+
+  \lemma j'-index {x y : G} (q : x + (dj - di) = y) : x - di + dj = y
+    => equation.abGroup *> q
+
+  \lemma jQ-kill {x y : G} (q : x + (dj - di) = y) {v : D (x - di)} (h : i (pre x di) v = 0) : jQ (j'-index q) v = 0
+    => \case AbExactAt.lift (exact-ki (pre (x - di) dk) (pre x di)) h \with {
+      | inP (u, ku=v) => jQ-zero _ (transport (\lam w => DiffModule.LIsBoundary {complex} y (j (j'-index q) w, j-cycle _ w)) ku=v
+          (transport (DiffModule.LIsBoundary {complex} y) (ext (GradedMap.comp-eval j k (equation.abGroup *> j'-index q) (pre (x - di) dk) (j'-index q) u))
+            (DiffModule.boundary-intro {complex} (equation.abGroup *> j'-index q) u)))
+    }
+
+  \func j' {x y : G} (q : x + (dj - di) = y) : LinearMap (D' x) (E' y)
+    => ImLModule.desc (i (pre x di)) (jQ (j'-index q)) (jQ-kill q)
+
+  \lemma j'-eval {w x y : G} (r : w + di = x) (u : D w) (q : x + (dj - di) = y) (q' : w + dj = y) (z : D' x) (e : i r u = z.1) : j' q z = jQ q' u
+    => aux (source r) r u q q' z e
+    \where
+      \lemma aux {w x y : G} (s : w = x - di) (r : w + di = x) (u : D w) (q : x + (dj - di) = y) (q' : w + dj = y) (z : D' x) (e : i r u = z.1)
+        : j' q z = jQ q' u \elim w, s
+        | _, idp => ImLModule.desc.eval _ _ _ z (pmap (\lam r' => i r' u) prop-pi *> e) *> pmap (\lam q'' => jQ q'' u) prop-pi
+
+  \lemma k-image {x y : G} (p : x + dk = y) {e : E x} (c : DiffModule.LIsCycle {complex} x e) : GradedMap.image i y (k p e) \elim y, p
+    | _, idp => AbExactAt.lift (exact-ij (pre (x + dk) di) (+-assoc *> idp)) c
+
+  \func k' {x y : G} (p : x + dk = y) : LinearMap (E' x) (D' y)
+    => QuotientLModule.desc {R} {IModule (DiffModule.LIsCycle {complex} x)} {D' y} {DiffModule.LIsBoundary {complex} x}
+                            (IModule.corestrict {GradedMap.image i y} (k p LinearMap.∘ IModule.embed {DiffModule.LIsCycle {complex} x}) \lam e => k-image p e.2)
+                            \lam (inP (u, q)) => ext (pmap (\lam z => k p z.1) (inv q) *> kj-zero _ p (k idp u))
+
+  \lemma j'i'-zero {y : G} (z : D' (y - di)) : j' (idp {G} {y + (dj - di)}) (i' (pre y di) z) = 0
+    => \case z.2 \with {
+      | inP (v, iv) => j'-eval (pre y di) z.1 idp (j'-index idp) (i' (pre y di) z) idp *> pmap (jQ _) (inv iv) *> pmap in~ (ext (ji-zero _ _ v))
+    }
+
+  \lemma k'j'-zero {y : G} (z : D' (y - (dj - di))) : k' (idp {G} {y + dk}) (j' (pre y (dj - di)) z) = 0
+    => \case z.2 \with {
+      | inP (a, ia) => pmap (k' idp) (j'-eval (pre _ di) a (pre y (dj - di)) (j'-index (pre y (dj - di))) z ia) *> ext (kj-zero _ idp a)
+    }
+
+  \lemma i'k'-zero {y : G} (h : E' (y - dk)) : i' (idp {G} {y + di}) (k' (pre y dk) h) = 0 \elim h
+    | in~ e => ext (ik-zero _ idp e.1)
+
+  \lemma exact-i'j' (y : G) : AbExactAt (i' (pre y di)) (j' (idp {G} {y + (dj - di)}))
+    => \lam z' => (\lam h => \case z'.2 \with {
+      | inP (a, ia) => \case (AbQuotient.proj-zero {_} {DiffModule.LIsBoundary {complex} _}).1 (inv (j'-eval (pre y di) a idp (j'-index idp) z' ia) *> h) \with {
+        | inP (u, bu) =>
+          \let | r : y + (dj - di) - (dk + dj) + dk = y - di => equation.abGroup
+               | jy : j (j'-index idp) (a - k r u) = 0 => (j _).func-minus *> pmap (_ -) (inv (GradedMap.comp-eval j k _ r (j'-index idp) u) *> pmap __.1 bu) *> negative-right
+          \in TruncP.map (AbExactAt.lift (exact-ij (pre (y - di) di) (j'-index idp)) jy) \lam (v, iv) =>
+              ((a - k r u, inP (v, iv)), ext ((i _).func-minus *> pmap2 (-) ia (ik-zero r _ u) *> AddGroup.minus_zro))
+      }
+    }, \lam (inP (z, iz)) => pmap (j' idp) (inv iz) *> j'i'-zero z)
+
+  \lemma exact-j'k' (y : G) : AbExactAt (j' (pre y (dj - di))) (k' (idp {G} {y + dk}))
+    => \lam h => (\lam kh => \case \elim h, kh \with {
+      | in~ e, kh => TruncP.map (AbExactAt.lift (exact-jk (pre y dj) idp) (pmap __.1 kh)) \lam (a, ja) =>
+          \let r : y - dj + di = y - (dj - di) => equation.abGroup
+          \in ((i r a, GradedMap.image-intro i r a), j'-eval r a (pre y (dj - di)) (pre y dj) (i r a, GradedMap.image-intro i r a) idp *> pmap in~ (ext ja))
+    }, \lam (inP (z, jz)) => pmap (k' idp) (inv jz) *> k'j'-zero z)
+
+  \lemma exact-k'i' (y : G) : AbExactAt (k' (pre y dk)) (i' (idp {G} {y + di}))
+    => \lam z => (\lam iz => \case z.2, AbExactAt.lift (exact-ki (pre y dk) idp) (pmap __.1 iz) \with {
+      | inP (v, iv), inP (e, ke) =>
+        \let | s : y + dj = y - dk + (dk + dj) => equation.abGroup
+             | c : DiffModule.LIsCycle {complex} (y - dk) e => GradedMap.comp-eval j k idp (pre y dk) s e *> pmap (j s) (ke *> inv iv) *> ji-zero _ s v
+        \in inP (in~ (e, c), ext ke)
+    }, \lam (inP (h, kh)) => pmap (i' idp) (inv kh) *> i'k'-zero h)
+} \where {
+  \func make.{u} (C : Couple.{u}) (e : Couple.IsExact C) : ExactCouple.{u} C.R C.G C.di C.dj C.dk \cowith
+    | Couple => C
+    | exact-ij p q => e.1 p q
+    | exact-jk p q => e.2 p q
+    | exact-ki p q => e.3 p q
+
+  \lemma isExact.{u} (C : ExactCouple.{u}) : Couple.IsExact C
+    => (C.exact-ij, C.exact-jk, C.exact-ki)
+
+  \func derived.{u} (C : ExactCouple.{u}) : ExactCouple.{u} C.R C.G C.di (C.dj - C.di) C.dk \cowith
+    | D => C.D'
+    | E => C.E'
+    | i => C.i'
+    | j => C.j'
+    | k => C.k'
+    | exact-ij => GradedMap.exact {_} {_} {C.D'} {C.D'} {C.E'} C.i' C.j' C.exact-i'j'
+    | exact-jk => GradedMap.exact {_} {_} {C.D'} {C.E'} {C.D'} C.j' C.k' C.exact-j'k'
+    | exact-ki => GradedMap.exact {_} {_} {C.E'} {C.D'} {C.D'} C.k' C.i' C.exact-k'i'
+
+  \func jdeg {G : AbGroup} (di dj : G) (n : Nat) : G \elim n
+    | 0 => dj
+    | suc n => jdeg di dj n - di
+    \where {
+      \lemma eq {G : AbGroup} {di dj : G} (n : Nat) : jdeg di dj n = dj - n *n di \elim n
+        | 0 => equation.abGroup
+        | suc n => pmap (`- di) (eq n) *> equation.abGroup
+
+      \lemma index {G : AbGroup} {di dj : G} {n : Nat} {x y : G} (p : x + jdeg di dj n = y) : x - n *n di + dj = y
+        => equation.abGroup *> pmap (x +) (inv (eq n)) *> p
+    }
+
+  \func page.{u} (C : ExactCouple.{u}) (n : Nat) : ExactCouple.{u} C.R C.G C.di (jdeg C.di C.dj n) C.dk \elim n
+    | 0 => C
+    | suc n => derived (page C n)
+}
+
+\record CoupleMap.{u} (C : Couple.{u}) (C' : Couple.{u} C.R C.G C.di C.dj C.dk) {
+  | f (x : C.G) : LinearMap (C.D x) (C'.D x)
+  | g (x : C.G) : LinearMap (C.E x) (C'.E x)
+  | f-i {x y : C.G} (p : x + C.di = y) (u : C.D x) : f y (C.i p u) = C'.i p (f x u)
+  | g-j {x y : C.G} (p : x + C.dj = y) (u : C.D x) : g y (C.j p u) = C'.j p (f x u)
+  | f-k {x y : C.G} (p : x + C.dk = y) (u : C.E x) : f y (C.k p u) = C'.k p (g x u)
+} \where {
+  \func id.{u} {C : Couple.{u}} : CoupleMap C C \cowith
+    | f _ => LinearMap.id
+    | g _ => LinearMap.id
+    | f-i _ _ => idp
+    | g-j _ _ => idp
+    | f-k _ _ => idp
+
+  \func compose.{u} {C : Couple.{u}} {C' C'' : Couple.{u} C.R C.G C.di C.dj C.dk} (F' : CoupleMap C' C'') (F : CoupleMap C C') : CoupleMap C C'' \cowith
+    | f x => F'.f x LinearMap.∘ F.f x
+    | g x => F'.g x LinearMap.∘ F.g x
+    | f-i p u => pmap (F'.f _) (F.f-i p u) *> F'.f-i p _
+    | g-j p u => pmap (F'.g _) (F.g-j p u) *> F'.g-j p _
+    | f-k p u => pmap (F'.f _) (F.f-k p u) *> F'.f-k p _
+
+  \lemma exact-iso {R : Ring} {U U' V V' W W' : LModule R} {f : LinearMap U V} {g : LinearMap V W} {f' : LinearMap U' V'} {g' : LinearMap V' W'}
+                   {a : LinearMap U' U} (ai : ModuleIso a) {b : LinearMap V' V} (bi : ModuleIso b) {c : LinearMap W' W} (ci : ModuleIso c)
+                   (s1 : \Pi (u : U') -> b (f' u) = f (a u)) (s2 : \Pi (v : V') -> c (g' v) = g (b v)) (e : AbExactAt f g) : AbExactAt f' g'
+    => AbExactAt.transport f g f' g' a ai.isSurj bi.finv bi.reverse.isSurj bi.reverse.isInj ci.finv ci.reverse.isInj
+        (\lam u => inv (bi.finv_f _) *> pmap bi.finv (s1 u))
+        (\lam v => inv (ci.finv_f _) *> pmap ci.finv (s2 _ *> pmap g (bi.f_finv v))) e
+
+  \func complexMap.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap C C') : LComplexMap C.complex C'.complex
+    => DiffModule.hom {_} {_} {_} {C.complex} {C'.complex} F.g \lam _ u => pmap (C'.j _) (inv (F.f-k idp u)) *> inv (F.g-j _ _)
+
+  \func derivedMap.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap C C')
+    : CoupleMap (ExactCouple.derived C) (ExactCouple.derived C') \cowith
+    | f x => IModule.map {_} {_} {_} {GradedMap.image C.i x} {GradedMap.image C'.i x} (F.f x) \lam (inP (v, iv)) => inP (F.f _ v, inv (F.f-i _ v) *> pmap (F.f x) iv)
+    | g y => LComplexMap.lhomology {_} {_} {_} {_} {C.complex} {C'.complex} (complexMap {C} {C'} F) y
+    | f-i p z => ext (F.f-i p z.1)
+    | g-j {x} {y} q z => \case z.2 \with {
+      | inP (a, ia) => pmap (LComplexMap.lhomology {_} {_} {_} {_} {C.complex} {C'.complex} (complexMap {C} {C'} F) y) (C.j'-eval (pre x C.di) a q (C.j'-index q) z ia)
+          *> pmap in~ (ext (F.g-j _ a))
+          *> inv (C'.j'-eval (pre x C.di) (F.f _ a) q (C'.j'-index q) (IModule.map {_} {_} {_} {GradedMap.image C.i x} {GradedMap.image C'.i x} (F.f x) (\lam (inP (v, iv)) => inP (F.f _ v, inv (F.f-i _ v) *> pmap (F.f x) iv)) z) (inv (F.f-i _ a) *> pmap (F.f x) ia))
+    }
+    | f-k p h => \case \elim h \with {
+      | in~ e => ext (F.f-k p e.1)
+    }
+
+  \func pageMap.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap C C') (n : Nat)
+    : CoupleMap (ExactCouple.page C n) (ExactCouple.page C' n) \elim n
+    | 0 => F
+    | suc n => derivedMap {ExactCouple.page C n} {ExactCouple.page C' n} (pageMap {C} {C'} F n)
+
+  \lemma derivedMap-id-f.{u} {C : ExactCouple.{u}} {x : C.G} (z : C.D' x) : CoupleMap.f {derivedMap (id {C})} x z = z
+    => ext idp
+
+  \lemma derivedMap-id-g.{u} {C : ExactCouple.{u}} {y : C.G} (h : C.E' y) : CoupleMap.g {derivedMap (id {C})} y h = h \elim h
+    | in~ e => pmap in~ (ext idp)
+
+  \lemma derivedMap-comp-f.{u} {C : ExactCouple.{u}} {C' C'' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F' : CoupleMap C' C'') (F : CoupleMap C C')
+                               {x : C.G} (z : C.D' x)
+    : CoupleMap.f {derivedMap {C'} {C''} F'} x (CoupleMap.f {derivedMap {C} {C'} F} x z) = CoupleMap.f {derivedMap {C} {C''} (compose {C} {C'} {C''} F' F)} x z
+    => ext idp
+
+  \lemma derivedMap-comp-g.{u} {C : ExactCouple.{u}} {C' C'' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F' : CoupleMap C' C'') (F : CoupleMap C C')
+                               {y : C.G} (h : C.E' y)
+    : CoupleMap.g {derivedMap {C'} {C''} F'} y (CoupleMap.g {derivedMap {C} {C'} F} y h) = CoupleMap.g {derivedMap {C} {C''} (compose {C} {C'} {C''} F' F)} y h \elim h
+    | in~ e => pmap in~ (ext idp)
+}
+
+\record CoupleIso.{u} \extends CoupleMap.{u}
+  | f-iso (x : C.G) : ModuleIso {C.R} {C.D x} {C'.D x} (f x)
+  | g-iso (x : C.G) : ModuleIso {C.R} {C.E x} {C'.E x} (g x)
+  \where {
+    \func inverse.{u} {C : Couple.{u}} {C' : Couple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleIso C C') : CoupleIso C' C \cowith
+      | f x => (F.f-iso x).finv
+      | g x => (F.g-iso x).finv
+      | f-i p u => (F.f-iso _).isInj ((F.f-iso _).f_finv _ *> pmap (C'.i p) (inv ((F.f-iso _).f_finv u)) *> inv (F.f-i p _))
+      | g-j p u => (F.g-iso _).isInj ((F.g-iso _).f_finv _ *> pmap (C'.j p) (inv ((F.f-iso _).f_finv u)) *> inv (F.g-j p _))
+      | f-k p u => (F.f-iso _).isInj ((F.f-iso _).f_finv _ *> pmap (C'.k p) (inv ((F.g-iso _).f_finv u)) *> inv (F.f-k p _))
+      | f-iso x => (F.f-iso x).reverse
+      | g-iso x => (F.g-iso x).reverse
+
+    \func compose.{u} {C : Couple.{u}} {C' C'' : Couple.{u} C.R C.G C.di C.dj C.dk} (F' : CoupleIso C' C'') (F : CoupleIso C C') : CoupleIso C C'' \cowith
+      | CoupleMap => CoupleMap.compose {C} {C'} {C''} F' F
+      | f-iso x => \new ModuleIso {
+        | finv => (F.f-iso x).finv LinearMap.∘ (F'.f-iso x).finv
+        | finv_f u => pmap (F.f-iso x).finv ((F'.f-iso x).finv_f _) *> (F.f-iso x).finv_f u
+        | f_finv v => pmap (F'.f x) ((F.f-iso x).f_finv _) *> (F'.f-iso x).f_finv v
+      }
+      | g-iso x => \new ModuleIso {
+        | finv => (F.g-iso x).finv LinearMap.∘ (F'.g-iso x).finv
+        | finv_f u => pmap (F.g-iso x).finv ((F'.g-iso x).finv_f _) *> (F.g-iso x).finv_f u
+        | f_finv v => pmap (F'.g x) ((F.g-iso x).f_finv _) *> (F'.g-iso x).f_finv v
+      }
+
+    \func transfer.{u} {C' : Couple.{u}} (C : ExactCouple.{u} C'.R C'.G C'.di C'.dj C'.dk) (F : CoupleIso C' C)
+      : ExactCouple.{u} C'.R C'.G C'.di C'.dj C'.dk \cowith
+      | Couple => C'
+      | exact-ij p q => CoupleMap.exact-iso (F.f-iso _) (F.f-iso _) (F.g-iso _) (F.f-i p) (F.g-j q) (C.exact-ij p q)
+      | exact-jk p q => CoupleMap.exact-iso (F.f-iso _) (F.g-iso _) (F.f-iso _) (F.g-j p) (F.f-k q) (C.exact-jk p q)
+      | exact-ki p q => CoupleMap.exact-iso (F.g-iso _) (F.f-iso _) (F.f-iso _) (F.f-k p) (F.f-i q) (C.exact-ki p q)
+
+    \func pageIso.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleIso C C') (n : Nat)
+      : CoupleIso (ExactCouple.page C n) (ExactCouple.page C' n) \elim n
+      | 0 => F
+      | suc n => derivedIso {ExactCouple.page C n} {ExactCouple.page C' n} (pageIso {C} {C'} F n)
+
+    \func derivedIso.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleIso C C')
+      : CoupleIso (ExactCouple.derived C) (ExactCouple.derived C') \cowith
+      | CoupleMap => CoupleMap.derivedMap {C} {C'} F
+      | f-iso x => \new ModuleIso {
+        | finv => CoupleMap.f {CoupleMap.derivedMap {C'} {C} (inverse {C} {C'} F)} x
+        | finv_f z => ext ((F.f-iso x).finv_f z.1)
+        | f_finv z => ext ((F.f-iso x).f_finv z.1)
+      }
+      | g-iso => LComplexMap.homologyIso {_} {_} {_} {_} {C.complex} {C'.complex} (CoupleMap.complexMap {C} {C'} F) F.g-iso
+  }

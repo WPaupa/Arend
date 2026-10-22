@@ -1,0 +1,113 @@
+\import Algebra.Group
+\import Algebra.Group.Exact
+\import Algebra.Meta
+\import Algebra.Group.GradedComplex
+\import Algebra.Module
+\import Algebra.Module.GradedComplex
+\import Algebra.Module.LinearMap
+\import Algebra.Module.SubLModule
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\func GradedMap {R : Ring} {G : AbGroup} (A B : G -> LModule R) (a : G) : \Type
+  => \Pi {x y : G} -> x + a = y -> LinearMap (A x) (B y)
+  \where {
+    \lemma pre {G : AbGroup} (y a : G) : y - a + a = y
+      => +-assoc *> pmap (y +) negative-left *> zro-right
+
+    \lemma source {G : AbGroup} {x y a : G} (p : x + a = y) : x = y - a
+      => inv (pmap (`- a) (inv p) *> +-assoc *> pmap (x +) negative-right *> zro-right)
+
+    \func id {R : Ring} {G : AbGroup} {A : G -> LModule R} : GradedMap A A 0
+      => \lam {x} p => transport (\lam z => LinearMap (A x) (A z)) (inv zro-right *> p) LinearMap.id
+
+    \lemma id-eval {R : Ring} {G : AbGroup} {A : G -> LModule R} {x : G} (p : x + 0 = x) (u : A x) : id p u = u
+      => pmap (\lam (e : x = x) => transport (\lam z => LinearMap (A x) (A z)) e LinearMap.id u) (prop-pi {x = x} {inv zro-right *> p} {idp})
+
+    \lemma id-zero {R : Ring} {G : AbGroup} {A : G -> LModule R} {x y : G} (p : x + 0 = y) {u : A x} (h : id p u = 0) : u = 0
+      => aux (inv zro-right *> p) p h
+      \where
+        \lemma aux {R : Ring} {G : AbGroup} {A : G -> LModule R} {x y : G} (s : x = y) (p : x + 0 = y) {u : A x} (h : id p u = 0) : u = 0 \elim y, s
+          | _, idp => inv (id-eval p u) *> h
+
+    \lemma id-right {R : Ring} {G : AbGroup} {A B : G -> LModule R} {a : G} (f : GradedMap A B a) {x w y : G} (p : x + 0 = w) (q : w + a = y) (q' : x + a = y) (u : A x)
+      : f q (id p u) = f q' u
+      => aux f (inv zro-right *> p) p q q' u
+      \where
+        \lemma aux {R : Ring} {G : AbGroup} {A B : G -> LModule R} {a : G} (f : GradedMap A B a) {x w y : G} (s : x = w) (p : x + 0 = w) (q : w + a = y) (q' : x + a = y) (u : A x)
+          : f q (id p u) = f q' u \elim w, s
+          | _, idp => pmap (f q) (id-eval p u) *> pmap (\lam r => f r u) prop-pi
+
+    \lemma id-left {R : Ring} {G : AbGroup} {A B : G -> LModule R} {a : G} (f : GradedMap A B a) {x w y : G} (q : x + a = w) (p : w + 0 = y) (q' : x + a = y) (u : A x)
+      : id p (f q u) = f q' u
+      => aux f (inv zro-right *> p) q p q' u
+      \where
+        \lemma aux {R : Ring} {G : AbGroup} {A B : G -> LModule R} {a : G} (f : GradedMap A B a) {x w y : G} (s : w = y) (q : x + a = w) (p : w + 0 = y) (q' : x + a = y) (u : A x)
+          : id p (f q u) = f q' u \elim y, s
+          | _, idp => id-eval p _ *> pmap (\lam r => f r u) prop-pi
+
+    \func comp {R : Ring} {G : AbGroup} {A B C : G -> LModule R} {a b : G} (g : GradedMap B C b) (f : GradedMap A B a) : GradedMap A C (a + b)
+      => \lam {x} {y} p => g {x + a} {y} (+-assoc *> p) LinearMap.∘ f {x} {x + a} idp
+
+    \lemma comp-eval {R : Ring} {G : AbGroup} {A B C : G -> LModule R} {a b : G} (g : GradedMap B C b) (f : GradedMap A B a)
+                     {x w y : G} (p : x + (a + b) = y) (p1 : x + a = w) (p2 : w + b = y) (u : A x) : comp g f p u = g p2 (f p1 u) \elim w, p1
+      | _, idp => pmap (\lam q => g q (f idp u)) (prop-pi {x + a + b = y} {+-assoc *> p} {p2})
+
+    \lemma zero-move {R : Ring} {G : AbGroup} {A B : G -> LModule R} {a : G} (f : GradedMap A B a) {x y y' : G} (p : x + a = y) (p' : x + a = y')
+                     {u : A x} (h : f p u = 0) : f p' u = 0 \elim y, y', p, p'
+      | _, _, idp, idp => h
+
+    \lemma exact {R : Ring} {G : AbGroup} {A B C : G -> LModule R} {a b : G} (f : GradedMap A B a) (g : GradedMap B C b)
+                 (e : \Pi (y : G) -> AbExactAt (f (pre y a)) (g idp)) {x y z : G} (p : x + a = y) (q : y + b = z) : AbExactAt (f p) (g q)
+      => aux f g e (source p) p q
+      \where
+        \lemma aux {R : Ring} {G : AbGroup} {A B C : G -> LModule R} {a b : G} (f : GradedMap A B a) (g : GradedMap B C b)
+                   (e : \Pi (y : G) -> AbExactAt (f (pre y a)) (g idp)) {x y z : G} (s : x = y - a) (p : x + a = y) (q : y + b = z)
+          : AbExactAt (f p) (g q) \elim x, z, s, q
+          | _, _, idp, idp => transport (\lam p' => AbExactAt (f p') (g idp)) prop-pi (e y)
+
+    \func image {R : Ring} {G : AbGroup} {A B : G -> LModule R} {a : G} (f : GradedMap A B a) (y : G) : SubLModule R (B y)
+      => ImageLModule (f (pre y a))
+
+    \lemma image-intro {R : Ring} {G : AbGroup} {A B : G -> LModule R} {a : G} (f : GradedMap A B a) {x y : G} (p : x + a = y) (u : A x)
+      : image f y (f p u)
+      => aux f (source p) p u
+      \where
+        \lemma aux {R : Ring} {G : AbGroup} {A B : G -> LModule R} {a : G} (f : GradedMap A B a) {x y : G} (s : x = y - a) (p : x + a = y) (u : A x)
+          : image f y (f p u) \elim x, s
+          | _, idp => inP (u, pmap (\lam q => f q u) prop-pi)
+  }
+
+\record DiffModule (G : AbGroup) (deg : G) \extends LGradedComplex {
+  | Ix => G
+  | src y => y - deg
+  | tgt y => y + deg
+  | d {x y : G} : x + deg = y -> LinearMap (D x) (D y)
+  | d-d {x y z : G} (p : x + deg = y) (q : y + deg = z) (u : D x) : d q (d p u) = 0
+  | dIn y => d (GradedMap.pre y deg)
+  | dOut _ => d idp
+  | dOut-dIn _ => d-d _ idp
+  | dIn-*c {y} => (d (GradedMap.pre y deg)).func-*c
+  | dOut-*c {y} => (d (idp {G} {y + deg})).func-*c
+
+  \lemma cycle {x y : G} (p : x + deg = y) (u : D x) : LIsCycle y (d p u)
+    => d-d p idp u
+
+  \lemma boundary-intro {x y : G} (p : x + deg = y) (u : D x) : LIsBoundary y (d p u, cycle p u)
+    => \case GradedMap.image-intro d p u \with {
+      | inP (v, q) => inP (v, ext q)
+    }
+} \where
+  \func hom {R : Ring} {G : AbGroup} {deg : G} {X Y : DiffModule G deg R} (h : \Pi (x : G) -> LinearMap (X.D x) (Y.D x))
+            (c : \Pi {x y : G} (p : x + deg = y) (u : X.D x) -> Y.d p (h x u) = h y (X.d p u)) : LComplexMap X Y \cowith
+    | f => h
+    | commIn _ => c _
+    | commOut _ => c idp
+    | f-*c {y} => (h y).func-*c
+

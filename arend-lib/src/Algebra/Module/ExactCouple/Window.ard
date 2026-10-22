@@ -1,0 +1,105 @@
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.Exact
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Module.Differential
+\import Algebra.Module.ExactCouple
+\import Algebra.Module.ExactCouple.Cumulative
+\import Algebra.Module.LinearMap
+\import Algebra.Module.SubLModule
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+\open GradedMap (pre)
+\open ExactCouple (jdeg)
+\open AddMonoid (*n)
+
+\record WindowDiagram.{u} (C : ExactCouple.{u}) (n : Nat) {
+  | W : C.G -> LModule C.R
+  | rho (y : C.G) : LinearMap (W y) (C.E y)
+  | delta (y : C.G) : LinearMap (W y) (C.D (y + C.dk - n *n C.di))
+  | delta-rho (y : C.G) (t : W y) : iter C n (pre (y + C.dk) (n *n C.di)) (delta y t) = C.k idp (rho y t)
+  | dshort (y : C.G) : LinearMap (W y) (C.E (y + (C.dk + jdeg C.di C.dj n)))
+  | j-delta (y : C.G) (t : W y) : C.j (jdeg.index (+-assoc *> idp)) (delta y t) = dshort y t
+  | V : C.G -> LModule C.R
+  | q (y : C.G) : LinearMap (C.D (y + C.dk)) (V y)
+  | obstruction (y : C.G) : LinearMap (C.E y) (V y)
+  | obstruction-k (y : C.G) (x : C.E y) : obstruction y x = q y (C.k idp x)
+  | exact-rho (y : C.G) : AbExactAt (rho y) (obstruction y)
+  | exact-q (y : C.G) : AbExactAt (iter C n (pre (y + C.dk) (n *n C.di))) (q y)
+  | S : C.G -> LModule C.R
+  | short (y : C.G) : LinearMap (S y) (C.E y)
+  | tower (y : C.G) : LinearMap (S y) (C.D (y - C.dj))
+  | exact-tower (y : C.G) : AbExactAt (tower y) (iter C n (idp {C.G} {y - C.dj + n *n C.di}))
+  | tower-short (y : C.G) (s : S y) : C.j (pre y C.dj) (tower y s) = short y s
+
+  \lemma cycles {y : C.G} (x : C.E y) : cumulative.Z C n y x <-> ∃ (t : W y) (rho y t = x)
+    => (\lam h => (exact-rho y x).1 (obstruction-k y x *> (exact-q y _).2 h),
+        \lam (inP (t, rt)) => inP (delta y t, delta-rho y t *> pmap (C.k idp) rt))
+
+  \lemma boundaries {y : C.G} (e : IModule (cumulative.Z C n y)) : cumulative.B C n y e <-> ∃ (s : S y) (short y s = e.1)
+    => (\lam (inP (u, bu)) => TruncP.map ((exact-tower _ u.1).1 u.2) \lam (s, ts) => (s, inv (tower-short y s) *> pmap (C.j _) ts *> pmap __.1 bu),
+        \lam (inP (s, ss)) => inP ((tower y s, (exact-tower _ _).2 (inP (s, idp))), ext (tower-short y s *> ss)))
+
+  \lemma differential {y : C.G} (t : W y)
+    : Couple.j {cumulative C n} (+-assoc *> idp) (Couple.k {cumulative C n} idp (in~ (rho y t, (cycles (rho y t)).2 (inP (t, idp)))))
+      = in~ (dshort y t, cumulative.Z-zero C n (inv (pmap (C.k idp) (j-delta y t)) *> C.kj-zero _ idp _))
+    => cumulative.j-eval C n (pre _ _) (delta y t) (+-assoc *> idp) (jdeg.index (+-assoc *> idp))
+                         (Couple.k {cumulative C n} idp (in~ (rho y t, (cycles (rho y t)).2 (inP (t, idp))))) (delta-rho y t)
+       *> pmap in~ (ext (j-delta y t))
+}
+
+\record WindowStep \extends WindowDiagram {
+  | inner (y : C.G) : LinearMap (S (y + (C.dk + jdeg C.di C.dj n))) (W y)
+  | rho-inner (y : C.G) (s : S (y + (C.dk + jdeg C.di C.dj n))) : rho y (inner y s) = 0
+  | dshort-inner (y : C.G) (s : S (y + (C.dk + jdeg C.di C.dj n))) : dshort y (inner y s) = short _ s
+  | Long : C.G -> LModule C.R
+  | shrink (y : C.G) : LinearMap (Long y) (W y)
+  | exact-shrink (y : C.G) : AbExactAt (shrink y) (dshort y)
+  | delta-long (y : C.G) : LinearMap (Long y) (C.D (y + C.dk - suc n *n C.di))
+  | delta-long-rho (y : C.G) (l : Long y) : iter C (suc n) (pre (y + C.dk) (suc n *n C.di)) (delta-long y l) = C.k idp (rho y (shrink y l))
+
+  \lemma corrected-lift {y : C.G} (t : W y)
+    (h : Couple.j {cumulative C n} (+-assoc *> idp) (Couple.k {cumulative C n} idp (in~ (rho y t, (cycles (rho y t)).2 (inP (t, idp))))) = 0)
+    : ∃ (l : Long y) (rho y (shrink y l) = rho y t)
+    => \case (boundaries _).1 ((AbQuotient.proj-zero {_} {cumulative.B C n _}).1 (inv (differential t) *> h)) \with {
+      | inP (s, ss) => TruncP.map ((exact-shrink y (t - inner y s)).1 ((dshort y).func-minus *> pmap2 (-) idp (dshort-inner y s *> ss) *> negative-right))
+          \lam (l, sl) => (l, pmap (rho y) sl *> (rho y).func-minus *> pmap (_ -) (rho-inner y s) *> AddGroup.minus_zro)
+    }
+
+  \lemma next-cycle {y : C.G} (t : W y)
+    (h : Couple.j {cumulative C n} (+-assoc *> idp) (Couple.k {cumulative C n} idp (in~ (rho y t, (cycles (rho y t)).2 (inP (t, idp))))) = 0)
+    : cumulative.Z C (suc n) y (rho y t)
+    => TruncP.map (corrected-lift t h) \lam (l, rl) => (delta-long y l, delta-long-rho y l *> pmap (C.k idp) rl)
+}
+
+\record WindowMap.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} {n : Nat} (F : CoupleMap C C') (A : WindowDiagram C n) (A' : WindowDiagram C' n) {
+  | w (y : C.G) : LinearMap (A.W y) (A'.W y)
+  | s (y : C.G) : LinearMap (A.S y) (A'.S y)
+  | w-rho (y : C.G) (t : A.W y) : F.g y (A.rho y t) = A'.rho y (w y t)
+  | w-delta (y : C.G) (t : A.W y) : F.f _ (A.delta y t) = A'.delta y (w y t)
+  | w-dshort (y : C.G) (t : A.W y) : F.g _ (A.dshort y t) = A'.dshort y (w y t)
+  | s-short (y : C.G) (x : A.S y) : F.g y (A.short y x) = A'.short y (s y x)
+  | s-tower (y : C.G) (x : A.S y) : F.f _ (A.tower y x) = A'.tower y (s y x)
+
+  \lemma lift {y : C.G} {x : C.E y} (h : ∃ (t : A.W y) (A.rho y t = x)) : ∃ (t : A'.W y) (A'.rho y t = F.g y x)
+    => TruncP.map h \lam (t, rt) => (w y t, inv (w-rho y t) *> pmap (F.g y) rt)
+
+  \lemma short-lift {y : C.G} {x : C.E y} (h : ∃ (u : A.S y) (A.short y u = x)) : ∃ (u : A'.S y) (A'.short y u = F.g y x)
+    => TruncP.map h \lam (u, su) => (s y u, inv (s-short y u) *> pmap (F.g y) su)
+
+  \lemma class {y : C.G} (t : A.W y)
+    : CoupleMap.g {cumulativeMap {C} {C'} F n} y (in~ (A.rho y t, (A.cycles (A.rho y t)).2 (inP (t, idp))))
+      = in~ (A'.rho y (w y t), (A'.cycles (A'.rho y (w y t))).2 (inP (w y t, idp)))
+    => pmap in~ (ext (w-rho y t))
+
+  \lemma differential {y : C.G} (t : A.W y)
+    : CoupleMap.g {cumulativeMap {C} {C'} F n} _ (in~ (A.dshort y t, cumulative.Z-zero C n (inv (pmap (C.k idp) (A.j-delta y t)) *> C.kj-zero _ idp _)))
+      = in~ (A'.dshort y (w y t), cumulative.Z-zero C' n (inv (pmap (C'.k idp) (A'.j-delta y (w y t))) *> C'.kj-zero _ idp _))
+    => pmap in~ (ext (w-dshort y t))
+}

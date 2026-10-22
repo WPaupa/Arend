@@ -62,25 +62,4 @@
 
   \func homology (y : Ix) : AddGroupHom (Homology X y) (Homology Y y)
     => Coker.map (X.boundary y) (Y.boundary y) (f (src y)) (cycles y) \lam x => ext (inv (commIn y x))
-} \where {
-  \func id {Ix : \Set} {src tgt : Ix -> Ix} {X : GradedComplex Ix src tgt} : ComplexMap X X \cowith
-    | f _ => AddGroupHom.id
-    | commIn _ _ => idp
-    | commOut _ _ => idp
-
-  \func compose {Ix : \Set} {src tgt : Ix -> Ix} {X Y Z : GradedComplex Ix src tgt} (G : ComplexMap Y Z) (F : ComplexMap X Y) : ComplexMap X Z \cowith
-    | f y => G.f y AddGroupHom.∘ F.f y
-    | commIn y x => G.commIn y (F.f _ x) *> pmap (G.f y) (F.commIn y x)
-    | commOut y x => G.commOut y (F.f y x) *> pmap (G.f _) (F.commOut y x)
-
-  \lemma homology-id {Ix : \Set} {src tgt : Ix -> Ix} {X : GradedComplex Ix src tgt} {y : Ix} (h : Homology X y) : ComplexMap.homology {id {_} {_} {_} {X}} y h = h \elim h
-    | in~ z => pmap in~ (ext idp)
-
-  \lemma homology-comp {Ix : \Set} {src tgt : Ix -> Ix} {X Y Z : GradedComplex Ix src tgt} (G : ComplexMap Y Z) (F : ComplexMap X Y) {y : Ix} (h : Homology X y)
-    : G.homology y (F.homology y h) = ComplexMap.homology {compose G F} y h \elim h
-    | in~ z => pmap in~ (ext idp)
-
-  \lemma homology-at {Ix : \Set} {src tgt : Ix -> Ix} {X Y : GradedComplex Ix src tgt} {F G : ComplexMap X Y} (y : Ix) (p : \Pi (x : X.D y) -> F.f y x = G.f y x)
-    : F.homology y = G.homology y
-    => Coker.hom-ext (F.homology y) _ \lam z => pmap in~ (ext (p z.1))
 }
