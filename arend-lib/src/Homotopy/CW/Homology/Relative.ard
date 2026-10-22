@@ -2,6 +2,7 @@
 \import Algebra.Group.Chain
 \import Algebra.Group.Chain.LongExact
 \import Algebra.Group.FreeAbelian
+\import Algebra.Group.GradedComplex
 \import Algebra.Group.GroupHom
 \import Algebra.Group.Cokernel
 \import Algebra.Group.Product

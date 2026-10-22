@@ -2,6 +2,7 @@
 \import Algebra.Group.Chain
 \import Algebra.Group.Chain.LongExact
 \import Algebra.Group.Exact
+\import Algebra.Group.GradedComplex
 \import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
 \import Category (Iso)
@@ -166,7 +167,7 @@
                          (r : ChainComplex.Cycles {M.pair.relComplex} 0)
     : in~ r = {Homology M.pair.relComplex 0} AddMonoid.zro {Homology M.pair.relComplex 0}
     => \case total-image.{u} M sur (in~ (SplitExact.s {M.pair.relSplit} 0 r.1, idp)) \with {
-      | inP (x, q) => Homology.class-ext {_} {_} {r} {ChainMap.cycles {M.pair.relProj} 0 (SplitExact.s {M.pair.relSplit} 0 r.1, idp)} (inv (SplitExact.ps {M.pair.relSplit} 0 r.1))
+      | inP (x, q) => Homology.class-ext {M.pair.relComplex} {_} {r} {ChainMap.cycles {M.pair.relProj} 0 (SplitExact.s {M.pair.relSplit} 0 r.1, idp)} (inv (SplitExact.ps {M.pair.relSplit} 0 r.1))
                       *> pmap (ChainMap.homology {M.pair.relProj} 0) (inv q)
                       *> AbExactAt.zero (SplitExact.middle M.pair.relSplit 0) x
     }

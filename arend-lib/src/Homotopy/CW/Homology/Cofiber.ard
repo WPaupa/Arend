@@ -1,6 +1,7 @@
 \import Algebra.Group
 \import Algebra.Group.Chain
 \import Algebra.Group.FreeAbelian (ZFree)
+\import Algebra.Group.GradedComplex
 \import Algebra.Group.GroupHom
 \import Algebra.Monoid
 \import Arith.Int

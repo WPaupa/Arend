@@ -96,8 +96,8 @@
       | func-+ => exts \lam _ => idp
 
     \func map {X Y : ChainComplex} (F : ChainMap X Y) (A : AbGroup) : CochainMap (Cochains Y A) (Cochains X A) \cowith
-      | g n => precomp (F.f n) A
-      | commute n phi => exts \lam x => pmap phi (inv (F.comm n x))
+      | f n => precomp (F.f n) A
+      | commOut n phi => exts \lam x => pmap phi (inv (F.comm n x))
 
     \func homotopy {X Y : ChainComplex} {F G : ChainMap X Y} (H : ChainHomotopy F G) (A : AbGroup)
       : CochainHomotopy (map F A) (map G A) \cowith

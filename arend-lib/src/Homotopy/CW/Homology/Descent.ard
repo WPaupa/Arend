@@ -2,6 +2,7 @@
 
 \import Algebra.Group
 \import Algebra.Group.Chain
+\import Algebra.Group.GradedComplex
 \import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
 \import Category (Iso, univalence)

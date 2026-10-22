@@ -2,6 +2,7 @@
 \import Algebra.Group.Chain
 \import Algebra.Group.Cokernel
 \import Algebra.Group.Exact
+\import Algebra.Group.GradedComplex
 \import Algebra.Group.GroupHom
 \import Algebra.Group.Product
 \import Algebra.Meta
@@ -102,12 +103,12 @@
 
   \lemma exact-middle (n : Nat) : AbExactAt (i.homology n) (p.homology n)
     => \lam c => \case \elim c \with {
-      | in~ b => (\lam pc => \case Homology.class-eq-inv pc \with {
+      | in~ b => (\lam pc => \case Homology.class-eq-inv {Q} pc \with {
         | inP (w, dw) =>
           \have | pb' : p.f n (corr b.1 w) = 0 => (p.f n).func-minus *> pmap (_ -) (inv (p.comm n _) *> pmap (Q.d n) (ps (suc n) w) *> dw) *> equation.abGroup
-                | cb' : B.dOut n (corr b.1 w) = 0 => (B.dOut n).func-minus *> pmap2 (\lam x y => x - y) b.2 (B.dOut-d n _) *> negative-right
+                | cb' : B.dOut n (corr b.1 w) = 0 => (B.dOut n).func-minus *> pmap2 (\lam x y => x - y) b.2 (B.dOut-dIn n _) *> negative-right
           \in inP (in~ (r n (corr b.1 w), i-cycle n _ (pmap (B.dOut n) (kernel n _ pb') *> cb')),
-                   Homology.class-eq (negative (s (suc n) w)) ((B.d n).func-negative *> equation.abGroup *> pmap (\lam x => x - b.1) (inv (kernel n _ pb'))))
+                   Homology.class-eq {B} (negative (s (suc n) w)) ((B.d n).func-negative *> equation.abGroup *> pmap (\lam x => x - b.1) (inv (kernel n _ pb'))))
       }, \lam (inP (x, q)) => inv (pmap (p.homology n) q) *> zero x)
     }
     \where {
@@ -119,7 +120,7 @@
 
   \lemma exact-right (n : Nat) : AbExactAt (p.homology (suc n)) (connecting n)
     => \lam c => \case \elim c \with {
-      | in~ z => (\lam dc => \case Homology.class-eq-inv dc \with {
+      | in~ z => (\lam dc => \case Homology.class-eq-inv {A} dc \with {
         | inP (u, du) =>
           \have cb : B.d n (corr z.1 u) = 0 => (B.d n).func-minus *> pmap2 (\lam x y => x - y) (inv (lift-eq n z.1 z.2)) (i.comm n u)
                                                 *> inv (i.f n).func-minus *> pmap (i.f n) (pmap (_ -) du *> equation.abGroup) *> AddMonoidHom.func-zro {i.f n}
@@ -130,7 +131,7 @@
       \func corr {n : Nat} (z : Q.C (suc n)) (u : A.C (suc n)) : B.C (suc n) => s (suc n) z - i.f (suc n) u
 
       \lemma zero (x : Homology B (suc n)) : connecting n (p.homology (suc n) x) = 0 \elim x
-        | in~ b => Homology.class-eq (negative (r (suc n) b.1))
+        | in~ b => Homology.class-eq {A} (negative (r (suc n) b.1))
                      ((A.d n).func-negative *> inv (lift-p n b.1 *> pmap (\lam y => r n y - _) b.2 *> pmap (`- _) (AddMonoidHom.func-zro {r n}) *> zro-left) *> inv AddGroup.minus_zro)
     }
 
@@ -141,17 +142,17 @@
 
   \lemma exact-left (n : Nat) : AbExactAt (connecting n) (i.homology n)
     => \lam x => \case \elim x \with {
-      | in~ a => (\lam ia => \case Homology.class-eq-inv ia \with {
+      | in~ a => (\lam ia => \case Homology.class-eq-inv {B} ia \with {
         | inP (w, dw) =>
           \have cz : Q.d n (p.f (suc n) w) = 0 => p.comm n w *> pmap (p.f n) dw *> (p.f n).func-minus *> pmap2 (\lam x y => x - y) (pi n a.1) (AddMonoidHom.func-zro {p.f n}) *> negative-right
           \in inP (in~ (p.f (suc n) w, cz),
-                   Homology.class-eq (negative (r (suc n) w))
+                   Homology.class-eq {A} (negative (r (suc n) w))
                      ((A.d n).func-negative *> inv (pmap (`- a.1) (lift-p n w *> pmap (\lam y => r n y - _) dw *> pmap (`- _) ((r n).func-minus *> pmap2 (\lam x y => x - y) (ri n a.1) (AddMonoidHom.func-zro {r n}))) *> equation.abGroup)))
       }, \lam (inP (y, q)) => inv (pmap (i.homology n) q) *> zero y)
     }
     \where
       \lemma zero (y : Homology Q (suc n)) : i.homology n (connecting n y) = 0 \elim y
-        | in~ z => Homology.class-eq (s (suc n) z.1) (inv (lift-eq n z.1 z.2) *> inv AddGroup.minus_zro)
+        | in~ z => Homology.class-eq {B} (s (suc n) z.1) (inv (lift-eq n z.1 z.2) *> inv AddGroup.minus_zro)
 } \where {
   \lemma middle {A B Q : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} (S : SplitExact i p) (n : Nat) : AbExactAt (i.homology n) (p.homology n)
     => S.exact-middle n
@@ -210,7 +211,7 @@
                           (sq-p : \Pi (n : Nat) (b : B.C n) -> w.f n (p.f n b) = p'.f n (v.f n b)) (n : Nat)
   : u.homology n AddGroupHom.∘ E.connecting n = E'.connecting n AddGroupHom.∘ w.homology (suc n)
   => Coker.hom-ext (u.homology n AddGroupHom.∘ E.connecting n) (E'.connecting n AddGroupHom.∘ w.homology (suc n)) \lam z =>
-      Homology.class-eq (E'.r (suc n) (diff z)) (E'.i-inj n (inv (i'.comm n _) *> pmap (B'.d n) (E'.kernel (suc n) _ (diff-kernel z)) *> left z *> inv (right z)))
+      Homology.class-eq {A'} (E'.r (suc n) (diff z)) (E'.i-inj n (inv (i'.comm n _) *> pmap (B'.d n) (E'.kernel (suc n) _ (diff-kernel z)) *> left z *> inv (right z)))
   \where {
     \func diff {n : Nat} (z : Q.Cycles (suc n)) : B'.C (suc n)
       => v.f (suc n) (E.s (suc n) z.1) - E'.s (suc n) (w.f (suc n) z.1)
@@ -223,7 +224,7 @@
 
     \lemma right {n : Nat} (z : Q.Cycles (suc n)) : i'.f n (u.f n (E.lift n z.1) - E'.lift n (w.f (suc n) z.1))
                                                      = v.f n (B.d n (E.s (suc n) z.1)) - B'.d n (E'.s (suc n) (w.f (suc n) z.1))
-      => (i'.f n).func-minus *> pmap2 (\lam x y => x - y) (inv (sq-i n _) *> pmap (v.f n) (E.lift-eq n z.1 z.2)) (E'.lift-eq n _ (w.comm-out (suc n) z.1 z.2))
+      => (i'.f n).func-minus *> pmap2 (\lam x y => x - y) (inv (sq-i n _) *> pmap (v.f n) (E.lift-eq n z.1 z.2)) (E'.lift-eq n _ (w.cycle {suc n} {z.1} z.2))
   }
 
 \func splitMap {A B Q A' B' Q' : ChainComplex} {i : ChainMap A B} {p : ChainMap B Q} {i' : ChainMap A' B'} {p' : ChainMap B' Q'}

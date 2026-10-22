@@ -1,0 +1,69 @@
+\import Algebra.Group
+\import Algebra.Group.GradedComplex
+\import Algebra.Group.SubGroup
+\import Algebra.Module
+\import Algebra.Module.LinearMap
+\import Algebra.Module.ModuleIso
+\import Algebra.Module.Quotient
+\import Algebra.Module.SubLModule
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\record LGradedComplex (R : Ring) \extends GradedComplex {
+  \override D : Ix -> LModule R
+  | dIn-*c {y : Ix} {r : R} {x : D (src y)} : dIn y (r *c x) = r *c dIn y x
+  | dOut-*c {y : Ix} {r : R} {x : D y} : dOut y (r *c x) = r *c dOut y x
+
+  \func LIsCycle (y : Ix) : SubLModule R (D y) \cowith
+    | SubAddGroup => IsCycle y
+    | contains_*c c => dOut-*c *> pmap (_ *c) c *> LModule.*c_zro-right
+
+  \func lboundary (y : Ix) : LinearMap (D (src y)) (IModule (LIsCycle y)) \cowith
+    | AddGroupHom => boundary y
+    | func-*c => ext dIn-*c
+
+  \func LIsBoundary (y : Ix) => ImageLModule (lboundary y)
+}
+
+\func LHomology {R : Ring} (X : LGradedComplex R) (y : X.Ix) => QuotientLModule (X.LIsBoundary y)
+
+\record LComplexMap {R : Ring} {J : \Set} {s t : J -> J} (LX LY : LGradedComplex R J s t) \extends ComplexMap {
+  | Ix => J
+  | src => s
+  | tgt => t
+  | X => LX
+  | Y => LY
+  | f-*c {y : J} {r : R} {x : LX.D y} : f y (r *c x) = r *c f y x
+
+  \func lf (y : J) : LinearMap (LX.D y) (LY.D y) \cowith
+    | AddGroupHom => f y
+    | func-*c => f-*c
+} \where {
+  \func lhomology {R : Ring} {J : \Set} {s t : J -> J} {X Y : LGradedComplex R J s t} (F : LComplexMap X Y) (y : J)
+    : LinearMap (LHomology X y) (LHomology Y y) \cowith
+    | AddGroupHom => F.homology y
+    | func-*c {_} {h} => \case \elim h \with {
+      | in~ z => pmap in~ (ext F.f-*c)
+    }
+
+  \func inverse {R : Ring} {J : \Set} {s t : J -> J} {X Y : LGradedComplex R J s t} (F : LComplexMap X Y) (e : \Pi (y : J) -> ModuleIso {R} {X.D y} {Y.D y} (F.lf y))
+    : LComplexMap Y X \cowith
+    | f y => (e y).finv
+    | commIn y v => (e y).isInj (inv (F.commIn y ((e (s y)).finv v)) *> pmap (Y.dIn y) ((e (s y)).f_finv v) *> inv ((e y).f_finv _))
+    | commOut y v => (e (t y)).isInj (inv (F.commOut y ((e y).finv v)) *> pmap (Y.dOut y) ((e y).f_finv v) *> inv ((e (t y)).f_finv _))
+    | f-*c => (e _).finv.func-*c
+
+  \func homologyIso {R : Ring} {J : \Set} {s t : J -> J} {X Y : LGradedComplex R J s t} (F : LComplexMap X Y) (e : \Pi (y : J) -> ModuleIso {R} {X.D y} {Y.D y} (F.lf y))
+                    (y : J) : ModuleIso {R} {LHomology X y} {LHomology Y y} (lhomology F y) \cowith
+    | finv => lhomology (inverse F e) y
+    | finv_f h => \case \elim h \with {
+      | in~ z => pmap in~ (ext ((e y).finv_f z.1))
+    }
+    | f_finv h => \case \elim h \with {
+      | in~ z => pmap in~ (ext ((e y).f_finv z.1))
+    }
+}

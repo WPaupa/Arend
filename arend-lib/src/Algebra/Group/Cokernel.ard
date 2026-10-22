@@ -56,6 +56,9 @@
     \lemma proj-equality {G : AbGroup} {S : SubAddGroup G} {x y : G} : in~ x = {AbQuotient S} in~ y <-> S.contains (x - y)
       => (Quotient.equalityEquiv (cosets S), ~-pequiv)
 
+    \lemma proj-zero {G : AbGroup} {S : SubAddGroup G} {x : G} : in~ x = {AbQuotient S} in~ 0 <-> S.contains x
+      => (\lam p => transport S.contains AddGroup.minus_zro (proj-equality.1 p), \lam c => proj-equality.2 (transportInv S.contains AddGroup.minus_zro c))
+
     \func desc {G T : AbGroup} {S : SubAddGroup G} (h : AddGroupHom G T) (p : \Pi {x : G} -> S.contains x -> h x = 0)
       : AddGroupHom (AbQuotient S) T \cowith
       | func (_ : Quotient (cosets S).~) : T \with {

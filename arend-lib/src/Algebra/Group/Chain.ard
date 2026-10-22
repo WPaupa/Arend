@@ -1,6 +1,7 @@
 \import Algebra.Group
 \import Algebra.Group.Cokernel
 \import Algebra.Group.Exact
+\import Algebra.Group.GradedComplex
 \import Algebra.Group.GroupHom
 \import Algebra.Group.Product
 \import Algebra.Group.SubGroup
@@ -18,61 +19,37 @@
 \import Paths.Meta
 \import Relation.Equivalence
 
-\record ChainComplex {
+\record ChainComplex \extends GradedComplex {
   | C : Nat -> AbGroup
   | d (n : Nat) : AddGroupHom (C (suc n)) (C n)
   | dd (n : Nat) (x : C (suc (suc n))) : d n (d (suc n) x) = 0
-
-  \func dOut (n : Nat) : AddGroupHom (C n) (C (pred n)) \elim n
+  | Ix => Nat
+  | src => suc
+  | tgt => pred
+  | D => C
+  | dIn => d
+  | dOut n => \case \elim n \with {
     | 0 => AddGroupHom.zero
     | suc n => d n
-
-  \lemma dOut-d (n : Nat) (x : C (suc n)) : dOut n (d n x) = 0 \elim n
-    | 0 => idp
-    | suc n => dd n x
-
-  \func Cycles (n : Nat) => IAbGroup (KernelAddGroup (dOut n))
-
-  \func boundary (n : Nat) : AddGroupHom (C (suc n)) (Cycles n) \cowith
-    | func x => (d n x, dOut-d n x)
-    | func-+ => ext (d n).func-+
-
-  \func cycleInc (n : Nat) : AddGroupHom (Cycles n) (C n) \cowith
-    | func z => z.1
-    | func-+ => idp
+  }
+  | dOut-dIn n x => \case \elim n, \elim x \with {
+    | 0, _ => idp
+    | suc n, x => dd n x
+  }
 }
 
-\func Homology (X : ChainComplex) (n : Nat) => Coker (X.boundary n)
-  \where {
-    \lemma class-eq {X : ChainComplex} {n : Nat} {z z' : X.Cycles n} (w : X.C (suc n)) (q : X.d n w = z.1 - z'.1)
-      : in~ z = {Homology X n} in~ z'
-      => Coker.proj-equality.2 (inP (w, ext q))
-
-    \lemma class-ext {X : ChainComplex} {n : Nat} {z z' : X.Cycles n} (p : z.1 = z'.1) : in~ z = {Homology X n} in~ z'
-      => pmap in~ (ext p)
-
-    \lemma class-eq-inv {X : ChainComplex} {n : Nat} {z z' : X.Cycles n} (p : in~ z = {Homology X n} in~ z')
-      : ∃ (w : X.C (suc n)) (X.d n w = z.1 - z'.1)
-      => TruncP.map (Coker.proj-equality.1 p) \lam s => (s.1, pmap __.1 s.2)
-
-    \lemma trivial {X : ChainComplex} {n : Nat} (c : \Pi (x : X.C n) -> x = 0) (h : Homology X n) : h = 0 \elim h
-      | in~ z => pmap in~ (ext (c z.1))
+\record ChainMap (CX CY : ChainComplex) \extends ComplexMap {
+  | Ix => Nat
+  | src => suc
+  | tgt => pred
+  | X => CX
+  | Y => CY
+  | comm (n : Nat) (x : CX.C (suc n)) : CY.d n (f (suc n) x) = f n (CX.d n x)
+  | commIn => comm
+  | commOut n x => \case \elim n, \elim x \with {
+    | 0, _ => inv (AddMonoidHom.func-zro {f 0})
+    | suc n, x => comm n x
   }
-
-\record ChainMap (X Y : ChainComplex) {
-  | f (n : Nat) : AddGroupHom (X.C n) (Y.C n)
-  | comm (n : Nat) (x : X.C (suc n)) : Y.d n (f (suc n) x) = f n (X.d n x)
-
-  \lemma comm-out (n : Nat) (x : X.C n) (p : X.dOut n x = 0) : Y.dOut n (f n x) = 0 \elim n
-    | 0 => idp
-    | suc n => comm n x *> pmap (f n) p *> AddMonoidHom.func-zro {f n}
-
-  \func cycles (n : Nat) : AddGroupHom (X.Cycles n) (Y.Cycles n) \cowith
-    | func z => (f n z.1, comm-out n z.1 z.2)
-    | func-+ => ext (f n).func-+
-
-  \func homology (n : Nat) : AddGroupHom (Homology X n) (Homology Y n)
-    => Coker.map (X.boundary n) (Y.boundary n) (f (suc n)) (cycles n) \lam x => ext (inv (comm n x))
 } \where {
   \func id {X : ChainComplex} : ChainMap X X \cowith
     | f _ => AddGroupHom.id

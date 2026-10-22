@@ -1,0 +1,86 @@
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.GroupHom
+\import Algebra.Group.SubGroup
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Pointed
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\record GradedComplex (Ix : \Set) (src tgt : Ix -> Ix) {
+  | D : Ix -> AbGroup
+  | dIn (y : Ix) : AddGroupHom (D (src y)) (D y)
+  | dOut (y : Ix) : AddGroupHom (D y) (D (tgt y))
+  | dOut-dIn (y : Ix) (x : D (src y)) : dOut y (dIn y x) = 0
+
+  \func IsCycle (y : Ix) => KernelAddGroup (dOut y)
+
+  \func Cycles (y : Ix) => IAbGroup (IsCycle y)
+
+  \func boundary (y : Ix) : AddGroupHom (D (src y)) (Cycles y) \cowith
+    | func x => (dIn y x, dOut-dIn y x)
+    | func-+ => ext (dIn y).func-+
+
+  \func IsBoundary (y : Ix) => ImageAddGroup (boundary y)
+
+  \func cycleInc (y : Ix) : AddGroupHom (Cycles y) (D y) \cowith
+    | func z => z.1
+    | func-+ => idp
+}
+
+\func Homology (X : GradedComplex) (y : X.Ix) => Coker (X.boundary y)
+  \where {
+    \lemma class-eq {X : GradedComplex} {y : X.Ix} {z z' : X.Cycles y} (w : X.D (X.src y)) (q : X.dIn y w = z.1 - z'.1)
+      : in~ z = {Homology X y} in~ z'
+      => Coker.proj-equality.2 (inP (w, ext q))
+
+    \lemma class-ext {X : GradedComplex} {y : X.Ix} {z z' : X.Cycles y} (p : z.1 = z'.1) : in~ z = {Homology X y} in~ z'
+      => pmap in~ (ext p)
+
+    \lemma class-eq-inv {X : GradedComplex} {y : X.Ix} {z z' : X.Cycles y} (p : in~ z = {Homology X y} in~ z')
+      : ∃ (w : X.D (X.src y)) (X.dIn y w = z.1 - z'.1)
+      => TruncP.map (Coker.proj-equality.1 p) \lam s => (s.1, pmap __.1 s.2)
+
+    \lemma trivial {X : GradedComplex} {y : X.Ix} (c : \Pi (x : X.D y) -> x = 0) (h : Homology X y) : h = 0 \elim h
+      | in~ z => pmap in~ (ext (c z.1))
+  }
+
+\record ComplexMap {Ix : \Set} {src tgt : Ix -> Ix} (X Y : GradedComplex Ix src tgt) {
+  | f (y : Ix) : AddGroupHom (X.D y) (Y.D y)
+  | commIn (y : Ix) (x : X.D (src y)) : Y.dIn y (f (src y) x) = f y (X.dIn y x)
+  | commOut (y : Ix) (x : X.D y) : Y.dOut y (f y x) = f (tgt y) (X.dOut y x)
+
+  \lemma cycle {y : Ix} {x : X.D y} (c : X.IsCycle y x) : Y.IsCycle y (f y x)
+    => commOut y x *> pmap (f (tgt y)) c *> AddMonoidHom.func-zro {f (tgt y)}
+
+  \func cycles (y : Ix) : AddGroupHom (X.Cycles y) (Y.Cycles y)
+    => IAbGroup.map (f y) cycle
+
+  \func homology (y : Ix) : AddGroupHom (Homology X y) (Homology Y y)
+    => Coker.map (X.boundary y) (Y.boundary y) (f (src y)) (cycles y) \lam x => ext (inv (commIn y x))
+} \where {
+  \func id {Ix : \Set} {src tgt : Ix -> Ix} {X : GradedComplex Ix src tgt} : ComplexMap X X \cowith
+    | f _ => AddGroupHom.id
+    | commIn _ _ => idp
+    | commOut _ _ => idp
+
+  \func compose {Ix : \Set} {src tgt : Ix -> Ix} {X Y Z : GradedComplex Ix src tgt} (G : ComplexMap Y Z) (F : ComplexMap X Y) : ComplexMap X Z \cowith
+    | f y => G.f y AddGroupHom.∘ F.f y
+    | commIn y x => G.commIn y (F.f _ x) *> pmap (G.f y) (F.commIn y x)
+    | commOut y x => G.commOut y (F.f y x) *> pmap (G.f _) (F.commOut y x)
+
+  \lemma homology-id {Ix : \Set} {src tgt : Ix -> Ix} {X : GradedComplex Ix src tgt} {y : Ix} (h : Homology X y) : ComplexMap.homology {id {_} {_} {_} {X}} y h = h \elim h
+    | in~ z => pmap in~ (ext idp)
+
+  \lemma homology-comp {Ix : \Set} {src tgt : Ix -> Ix} {X Y Z : GradedComplex Ix src tgt} (G : ComplexMap Y Z) (F : ComplexMap X Y) {y : Ix} (h : Homology X y)
+    : G.homology y (F.homology y h) = ComplexMap.homology {compose G F} y h \elim h
+    | in~ z => pmap in~ (ext idp)
+
+  \lemma homology-at {Ix : \Set} {src tgt : Ix -> Ix} {X Y : GradedComplex Ix src tgt} {F G : ComplexMap X Y} (y : Ix) (p : \Pi (x : X.D y) -> F.f y x = G.f y x)
+    : F.homology y = G.homology y
+    => Coker.hom-ext (F.homology y) _ \lam z => pmap in~ (ext (p z.1))
+}

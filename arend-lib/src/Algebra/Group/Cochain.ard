@@ -1,75 +1,43 @@
 \import Algebra.Group
-\import Algebra.Group.Cokernel
+\import Algebra.Group.GradedComplex
 \import Algebra.Group.GroupHom
-\import Algebra.Group.SubGroup
 \import Algebra.Monoid
 \import Algebra.Monoid.MonoidHom
 \import Algebra.Pointed
 \import Arith.Nat (pred)
-\import Logic
 \import Paths
-\import Paths.Meta
-\import Relation.Equivalence
 
-\record CochainComplex {
-  | D : Nat -> AbGroup
+\record CochainComplex \extends GradedComplex {
+  | Ix => Nat
+  | src => pred
+  | tgt => suc
   | delta (n : Nat) : AddGroupHom (D n) (D (suc n))
   | delta-delta (n : Nat) (x : D n) : delta (suc n) (delta n x) = 0
-
-  \func deltaIn (n : Nat) : AddGroupHom (D (pred n)) (D n) \elim n
+  | dIn n => \case \elim n \with {
     | 0 => AddGroupHom.zero
     | suc n => delta n
-
-  \lemma delta-deltaIn (n : Nat) (x : D (pred n)) : delta n (deltaIn n x) = 0 \elim n
-    | 0 => AddMonoidHom.func-zro {delta 0}
-    | suc n => delta-delta n x
-
-  \func Cocycles (n : Nat) => KernelAddGroup (delta n)
-
-  \func coboundary (n : Nat) : AddGroupHom (D (pred n)) (IAbGroup (Cocycles n)) \cowith
-    | func x => (deltaIn n x, delta-deltaIn n x)
-    | func-+ => ext (deltaIn n).func-+
-
-  \func Coboundaries (n : Nat) => ImageAddGroup (coboundary n)
+  }
+  | dOut => delta
+  | dOut-dIn n x => \case \elim n, \elim x \with {
+    | 0, _ => AddMonoidHom.func-zro {delta 0}
+    | suc n, x => delta-delta n x
+  }
 }
 
-\func Cohomology (X : CochainComplex) (n : Nat) => Coker (X.coboundary n)
-
-\record CochainMap (X Y : CochainComplex) {
-  | g (n : Nat) : AddGroupHom (X.D n) (Y.D n)
-  | commute (n : Nat) (x : X.D n) : Y.delta n (g n x) = g (suc n) (X.delta n x)
-
-  \lemma cocycle {n : Nat} {x : X.D n} (c : X.Cocycles n x) : Y.Cocycles n (g n x)
-    => commute n x *> pmap (g (suc n)) c *> AddMonoidHom.func-zro {g (suc n)}
-
-  \lemma commute-in (n : Nat) (u : X.D (pred n)) : Y.deltaIn n (g (pred n) u) = g n (X.deltaIn n u) \elim n
-    | 0 => inv (AddMonoidHom.func-zro {g 0})
-    | suc n => commute n u
-
-  \lemma coboundary {n : Nat} {z : IAbGroup (X.Cocycles n)} (c : X.Coboundaries n z) : Y.Coboundaries n (IAbGroup.map (g n) cocycle z) \elim c
-    | inP (u, e) => inP (g (pred n) u, ext (commute-in n u *> pmap (\lam x => g n x.1) e))
-
-  \func cohomology (n : Nat) : AddGroupHom (Cohomology X n) (Cohomology Y n)
-    => AbQuotient.map (IAbGroup.map (g n) cocycle) coboundary
-} \where {
-  \func id {X : CochainComplex} : CochainMap X X \cowith
-    | g _ => AddGroupHom.id
-    | commute _ _ => idp
-
-  \func compose {X Y Z : CochainComplex} (G : CochainMap Y Z) (F : CochainMap X Y) : CochainMap X Z \cowith
-    | g n => G.g n AddGroupHom.∘ F.g n
-    | commute n x => G.commute n (F.g n x) *> pmap (G.g (suc n)) (F.commute n x)
-
-  \lemma cohomology-id {X : CochainComplex} {n : Nat} (x : Cohomology X n) : (id {X}).cohomology n x = x \elim x
-    | in~ z => idp
-
-  \lemma cohomology-comp {X Y Z : CochainComplex} (G : CochainMap Y Z) (F : CochainMap X Y) {n : Nat} (x : Cohomology X n)
-    : G.cohomology n (F.cohomology n x) = (compose G F).cohomology n x \elim x
-    | in~ z => idp
+\record CochainMap (CX CY : CochainComplex) \extends ComplexMap {
+  | Ix => Nat
+  | src => pred
+  | tgt => suc
+  | X => CX
+  | Y => CY
+  | commIn n x => \case \elim n, \elim x \with {
+    | 0, _ => inv (AddMonoidHom.func-zro {f 0})
+    | suc n, x => commOut n x
+  }
 }
 
 \record CochainHomotopy {X Y : CochainComplex} (F G : CochainMap X Y) {
   | L (n : Nat) : AddGroupHom (X.D (suc n)) (Y.D n)
-  | homotopy0 (x : X.D 0) : F.g 0 x - G.g 0 x = L 0 (X.delta 0 x)
-  | homotopy (n : Nat) (x : X.D (suc n)) : F.g (suc n) x - G.g (suc n) x = L (suc n) (X.delta (suc n) x) + Y.delta n (L n x)
+  | homotopy0 (x : X.D 0) : F.f 0 x - G.f 0 x = L 0 (X.delta 0 x)
+  | homotopy (n : Nat) (x : X.D (suc n)) : F.f (suc n) x - G.f (suc n) x = L (suc n) (X.delta (suc n) x) + Y.delta n (L n x)
 }

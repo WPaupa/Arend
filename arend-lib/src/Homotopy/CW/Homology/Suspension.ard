@@ -3,6 +3,7 @@
 \import Algebra.Group.Chain.LongExact
 \import Algebra.Group.Exact
 \import Algebra.Group.FreeAbelian (ZFree)
+\import Algebra.Group.GradedComplex
 \import Algebra.Group.GroupCat
 \import Algebra.Group.GroupHom
 \import Algebra.Group.SubGroup

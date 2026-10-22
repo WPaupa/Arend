@@ -55,8 +55,8 @@
       | delta-delta n x => \case \elim x \with {
         | in~ a => pmap in~ (ext (X.delta-delta n a.1))
       }
-      | delta-*c {_} {_} {x} => \case \elim x \with {
-        | in~ a => pmap in~ (ext X.delta-*c)
+      | dOut-*c {_} {_} {x} => \case \elim x \with {
+        | in~ a => pmap in~ (ext X.dOut-*c)
       }
 
     \func lgrCochainPairing {R : Ring} {X Y Z : FilteredLCochainComplex R} (P : LCochainPairing X Y Z) (c : IsFiltered P) (p q : Nat)

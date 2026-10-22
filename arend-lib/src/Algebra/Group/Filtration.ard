@@ -85,10 +85,10 @@
         | in~ a => pmap in~ (ext (X.delta-delta n a.1))
       }
 
-    \func grMap {X Y : FilteredCochainComplex} (f : CochainMap X Y) (pf : \Pi {p n : Nat} {x : X.D n} -> (X.filt n).F p x -> (Y.filt n).F p (f.g n x))
+    \func grMap {X Y : FilteredCochainComplex} (F : CochainMap X Y) (pf : \Pi {p n : Nat} {x : X.D n} -> (X.filt n).F p x -> (Y.filt n).F p (F.f n x))
                 (p : Nat) : CochainMap (gr X p) (gr Y p) \cowith
-      | g n => Filtration.map (f.g n) (\lam {q} => pf {q} {n}) p
-      | commute n x => \case \elim x \with {
-        | in~ a => pmap in~ (ext (f.commute n a.1))
+      | f n => Filtration.map (F.f n) (\lam {q} => pf {q} {n}) p
+      | commOut n x => \case \elim x \with {
+        | in~ a => pmap in~ (ext (F.commOut n a.1))
       }
   }

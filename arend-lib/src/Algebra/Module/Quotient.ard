@@ -10,7 +10,7 @@
 \import Paths
 \import Relation.Equivalence
 
-\instance QuotientLModule {R : Ring} {M : LModule R} (S : SubLModule R M) : LModule R
+\func QuotientLModule {R : Ring} {M : LModule R} (S : SubLModule R M) : LModule R \cowith
   | AbGroup => AbQuotient S
   | *c (s : R) (x : AbQuotient S) : AbQuotient S \elim x {
     | in~ a => in~ (s M.*c a)

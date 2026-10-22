@@ -2,6 +2,7 @@
 \import Algebra.Group.Chain
 \import Algebra.Group.Cokernel
 \import Algebra.Group.FreeAbelian
+\import Algebra.Group.GradedComplex
 \import Algebra.Group.GroupHom
 \import Algebra.Monoid
 \import Algebra.Monoid.MonoidHom

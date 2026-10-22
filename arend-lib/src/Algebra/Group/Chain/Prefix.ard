@@ -1,6 +1,7 @@
 \import Algebra.Group
 \import Algebra.Group.Chain
 \import Algebra.Group.Cokernel
+\import Algebra.Group.GradedComplex
 \import Algebra.Group.GroupHom
 \import Algebra.Meta
 \import Algebra.Monoid

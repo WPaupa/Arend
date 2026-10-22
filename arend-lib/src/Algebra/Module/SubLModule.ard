@@ -19,7 +19,10 @@
 \class SubLModule (R : Ring) \extends SubAddGroup {
   \override S : LModule R
   | contains_*c {a : R} {b : S} : contains b -> contains (a *c b)
-}
+} \where
+    \func preimage {R : Ring} {M N : LModule R} (f : LinearMap M N) (S : SubLModule R N) : SubLModule R M \cowith
+      | SubAddGroup => SubAddGroup.preimage f S
+      | contains_*c c => transportInv S.contains f.func-*c (S.contains_*c c)
 
 \instance IModule (S : SubLModule {}) : LModule S.R
   | AddGroup => IAddGroup S
@@ -29,10 +32,22 @@
   | *c-ldistr => ext *c-ldistr
   | *c-rdistr => ext *c-rdistr
   | ide_*c => ext ide_*c
-  \where
+  \where {
     \func embed : LinearMap (IModule S) S.S \cowith
       | AddGroupHom => IAddGroup.embed
       | func-*c => idp
+
+    \func corestrict {M : LModule S.R} (f : LinearMap M S.S) (p : \Pi (x : M) -> S (f x)) : LinearMap M (IModule S) \cowith
+      | func x => (f x, p x)
+      | func-+ => ext f.func-+
+      | func-*c => ext f.func-*c
+
+    \func map {R : Ring} {M N : LModule R} {T : SubLModule R M} {U : SubLModule R N} (f : LinearMap M N) (p : \Pi {x : M} -> T x -> U (f x))
+      : LinearMap (IModule T) (IModule U) \cowith
+      | func x => (f x.1, p x.2)
+      | func-+ => ext f.func-+
+      | func-*c => ext f.func-*c
+  }
 
 \func topSubLModule {R : Ring} (M : LModule R) : SubLModule R M \cowith
   | contains _ => \Sigma
@@ -89,6 +104,31 @@
 
 \func ImLModule (f : LinearMap {}) : LModule
   => IModule (ImageLModule f)
+  \where {
+    \func desc {R : Ring} {A B C : LModule R} (f : LinearMap A B) (h : LinearMap A C) (p : \Pi {a : A} -> f a = 0 -> h a = 0)
+      : LinearMap (ImLModule f) C \cowith
+      | func => value f h p
+      | func-+ {z} {z'} => \case z.2, z'.2 \with {
+        | inP (a, fa), inP (a', fa') => eval f h p (z + z') (f.func-+ *> pmap2 (+) fa fa') *> h.func-+ *> inv (pmap2 (+) (eval f h p z fa) (eval f h p z' fa'))
+      }
+      | func-*c {r} {z} => \case z.2 \with {
+        | inP (a, fa) => eval f h p (r *c z) (f.func-*c *> pmap (r *c) fa) *> h.func-*c *> inv (pmap (r *c) (eval f h p z fa))
+      }
+      \where {
+        \lemma unique {R : Ring} {A B C : LModule R} (f : LinearMap A B) (h : LinearMap A C) (p : \Pi {a : A} -> f a = 0 -> h a = 0)
+                      {a a' : A} (q : f a = f a') : h a = h a'
+          => AddGroup.fromZero (inv h.func-minus *> p (f.func-minus *> pmap2 (-) q idp *> negative-right))
+
+        \func value {R : Ring} {A B C : LModule R} (f : LinearMap A B) (h : LinearMap A C) (p : \Pi {a : A} -> f a = 0 -> h a = 0) (z : ImLModule f) : C
+          => (TruncP.rec-set z.2 (\lam s => h s.1) \lam s s' => unique f h p (s.2 *> inv s'.2)).1
+
+        \lemma eval {R : Ring} {A B C : LModule R} (f : LinearMap A B) (h : LinearMap A C) (p : \Pi {a : A} -> f a = 0 -> h a = 0)
+                    (z : ImLModule f) {a : A} (fa : f a = z.1) : value f h p z = h a
+          => \case (TruncP.rec-set z.2 (\lam s => h s.1) \lam s s' => unique f h p (s.2 *> inv s'.2)).2 \with {
+            | inP (s, q) => inv q *> unique f h p (s.2 *> inv fa)
+          }
+      }
+  }
 
 \func ImLModuleLeftHom (f : LinearMap {}) : LinearMap f.Dom (ImLModule f) \cowith
   | AddGroupHom => ImAddGroupLeftHom f
