@@ -181,10 +181,12 @@
       => \lam e => \case \elim e \with {
         | in~ x => TruncP.map ((C.exact-jk idp idp x.1).1 x.2) \lam (t, jt) => (in~ (_, iter.image-intro C k (pre x0 (k *n C.di)) t), eval (_, iter.image-intro C k (pre x0 (k *n C.di)) t) {t} idp *> pmap in~ (ext jt))
       }
-
-    \func iso (s : LeftStable C x0) : ModuleIso {C.R} {LFiltration.lgr {filtration C x0} k} {Einf C (idp {C.G} {x0 - k *n C.di + C.dj})} (convergence C x0 k)
-      => (ModuleIso.iso<->inj+surj {_} {LFiltration.lgr {filtration C x0} k} {Einf C (idp {C.G} {x0 - k *n C.di + C.dj})} {convergence C x0 k}).2 (inj s, surj)
   }
+
+\lemma convergence-iso.{u} {R : Ring.{u}} {G : AbGroup.{u}} {di dj dk : G} (C : ExactCouple.{u} R G di dj dk) {x0 : G} {k : Nat} (s : LeftStable C x0)
+  : ModuleIso {R} {LFiltration.lgr {filtration C x0} k} {Einf C (idp {G} {x0 - k *n di + dj})} (convergence C x0 k)
+  => (ModuleIso.iso<->inj+surj {_} {LFiltration.lgr {filtration C x0} k} {Einf C (idp {G} {x0 - k *n di + dj})} {convergence C x0 k}).2
+      (convergence.inj {C} {x0} {k} s, convergence.surj {C} {x0} {k})
 
 
 \record TailPairing.{u} \extends LayerPairing.{u} {
@@ -305,13 +307,27 @@
         *> pmap in~ (ext (inv (F.g-j idp t))) *> inv (pmap (infMap {C} {C'} F idp) (convergence.eval {C} {x0} {k} z tz))
   }
 
-\lemma page-step.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap C C') (n : Nat)
-                     (h : \Pi (y : C.G) -> ModuleIso {C.R} {Couple.E {cumulative C n} y} {Couple.E {cumulative C' n} y} (CoupleMap.g {cumulativeMap {C} {C'} F n} y))
-                     (y : C.G) : ModuleIso {C.R} {Couple.E {cumulative C (suc n)} y} {Couple.E {cumulative C' (suc n)} y} (CoupleMap.g {cumulativeMap {C} {C'} F (suc n)} y)
-  => ModuleIso.square-right (nextPage.natural-g {C} {C'} F n (cumulative-exact C n) (cumulative-exact C' n))
-                            (CoupleIso.g-iso {nextPage C n (cumulative-exact C n)} y) (CoupleIso.g-iso {nextPage C' n (cumulative-exact C' n)} y)
-                            (LComplexMap.homologyIso {_} {_} {_} {_} {nextPage.Xc C n (cumulative-exact C n)} {nextPage.Xc C' n (cumulative-exact C' n)}
-                              (CoupleMap.complexMap {cumulative.level C n (cumulative-exact C n)} {cumulative.level C' n (cumulative-exact C' n)} (cumulativeMap {C} {C'} F n)) h y)
+\lemma page-step.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap.{u} C C') (n : Nat)
+                     (h : \Pi (y : C.G) -> ModuleIso {C.R} {Couple.E {cumulative.{u} C n} y} {Couple.E {cumulative.{u} C' n} y} (CoupleMap.g {cumulativeMap.{u} {C} {C'} F n} y))
+                     (y : C.G) : ModuleIso {C.R} {Couple.E {cumulative.{u} C (suc n)} y} {Couple.E {cumulative.{u} C' (suc n)} y} (CoupleMap.g {cumulativeMap.{u} {C} {C'} F (suc n)} y)
+  => square.{u} {cumulative.{u} C (suc n)} {cumulative.{u} C' (suc n)} {ExactCouple.derived.{u} (cumulative.level.{u} C n (cumulative-exact.{u} C n))}
+                {ExactCouple.derived.{u} (cumulative.level.{u} C' n (cumulative-exact.{u} C' n))}
+                (nextPage.{u} C n (cumulative-exact.{u} C n)) (nextPage.{u} C' n (cumulative-exact.{u} C' n)) (cumulativeMap.{u} {C} {C'} F (suc n))
+                (CoupleMap.derivedMap.{u} {cumulative.level.{u} C n (cumulative-exact.{u} C n)} {cumulative.level.{u} C' n (cumulative-exact.{u} C' n)} (cumulativeMap.{u} {C} {C'} F n))
+                (nextPage.natural-g.{u} {C} {C'} F n (cumulative-exact.{u} C n) (cumulative-exact.{u} C' n) {y}) (derived-iso.{u} {C} {C'} F n h y)
+  \where {
+    \lemma square.{u} {A : Couple.{u}} {B A' B' : Couple.{u} A.R A.G A.di A.dj A.dk} (N : CoupleIso A A') (N' : CoupleIso B B') (F1 : CoupleMap A B) (F2 : CoupleMap A' B')
+                      {y : A.G} (sq : \Pi (h : A.E y) -> F2.g y (N.g y h) = N'.g y (F1.g y h)) (i2 : ModuleIso (F2.g y)) : ModuleIso (F1.g y)
+      => ModuleIso.square-right sq (N.g-iso y) (N'.g-iso y) i2
+
+    \lemma derived-iso.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap.{u} C C') (n : Nat)
+                           (h : \Pi (y : C.G) -> ModuleIso {C.R} {Couple.E {cumulative.{u} C n} y} {Couple.E {cumulative.{u} C' n} y} (CoupleMap.g {cumulativeMap.{u} {C} {C'} F n} y))
+                           (y : C.G)
+      : ModuleIso {C.R} {Couple.E {ExactCouple.derived.{u} (cumulative.level.{u} C n (cumulative-exact.{u} C n))} y} {Couple.E {ExactCouple.derived.{u} (cumulative.level.{u} C' n (cumulative-exact.{u} C' n))} y}
+                  (CoupleMap.g {CoupleMap.derivedMap.{u} {cumulative.level.{u} C n (cumulative-exact.{u} C n)} {cumulative.level.{u} C' n (cumulative-exact.{u} C' n)} (cumulativeMap.{u} {C} {C'} F n)} y)
+      => LComplexMap.homologyIso.{u} {_} {_} {_} {_} {ExactCouple.complex.{u} {cumulative.level.{u} C n (cumulative-exact.{u} C n)}} {ExactCouple.complex.{u} {cumulative.level.{u} C' n (cumulative-exact.{u} C' n)}}
+           (CoupleMap.complexMap.{u} {cumulative.level.{u} C n (cumulative-exact.{u} C n)} {cumulative.level.{u} C' n (cumulative-exact.{u} C' n)} (cumulativeMap.{u} {C} {C'} F n)) h y
+  }
 
 \lemma page-all.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap C C')
                     (h : \Pi (y : C.G) -> ModuleIso {C.R} {C.E y} {C'.E y} (F.g y)) (n : Nat) (y : C.G)
@@ -369,4 +385,4 @@
   => ModuleIso.square-right {_} {LFiltration.lgr {filtration C x0} k} {LFiltration.lgr {filtration C' x0} k}
                             {Einf C (idp {C.G} {x0 - k *n C.di + C.dj})} {Einf C' (idp {C.G} {x0 - k *n C.di + C.dj})}
                             {convergence C x0 k} {convergence C' x0 k} {grMap {C} {C'} F x0 k} {infMap {C} {C'} F idp}
-                            (\lam u => inv (convergence-natural {C} {C'} F x0 k u)) (convergence.iso {C} {x0} {k} s) (convergence.iso {C'} {x0} {k} s') h
+                            (\lam u => inv (convergence-natural {C} {C'} F x0 k u)) (convergence-iso C s) (convergence-iso C' s') h

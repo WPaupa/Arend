@@ -33,7 +33,7 @@
   : ExactCouple.{u} R (Bi G) (neg 1, 0) (0, 0) (1, deg)
   => ExactCouple.make couple (\lam p q => exact-ij p q, \lam p q => exact-jk p q, \lam p q => exact-ki p q)
   \where {
-    \func tail(x : Bi G) => FX.ses {x.1} {x.1 + 1} {inf} (linarith : x.1 <= x.1 + 1) ()
+    \func tail(x : Bi G) => FX.ses {x.1} {x.1 + 1} {inf} (le-suc x.1) ()
 
     \func couple : Couple R (Bi G) (neg 1, 0) (0, 0) (1, deg) \cowith
       | D x => LHomology (FX.Win x.1 inf) x.2
@@ -41,7 +41,9 @@
       | i {x} {z} q => FX.whom {x.1} {z.1} {inf} {inf} (le-i q) () (deg-i q)
       | j {x} {z} q => FX.whom {x.1} {z.1} {inf} {fin (z.1 + 1)} (le-j q) () (deg-j q)
       | k {x} {z} q => LinearMap.compose {R} {LHomology (FX.Win x.1 (fin (x.1 + 1))) x.2} {LHomology (FX.Win (x.1 + 1) inf) z.2} {LHomology (FX.Win z.1 inf) z.2}
-                                         (FX.wh {x.1 + 1} {z.1} {inf} {inf} (le-k q) () z.2) (FX.conn {x.1} {x.1 + 1} {inf} (linarith : x.1 <= x.1 + 1) () (deg-k q))
+                                         (FX.wh {x.1 + 1} {z.1} {inf} {inf} (le-k q) () z.2) (FX.conn {x.1} {x.1 + 1} {inf} (le-suc x.1) () (deg-k q))
+
+    \lemma le-suc (a : Int) : a <= a + 1 => linarith
 
     \lemma le-i {x z : Bi G} (q : (+) {Bi G} x (neg 1, 0) = z) : z.1 <= x.1 => rewriteI (pmap __.1 q) (linarith : x.1 + neg 1 <= x.1)
 
@@ -58,36 +60,33 @@
     \lemma ij-gen {a a1 a2 : Int} {u v w : G} (h1 : a1 <= a) (h2 : a2 <= a1) (s1 : a1 + 1 = a) (s2 : a2 = a1) (e1 : u = v) (e2 : v = w)
       : AbExactAt (FX.whom {a} {a1} {inf} {inf} h1 () e1) (FX.whom {a1} {a2} {inf} {fin (a2 + 1)} h2 () e2)
       \elim a, a2, v, w, s1, s2, e1, e2
-      | _, _, _, _, idp, idp, idp, idp => transport (\lam h => AbExactAt (FX.wh h1 () u) (FX.wh {a1} {a1} {inf} {fin (a1 + 1)} h () u)) prop-pi
-                                                    (DiffSES.exact-middle {FX.ses {a1} {a1 + 1} {inf} h1 ()} u)
+      | _, _, _, _, idp, idp, idp, idp => transport (\lam h => AbExactAt (FX.wh h1 () u) (FX.wh {a1} {a1} {inf} {fin (a1 + 1)} h () u)) prop-pi (FilteredDiff.exact-ip FX h1 () u)
 
     \lemma jk-gen {a a1 a2 : Int} {u v w : G} (h1 : a1 <= a) (h2 : a2 <= a1 + 1) (s1 : a = a1) (s2 : a1 + 1 = a2) (e1 : u = v) (e2 : v + deg = w)
       : AbExactAt (FX.whom {a} {a1} {inf} {fin (a1 + 1)} h1 () e1)
                   (LinearMap.compose {R} {LHomology (FX.Win a1 (fin (a1 + 1))) v} {LHomology (FX.Win (a1 + 1) inf) w} {LHomology (FX.Win a2 inf) w}
-                                     (FX.wh {a1 + 1} {a2} {inf} {inf} h2 () w) (FX.conn {a1} {a1 + 1} {inf} (linarith : a1 <= a1 + 1) () e2))
+                                     (FX.wh {a1 + 1} {a2} {inf} {inf} h2 () w) (FX.conn {a1} {a1 + 1} {inf} (le-suc a1) () e2))
       \elim a, a2, v, w, s1, s2, e1, e2
       | _, _, _, _, idp, idp, idp, idp =>
-        \have s : a1 <= a1 + 1 => linarith
-        \in exact-post {_} {_} {_} {_} {FX.wh {a1} {a1} {inf} {fin (a1 + 1)} h1 () u} {FX.conn {a1} {a1 + 1} {inf} s () idp}
-                       {LinearMap.compose {R} {LHomology (FX.Win a1 (fin (a1 + 1))) u} {LHomology (FX.Win (a1 + 1) inf) (u + deg)}
-                                          {LHomology (FX.Win (a1 + 1) inf) (u + deg)} (FX.wh h2 () (u + deg)) (FX.conn {a1} {a1 + 1} {inf} s () idp)}
-                       {FX.wh h2 () (u + deg)} (FX.wh-inj h2 () (u + deg)) (\lam _ => idp)
-            (transport (\lam h => AbExactAt (FX.wh {a1} {a1} {inf} {fin (a1 + 1)} h () u) (FX.conn {a1} {a1 + 1} {inf} s () idp)) prop-pi
-                       (DiffSES.exact-right {FX.ses {a1} {a1 + 1} {inf} s ()} u))
+        exact-post {_} {_} {_} {_} {FX.wh {a1} {a1} {inf} {fin (a1 + 1)} h1 () u} {FX.wc {a1} {a1 + 1} {inf} (le-suc a1) () u}
+                   {LinearMap.compose {R} {LHomology (FX.Win a1 (fin (a1 + 1))) u} {LHomology (FX.Win (a1 + 1) inf) (u + deg)}
+                                      {LHomology (FX.Win (a1 + 1) inf) (u + deg)} (FX.wh h2 () (u + deg)) (FX.wc {a1} {a1 + 1} {inf} (le-suc a1) () u)}
+                   {FX.wh h2 () (u + deg)} (FX.wh-inj h2 () (u + deg)) (\lam _ => idp)
+            (transport (\lam h => AbExactAt (FX.wh {a1} {a1} {inf} {fin (a1 + 1)} h () u) (FX.wc {a1} {a1 + 1} {inf} (le-suc a1) () u)) prop-pi
+                       (FilteredDiff.exact-pc FX (le-suc a1) () u))
 
     \lemma ki-gen {a a1 a2 : Int} {u v w : G} (h1 : a1 <= a + 1) (h2 : a2 <= a1) (s1 : a + 1 = a1) (s2 : a2 = a) (e1 : u + deg = v) (e2 : v = w)
       : AbExactAt (LinearMap.compose {R} {LHomology (FX.Win a (fin (a + 1))) u} {LHomology (FX.Win (a + 1) inf) v} {LHomology (FX.Win a1 inf) v}
-                                     (FX.wh {a + 1} {a1} {inf} {inf} h1 () v) (FX.conn {a} {a + 1} {inf} (linarith : a <= a + 1) () e1))
+                                     (FX.wh {a + 1} {a1} {inf} {inf} h1 () v) (FX.conn {a} {a + 1} {inf} (le-suc a) () e1))
                   (FX.whom {a1} {a2} {inf} {inf} h2 () e2)
       \elim a1, a2, v, w, s1, s2, e1, e2
       | _, _, _, _, idp, idp, idp, idp =>
-        \have s : a <= a + 1 => linarith
-        \in exact-congr {_} {_} {_} {FX.conn {a} {a + 1} {inf} s () idp}
-              {LinearMap.compose {R} {LHomology (FX.Win a (fin (a + 1))) u} {LHomology (FX.Win (a + 1) inf) (u + deg)} {LHomology (FX.Win (a + 1) inf) (u + deg)}
-                                 (FX.wh h1 () (u + deg)) (FX.conn {a} {a + 1} {inf} s () idp)}
-              {FX.wh {a + 1} {a} {inf} {inf} s () (u + deg)} {FX.wh h2 () (u + deg)}
-              (\lam _ => inv (FX.wh-id h1 () _)) (\lam t => pmap (\lam h => FX.wh {a + 1} {a} {inf} {inf} h () (u + deg) t) prop-pi)
-              (DiffSES.exact-left {FX.ses {a} {a + 1} {inf} s ()} u)
+        exact-congr {_} {_} {_} {FX.wc {a} {a + 1} {inf} (le-suc a) () u}
+          {LinearMap.compose {R} {LHomology (FX.Win a (fin (a + 1))) u} {LHomology (FX.Win (a + 1) inf) (u + deg)} {LHomology (FX.Win (a + 1) inf) (u + deg)}
+                             (FX.wh h1 () (u + deg)) (FX.wc {a} {a + 1} {inf} (le-suc a) () u)}
+          {FX.wh {a + 1} {a} {inf} {inf} (le-suc a) () (u + deg)} {FX.wh h2 () (u + deg)}
+          (\lam t => inv (FX.wh-id h1 () (FX.wc {a} {a + 1} {inf} (le-suc a) () u t))) (\lam t => pmap (\lam h => FX.wh {a + 1} {a} {inf} {inf} h () (u + deg) t) prop-pi)
+          (FilteredDiff.exact-ci FX (le-suc a) () u)
 
     \lemma exact-ij {x y z : Bi G} (p : (+) {Bi G} x (neg 1, 0) = y) (q : (+) {Bi G} y (0, 0) = z) : AbExactAt (Couple.i {couple} p) (Couple.j {couple} q)
       => ij-gen (le-i p) (le-j q) (pmap (\lam (t : Int) => t + 1) (inv (pmap __.1 p)) *> (linarith : x.1 + neg 1 + 1 = x.1)) (inv (pmap __.1 q) *> zro-right) (deg-i p) (deg-j q)

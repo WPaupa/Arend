@@ -2,6 +2,7 @@
 \import Algebra.Group.Product
 \import Algebra.Meta
 \import Algebra.Module
+\import Algebra.Module.BilinearMap
 \import Algebra.Module.Differential
 \import Algebra.Module.Differential.Filtered
 \import Algebra.Module.Differential.Filtered.Product
@@ -26,39 +27,54 @@
 
 \func filteredLayer.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
                         {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ)
-  : LayerPairing (filteredCouple FX) (filteredCouple FY) (filteredCouple FZ) \cowith
-  | mul p => FP.hpair (filteredLeibniz.lz p) (filteredLeibniz.gr-left p) (filteredLeibniz.gr-right p) (filteredLeibniz.deg2 p)
+  : LayerPairing.{u} (filteredCouple.{u} {R} {G} {deg} {X} FX) (filteredCouple.{u} {R} {G} {deg} {Y} FY) (filteredCouple.{u} {R} {G} {deg} {Z} FZ) \cowith
+  | mul p => FilteredPairing.hpair.{u} {FP} (filteredLeibniz.lz.{u} p) (filteredLeibniz.gr-left.{u} p) (filteredLeibniz.gr-right.{u} p) (filteredLeibniz.deg2.{u} p)
 
 \func filteredLeibniz.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
                           {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ) (n : Nat)
-  : WindowLeibniz \cowith
-  | LayerPairing => filteredLayer FP
+  : WindowLeibniz.{u} \cowith
+  | LayerPairing => filteredLayer.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP
   | n => n
-  | AX => filteredWindow FX n
-  | AY => filteredWindow FY n
-  | AZ => filteredWindow FZ n
+  | AX => filteredWindow.{u} {R} {G} {deg} {X} FX n
+  | AY => filteredWindow.{u} {R} {G} {deg} {Y} FY n
+  | AZ => filteredWindow.{u} {R} {G} {deg} {Z} FZ n
   | sgn x => P.sgn x.2
   | sgn-sq x => P.sgn-sq x.2
-  | wmul p => FP.hpair (lz p) (top-left p) (top-right p) (deg2 p)
-  | rho-wmul {x} {y} {z} p s t => FilteredPairing.hpair-whom FP {x.1} {y.1} {z.1} {x.1} {y.1} {z.1} {fin (top x)} {fin (top y)} {fin (top z)}
-                                    {fin (x.1 + 1)} {fin (y.1 + 1)} {fin (z.1 + 1)} (lz p) (top-left p) (top-right p) (lz p) (gr-left p) (gr-right p)
-                                    <=-refl (lo-top x) <=-refl (lo-top y) <=-refl (lo-top z) (deg2 p) (deg2 p) idp idp idp s t
-  | dwmul p => FP.hpair (dw-a p) () (dw-b p) (dw-deg p)
-  | rho-dwmul {w} {x} {y} {z} p r p' t s => FilteredPairing.hpair-whom FP {w.1} {y.1} {z.1} {x.1} {y.1} {z.1} {inf} {fin (top y)} {fin (top z)}
-                                              {fin (x.1 + 1)} {fin (y.1 + 1)} {fin (z.1 + 1)} (dw-a p) () (dw-b p) (lz p') (gr-left p') (gr-right p')
-                                              (filteredCouple.le-j r) () <=-refl (lo-top y) <=-refl (lo-top z) (dw-deg p) (deg2 p')
-                                              (filteredCouple.deg-j r) idp idp t s
-  | wdmul p => FP.hpair (wd-a p) (wd-b p) () (wd-deg p)
-  | rho-wdmul {x} {w} {y} {z} p r p' s t => FilteredPairing.hpair-whom FP {x.1} {w.1} {z.1} {x.1} {y.1} {z.1} {fin (top x)} {inf} {fin (top z)}
-                                              {fin (x.1 + 1)} {fin (y.1 + 1)} {fin (z.1 + 1)} (wd-a p) (wd-b p) () (lz p') (gr-left p') (gr-right p')
-                                              <=-refl (lo-top x) (filteredCouple.le-j r) () <=-refl (lo-top z) (wd-deg p) (deg2 p')
-                                              idp (filteredCouple.deg-j r) idp s t
+  | wmul p => wmul0.{u} p
+  | rho-wmul {x} {y} {z} p s t => FilteredPairing.hpair-whom.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP {x.1} {y.1} {z.1} {x.1} {y.1} {z.1} {fin (top.{u} x)} {fin (top.{u} y)} {fin (top.{u} z)}
+                                    {fin (x.1 + 1)} {fin (y.1 + 1)} {fin (z.1 + 1)} (lz.{u} p) (top-left.{u} p) (top-right.{u} p) (lz.{u} p) (gr-left.{u} p) (gr-right.{u} p)
+                                    <=-refl (lo-top.{u} x) <=-refl (lo-top.{u} y) <=-refl (lo-top.{u} z) (deg2.{u} p) (deg2.{u} p) idp idp idp s t
+  | dwmul p => dwmul0.{u} p
+  | rho-dwmul {w} {x} {y} {z} p r p' t s => FilteredPairing.hpair-whom.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP {w.1} {y.1} {z.1} {x.1} {y.1} {z.1} {inf} {fin (top.{u} y)} {fin (top.{u} z)}
+                                              {fin (x.1 + 1)} {fin (y.1 + 1)} {fin (z.1 + 1)} (dw-a.{u} p) () (dw-b.{u} p) (lz.{u} p') (gr-left.{u} p') (gr-right.{u} p')
+                                              (filteredCouple.le-j.{u} r) () <=-refl (lo-top.{u} y) <=-refl (lo-top.{u} z) (dw-deg.{u} p) (deg2.{u} p')
+                                              (filteredCouple.deg-j.{u} r) idp idp t s
+  | wdmul p => wdmul0.{u} p
+  | rho-wdmul {x} {w} {y} {z} p r p' s t => FilteredPairing.hpair-whom.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP {x.1} {w.1} {z.1} {x.1} {y.1} {z.1} {fin (top.{u} x)} {inf} {fin (top.{u} z)}
+                                              {fin (x.1 + 1)} {fin (y.1 + 1)} {fin (z.1 + 1)} (wd-a.{u} p) (wd-b.{u} p) () (lz.{u} p') (gr-left.{u} p') (gr-right.{u} p')
+                                              <=-refl (lo-top.{u} x) (filteredCouple.le-j.{u} r) () <=-refl (lo-top.{u} z) (wd-deg.{u} p) (deg2.{u} p')
+                                              idp (filteredCouple.deg-j.{u} r) idp s t
   | leibniz-window {x} {y} {z} {z'} p r q q' s t =>
-    FilteredPairing.conn-leibniz FP {x.1} {top x} {y.1} {top y} {z.1} {top z} {z'.1} {inf} {inf} {inf} {fin (top z')}
-                                 (lz p) (top-left p) (top-right p) (le-top x) () (le-top y) () (le-top z) ()
-                                 (dw-a q) () (dw-b q) (wd-a q') (wd-b q') () (filteredCouple.le-j r) ()
-                                 (deg2 p) (deg-top x) (deg-top y) (deg-top z) (filteredCouple.deg-j r) (dw-deg q) (wd-deg q') idp s t
+    FilteredPairing.conn-leibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP {x.1} {top.{u} x} {y.1} {top.{u} y} {z.1} {top.{u} z} {z'.1} {inf} {inf} {inf} {fin (top.{u} z')}
+                                 (lz.{u} p) (top-left.{u} p) (top-right.{u} p) (le-top.{u} x) () (le-top.{u} y) () (le-top.{u} z) ()
+                                 (dw-a.{u} q) () (dw-b.{u} q) (wd-a.{u} q') (wd-b.{u} q') () (filteredCouple.le-j.{u} r) ()
+                                 (deg2.{u} p) (deg-top.{u} x) (deg-top.{u} y) (deg-top.{u} z) (filteredCouple.deg-j.{u} r) (dw-deg.{u} q) (wd-deg.{u} q') idp s t
   \where {
+    \func wmul0 {x y z : Bi G} (p : (+) {Bi G} x y = z)
+      : BilinearMap {R} (WindowDiagram.W {filteredWindow {R} {G} {deg} {X} FX n} x) (WindowDiagram.W {filteredWindow {R} {G} {deg} {Y} FY n} y) (WindowDiagram.W {filteredWindow {R} {G} {deg} {Z} FZ n} z)
+      => (FilteredPairing.hpair {FP} (lz p) (top-left p) (top-right p) (deg2 p)
+        : BilinearMap {R} (WindowDiagram.W {filteredWindow {R} {G} {deg} {X} FX n} x) (WindowDiagram.W {filteredWindow {R} {G} {deg} {Y} FY n} y) (WindowDiagram.W {filteredWindow {R} {G} {deg} {Z} FZ n} z))
+
+    \func dwmul0 {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z)
+      : BilinearMap {R} (Couple.D {filteredCouple {R} {G} {deg} {X} FX} w) (WindowDiagram.W {filteredWindow {R} {G} {deg} {Y} FY n} y) (WindowDiagram.W {filteredWindow {R} {G} {deg} {Z} FZ n} z)
+      => (FilteredPairing.hpair {FP} (dw-a p) () (dw-b p) (dw-deg p)
+        : BilinearMap {R} (Couple.D {filteredCouple {R} {G} {deg} {X} FX} w) (WindowDiagram.W {filteredWindow {R} {G} {deg} {Y} FY n} y) (WindowDiagram.W {filteredWindow {R} {G} {deg} {Z} FZ n} z))
+
+    \func wdmul0 {x w z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z)
+      : BilinearMap {R} (WindowDiagram.W {filteredWindow {R} {G} {deg} {X} FX n} x) (Couple.D {filteredCouple {R} {G} {deg} {Y} FY} w) (WindowDiagram.W {filteredWindow {R} {G} {deg} {Z} FZ n} z)
+      => (FilteredPairing.hpair {FP} (wd-a p) (wd-b p) () (wd-deg p)
+        : BilinearMap {R} (WindowDiagram.W {filteredWindow {R} {G} {deg} {X} FX n} x) (Couple.D {filteredCouple {R} {G} {deg} {Y} FY} w) (WindowDiagram.W {filteredWindow {R} {G} {deg} {Z} FZ n} z))
+
     \func top (y : Bi G) : Int => filteredWindow.top {G} {deg} {n} y
 
     \lemma top-eq (y : Bi G) : top y = y.1 + 1 - neg n
@@ -112,166 +128,293 @@
 
 \func filteredPairing.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
                           {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ) (m : Nat)
-  : WindowPairing \cowith
-  | LayerPairing => filteredLayer FP
+  : WindowPairing.{u} \cowith
+  | LayerPairing => filteredLayer.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP
   | n => suc m
-  | sgn => WindowLeibniz.sgn {filteredLeibniz FP (suc m)}
-  | sgn-sq => WindowLeibniz.sgn-sq {filteredLeibniz FP (suc m)}
-  | MX => filteredFrame FX m
-  | MY => filteredFrame FY m
-  | MZ => filteredFrame FZ m
-  | wmul => WindowLeibniz.wmul {filteredLeibniz FP (suc m)}
-  | rho-wmul => WindowLeibniz.rho-wmul {filteredLeibniz FP (suc m)}
-  | dwmul => WindowLeibniz.dwmul {filteredLeibniz FP (suc m)}
-  | rho-dwmul => WindowLeibniz.rho-dwmul {filteredLeibniz FP (suc m)}
-  | wdmul => WindowLeibniz.wdmul {filteredLeibniz FP (suc m)}
-  | rho-wdmul => WindowLeibniz.rho-wdmul {filteredLeibniz FP (suc m)}
-  | leibniz-window => WindowLeibniz.leibniz-window {filteredLeibniz FP (suc m)}
-  | smul p => FP.hpair (sm-a p) (sm-b p) (sm-c p) (sm-deg p)
-  | dmmul p => FP.hpair (dm-a p) () (dm-b p) (dm-deg p)
-  | mrho-dmmul {w} {x} {y} {z} p r _ t u => FilteredPairing.hpair-whom FP {w.1} {y.1} {z.1} {x.1} {y.1} {z.1} {inf} {fin (mtop y)} {fin (mtop z)}
-                                               {fin (x.1 + 1)} {fin (y.1 + 1)} {fin (z.1 + 1)} (dm-a p) () (dm-b p) _ _ _
-                                               (filteredCouple.le-j r) () <=-refl (lo-mtop y) <=-refl (lo-mtop z) (dm-deg p) _ (filteredCouple.deg-j r) idp idp t u
-  | sdmul p => FP.hpair (sd-a p) (sd-b p) () (sd-deg p)
-  | sdmul-i {x} {w} {w'} {z} {z'} p p' q r u t =>
-    inv (pmap (\lam v => FP.hpair (sd-a p) (sd-b p) () (sd-deg p) v (Couple.i {filteredCouple FY} q t)) (FX.whom-id {bot x} {fin (mj x).1} <=-refl <=-refl idp u))
-    *> inv (FilteredPairing.hpair-whom FP {bot x} {w.1} {z'.1} {bot x} {w'.1} {z.1} {fin (mj x).1} {inf} {fin (mtop z')} {fin (mj x).1} {inf} {fin (mtop z)}
-                                       (sd-a p') (sd-b p') () (sd-a p) (sd-b p) () <=-refl <=-refl (filteredCouple.le-i q) () (filteredCouple.le-i r) (far-le r)
-                                       (sd-deg p') (sd-deg p) idp (filteredCouple.deg-i q) (filteredCouple.deg-i r) u t)
-  | leibniz-left {x} {y} {z} p q q' u v =>
-    FilteredPairing.conn-leibniz FP {bot x} {(mj x).1} {y.1} {mtop y} {bot z} {(mj z).1} {z.1} {inf} {inf} {inf} {fin (mtop z)}
-                                 (sm-a p) (sm-b p) (sm-c p) (bot-le x) () (le-mtop y) () (bot-le z) ()
-                                 (dm-a {G} {mj x} q) () (dm-b {G} {deg} {m} {mj x} q) (sd-a {G} {deg} {m} {x} {mx y} q') (sd-b {G} {deg} {m} {x} {mx y} q') ()
-                                 (filteredCouple.le-j (GradedMap.pre {Bi G} z (0, 0))) ()
-                                 (sm-deg p) (deg-bot x) (deg-mtop y) (deg-bot z) (filteredCouple.deg-j (GradedMap.pre {Bi G} z (0, 0)))
-                                 (dm-deg {G} {mj x} q) (sd-deg {G} {deg} {m} {x} {mx y} q') (pmap P.sgn (equation.abGroup : x.2 - 0 - deg = x.2 - (deg + 0 + 0))) u v
-  | msmul p => FP.hpair (ms-a p) (ms-b p) (ms-c p) (ms-deg p)
-  | mdmul p => FP.hpair (md-a p) (md-b p) () (md-deg p)
-  | mrho-mdmul {x} {w} {y} {z} p r _ u t => FilteredPairing.hpair-whom FP {x.1} {w.1} {z.1} {x.1} {y.1} {z.1} {fin (mtop x)} {inf} {fin (mtop z)}
-                                               {fin (x.1 + 1)} {fin (y.1 + 1)} {fin (z.1 + 1)} (md-a p) (md-b p) () _ _ _
-                                               <=-refl (lo-mtop x) (filteredCouple.le-j r) () <=-refl (lo-mtop z) (md-deg p) _ idp (filteredCouple.deg-j r) idp u t
-  | dsmul p => FP.hpair (ds-a p) () (ds-b p) (ds-deg p)
-  | dsmul-i {w} {w'} {y} {z} {z'} p p' q r t u =>
-    inv (pmap (\lam v => FP.hpair (ds-a p) () (ds-b p) (ds-deg p) (Couple.i {filteredCouple FX} q t) v) (FY.whom-id {bot y} {fin (mj y).1} <=-refl <=-refl idp u))
-    *> inv (FilteredPairing.hpair-whom FP {w.1} {bot y} {z'.1} {w'.1} {bot y} {z.1} {inf} {fin (mj y).1} {fin (mtop z')} {inf} {fin (mj y).1} {fin (mtop z)}
-                                       (ds-a p') () (ds-b p') (ds-a p) () (ds-b p) (filteredCouple.le-i q) () <=-refl <=-refl (filteredCouple.le-i r) (far-le r)
-                                       (ds-deg p') (ds-deg p) (filteredCouple.deg-i q) idp (filteredCouple.deg-i r) t u)
-  | leibniz-right {x} {y} {z} p q q' v u =>
-    FilteredPairing.conn-leibniz FP {x.1} {mtop x} {bot y} {(mj y).1} {bot z} {(mj z).1} {z.1} {inf} {inf} {inf} {fin (mtop z)}
-                                 (ms-a p) (ms-b p) (ms-c p) (le-mtop x) () (bot-le y) () (bot-le z) ()
-                                 (ds-a {G} {deg} {m} {mx x} q) () (ds-b {G} {deg} {m} {mx x} q) (md-a {G} {x} {mj y} q') (md-b {G} {deg} {m} {x} {mj y} q') ()
-                                 (filteredCouple.le-j (GradedMap.pre {Bi G} z (0, 0))) ()
-                                 (ms-deg p) (deg-mtop x) (deg-bot y) (deg-bot z) (filteredCouple.deg-j (GradedMap.pre {Bi G} z (0, 0)))
-                                 (ds-deg {G} {deg} {m} {mx x} q) (md-deg {G} {x} {mj y} q') idp v u
+  | sgn => WindowLeibniz.sgn {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)}
+  | sgn-sq => WindowLeibniz.sgn-sq {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)}
+  | MX => filteredFrame.{u} {R} {G} {deg} {X} FX m
+  | MY => filteredFrame.{u} {R} {G} {deg} {Y} FY m
+  | MZ => filteredFrame.{u} {R} {G} {deg} {Z} FZ m
+  | wmul {x} {y} {z} p => wmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m {x} {y} {z} p
+  | rho-wmul p s t => rho-wmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p s t
+  | dwmul {w} {y} {z} p => dwmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m {w} {y} {z} p
+  | rho-dwmul p r p' t s => rho-dwmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p r p' t s
+  | wdmul {x} {w} {z} p => wdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m {x} {w} {z} p
+  | rho-wdmul p r p' s t => rho-wdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p r p' s t
+  | leibniz-window p r q q' s t => leibniz-window0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p r q q' s t
+  | smul {x} {y} {z} p => smul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m {x} {y} {z} p
+  | dmmul {w} {y} {z} p => dmmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m {w} {y} {z} p
+  | mrho-dmmul p r p' t u => mrho-dmmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p r p' t u
+  | sdmul {x} {w} {z} p => sdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m {x} {w} {z} p
+  | sdmul-i p p' q r u t => sdmul-i0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p p' q r u t
+  | leibniz-left p q q' u v => leibniz-left0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p q q' u v
+  | msmul {x} {y} {z} p => msmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m {x} {y} {z} p
+  | mdmul {x} {w} {z} p => mdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m {x} {w} {z} p
+  | mrho-mdmul p r p' u t => mrho-mdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p r p' u t
+  | dsmul {w} {y} {z} p => dsmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m {w} {y} {z} p
+  | dsmul-i p p' q r t u => dsmul-i0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p p' q r t u
+  | leibniz-right p q q' v u => leibniz-right0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p q q' v u
   \where {
-    \func mj (y : Bi G) : Bi G => filteredWindow.mj {G} y
+    \func wmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x y z : Bi G} (p : (+) {Bi G} x y = z)
+      : BilinearMap {R} (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z)
+      => (WindowLeibniz.wmul {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)} p
+        : BilinearMap {R} (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z))
 
-    \func bot (y : Bi G) : Int => filteredWindow.bot {G} {suc m} y
+    \func dwmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z)
+      : BilinearMap {R} (Couple.D {filteredCouple.{u} {R} {G} {deg} {X} FX} w) (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z)
+      => (WindowLeibniz.dwmul {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)} p
+        : BilinearMap {R} (Couple.D {filteredCouple.{u} {R} {G} {deg} {X} FX} w) (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z))
 
-    \func mtop (y : Bi G) : Int => filteredFrame.mtop {G} {deg} {m} y
+    \func wdmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x w z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z)
+      : BilinearMap {R} (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (Couple.D {filteredCouple.{u} {R} {G} {deg} {Y} FY} w) (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z)
+      => (WindowLeibniz.wdmul {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)} p
+        : BilinearMap {R} (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (Couple.D {filteredCouple.{u} {R} {G} {deg} {Y} FY} w) (WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z))
 
-    \func mx (y : Bi G) : Bi G => filteredFrame.mx {G} {deg} {m} y
+    \func smul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x y z : Bi G} (p : (+) {Bi G} x y = z)
+      : BilinearMap {R} (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z)
+      => (FilteredPairing.hpair.{u} {FP} (sm-a.{u} {G} {m} p) (sm-b.{u} {G} p) (sm-c.{u} {G} {deg} {m} p) (sm-deg.{u} {G} {deg} p)
+        : BilinearMap {R} (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z))
 
-    \lemma bot-le (y : Bi G) : bot y <= (mj y).1
-      => filteredWindow.bot-le {G} {suc m} y
+    \func dmmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z)
+      : BilinearMap {R} (Couple.D {filteredCouple.{u} {R} {G} {deg} {X} FX} w) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z)
+      => (FilteredPairing.hpair.{u} {FP} (dm-a.{u} {G} p) () (dm-b.{u} {G} {deg} {m} p) (dm-deg.{u} {G} p)
+        : BilinearMap {R} (Couple.D {filteredCouple.{u} {R} {G} {deg} {X} FX} w) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z))
 
-    \lemma deg-bot (y : Bi G) : (mj y).2 - deg + deg = (mj y).2
-      => filteredWindow.deg-bot {G} {deg} y
+    \func sdmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x w z : Bi G} (p : (+) {Bi G} ((+) {Bi G} x w) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+      : BilinearMap {R} (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (Couple.D {filteredCouple.{u} {R} {G} {deg} {Y} FY} w) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z)
+      => (FilteredPairing.hpair.{u} {FP} (sd-a.{u} {G} {deg} {m} p) (sd-b.{u} {G} {deg} {m} p) () (sd-deg.{u} {G} {deg} {m} p)
+        : BilinearMap {R} (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (Couple.D {filteredCouple.{u} {R} {G} {deg} {Y} FY} w) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z))
 
-    \lemma le-mtop (y : Bi G) : y.1 <= mtop y
-      => filteredFrame.le-mtop {G} {deg} {m} y
+    \func msmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x y z : Bi G} (p : (+) {Bi G} x y = z)
+      : BilinearMap {R} (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z)
+      => (FilteredPairing.hpair.{u} {FP} (ms-a.{u} {G} {m} p) (ms-b.{u} {G} {deg} {m} p) (ms-c.{u} {G} p) (ms-deg.{u} {G} {deg} p)
+        : BilinearMap {R} (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z))
 
-    \lemma lo-mtop (y : Bi G) : y.1 + 1 <= mtop y
-      => filteredFrame.lo-mtop {G} {deg} {m} y
+    \func mdmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x w z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z)
+      : BilinearMap {R} (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (Couple.D {filteredCouple.{u} {R} {G} {deg} {Y} FY} w) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z)
+      => (FilteredPairing.hpair.{u} {FP} (md-a.{u} {G} p) (md-b.{u} {G} {deg} {m} p) () (md-deg.{u} {G} p)
+        : BilinearMap {R} (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (Couple.D {filteredCouple.{u} {R} {G} {deg} {Y} FY} w) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z))
 
-    \lemma deg-mtop (y : Bi G) : y.2 + deg = (filteredFrame.mx {G} {deg} {m} y).2
-      => filteredFrame.deg-mtop {G} {deg} {m} y
+    \func dsmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w y) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+      : BilinearMap {R} (Couple.D {filteredCouple.{u} {R} {G} {deg} {X} FX} w) (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z)
+      => (FilteredPairing.hpair.{u} {FP} (ds-a.{u} {G} {deg} {m} p) () (ds-b.{u} {G} {deg} {m} p) (ds-deg.{u} {G} {deg} {m} p)
+        : BilinearMap {R} (Couple.D {filteredCouple.{u} {R} {G} {deg} {X} FX} w) (WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y) (WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z))
 
-    \lemma far-le {x y : Bi G} (p : (+) {Bi G} x (neg 1, 0) = y) : mtop y <= mtop x
-      => filteredFrame.far-le {G} {deg} {m} p
+    \lemma rho-wmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x y z : Bi G} (p : (+) {Bi G} x y = z) (s : WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (t : WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y)
+      : WindowDiagram.rho {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z (wmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p s t) = LayerPairing.mul {filteredLayer.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP} p (WindowDiagram.rho {filteredFrame.{u} {R} {G} {deg} {X} FX m} x s) (WindowDiagram.rho {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y t)
+      => WindowLeibniz.rho-wmul {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)} p s t
 
-    \lemma mj1 (y : Bi G) : (mj y).1 = y.1
+    \lemma rho-dwmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {w x y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z) (r : (+) {Bi G} w (0, 0) = x) (p' : (+) {Bi G} x y = z) (t : Couple.D {filteredCouple.{u} {R} {G} {deg} {X} FX} w) (s : WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y)
+      : WindowDiagram.rho {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z (dwmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p t s) = LayerPairing.mul {filteredLayer.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP} p' (Couple.j {filteredCouple.{u} {R} {G} {deg} {X} FX} r t) (WindowDiagram.rho {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y s)
+      => WindowLeibniz.rho-dwmul {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)} p r p' t s
+
+    \lemma rho-wdmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x w y z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z) (r : (+) {Bi G} w (0, 0) = y) (p' : (+) {Bi G} x y = z) (s : WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (t : Couple.D {filteredCouple.{u} {R} {G} {deg} {Y} FY} w)
+      : WindowDiagram.rho {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z (wdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p s t) = LayerPairing.mul {filteredLayer.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP} p' (WindowDiagram.rho {filteredFrame.{u} {R} {G} {deg} {X} FX m} x s) (Couple.j {filteredCouple.{u} {R} {G} {deg} {Y} FY} r t)
+      => WindowLeibniz.rho-wdmul {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)} p r p' s t
+
+    \lemma leibniz-window0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x y z z' : Bi G} (p : (+) {Bi G} x y = z) (r : (+) {Bi G} ((-) {Bi G} ((+) {Bi G} z (1, deg)) ((*n) {Bi G} (suc m) (neg 1, 0))) (0, 0) = z') (q : (+) {Bi G} ((+) {Bi G} ((-) {Bi G} ((+) {Bi G} x (1, deg)) ((*n) {Bi G} (suc m) (neg 1, 0))) (0, 0)) y = z')
+                 (q' : (+) {Bi G} x ((+) {Bi G} ((-) {Bi G} ((+) {Bi G} y (1, deg)) ((*n) {Bi G} (suc m) (neg 1, 0))) (0, 0)) = z') (s : WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (t : WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y)
+      : WindowDiagram.wrestrict {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} r (WindowDiagram.delta {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z (wmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p s t))
+        = (+) {WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z'} (dwmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m q (WindowDiagram.delta {filteredFrame.{u} {R} {G} {deg} {X} FX m} x s) t) ((*c) {WindowDiagram.W {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z'} (WindowLeibniz.sgn {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)} x) (wdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m q' s (WindowDiagram.delta {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y t)))
+      => WindowLeibniz.leibniz-window {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)} p r q q' s t
+
+    \lemma mrho-dmmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {w x y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z) (r : (+) {Bi G} w (0, 0) = x) (p' : (+) {Bi G} x y = z) (t : Couple.D {filteredCouple.{u} {R} {G} {deg} {X} FX} w) (u : WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y)
+      : WindowFrame.mrho {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z (dmmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p t u) = LayerPairing.mul {filteredLayer.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP} p' (Couple.j {filteredCouple.{u} {R} {G} {deg} {X} FX} r t) (WindowFrame.mrho {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y u)
+      => FilteredPairing.hpair-whom.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP {w.1} {y.1} {z.1} {x.1} {y.1} {z.1} {inf} {fin (mtop.{u} {G} {deg} {m} y)} {fin (mtop.{u} {G} {deg} {m} z)}
+                                               {fin (x.1 + 1)} {fin (y.1 + 1)} {fin (z.1 + 1)} (dm-a.{u} {G} p) () (dm-b.{u} {G} {deg} {m} p) _ _ _
+                                               (filteredCouple.le-j.{u} r) () <=-refl (lo-mtop.{u} {G} {deg} {m} y) <=-refl (lo-mtop.{u} {G} {deg} {m} z) (dm-deg.{u} {G} p) _ (filteredCouple.deg-j.{u} r) idp idp t u
+
+    \lemma sdmul-i0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x w w' z z' : Bi G} (p : (+) {Bi G} ((+) {Bi G} x w') ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0)) (p' : (+) {Bi G} ((+) {Bi G} x w) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z' (1, deg)) (neg 1, 0))
+                 (q : (+) {Bi G} w (neg 1, 0) = w') (r : (+) {Bi G} z' (neg 1, 0) = z) (u : WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (t : Couple.D {filteredCouple.{u} {R} {G} {deg} {Y} FY} w)
+      : sdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p u (Couple.i {filteredCouple.{u} {R} {G} {deg} {Y} FY} q t) = WindowFrame.far {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} r (sdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p' u t)
+      => inv (pmap (\lam v => FilteredPairing.hpair.{u} {FP} (sd-a.{u} {G} {deg} {m} p) (sd-b.{u} {G} {deg} {m} p) () (sd-deg.{u} {G} {deg} {m} p) v (Couple.i {filteredCouple.{u} {R} {G} {deg} {Y} FY} q t)) (FilteredDiff.whom-id.{u} {FX} {bot.{u} {G} {m} x} {fin (mj.{u} {G} x).1} <=-refl <=-refl idp u))
+    *> inv (FilteredPairing.hpair-whom.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP {bot.{u} {G} {m} x} {w.1} {z'.1} {bot.{u} {G} {m} x} {w'.1} {z.1} {fin (mj.{u} {G} x).1} {inf} {fin (mtop.{u} {G} {deg} {m} z')} {fin (mj.{u} {G} x).1} {inf} {fin (mtop.{u} {G} {deg} {m} z)}
+                                       (sd-a.{u} {G} {deg} {m} p') (sd-b.{u} {G} {deg} {m} p') () (sd-a.{u} {G} {deg} {m} p) (sd-b.{u} {G} {deg} {m} p) () <=-refl <=-refl (filteredCouple.le-i.{u} q) () (filteredCouple.le-i.{u} r) (far-le.{u} {G} {deg} {m} r)
+                                       (sd-deg.{u} {G} {deg} {m} p') (sd-deg.{u} {G} {deg} {m} p) idp (filteredCouple.deg-i.{u} q) (filteredCouple.deg-i.{u} r) u t)
+
+    \lemma leibniz-left0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x y z : Bi G} (p : (+) {Bi G} x y = z) (q : (+) {Bi G} ((+) {Bi G} ((-) {Bi G} x (0, 0)) (0, 0)) y = z) (q' : (+) {Bi G} ((+) {Bi G} x ((+) {Bi G} ((-) {Bi G} ((+) {Bi G} y (1, deg)) ((*n) {Bi G} (suc m) (neg 1, 0))) (neg 1, 0))) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+                 (u : WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (v : WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y)
+      : WindowFrame.restrict {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} (GradedMap.pre {Bi G} z (0, 0)) (WindowDiagram.tower {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z (smul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p u v))
+        = dmmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m q (WindowDiagram.tower {filteredFrame.{u} {R} {G} {deg} {X} FX m} x u) v + WindowLeibniz.sgn {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)} ((-) {Bi G} x ((+) {Bi G} ((+) {Bi G} (1, deg) (0, 0)) (neg 1, 0))) *c sdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m q' u (WindowFrame.mdelta {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y v)
+      => FilteredPairing.conn-leibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP {bot.{u} {G} {m} x} {(mj.{u} {G} x).1} {y.1} {mtop.{u} {G} {deg} {m} y} {bot.{u} {G} {m} z} {(mj.{u} {G} z).1} {z.1} {inf} {inf} {inf} {fin (mtop.{u} {G} {deg} {m} z)}
+                                 (sm-a.{u} {G} {m} p) (sm-b.{u} {G} p) (sm-c.{u} {G} {deg} {m} p) (bot-le.{u} {G} {m} x) () (le-mtop.{u} {G} {deg} {m} y) () (bot-le.{u} {G} {m} z) ()
+                                 (dm-a.{u} {G} {mj.{u} {G} x} q) () (dm-b.{u} {G} {deg} {m} {mj.{u} {G} x} q) (sd-a.{u} {G} {deg} {m} {x} {mx.{u} {G} {deg} {m} y} q') (sd-b.{u} {G} {deg} {m} {x} {mx.{u} {G} {deg} {m} y} q') ()
+                                 (filteredCouple.le-j.{u} {G} {(-) {Bi G} z (0, 0)} {z} (GradedMap.pre {Bi G} z (0, 0))) ()
+                                 (sm-deg.{u} {G} {deg} p) (deg-bot.{u} {G} {deg} x) (deg-mtop.{u} {G} {deg} {m} y) (deg-bot.{u} {G} {deg} z) (filteredCouple.deg-j.{u} {G} {(-) {Bi G} z (0, 0)} {z} (GradedMap.pre {Bi G} z (0, 0)))
+                                 (dm-deg.{u} {G} {mj.{u} {G} x} q) (sd-deg.{u} {G} {deg} {m} {x} {mx.{u} {G} {deg} {m} y} q') (pmap P.sgn (equation.abGroup : x.2 - 0 - deg = x.2 - (deg + 0 + 0))) u v
+
+    \lemma mrho-mdmul0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x w y z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z) (r : (+) {Bi G} w (0, 0) = y) (p' : (+) {Bi G} x y = z) (u : WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (t : Couple.D {filteredCouple.{u} {R} {G} {deg} {Y} FY} w)
+      : WindowFrame.mrho {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z (mdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p u t) = LayerPairing.mul {filteredLayer.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP} p' (WindowFrame.mrho {filteredFrame.{u} {R} {G} {deg} {X} FX m} x u) (Couple.j {filteredCouple.{u} {R} {G} {deg} {Y} FY} r t)
+      => FilteredPairing.hpair-whom.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP {x.1} {w.1} {z.1} {x.1} {y.1} {z.1} {fin (mtop.{u} {G} {deg} {m} x)} {inf} {fin (mtop.{u} {G} {deg} {m} z)}
+                                               {fin (x.1 + 1)} {fin (y.1 + 1)} {fin (z.1 + 1)} (md-a.{u} {G} p) (md-b.{u} {G} {deg} {m} p) () _ _ _
+                                               <=-refl (lo-mtop.{u} {G} {deg} {m} x) (filteredCouple.le-j.{u} r) () <=-refl (lo-mtop.{u} {G} {deg} {m} z) (md-deg.{u} {G} p) _ idp (filteredCouple.deg-j.{u} r) idp u t
+
+    \lemma dsmul-i0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {w w' y z z' : Bi G} (p : (+) {Bi G} ((+) {Bi G} w' y) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0)) (p' : (+) {Bi G} ((+) {Bi G} w y) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z' (1, deg)) (neg 1, 0))
+                 (q : (+) {Bi G} w (neg 1, 0) = w') (r : (+) {Bi G} z' (neg 1, 0) = z) (t : Couple.D {filteredCouple.{u} {R} {G} {deg} {X} FX} w) (u : WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y)
+      : dsmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p (Couple.i {filteredCouple.{u} {R} {G} {deg} {X} FX} q t) u = WindowFrame.far {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} r (dsmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p' t u)
+      => inv (pmap (\lam v => FilteredPairing.hpair.{u} {FP} (ds-a.{u} {G} {deg} {m} p) () (ds-b.{u} {G} {deg} {m} p) (ds-deg.{u} {G} {deg} {m} p) (Couple.i {filteredCouple.{u} {R} {G} {deg} {X} FX} q t) v) (FilteredDiff.whom-id.{u} {FY} {bot.{u} {G} {m} y} {fin (mj.{u} {G} y).1} <=-refl <=-refl idp u))
+    *> inv (FilteredPairing.hpair-whom.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP {w.1} {bot.{u} {G} {m} y} {z'.1} {w'.1} {bot.{u} {G} {m} y} {z.1} {inf} {fin (mj.{u} {G} y).1} {fin (mtop.{u} {G} {deg} {m} z')} {inf} {fin (mj.{u} {G} y).1} {fin (mtop.{u} {G} {deg} {m} z)}
+                                       (ds-a.{u} {G} {deg} {m} p') () (ds-b.{u} {G} {deg} {m} p') (ds-a.{u} {G} {deg} {m} p) () (ds-b.{u} {G} {deg} {m} p) (filteredCouple.le-i.{u} q) () <=-refl <=-refl (filteredCouple.le-i.{u} r) (far-le.{u} {G} {deg} {m} r)
+                                       (ds-deg.{u} {G} {deg} {m} p') (ds-deg.{u} {G} {deg} {m} p) (filteredCouple.deg-i.{u} q) idp (filteredCouple.deg-i.{u} r) t u)
+
+    \lemma leibniz-right0.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing.{u} X Y Z}
+                 {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ) (m : Nat)
+                 {x y z : Bi G} (p : (+) {Bi G} x y = z) (q : (+) {Bi G} ((+) {Bi G} ((+) {Bi G} ((-) {Bi G} ((+) {Bi G} x (1, deg)) ((*n) {Bi G} (suc m) (neg 1, 0))) (neg 1, 0)) y) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0)) (q' : (+) {Bi G} x ((+) {Bi G} ((-) {Bi G} y (0, 0)) (0, 0)) = z)
+                 (v : WindowFrame.M {filteredFrame.{u} {R} {G} {deg} {X} FX m} x) (u : WindowDiagram.S {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y)
+      : WindowFrame.restrict {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} (GradedMap.pre {Bi G} z (0, 0)) (WindowDiagram.tower {filteredFrame.{u} {R} {G} {deg} {Z} FZ m} z (msmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m p v u))
+        = dsmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m q (WindowFrame.mdelta {filteredFrame.{u} {R} {G} {deg} {X} FX m} x v) u + WindowLeibniz.sgn {filteredLeibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP (suc m)} x *c mdmul0.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP m q' v (WindowDiagram.tower {filteredFrame.{u} {R} {G} {deg} {Y} FY m} y u)
+      => FilteredPairing.conn-leibniz.{u} {R} {G} {deg} {X} {Y} {Z} {P} {FX} {FY} {FZ} FP {x.1} {mtop.{u} {G} {deg} {m} x} {bot.{u} {G} {m} y} {(mj.{u} {G} y).1} {bot.{u} {G} {m} z} {(mj.{u} {G} z).1} {z.1} {inf} {inf} {inf} {fin (mtop.{u} {G} {deg} {m} z)}
+                                 (ms-a.{u} {G} {m} p) (ms-b.{u} {G} {deg} {m} p) (ms-c.{u} {G} p) (le-mtop.{u} {G} {deg} {m} x) () (bot-le.{u} {G} {m} y) () (bot-le.{u} {G} {m} z) ()
+                                 (ds-a.{u} {G} {deg} {m} {mx.{u} {G} {deg} {m} x} q) () (ds-b.{u} {G} {deg} {m} {mx.{u} {G} {deg} {m} x} q) (md-a.{u} {G} {x} {mj.{u} {G} y} q') (md-b.{u} {G} {deg} {m} {x} {mj.{u} {G} y} q') ()
+                                 (filteredCouple.le-j.{u} {G} {(-) {Bi G} z (0, 0)} {z} (GradedMap.pre {Bi G} z (0, 0))) ()
+                                 (ms-deg.{u} {G} {deg} p) (deg-mtop.{u} {G} {deg} {m} x) (deg-bot.{u} {G} {deg} y) (deg-bot.{u} {G} {deg} z) (filteredCouple.deg-j.{u} {G} {(-) {Bi G} z (0, 0)} {z} (GradedMap.pre {Bi G} z (0, 0)))
+                                 (ds-deg.{u} {G} {deg} {m} {mx.{u} {G} {deg} {m} x} q) (md-deg.{u} {G} {x} {mj.{u} {G} y} q') idp v u
+
+    \func mj.{u} {G : AbGroup.{u}} (y : Bi G) : Bi G => filteredWindow.mj.{u} {G} y
+
+    \func bot.{u} {G : AbGroup.{u}} {m : Nat} (y : Bi G) : Int => filteredWindow.bot.{u} {G} {suc m} y
+
+    \func mtop.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} (y : Bi G) : Int => filteredFrame.mtop.{u} {G} {deg} {m} y
+
+    \func mx.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} (y : Bi G) : Bi G => filteredFrame.mx.{u} {G} {deg} {m} y
+
+    \lemma bot-le.{u} {G : AbGroup.{u}} {m : Nat} (y : Bi G) : bot.{u} {G} {m} y <= (mj.{u} {G} y).1
+      => filteredWindow.bot-le.{u} {G} {suc m} y
+
+    \lemma deg-bot.{u} {G : AbGroup.{u}} {deg : G} (y : Bi G) : (mj.{u} {G} y).2 - deg + deg = (mj.{u} {G} y).2
+      => filteredWindow.deg-bot.{u} {G} {deg} y
+
+    \lemma le-mtop.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} (y : Bi G) : y.1 <= mtop.{u} {G} {deg} {m} y
+      => filteredFrame.le-mtop.{u} {G} {deg} {m} y
+
+    \lemma lo-mtop.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} (y : Bi G) : y.1 + 1 <= mtop.{u} {G} {deg} {m} y
+      => filteredFrame.lo-mtop.{u} {G} {deg} {m} y
+
+    \lemma deg-mtop.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} (y : Bi G) : y.2 + deg = (filteredFrame.mx.{u} {G} {deg} {m} y).2
+      => filteredFrame.deg-mtop.{u} {G} {deg} {m} y
+
+    \lemma far-le.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {x y : Bi G} (p : (+) {Bi G} x (neg 1, 0) = y) : mtop.{u} {G} {deg} {m} y <= mtop.{u} {G} {deg} {m} x
+      => filteredFrame.far-le.{u} {G} {deg} {m} p
+
+    \lemma mj1.{u} {G : AbGroup.{u}} (y : Bi G) : (mj.{u} {G} y).1 = y.1
       => (linarith : y.1 - 0 = y.1)
 
-    \lemma botN (y : Bi G) : bot y = y.1 + neg (suc m)
-      => pmap (\lam (z : Bi G) => (mj y).1 + z.1) (Bi.ndi (suc m)) *> pmap (`+ neg (suc m)) (mj1 y)
+    \lemma botN.{u} {G : AbGroup.{u}} {m : Nat} (y : Bi G) : bot.{u} {G} {m} y = y.1 + neg (suc m)
+      => pmap (\lam (z : Bi G) => (mj.{u} {G} y).1 + z.1) (Bi.ndi (suc m)) *> pmap (`+ neg (suc m)) (mj1.{u} {G} y)
 
-    \lemma mtopN (y : Bi G) : mtop y = y.1 + 1 - neg (suc m) + neg 1
-      => filteredFrame.mtop-eq {G} {deg} {m} y
+    \lemma mtopN.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} (y : Bi G) : mtop.{u} {G} {deg} {m} y = y.1 + 1 - neg (suc m) + neg 1
+      => filteredFrame.mtop-eq.{u} {G} {deg} {m} y
 
-    \lemma idx1 {a b z : Bi G} (p : (+) {Bi G} ((+) {Bi G} a b) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+    \lemma idx1.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {a b z : Bi G} (p : (+) {Bi G} ((+) {Bi G} a b) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
       : z.1 = a.1 + b.1 + neg (suc m)
       => (linarith : z.1 = z.1 + 1 + neg 1) *> inv (pmap __.1 p) *> pmap (\lam (t : Bi G) => a.1 + b.1 + t.1) (Bi.ndi (suc m))
 
-    \lemma idx2 {a b z : Bi G} (p : (+) {Bi G} ((+) {Bi G} a b) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+    \lemma idx2.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {a b z : Bi G} (p : (+) {Bi G} ((+) {Bi G} a b) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
       : a.2 + b.2 = z.2 + deg
       => inv zro-right *> inv (pmap (\lam (t : Bi G) => a.2 + b.2 + t.2) (Bi.ndi (suc m))) *> pmap __.2 p *> zro-right
 
-    \lemma sm-a {x y z : Bi G} (p : (+) {Bi G} x y = z) : bot z <= bot x + y.1 \elim z, p
-      | _, idp => rewrite (botN ((+) {Bi G} x y), botN x) (linarith : x.1 + y.1 + neg (suc m) <= x.1 + neg (suc m) + y.1)
+    \lemma sm-a.{u} {G : AbGroup.{u}} {m : Nat} {x y z : Bi G} (p : (+) {Bi G} x y = z) : bot.{u} {G} {m} z <= bot.{u} {G} {m} x + y.1 \elim z, p
+      | _, idp => rewrite (botN.{u} {G} {m} ((+) {Bi G} x y), botN.{u} {G} {m} x) (linarith : x.1 + y.1 + neg (suc m) <= x.1 + neg (suc m) + y.1)
 
-    \lemma sm-b {x y z : Bi G} (p : (+) {Bi G} x y = z) : (mj z).1 <= (mj x).1 + y.1 \elim z, p
-      | _, idp => rewrite (mj1 ((+) {Bi G} x y), mj1 x) (linarith : x.1 + y.1 <= x.1 + y.1)
+    \lemma sm-b.{u} {G : AbGroup.{u}} {x y z : Bi G} (p : (+) {Bi G} x y = z) : (mj.{u} {G} z).1 <= (mj.{u} {G} x).1 + y.1 \elim z, p
+      | _, idp => rewrite (mj1.{u} {G} ((+) {Bi G} x y), mj1.{u} {G} x) (linarith : x.1 + y.1 <= x.1 + y.1)
 
-    \lemma sm-c {x y z : Bi G} (p : (+) {Bi G} x y = z) : (mj z).1 <= mtop y + bot x \elim z, p
-      | _, idp => rewrite (mj1 ((+) {Bi G} x y), mtopN y, botN x) (linarith : x.1 + y.1 <= y.1 + 1 - neg (suc m) + neg 1 + (x.1 + neg (suc m)))
+    \lemma sm-c.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {x y z : Bi G} (p : (+) {Bi G} x y = z) : (mj.{u} {G} z).1 <= mtop.{u} {G} {deg} {m} y + bot.{u} {G} {m} x \elim z, p
+      | _, idp => rewrite (mj1.{u} {G} ((+) {Bi G} x y), mtopN.{u} {G} {deg} {m} y, botN.{u} {G} {m} x) (linarith : x.1 + y.1 <= y.1 + 1 - neg (suc m) + neg 1 + (x.1 + neg (suc m)))
 
-    \lemma sm-deg {x y z : Bi G} (p : (+) {Bi G} x y = z) : (mj x).2 - deg + y.2 = (mj z).2 - deg \elim z, p
+    \lemma sm-deg.{u} {G : AbGroup.{u}} {deg : G} {x y z : Bi G} (p : (+) {Bi G} x y = z) : (mj.{u} {G} x).2 - deg + y.2 = (mj.{u} {G} z).2 - deg \elim z, p
       | _, idp => (equation.abGroup : x.2 - 0 - deg + y.2 = x.2 + y.2 - 0 - deg)
 
-    \lemma dm-a {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z) : z.1 <= w.1 + y.1 \elim z, p
+    \lemma dm-a.{u} {G : AbGroup.{u}} {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z) : z.1 <= w.1 + y.1 \elim z, p
       | _, idp => (linarith : w.1 + 0 + y.1 <= w.1 + y.1)
 
-    \lemma dm-b {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z) : mtop z <= mtop y + w.1 \elim z, p
-      | _, idp => rewrite (mtopN ((+) {Bi G} ((+) {Bi G} w (0, 0)) y), mtopN y)
+    \lemma dm-b.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z) : mtop.{u} {G} {deg} {m} z <= mtop.{u} {G} {deg} {m} y + w.1 \elim z, p
+      | _, idp => rewrite (mtopN.{u} {G} {deg} {m} ((+) {Bi G} ((+) {Bi G} w (0, 0)) y), mtopN.{u} {G} {deg} {m} y)
                     (linarith : w.1 + 0 + y.1 + 1 - neg (suc m) + neg 1 <= y.1 + 1 - neg (suc m) + neg 1 + w.1)
 
-    \lemma dm-deg {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z) : w.2 + y.2 = z.2
+    \lemma dm-deg.{u} {G : AbGroup.{u}} {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w (0, 0)) y = z) : w.2 + y.2 = z.2
       => inv (pmap (`+ y.2) zro-right) *> pmap __.2 p
 
-    \lemma sd-a {x w z : Bi G} (p : (+) {Bi G} ((+) {Bi G} x w) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
-      : z.1 <= bot x + w.1
-      => rewrite (idx1 p, botN x) (linarith : x.1 + w.1 + neg (suc m) <= x.1 + neg (suc m) + w.1)
+    \lemma sd-a.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {x w z : Bi G} (p : (+) {Bi G} ((+) {Bi G} x w) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+      : z.1 <= bot.{u} {G} {m} x + w.1
+      => rewrite (idx1.{u} {G} {deg} {m} p, botN.{u} {G} {m} x) (linarith : x.1 + w.1 + neg (suc m) <= x.1 + neg (suc m) + w.1)
 
-    \lemma sd-b {x w z : Bi G} (p : (+) {Bi G} ((+) {Bi G} x w) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
-      : mtop z <= (mj x).1 + w.1
-      => rewrite (mtopN z, idx1 p, mj1 x) (linarith : x.1 + w.1 + neg (suc m) + 1 - neg (suc m) + neg 1 <= x.1 + w.1)
+    \lemma sd-b.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {x w z : Bi G} (p : (+) {Bi G} ((+) {Bi G} x w) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+      : mtop.{u} {G} {deg} {m} z <= (mj.{u} {G} x).1 + w.1
+      => rewrite (mtopN.{u} {G} {deg} {m} z, idx1.{u} {G} {deg} {m} p, mj1.{u} {G} x) (linarith : x.1 + w.1 + neg (suc m) + 1 - neg (suc m) + neg 1 <= x.1 + w.1)
 
-    \lemma sd-deg {x w z : Bi G} (p : (+) {Bi G} ((+) {Bi G} x w) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
-      : (mj x).2 - deg + w.2 = z.2
-      => (equation.abGroup : x.2 - 0 - deg + w.2 = x.2 + w.2 - deg) *> pmap (`- deg) (idx2 p) *> (equation.abGroup : z.2 + deg - deg = z.2)
+    \lemma sd-deg.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {x w z : Bi G} (p : (+) {Bi G} ((+) {Bi G} x w) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+      : (mj.{u} {G} x).2 - deg + w.2 = z.2
+      => (equation.abGroup : x.2 - 0 - deg + w.2 = x.2 + w.2 - deg) *> pmap (`- deg) (idx2.{u} {G} {deg} {m} p) *> (equation.abGroup : z.2 + deg - deg = z.2)
 
-    \lemma ms-a {x y z : Bi G} (p : (+) {Bi G} x y = z) : bot z <= x.1 + bot y \elim z, p
-      | _, idp => rewrite (botN ((+) {Bi G} x y), botN y) (linarith : x.1 + y.1 + neg (suc m) <= x.1 + (y.1 + neg (suc m)))
+    \lemma ms-a.{u} {G : AbGroup.{u}} {m : Nat} {x y z : Bi G} (p : (+) {Bi G} x y = z) : bot.{u} {G} {m} z <= x.1 + bot.{u} {G} {m} y \elim z, p
+      | _, idp => rewrite (botN.{u} {G} {m} ((+) {Bi G} x y), botN.{u} {G} {m} y) (linarith : x.1 + y.1 + neg (suc m) <= x.1 + (y.1 + neg (suc m)))
 
-    \lemma ms-b {x y z : Bi G} (p : (+) {Bi G} x y = z) : (mj z).1 <= mtop x + bot y \elim z, p
-      | _, idp => rewrite (mj1 ((+) {Bi G} x y), mtopN x, botN y) (linarith : x.1 + y.1 <= x.1 + 1 - neg (suc m) + neg 1 + (y.1 + neg (suc m)))
+    \lemma ms-b.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {x y z : Bi G} (p : (+) {Bi G} x y = z) : (mj.{u} {G} z).1 <= mtop.{u} {G} {deg} {m} x + bot.{u} {G} {m} y \elim z, p
+      | _, idp => rewrite (mj1.{u} {G} ((+) {Bi G} x y), mtopN.{u} {G} {deg} {m} x, botN.{u} {G} {m} y) (linarith : x.1 + y.1 <= x.1 + 1 - neg (suc m) + neg 1 + (y.1 + neg (suc m)))
 
-    \lemma ms-c {x y z : Bi G} (p : (+) {Bi G} x y = z) : (mj z).1 <= (mj y).1 + x.1 \elim z, p
-      | _, idp => rewrite (mj1 ((+) {Bi G} x y), mj1 y) (linarith : x.1 + y.1 <= y.1 + x.1)
+    \lemma ms-c.{u} {G : AbGroup.{u}} {x y z : Bi G} (p : (+) {Bi G} x y = z) : (mj.{u} {G} z).1 <= (mj.{u} {G} y).1 + x.1 \elim z, p
+      | _, idp => rewrite (mj1.{u} {G} ((+) {Bi G} x y), mj1.{u} {G} y) (linarith : x.1 + y.1 <= y.1 + x.1)
 
-    \lemma ms-deg {x y z : Bi G} (p : (+) {Bi G} x y = z) : x.2 + ((mj y).2 - deg) = (mj z).2 - deg \elim z, p
+    \lemma ms-deg.{u} {G : AbGroup.{u}} {deg : G} {x y z : Bi G} (p : (+) {Bi G} x y = z) : x.2 + ((mj.{u} {G} y).2 - deg) = (mj.{u} {G} z).2 - deg \elim z, p
       | _, idp => (equation.abGroup : x.2 + (y.2 - 0 - deg) = x.2 + y.2 - 0 - deg)
 
-    \lemma md-a {x w z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z) : z.1 <= x.1 + w.1 \elim z, p
+    \lemma md-a.{u} {G : AbGroup.{u}} {x w z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z) : z.1 <= x.1 + w.1 \elim z, p
       | _, idp => (linarith : x.1 + (w.1 + 0) <= x.1 + w.1)
 
-    \lemma md-b {x w z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z) : mtop z <= mtop x + w.1 \elim z, p
-      | _, idp => rewrite (mtopN ((+) {Bi G} x ((+) {Bi G} w (0, 0))), mtopN x)
+    \lemma md-b.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {x w z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z) : mtop.{u} {G} {deg} {m} z <= mtop.{u} {G} {deg} {m} x + w.1 \elim z, p
+      | _, idp => rewrite (mtopN.{u} {G} {deg} {m} ((+) {Bi G} x ((+) {Bi G} w (0, 0))), mtopN.{u} {G} {deg} {m} x)
                     (linarith : x.1 + (w.1 + 0) + 1 - neg (suc m) + neg 1 <= x.1 + 1 - neg (suc m) + neg 1 + w.1)
 
-    \lemma md-deg {x w z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z) : x.2 + w.2 = z.2
+    \lemma md-deg.{u} {G : AbGroup.{u}} {x w z : Bi G} (p : (+) {Bi G} x ((+) {Bi G} w (0, 0)) = z) : x.2 + w.2 = z.2
       => inv (pmap (x.2 +) zro-right) *> pmap __.2 p
 
-    \lemma ds-a {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w y) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
-      : z.1 <= w.1 + bot y
-      => rewrite (idx1 p, botN y) (linarith : w.1 + y.1 + neg (suc m) <= w.1 + (y.1 + neg (suc m)))
+    \lemma ds-a.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w y) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+      : z.1 <= w.1 + bot.{u} {G} {m} y
+      => rewrite (idx1.{u} {G} {deg} {m} p, botN.{u} {G} {m} y) (linarith : w.1 + y.1 + neg (suc m) <= w.1 + (y.1 + neg (suc m)))
 
-    \lemma ds-b {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w y) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
-      : mtop z <= (mj y).1 + w.1
-      => rewrite (mtopN z, idx1 p, mj1 y) (linarith : w.1 + y.1 + neg (suc m) + 1 - neg (suc m) + neg 1 <= y.1 + w.1)
+    \lemma ds-b.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w y) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+      : mtop.{u} {G} {deg} {m} z <= (mj.{u} {G} y).1 + w.1
+      => rewrite (mtopN.{u} {G} {deg} {m} z, idx1.{u} {G} {deg} {m} p, mj1.{u} {G} y) (linarith : w.1 + y.1 + neg (suc m) + 1 - neg (suc m) + neg 1 <= y.1 + w.1)
 
-    \lemma ds-deg {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w y) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
-      : w.2 + ((mj y).2 - deg) = z.2
-      => (equation.abGroup : w.2 + (y.2 - 0 - deg) = w.2 + y.2 - deg) *> pmap (`- deg) (idx2 p) *> (equation.abGroup : z.2 + deg - deg = z.2)
+    \lemma ds-deg.{u} {G : AbGroup.{u}} {deg : G} {m : Nat} {w y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} w y) ((*n) {Bi G} (suc m) (neg 1, 0)) = (+) {Bi G} ((+) {Bi G} z (1, deg)) (neg 1, 0))
+      : w.2 + ((mj.{u} {G} y).2 - deg) = z.2
+      => (equation.abGroup : w.2 + (y.2 - 0 - deg) = w.2 + y.2 - deg) *> pmap (`- deg) (idx2.{u} {G} {deg} {m} p) *> (equation.abGroup : z.2 + deg - deg = z.2)
   }

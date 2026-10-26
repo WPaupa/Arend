@@ -50,9 +50,10 @@
 
 \lemma filteredConvergence.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) (x0 : Bi G)
                                (lo : \Pi {y : G} (u : X.D y) -> FX.F x0.1 y u) (k : Nat)
-  : ModuleIso {R} {LFiltration.lgr {filtration (filteredCouple FX) x0} k}
-              {Einf (filteredCouple FX) (idp {Bi G} {(+) {Bi G} ((-) {Bi G} x0 ((*n) {Bi G} k (neg 1, 0))) (0, 0)})} (convergence (filteredCouple FX) x0 k)
-  => convergence.iso {filteredCouple FX} {x0} {k} (filteredStable FX lo)
+  : ModuleIso {R} {LFiltration.lgr {filtration.{u} (filteredCouple.{u} {R} {G} {deg} {X} FX) x0} k}
+              {Einf.{u} (filteredCouple.{u} {R} {G} {deg} {X} FX) (idp {Bi G} {(+) {Bi G} ((-) {Bi G} x0 ((*n) {Bi G} k (neg 1, 0))) (0, 0)})}
+              (convergence.{u} (filteredCouple.{u} {R} {G} {deg} {X} FX) x0 k)
+  => convergence-iso.{u} {R} {Bi G} {neg 1, 0} {0, 0} {1, deg} (filteredCouple.{u} {R} {G} {deg} {X} FX) {x0} {k} (filteredStable.{u} FX lo)
 
 \lemma filteredAbutment-mul.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
                                 {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ) {x0 y0 z0 : Bi G}

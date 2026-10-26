@@ -217,34 +217,39 @@
                             ext (inv (F.g-j _ _) *> pmap (\lam t => F.g y t.1) bu))
   }
 
-\func nextPage.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative C n))
-  : CoupleIso (cumulative C (suc n)) (ExactCouple.derived (cumulative.level C n e)) \cowith
-  | f => nextD C n e
-  | g => theta C n e
+\func nextPage.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative.{u} C n))
+  : CoupleIso.{u} (cumulative.{u} C (suc n)) (ExactCouple.derived.{u} (cumulative.level.{u} C n e)) \cowith
+  | f => nextD.{u} C n e
+  | g => theta.{u} C n e
   | f-i _ _ => ext (ext idp)
-  | g-j {x} {y} p z => \case z.2 \with {
-    | inP (v, iv) =>
-      \let | s : x - suc n *n C.di + n *n C.di = x - C.di => equation.abGroup
-           | q' : x - C.di + jdeg C.di C.dj n = y => equation.abGroup *> p
-           | u : Couple.D {cumulative C n} (x - C.di) => (iter C n s v, iter.image-intro C n s v)
-           | q => jdeg.index {_} {C.di} {C.dj} {suc n} p
-      \in pmap (theta C n e y) (j-eval C (suc n) (pre x _) v p q z iv)
-          *> pmap in~ (ext (pmap in~ (ext idp) *> inv (j-eval C n s v q' q u idp)))
-          *> inv (ExactCouple.j'-eval {cumulative.level C n e} (pre x C.di) u p q' (nextD C n e x z)
-                                      (ext (inv (GradedMap.comp-eval C.i (iter C n) (pre x _) s (pre x C.di) v) *> iv)))
-  }
+  | g-j p z => theta-j.{u} C n e p z
   | f-k _ h => \case \elim h \with {
     | in~ _ => ext (ext idp)
   }
   | f-iso x => \new ModuleIso {
-    | finv => nextDinv C n e x
+    | finv => nextDinv.{u} C n e x
     | finv_f _ => ext idp
     | f_finv _ => ext (ext idp)
   }
-  | g-iso y => (ModuleIso.iso<->inj+surj {_} {Couple.E {cumulative C (suc n)} y} {Couple.E {ExactCouple.derived (cumulative.level C n e)} y} {theta C n e y}).2
-                  (theta-inj C n e y, theta-surj C n e y)
+  | g-iso y => (ModuleIso.iso<->inj+surj {_} {Couple.E {cumulative.{u} C (suc n)} y} {Couple.E {ExactCouple.derived.{u} (cumulative.level.{u} C n e)} y} {theta.{u} C n e y}).2
+                  (theta-inj.{u} C n e y, theta-surj.{u} C n e y)
   \where {
     \open cumulative
+
+    \lemma theta-j.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative.{u} C n)) {x y : C.G} (p : x + Couple.dj {cumulative.{u} C (suc n)} = y)
+                       (z : Couple.D {cumulative.{u} C (suc n)} x)
+      : theta.{u} C n e y (Couple.j {cumulative.{u} C (suc n)} p z) = Couple.j {ExactCouple.derived.{u} (level.{u} C n e)} p (nextD.{u} C n e x z)
+      => \case z.2 \with {
+        | inP (v, iv) =>
+          \let | s : x - suc n *n C.di + n *n C.di = x - C.di => equation.abGroup
+               | q' : x - C.di + jdeg C.di C.dj n = y => equation.abGroup *> p
+               | u : Couple.D {cumulative.{u} C n} (x - C.di) => (iter.{u} C n s v, iter.image-intro.{u} C n s v)
+               | q => jdeg.index {_} {C.di} {C.dj} {suc n} p
+          \in pmap (theta.{u} C n e y) (j-eval.{u} C (suc n) (pre x _) v p q z iv)
+              *> pmap in~ (ext (pmap in~ (ext idp) *> inv (j-eval.{u} C n s v q' q u idp)))
+              *> inv (ExactCouple.j'-eval.{u} {level.{u} C n e} (pre x C.di) u p q' (nextD.{u} C n e x z)
+                                          (ext (inv (GradedMap.comp-eval C.i (iter.{u} C n) (pre x _) s (pre x C.di) v) *> iv)))
+      }
 
     \lemma natural-f.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap C C') (n : Nat)
                          (e : Couple.IsExact (cumulative C n)) (e' : Couple.IsExact (cumulative C' n)) {x : C.G} (z : Couple.D {cumulative C (suc n)} x)
@@ -253,27 +258,27 @@
       => ext (ext idp)
 
     \lemma natural-g.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap C C') (n : Nat)
-                         (e : Couple.IsExact (cumulative C n)) (e' : Couple.IsExact (cumulative C' n)) {y : C.G} (h : Couple.E {cumulative C (suc n)} y)
-      : CoupleMap.g {CoupleMap.derivedMap {level C n e} {level C' n e'} (cumulativeMap {C} {C'} F n)} y (CoupleMap.g {nextPage C n e} y h)
-        = CoupleMap.g {nextPage C' n e'} y (CoupleMap.g {cumulativeMap {C} {C'} F (suc n)} y h) \elim h
+                         (e : Couple.IsExact.{u} (cumulative.{u} C n)) (e' : Couple.IsExact.{u} (cumulative.{u} C' n)) {y : C.G} (h : Couple.E {cumulative.{u} C (suc n)} y)
+      : CoupleMap.g {CoupleMap.derivedMap.{u} {level.{u} C n e} {level.{u} C' n e'} (cumulativeMap.{u} {C} {C'} F n)} y (CoupleMap.g {nextPage.{u} C n e} y h)
+        = CoupleMap.g {nextPage.{u} C' n e'} y (CoupleMap.g {cumulativeMap.{u} {C} {C'} F (suc n)} y h) \elim h
       | in~ x => pmap in~ (ext (pmap in~ (ext idp)))
 
     \func Xc.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative C n)) => ExactCouple.complex {level C n e}
 
     \lemma kernel-criterion.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative C n)) {y : C.G} (x : IModule (Z C n y))
-      : DiffModule.LIsCycle {Xc C n e} y (in~ x) <-> Z C (suc n) y x.1
+      : DiffModule.LIsCycle {Xc.{u} C n e} y (in~ x) <-> Z.{u} C (suc n) y x.1
       => (\lam h => \case x.2 \with {
         | inP (u, iu) =>
           \let | r : y + C.dk + jdeg C.di C.dj n = y + (C.dk + jdeg C.di C.dj n) => +-assoc *> idp
                | q => jdeg.index r
-          \in \case B-elim C n q ((AbQuotient.proj-zero {_} {B C n _}).1 (inv (j-eval C n (pre _ _) u r q (Couple.k {cumulative C n} idp (in~ x)) iu) *> h)) \with {
+          \in \case B-elim.{u} C n q ((AbQuotient.proj-zero {_} {B.{u} C n _}).1 (inv (j-eval.{u} C n (pre _ _) u r q (Couple.k {cumulative.{u} C n} idp (in~ x)) iu) *> h)) \with {
             | inP (v, pv, jv) => \case AbExactAt.lift (C.exact-ij (pre _ C.di) q) ((C.j q).func-minus *> pmap (_ -) jv *> negative-right) \with {
               | inP (a, ia) =>
                 \let s : y + C.dk - n *n C.di - C.di + suc n *n C.di = y + C.dk => equation.abGroup *> pre (y + C.dk) (n *n C.di)
-                \in transport (iter.image C (suc n) (y + C.dk))
-                              (iter.shift C n s (pre _ C.di) (pre _ _) a *> pmap (iter C n _) ia *> (iter C n _).func-minus
-                                *> pmap (_ -) (GradedMap.zero-move (iter C n) idp _ pv) *> AddGroup.minus_zro *> iu)
-                              (iter.image-intro C (suc n) s a)
+                \in transport (iter.image.{u} C (suc n) (y + C.dk))
+                              (iter.shift.{u} C n s (pre _ C.di) (pre _ _) a *> pmap (iter.{u} C n _) ia *> (iter.{u} C n _).func-minus
+                                *> pmap (_ -) (GradedMap.zero-move (iter.{u} C n) idp _ pv) *> AddGroup.minus_zro *> iu)
+                              (iter.image-intro.{u} C (suc n) s a)
             }
           }
       }, \lam h => \case h \with {
@@ -281,30 +286,30 @@
           \let | r : y + C.dk + jdeg C.di C.dj n = y + (C.dk + jdeg C.di C.dj n) => +-assoc *> idp
                | s2 : y + C.dk - suc n *n C.di + C.di + n *n C.di = y + C.dk => equation.abGroup *> pre (y + C.dk) (n *n C.di)
                | q' : y + C.dk - suc n *n C.di + C.di + C.dj = y + (C.dk + jdeg C.di C.dj n) => equation.abGroup *> jdeg.index r
-          \in j-eval C n s2 (C.i idp a) r q' (Couple.k {cumulative C n} idp (in~ x)) (inv (iter.shift C n (pre _ _) idp s2 a) *> ia)
+          \in j-eval.{u} C n s2 (C.i idp a) r q' (Couple.k {cumulative.{u} C n} idp (in~ x)) (inv (iter.shift.{u} C n (pre _ _) idp s2 a) *> ia)
               *> pmap in~ (ext (C.ji-zero idp q' a))
       })
 
     \lemma boundary-up.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative C n)) {y : C.G} (x : IModule (Z C (suc n) y)) (b : B C (suc n) y x)
-      : DiffModule.LIsBoundary {Xc C n e} y (in~ (x.1, Z-dec C n x.2), (kernel-criterion C n e (x.1, Z-dec C n x.2)).2 x.2) \elim b
+      : DiffModule.LIsBoundary {Xc.{u} C n e} y (in~ (x.1, Z-dec.{u} C n x.2), (kernel-criterion.{u} C n e (x.1, Z-dec.{u} C n x.2)).2 x.2) \elim b
       | inP (u, bu) =>
         \let | m => y - C.dj + n *n C.di
              | p2 : m + jdeg C.di C.dj n = y => pmap (m +) (jdeg.eq n) *> equation.abGroup
              | r : m - C.dk + (C.dk + jdeg C.di C.dj n) = y => equation.abGroup *> p2
         \in \case AbExactAt.lift (C.exact-ki (pre m C.dk) (+-assoc *> idp)) u.2 \with {
           | inP (eps, keps) =>
-            \let xi : Couple.E {cumulative C n} (m - C.dk) => in~ (eps, Z-intro C n (pre m C.dk) idp keps)
-            \in transport (DiffModule.LIsBoundary {Xc C n e} y)
-                          (ext (GradedMap.comp-eval {_} {_} {Couple.E {cumulative C n}} {Couple.D {cumulative C n}} {Couple.E {cumulative C n}}
-                                                    (Couple.j {cumulative C n}) (Couple.k {cumulative C n}) r (pre m C.dk) p2 xi
-                                *> j-eval C n idp u.1 p2 (pre y C.dj) (Couple.k {cumulative C n} (pre m C.dk) xi) (inv keps)
+            \let xi : Couple.E {cumulative.{u} C n} (m - C.dk) => in~ (eps, Z-intro.{u} C n (pre m C.dk) idp keps)
+            \in transport (DiffModule.LIsBoundary {Xc.{u} C n e} y)
+                          (ext (GradedMap.comp-eval {_} {_} {Couple.E {cumulative.{u} C n}} {Couple.D {cumulative.{u} C n}} {Couple.E {cumulative.{u} C n}}
+                                                    (Couple.j {cumulative.{u} C n}) (Couple.k {cumulative.{u} C n}) r (pre m C.dk) p2 xi
+                                *> j-eval.{u} C n idp u.1 p2 (pre y C.dj) (Couple.k {cumulative.{u} C n} (pre m C.dk) xi) (inv keps)
                                 *> pmap in~ (ext (pmap __.1 bu))))
-                          (DiffModule.boundary-intro {Xc C n e} r xi)
+                          (DiffModule.boundary-intro {Xc.{u} C n e} r xi)
         }
 
     \lemma boundary-down.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative C n)) {y : C.G} (x : IModule (Z C (suc n) y))
-                             {c : DiffModule.LIsCycle {Xc C n e} y (in~ (x.1, Z-dec C n x.2))} (h : DiffModule.LIsBoundary {Xc C n e} y (in~ (x.1, Z-dec C n x.2), c))
-      : B C (suc n) y x \elim h
+                             {c : DiffModule.LIsCycle {Xc.{u} C n e} y (in~ (x.1, Z-dec.{u} C n x.2))} (h : DiffModule.LIsBoundary {Xc.{u} C n e} y (in~ (x.1, Z-dec.{u} C n x.2), c))
+      : B.{u} C (suc n) y x \elim h
       | inP (xi, bxi) => aux C n e x xi (pmap __.1 bxi)
       \where
         \lemma aux.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative C n)) {y : C.G} (x : IModule (Z C (suc n) y))
@@ -326,17 +331,17 @@
           }
 
     \func theta.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative C n)) (y : C.G)
-      : LinearMap (Couple.E {cumulative C (suc n)} y) (Couple.E {ExactCouple.derived (level C n e)} y)
-      => QuotientLModule.desc {_} {IModule (Z C (suc n) y)} {LHomology (Xc C n e) y} {B C (suc n) y}
-          (LinearMap.compose {_} {_} {IModule (DiffModule.LIsCycle {Xc C n e} y)} {LHomology (Xc C n e) y} (QuotientLModule.proj (DiffModule.LIsBoundary {Xc C n e} y))
-            (IModule.corestrict {DiffModule.LIsCycle {Xc C n e} y}
-              (LinearMap.compose {_} {_} {IModule (Z C n y)} {Couple.E {cumulative C n} y} (QuotientLModule.proj (B C n y))
-                (IModule.map {_} {_} {_} {Z C (suc n) y} {Z C n y} LinearMap.id (Z-dec C n)))
-              \lam x => (kernel-criterion C n e (x.1, Z-dec C n x.2)).2 x.2))
-          \lam {x} b => (AbQuotient.proj-zero {_} {DiffModule.LIsBoundary {Xc C n e} y}).2 (boundary-up C n e x b)
+      : LinearMap (Couple.E {cumulative.{u} C (suc n)} y) (Couple.E {ExactCouple.derived.{u} (level.{u} C n e)} y)
+      => QuotientLModule.desc {_} {IModule (Z.{u} C (suc n) y)} {LHomology.{u} (Xc.{u} C n e) y} {B.{u} C (suc n) y}
+          (LinearMap.compose {_} {_} {IModule (DiffModule.LIsCycle {Xc.{u} C n e} y)} {LHomology.{u} (Xc.{u} C n e) y} (QuotientLModule.proj (DiffModule.LIsBoundary {Xc.{u} C n e} y))
+            (IModule.corestrict {DiffModule.LIsCycle {Xc.{u} C n e} y}
+              (LinearMap.compose {_} {_} {IModule (Z.{u} C n y)} {Couple.E {cumulative.{u} C n} y} (QuotientLModule.proj (B.{u} C n y))
+                (IModule.map {_} {_} {_} {Z.{u} C (suc n) y} {Z.{u} C n y} LinearMap.id (Z-dec.{u} C n)))
+              \lam x => (kernel-criterion.{u} C n e (x.1, Z-dec.{u} C n x.2)).2 x.2))
+          \lam {x} b => (AbQuotient.proj-zero {_} {DiffModule.LIsBoundary {Xc.{u} C n e} y}).2 (boundary-up.{u} C n e x b)
 
-    \lemma theta-inj.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative C n)) (y : C.G) : IsInj (theta C n e y)
-      => (AddKernel-trivial-char {theta C n e y}).1 \lam th => aux th
+    \lemma theta-inj.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative.{u} C n)) (y : C.G) : IsInj (theta.{u} C n e y)
+      => (AddKernel-trivial-char {theta.{u} C n e y}).1 \lam th => aux th
       \where
         \lemma aux {h : Couple.E {cumulative C (suc n)} y} (th : theta C n e y h = 0) : h = 0 \elim h
           | in~ x => (AbQuotient.proj-zero {_} {B C (suc n) y}).2 (boundary-down C n e x ((AbQuotient.proj-zero {_} {DiffModule.LIsBoundary {Xc C n e} y}).1 th))
@@ -380,16 +385,16 @@
       | func-*c => ext idp
   }
 
-\lemma cumulative-exact.{u} (C : ExactCouple.{u}) (n : Nat) : Couple.IsExact (cumulative C n) \elim n
-  | 0 => ExactCouple.isExact (CoupleIso.transfer {cumulative C 0} C (cumulative.base C))
-  | suc n => ExactCouple.isExact (CoupleIso.transfer {cumulative C (suc n)} (ExactCouple.derived (cumulative.level C n (cumulative-exact C n)))
-                                                     (nextPage C n (cumulative-exact C n)))
+\lemma cumulative-exact.{u} (C : ExactCouple.{u}) (n : Nat) : Couple.IsExact (cumulative.{u} C n) \elim n
+  | 0 => ExactCouple.isExact.{u} (CoupleIso.transfer.{u} {cumulative.{u} C 0} C (cumulative.base.{u} C))
+  | suc n => ExactCouple.isExact.{u} (CoupleIso.transfer.{u} {cumulative.{u} C (suc n)} (ExactCouple.derived.{u} (cumulative.level.{u} C n (cumulative-exact.{u} C n)))
+                                                             (nextPage.{u} C n (cumulative-exact.{u} C n)))
 
-\func pageIso.{u} (C : ExactCouple.{u}) (n : Nat) : CoupleIso (cumulative C n) (ExactCouple.page C n) \elim n
-  | 0 => cumulative.base C
-  | suc n => CoupleIso.compose {cumulative C (suc n)} {ExactCouple.derived (cumulative.level C n (cumulative-exact C n))} {ExactCouple.page C (suc n)}
-                               (CoupleIso.derivedIso {cumulative.level C n (cumulative-exact C n)} {ExactCouple.page C n} (pageIso C n))
-                               (nextPage C n (cumulative-exact C n))
+\func pageIso.{u} (C : ExactCouple.{u}) (n : Nat) : CoupleIso.{u} (cumulative.{u} C n) (ExactCouple.page.{u} C n) \elim n
+  | 0 => cumulative.base.{u} C
+  | suc n => CoupleIso.compose.{u} {cumulative.{u} C (suc n)} {ExactCouple.derived.{u} (cumulative.level.{u} C n (cumulative-exact.{u} C n))} {ExactCouple.page.{u} C (suc n)}
+                                   (CoupleIso.derivedIso.{u} {cumulative.level.{u} C n (cumulative-exact.{u} C n)} {ExactCouple.page.{u} C n} (pageIso.{u} C n))
+                                   (nextPage.{u} C n (cumulative-exact.{u} C n))
   \where {
     \lemma natural-f.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap C C') (n : Nat) {x : C.G} (z : Couple.D {cumulative C n} x)
       : CoupleMap.f {CoupleMap.pageMap {C} {C'} F n} x (CoupleMap.f {pageIso C n} x z) = CoupleMap.f {pageIso C' n} x (CoupleMap.f {cumulativeMap {C} {C'} F n} x z) \elim n

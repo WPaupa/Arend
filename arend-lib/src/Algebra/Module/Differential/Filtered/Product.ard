@@ -6,7 +6,7 @@
 \import Algebra.Module.BilinearMap
 \import Algebra.Module.Differential
 \import Algebra.Module.Differential.Filtered
-\import Algebra.Module.Differential.LongExact (DiffSES)
+\import Algebra.Module.Differential.LongExact (DiffMap, DiffSES)
 \import Algebra.Module.GradedComplex
 \import Algebra.Module.LinearMap
 \import Algebra.Module.Quotient
@@ -53,21 +53,25 @@
     => DiffPairing.homologyPairing {wpair ha hb hb'} p
 } \where {
   \lemma hpair-whom.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
-                        {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ)
+                        {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ)
                         {a a' a'' c c' c'' : Int} {b b' b'' d d' d'' : Bound}
                         (ha : a'' <= a + a') (hb : Bound.Le b'' (Bound.add b a')) (hb' : Bound.Le b'' (Bound.add b' a))
                         (hc : c'' <= c + c') (hd : Bound.Le d'' (Bound.add d c')) (hd' : Bound.Le d'' (Bound.add d' c))
                         (h1 : c <= a) (k1 : Bound.Le d b) (h2 : c' <= a') (k2 : Bound.Le d' b') (h3 : c'' <= a'') (k3 : Bound.Le d'' b'')
                         {x y z x1 y1 z1 : G} (p : x + y = z) (p1 : x1 + y1 = z1) (e1 : x = x1) (e2 : y = y1) (e3 : z = z1)
-                        (s : LHomology (FX.Win a b) x) (t : LHomology (FY.Win a' b') y)
-    : FZ.whom h3 k3 e3 (FP.hpair ha hb hb' p s t) = FP.hpair hc hd hd' p1 (FX.whom h1 k1 e1 s) (FY.whom h2 k2 e2 t) \elim x1, y1, z1, e1, e2, e3
-    | _, _, _, idp, idp, idp => (\case \elim s, \elim t \with {
-      | in~ (in~ s, _), in~ (in~ t, _) => pmap in~ (ext (pmap in~ (ext idp)))
-    } : FZ.wh h3 k3 z (FP.hpair ha hb hb' p s t) = FP.hpair hc hd hd' p (FX.wh h1 k1 x s) (FY.wh h2 k2 y t))
-      *> pmap (\lam q => FP.hpair hc hd hd' q (FX.wh h1 k1 x s) (FY.wh h2 k2 y t)) prop-pi
+                        (s : LHomology.{u} (FilteredDiff.Win.{u} {FX} a b) x) (t : LHomology.{u} (FilteredDiff.Win.{u} {FY} a' b') y)
+    : FilteredDiff.whom.{u} {FZ} h3 k3 e3 (FilteredPairing.hpair.{u} {FP} ha hb hb' p s t) = FilteredPairing.hpair.{u} {FP} hc hd hd' p1 (FilteredDiff.whom.{u} {FX} h1 k1 e1 s) (FilteredDiff.whom.{u} {FY} h2 k2 e2 t) \elim x1, y1, z1, e1, e2, e3
+    | _, _, _, idp, idp, idp =>
+      FilteredDiff.wh-app.{u} {FZ} h3 k3 (FilteredPairing.hpair.{u} {FP} ha hb hb' p s t)
+      *> (\case \elim s, \elim t \with {
+        | in~ (in~ s, _), in~ (in~ t, _) => pmap in~ (ext (pmap in~ (ext idp)))
+      } : DiffMap.hom.{u} {R} {G} {deg} {FilteredDiff.Win.{u} {FZ} a'' b''} {FilteredDiff.Win.{u} {FZ} c'' d''} (FilteredDiff.wmap.{u} {FZ} h3 k3) z (FilteredPairing.hpair.{u} {FP} ha hb hb' p s t)
+          = FilteredPairing.hpair.{u} {FP} hc hd hd' p (DiffMap.hom.{u} {R} {G} {deg} {FilteredDiff.Win.{u} {FX} a b} {FilteredDiff.Win.{u} {FX} c d} (FilteredDiff.wmap.{u} {FX} h1 k1) x s) (DiffMap.hom.{u} {R} {G} {deg} {FilteredDiff.Win.{u} {FY} a' b'} {FilteredDiff.Win.{u} {FY} c' d'} (FilteredDiff.wmap.{u} {FY} h2 k2) y t))
+      *> inv (pmap2 (FilteredPairing.hpair.{u} {FP} hc hd hd' p) (FilteredDiff.wh-app.{u} {FX} h1 k1 s) (FilteredDiff.wh-app.{u} {FY} h2 k2 t))
+      *> pmap (\lam q => FilteredPairing.hpair.{u} {FP} hc hd hd' q (FilteredDiff.wh.{u} {FX} h1 k1 x s) (FilteredDiff.wh.{u} {FY} h2 k2 y t)) prop-pi
 
   \lemma conn-leibniz.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
-                          {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ)
+                          {FX : FilteredDiff.{u} X} {FY : FilteredDiff.{u} Y} {FZ : FilteredDiff.{u} Z} (FP : FilteredPairing.{u} P FX FY FZ)
                           {a b a' b' a'' b'' e : Int} {c c' c'' f : Bound}
                           (ha0 : a'' <= a + a') (hb0 : b'' <= b + a') (hb0' : b'' <= b' + a)
                           (habx : a <= b) (hbcx : Bound.Le (fin b) c) (haby : a' <= b') (hbcy : Bound.Le (fin b') c')
@@ -77,23 +81,26 @@
                           (hE : e <= b'') (kE : Bound.Le f c'')
                           {x y z x' y' z' w : G} (p : x + y = z) (ex : x + deg = x') (ey : y + deg = y') (ez' : z + deg = z') (ez : z' = w)
                           (p1 : x' + y = w) (p2 : x + y' = w) {sx : R} (es : P.sgn x = sx)
-                          (s : LHomology (FX.Win a (fin b)) x) (t : LHomology (FY.Win a' (fin b')) y)
-    : FZ.whom hE kE ez (FZ.conn habz hbcz ez' (FP.hpair {a} {a'} {a''} {fin b} {fin b'} {fin b''} ha0 hb0 hb0' p s t))
-      = FP.hpair h1 k1 k1' p1 (FX.conn habx hbcx ex s) t + (*c) {LHomology (FZ.Win e f) w} sx (FP.hpair h2 k2 k2' p2 s (FY.conn haby hbcy ey t))
+                          (s : LHomology.{u} (FilteredDiff.Win.{u} {FX} a (fin b)) x) (t : LHomology.{u} (FilteredDiff.Win.{u} {FY} a' (fin b')) y)
+    : FilteredDiff.whom.{u} {FZ} hE kE ez (FilteredDiff.conn.{u} {FZ} habz hbcz ez' (FilteredPairing.hpair.{u} {FP} {a} {a'} {a''} {fin b} {fin b'} {fin b''} ha0 hb0 hb0' p s t))
+      = FilteredPairing.hpair.{u} {FP} h1 k1 k1' p1 (FilteredDiff.conn.{u} {FX} habx hbcx ex s) t + (*c) {LHomology.{u} (FilteredDiff.Win.{u} {FZ} e f) w} sx (FilteredPairing.hpair.{u} {FP} h2 k2 k2' p2 s (FilteredDiff.conn.{u} {FY} haby hbcy ey t))
       \elim x', y', z', w, ex, ey, ez', ez, sx, es
     | _, _, _, _, idp, idp, idp, idp, _, idp => \case \elim s, \elim t \with {
       | in~ (in~ s0, cs), in~ (in~ t0, ct) =>
-        \let | ds : FX.F b (x + deg) (X.d idp s0.1) => (AbQuotient.proj-zero {_} {FX.N a (fin b) (x + deg)}).1 cs
-             | dt : FY.F b' (y + deg) (Y.d idp t0.1) => (AbQuotient.proj-zero {_} {FY.N a' (fin b') (y + deg)}).1 ct
+        \let | ds : FX.F b (x + deg) (X.d idp s0.1) => (AbQuotient.proj-zero {_} {FilteredDiff.N.{u} {FX} a (fin b) (x + deg)}).1 cs
+             | dt : FY.F b' (y + deg) (Y.d idp t0.1) => (AbQuotient.proj-zero {_} {FilteredDiff.N.{u} {FY} a' (fin b') (y + deg)}).1 ct
              | st : IModule (FZ.F a'' z) => (P.mul p s0.1 t0.1, FZ.F-mono ha0 (FP.F-mul p s0.2 t0.2))
-             | cst => DiffPairing.cycle-mul {FP.wpair {a} {a'} {a''} {fin b} {fin b'} {fin b''} ha0 hb0 hb0'} p cs ct
-             | dst : FZ.F b'' (z + deg) (Z.d idp st.1) => (AbQuotient.proj-zero {_} {FZ.N a'' (fin b'') (z + deg)}).1 cst
-        \in pmap (FZ.whom hE kE idp) (DiffSES.conn-eval {FZ.ses habz hbcz} (in~ st, cst) {in~ st} {in~ (Z.d idp st.1, dst)}
-                                                        (pmap in~ (ext idp)) (pmap in~ (ext idp)))
+             | cst => DiffPairing.cycle-mul.{u} {FilteredPairing.wpair.{u} {FP} {a} {a'} {a''} {fin b} {fin b'} {fin b''} ha0 hb0 hb0'} p cs ct
+             | dst : FZ.F b'' (z + deg) (Z.d idp st.1) => (AbQuotient.proj-zero {_} {FilteredDiff.N.{u} {FZ} a'' (fin b'') (z + deg)}).1 cst
+        \in pmap (FilteredDiff.wh.{u} {FZ} hE kE (z + deg)) (FilteredDiff.wc-app.{u} {FZ} habz hbcz (in~ (in~ st, cst))
+                                          *> DiffSES.conn-eval.{u} {FilteredDiff.ses.{u} {FZ} habz hbcz} (in~ st, cst) {in~ st} {in~ (Z.d idp st.1, dst)} (pmap in~ (ext idp)) (pmap in~ (ext idp)))
+            *> FilteredDiff.wh-app.{u} {FZ} hE kE _
             *> pmap in~ (ext (pmap in~ (ext (P.leibniz p idp idp p1 idp p2 s0.1 t0.1))))
-            *> inv (pmap2 (\lam u v => FP.hpair h1 k1 k1' p1 u (in~ (in~ t0, ct)) + (*c) {LHomology (FZ.Win e f) (z + deg)} (P.sgn x) (FP.hpair h2 k2 k2' p2 (in~ (in~ s0, cs)) v))
-                          (DiffSES.conn-eval {FX.ses habx hbcx} (in~ s0, cs) {in~ s0} {in~ (X.d idp s0.1, ds)} (pmap in~ (ext idp)) (pmap in~ (ext idp)))
-                          (DiffSES.conn-eval {FY.ses haby hbcy} (in~ t0, ct) {in~ t0} {in~ (Y.d idp t0.1, dt)} (pmap in~ (ext idp)) (pmap in~ (ext idp))))
+            *> inv (pmap2 (\lam u v => FilteredPairing.hpair.{u} {FP} h1 k1 k1' p1 u (in~ (in~ t0, ct)) + (*c) {LHomology.{u} (FilteredDiff.Win.{u} {FZ} e f) (z + deg)} (P.sgn x) (FilteredPairing.hpair.{u} {FP} h2 k2 k2' p2 (in~ (in~ s0, cs)) v))
+                          (FilteredDiff.wc-app.{u} {FX} habx hbcx (in~ (in~ s0, cs))
+                            *> DiffSES.conn-eval.{u} {FilteredDiff.ses.{u} {FX} habx hbcx} (in~ s0, cs) {in~ s0} {in~ (X.d idp s0.1, ds)} (pmap in~ (ext idp)) (pmap in~ (ext idp)))
+                          (FilteredDiff.wc-app.{u} {FY} haby hbcy (in~ (in~ t0, ct))
+                            *> DiffSES.conn-eval.{u} {FilteredDiff.ses.{u} {FY} haby hbcy} (in~ t0, ct) {in~ t0} {in~ (Y.d idp t0.1, dt)} (pmap in~ (ext idp)) (pmap in~ (ext idp))))
     }
 }
 

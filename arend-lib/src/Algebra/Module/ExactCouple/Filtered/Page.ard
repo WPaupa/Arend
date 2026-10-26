@@ -26,23 +26,23 @@
 
 \func filteredTail.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
                        {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ)
-  : TailPairing \cowith
-  | LayerPairing => filteredLayer FP
-  | tmul p => FP.hpair (t-a p) () () (t-deg p)
+  : TailPairing.{u} \cowith
+  | LayerPairing => filteredLayer.{u} FP
+  | tmul p => FilteredPairing.hpair.{u} {FP} (t-a.{u} p) () () (t-deg.{u} p)
   | tmul-i-left {x} {x'} {y} {z} {z'} p p' q r t u =>
-    inv (pmap (\lam v => FP.hpair (t-a p') () () (t-deg p') (Couple.i {filteredCouple FX} q t) v) (FY.whom-id {y.1} {inf} <=-refl () idp u))
-    *> inv (FilteredPairing.hpair-whom FP {x.1} {y.1} {z.1} {x'.1} {y.1} {z'.1} {inf} {inf} {inf} {inf} {inf} {inf} (t-a p) () () (t-a p') () ()
-                                       (filteredCouple.le-i q) () <=-refl () (filteredCouple.le-i r) () (t-deg p) (t-deg p') (filteredCouple.deg-i q) idp
-                                       (filteredCouple.deg-i r) t u)
+    inv (pmap (\lam v => FilteredPairing.hpair.{u} {FP} (t-a.{u} p') () () (t-deg.{u} p') (Couple.i {filteredCouple.{u} FX} q t) v) (FilteredDiff.whom-id.{u} {FY} {y.1} {inf} <=-refl () idp u))
+    *> inv (FilteredPairing.hpair-whom.{u} FP {x.1} {y.1} {z.1} {x'.1} {y.1} {z'.1} {inf} {inf} {inf} {inf} {inf} {inf} (t-a.{u} p) () () (t-a.{u} p') () ()
+                                       (filteredCouple.le-i.{u} q) () <=-refl () (filteredCouple.le-i.{u} r) () (t-deg.{u} p) (t-deg.{u} p') (filteredCouple.deg-i.{u} q) idp
+                                       (filteredCouple.deg-i.{u} r) t u)
   | tmul-i-right {x} {y} {y'} {z} {z'} p p' q r t u =>
-    inv (pmap (\lam v => FP.hpair (t-a p') () () (t-deg p') v (Couple.i {filteredCouple FY} q u)) (FX.whom-id {x.1} {inf} <=-refl () idp t))
-    *> inv (FilteredPairing.hpair-whom FP {x.1} {y.1} {z.1} {x.1} {y'.1} {z'.1} {inf} {inf} {inf} {inf} {inf} {inf} (t-a p) () () (t-a p') () ()
-                                       <=-refl () (filteredCouple.le-i q) () (filteredCouple.le-i r) () (t-deg p) (t-deg p') idp (filteredCouple.deg-i q)
-                                       (filteredCouple.deg-i r) t u)
+    inv (pmap (\lam v => FilteredPairing.hpair.{u} {FP} (t-a.{u} p') () () (t-deg.{u} p') v (Couple.i {filteredCouple.{u} FY} q u)) (FilteredDiff.whom-id.{u} {FX} {x.1} {inf} <=-refl () idp t))
+    *> inv (FilteredPairing.hpair-whom.{u} FP {x.1} {y.1} {z.1} {x.1} {y'.1} {z'.1} {inf} {inf} {inf} {inf} {inf} {inf} (t-a.{u} p) () () (t-a.{u} p') () ()
+                                       <=-refl () (filteredCouple.le-i.{u} q) () (filteredCouple.le-i.{u} r) () (t-deg.{u} p) (t-deg.{u} p') idp (filteredCouple.deg-i.{u} q)
+                                       (filteredCouple.deg-i.{u} r) t u)
   | j-tmul {x} {y} {z} {x'} {y'} {z'} p qx qy qz _ t u =>
-    FilteredPairing.hpair-whom FP {x.1} {y.1} {z.1} {x'.1} {y'.1} {z'.1} {inf} {inf} {inf} {fin (x'.1 + 1)} {fin (y'.1 + 1)} {fin (z'.1 + 1)}
-                               (t-a p) () () _ _ _ (filteredCouple.le-j qx) () (filteredCouple.le-j qy) () (filteredCouple.le-j qz) ()
-                               (t-deg p) _ (filteredCouple.deg-j qx) (filteredCouple.deg-j qy) (filteredCouple.deg-j qz) t u
+    FilteredPairing.hpair-whom.{u} FP {x.1} {y.1} {z.1} {x'.1} {y'.1} {z'.1} {inf} {inf} {inf} {fin (x'.1 + 1)} {fin (y'.1 + 1)} {fin (z'.1 + 1)}
+                               (t-a.{u} p) () () _ _ _ (filteredCouple.le-j.{u} qx) () (filteredCouple.le-j.{u} qy) () (filteredCouple.le-j.{u} qz) ()
+                               (t-deg.{u} p) _ (filteredCouple.deg-j.{u} qx) (filteredCouple.deg-j.{u} qy) (filteredCouple.deg-j.{u} qz) t u
   \where {
     \lemma t-a {x y z : Bi G} (p : (+) {Bi G} ((+) {Bi G} x y) (0, 0) = z) : z.1 <= x.1 + y.1 \elim z, p
       | _, idp => (linarith : x.1 + y.1 + 0 <= x.1 + y.1)
@@ -53,27 +53,23 @@
 
 \func filteredClosure.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
                           {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ) (n : Nat)
-  : PageClosure (filteredLayer FP) n \elim n
-  | 0 => PageClosure.base {filteredCouple FX} {filteredCouple FY} {filteredCouple FZ} (filteredLayer FP)
-  | suc m => \new PageClosure {
-    | cycle-mul p => WindowLeibniz.cycle-product {filteredPairing FP m} p
-    | boundary-left p b h => WindowPairing.boundary-times-cycle {filteredPairing FP m} p b h
-    | boundary-right p a h => WindowPairing.cycle-times-boundary {filteredPairing FP m} p a h
-  }
+  : PageClosure.{u} (filteredLayer.{u} FP) n \elim n
+  | 0 => PageClosure.base.{u} {filteredCouple.{u} FX} {filteredCouple.{u} FY} {filteredCouple.{u} FZ} (filteredLayer.{u} FP)
+  | suc m => WindowPairing.closure.{u} {filteredCouple.{u} FX} {filteredCouple.{u} FY} {filteredCouple.{u} FZ} {filteredLayer.{u} FP} {suc m} (filteredPairing.{u} FP m)
 
 \func filteredPageDiff.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
                            {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ) (n : Nat)
-  : DiffPairing.{u} (WindowLeibniz.Xc (filteredCouple FX) n) (WindowLeibniz.Xc (filteredCouple FY) n) (WindowLeibniz.Xc (filteredCouple FZ) n)
-  => WindowLeibniz.pageDiff (filteredLeibniz FP n) (filteredClosure FP n)
+  : DiffPairing.{u} (WindowLeibniz.Xc.{u} (filteredCouple.{u} FX) n) (WindowLeibniz.Xc.{u} (filteredCouple.{u} FY) n) (WindowLeibniz.Xc.{u} (filteredCouple.{u} FZ) n)
+  => WindowLeibniz.pageDiff.{u} {filteredCouple.{u} FX} {filteredCouple.{u} FY} {filteredCouple.{u} FZ} {n} (filteredLeibniz.{u} FP n) (filteredClosure.{u} FP n)
 
 \func filteredAlgebra.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} {P : DiffPairing X X X} {FX : FilteredDiff X}
-                         (FA : FilteredAlgebra.{u} { | R => R | G => G | deg => deg | X => X | P => P | FX => FX }) : LayerAlgebra \cowith
-  | X => filteredCouple FX
-  | mul => LayerPairing.mul {filteredLayer FA}
-  | one => oneE
-  | one-lift => lift-gen idp (filteredCouple.deg-j {G} {(-) {Bi G} (0, 0) (0, 0)} {0, 0} (GradedMap.pre {Bi G} (0, 0) (0, 0)))
-                         (filteredCouple.le-j {G} {(-) {Bi G} (0, 0) (0, 0)} {0, 0} (GradedMap.pre {Bi G} (0, 0) (0, 0)))
-                         (filteredCouple.deg-j {G} {(-) {Bi G} (0, 0) (0, 0)} {0, 0} (GradedMap.pre {Bi G} (0, 0) (0, 0)))
+                         (FA : FilteredAlgebra.{u} { | R => R | G => G | deg => deg | X => X | P => P | FX => FX }) : LayerAlgebra.{u} \cowith
+  | X => filteredCouple.{u} FX
+  | mul => LayerPairing.mul {filteredLayer.{u} FA}
+  | one => oneE.{u}
+  | one-lift => lift-gen.{u} idp (filteredCouple.deg-j.{u} {G} {(-) {Bi G} (0, 0) (0, 0)} {0, 0} (GradedMap.pre {Bi G} (0, 0) (0, 0)))
+                         (filteredCouple.le-j.{u} {G} {(-) {Bi G} (0, 0) (0, 0)} {0, 0} (GradedMap.pre {Bi G} (0, 0) (0, 0)))
+                         (filteredCouple.deg-j.{u} {G} {(-) {Bi G} (0, 0) (0, 0)} {0, 0} (GradedMap.pre {Bi G} (0, 0) (0, 0)))
   | one-left _ a => \case \elim a \with {
     | in~ (in~ s, _) => pmap in~ (ext (pmap in~ (ext (FA.one-left _ s.1))))
   }
@@ -90,12 +86,13 @@
     \lemma lift-gen {a : Int} {g : G} (ea : a = 0) (eg : g = 0) (h : 0 <= a) (e : g = 0)
       : ∃ (t : LHomology (FX.Win a inf) g) (FX.whom {a} {0} {inf} {fin 1} h () e t = oneE) \elim a, g, ea, eg
       | _, _, idp, idp => inP (in~ (in~ (FA.one, FA.one-F), pmap in~ (ext FA.one-cycle)),
-                               FX.whom-unique h <=-refl () () e idp _ *> pmap in~ (ext (pmap in~ (ext idp))))
+                               FX.whom-unique h <=-refl () () e idp _ *> FX.wh-app {0} {0} {inf} {fin 1} <=-refl () _
+                                 *> pmap in~ (ext (pmap in~ (ext idp))))
   }
 
 \func filteredCommAlgebra.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} {P : DiffPairing X X X} {FX : FilteredDiff X}
-                             (FA : FilteredCommAlgebra.{u} { | R => R | G => G | deg => deg | X => X | P => P | FX => FX }) : LayerCommAlgebra \cowith
-  | LayerAlgebra => filteredAlgebra FA
+                             (FA : FilteredCommAlgebra.{u} { | R => R | G => G | deg => deg | X => X | P => P | FX => FX }) : LayerCommAlgebra.{u} \cowith
+  | LayerAlgebra => filteredAlgebra.{u} FA
   | ksgn x y => FA.csgn x.2 y.2
   | mul-comm _ _ a b => \case \elim a, \elim b \with {
     | in~ (in~ a, _), in~ (in~ b, _) => pmap in~ (ext (pmap in~ (ext (FA.mul-comm _ _ a.1 b.1))))

@@ -127,42 +127,69 @@
 } \where {
   \func Xc.{u} (C : ExactCouple.{u}) (n : Nat) => nextPage.Xc C n (cumulative-exact C n)
 
-  \lemma page-leibniz.{u} (L : WindowLeibniz.{u}) (c : PageClosure L L.n)
-    : DiffPairing.Leibniz {_} {_} {_} {Xc L.X L.n} {Xc L.Y L.n} {Xc L.Z L.n} (\lam p => c.page p) L.sgn
-    => \lam p q1 q2 a b => \case L.AX.class-surj a, L.AY.class-surj b \with {
-      | inP (s, sa), inP (t, tb) => rewriteI (sa, tb)
-          (rewrite (L.AX.differential s : DiffModule.d {Xc L.X L.n} idp (L.AX.class s) = _,
-                    L.AY.differential t : DiffModule.d {Xc L.Y L.n} idp (L.AY.class t) = _)
-            (pmap (DiffModule.d {Xc L.Z L.n} idp)
-                  (pmap in~ (ext (inv (L.rho-wmul p s t))) : c.page p (L.AX.class s) (L.AY.class t) = L.AZ.class (L.wmul p s t))
-              *> L.AZ.differential (L.wmul p s t) *> pmap in~ (ext (L.dshort-mul p q1 q2 s t))))
+  \lemma page-leibniz.{u} (L : WindowLeibniz.{u}) (c : PageClosure.{u} L L.n)
+    : DiffPairing.Leibniz {_} {_} {_} {Xc.{u} L.X L.n} {Xc.{u} L.Y L.n} {Xc.{u} L.Z L.n} (\lam p => c.page p) L.sgn
+    => \lam {x} {y} {z} p q1 q2 a b => \case L.AX.class-surj a, L.AY.class-surj b \with {
+      | inP (s, sa), inP (t, tb) =>
+        transport2 (\lam a' b' => DiffModule.d {Xc.{u} L.Z L.n} idp (c.page p a' b')
+                                    = (+) {Couple.E {cumulative.{u} L.Z L.n} (z + (L.X.dk + jdeg L.X.di L.X.dj L.n))} (c.page q1 (DiffModule.d {Xc.{u} L.X L.n} idp a') b') ((*c) {Couple.E {cumulative.{u} L.Z L.n} (z + (L.X.dk + jdeg L.X.di L.X.dj L.n))} (L.sgn x) (c.page q2 a' (DiffModule.d {Xc.{u} L.Y L.n} idp b'))))
+                   sa tb (leib-class.{u} L c p q1 q2 s t)
     }
+    \where
+      \lemma leib-class.{u} (L : WindowLeibniz.{u}) (c : PageClosure.{u} L L.n) {x y z : L.X.G} (p : x + y = z)
+                            (q1 : x + (L.X.dk + jdeg L.X.di L.X.dj L.n) + y = z + (L.X.dk + jdeg L.X.di L.X.dj L.n))
+                            (q2 : x + (y + (L.X.dk + jdeg L.X.di L.X.dj L.n)) = z + (L.X.dk + jdeg L.X.di L.X.dj L.n)) (s : L.AX.W x) (t : L.AY.W y)
+        : DiffModule.d {Xc.{u} L.Z L.n} idp (c.page p (L.AX.class s) (L.AY.class t))
+          = (+) {Couple.E {cumulative.{u} L.Z L.n} (z + (L.X.dk + jdeg L.X.di L.X.dj L.n))} (c.page q1 (DiffModule.d {Xc.{u} L.X L.n} idp (L.AX.class s)) (L.AY.class t)) ((*c) {Couple.E {cumulative.{u} L.Z L.n} (z + (L.X.dk + jdeg L.X.di L.X.dj L.n))} (L.sgn x) (c.page q2 (L.AX.class s) (DiffModule.d {Xc.{u} L.Y L.n} idp (L.AY.class t))))
+        => pmap (DiffModule.d {Xc.{u} L.Z L.n} idp) (pmap in~ (ext (inv (L.rho-wmul p s t))) : c.page p (L.AX.class s) (L.AY.class t) = L.AZ.class (L.wmul p s t))
+           *> L.AZ.differential (L.wmul p s t) *> pmap in~ (ext (L.dshort-mul p q1 q2 s t))
+           *> inv (pmap2 (\lam u v => (+) {Couple.E {cumulative.{u} L.Z L.n} (z + (L.X.dk + jdeg L.X.di L.X.dj L.n))} (c.page q1 u (L.AY.class t)) ((*c) {Couple.E {cumulative.{u} L.Z L.n} (z + (L.X.dk + jdeg L.X.di L.X.dj L.n))} (L.sgn x) (c.page q2 (L.AX.class s) v))) (L.AX.differential s) (L.AY.differential t))
 
-  \func pageDiff.{u} (L : WindowLeibniz.{u}) (c : PageClosure L L.n) : DiffPairing (Xc L.X L.n) (Xc L.Y L.n) (Xc L.Z L.n) \cowith
+  \func pageDiff.{u} {X : ExactCouple.{u}} {Y Z : ExactCouple.{u} X.R X.G X.di X.dj X.dk} {n : Nat}
+                     (L : WindowLeibniz.{u} { | X => X | Y => Y | Z => Z | n => n }) (c : PageClosure.{u} L n) : DiffPairing.{u} (Xc.{u} X n) (Xc.{u} Y n) (Xc.{u} Z n) \cowith
     | mul p => c.page p
     | sgn => L.sgn
     | sgn-sq => L.sgn-sq
-    | leibniz => DiffPairing.leibniz-at {_} {_} {_} {Xc L.X L.n} {Xc L.Y L.n} {Xc L.Z L.n} (\lam p => c.page p) L.sgn (page-leibniz L c)
+    | leibniz => DiffPairing.leibniz-at {_} {_} {_} {Xc.{u} X n} {Xc.{u} Y n} {Xc.{u} Z n} (\lam p => c.page p) L.sgn (page-leibniz.{u} L c)
 
   \lemma theta-mul.{u} (L : WindowLeibniz.{u}) (c : PageClosure L L.n) (c' : PageClosure L (suc L.n)) {x y z : L.X.G} (p : x + y = z)
-                   (a : Couple.E {cumulative L.X (suc L.n)} x) (b : Couple.E {cumulative L.Y (suc L.n)} y)
-    : nextPage.theta L.Z L.n (cumulative-exact L.Z L.n) z (c'.page p a b)
-      = DiffPairing.homologyPairing {pageDiff L c} p (nextPage.theta L.X L.n (cumulative-exact L.X L.n) x a) (nextPage.theta L.Y L.n (cumulative-exact L.Y L.n) y b) \elim a, b
+                   (a : Couple.E {cumulative.{u} L.X (suc L.n)} x) (b : Couple.E {cumulative.{u} L.Y (suc L.n)} y)
+    : nextPage.theta.{u} L.Z L.n (cumulative-exact.{u} L.Z L.n) z (c'.page p a b)
+      = DiffPairing.homologyPairing {pageDiff.{u} {L.X} {L.Y} {L.Z} {L.n} L c} p (nextPage.theta.{u} L.X L.n (cumulative-exact.{u} L.X L.n) x a) (nextPage.theta.{u} L.Y L.n (cumulative-exact.{u} L.Y L.n) y b) \elim a, b
     | in~ a, in~ b => pmap in~ (ext (pmap in~ (ext idp)))
 
-  \lemma pageIso-mul.{u} (L : WindowLeibniz.{u}) (c : PageClosure L L.n) (c' : PageClosure L (suc L.n))
-                     (Q : DiffPairing (ExactCouple.complex {ExactCouple.page L.X L.n}) (ExactCouple.complex {ExactCouple.page L.Y L.n}) (ExactCouple.complex {ExactCouple.page L.Z L.n}))
-                     (sq : \Pi {x y z : L.X.G} (p : x + y = z) (a : Couple.E {cumulative L.X L.n} x) (b : Couple.E {cumulative L.Y L.n} y)
-                       -> CoupleMap.g {pageIso L.Z L.n} z (c.page p a b) = Q.mul p (CoupleMap.g {pageIso L.X L.n} x a) (CoupleMap.g {pageIso L.Y L.n} y b))
-                     {x y z : L.X.G} (p : x + y = z) (a : Couple.E {cumulative L.X (suc L.n)} x) (b : Couple.E {cumulative L.Y (suc L.n)} y)
-    : CoupleMap.g {pageIso L.Z (suc L.n)} z (c'.page p a b) = Q.homologyPairing p (CoupleMap.g {pageIso L.X (suc L.n)} x a) (CoupleMap.g {pageIso L.Y (suc L.n)} y b)
-    => pmap (LComplexMap.lhomology {_} {_} {_} {_} {Xc L.Z L.n} {ExactCouple.complex {ExactCouple.page L.Z L.n}} (isoMap L.Z L.n) z) (theta-mul L c c' p a b)
-       *> DiffPairing.homology-natural {_} {_} {_} {Xc L.X L.n} {Xc L.Y L.n} {Xc L.Z L.n}
-            {ExactCouple.complex {ExactCouple.page L.X L.n}} {ExactCouple.complex {ExactCouple.page L.Y L.n}} {ExactCouple.complex {ExactCouple.page L.Z L.n}}
-            (pageDiff L c) Q (isoMap L.X L.n) (isoMap L.Y L.n) (isoMap L.Z L.n) sq p _ _
-    \where
+  \lemma pageIso-mul.{u} (L : WindowLeibniz.{u}) (c : PageClosure.{u} L L.n) (c' : PageClosure.{u} L (suc L.n))
+                     (Q : DiffPairing.{u} (ExactCouple.complex {ExactCouple.page.{u} L.X L.n}) (ExactCouple.complex {ExactCouple.page.{u} L.Y L.n}) (ExactCouple.complex {ExactCouple.page.{u} L.Z L.n}))
+                     (sq : \Pi {x y z : L.X.G} (p : x + y = z) (a : Couple.E {cumulative.{u} L.X L.n} x) (b : Couple.E {cumulative.{u} L.Y L.n} y)
+                       -> CoupleMap.g {pageIso.{u} L.Z L.n} z (c.page p a b) = Q.mul p (CoupleMap.g {pageIso.{u} L.X L.n} x a) (CoupleMap.g {pageIso.{u} L.Y L.n} y b))
+                     {x y z : L.X.G} (p : x + y = z) (a : Couple.E {cumulative.{u} L.X (suc L.n)} x) (b : Couple.E {cumulative.{u} L.Y (suc L.n)} y)
+    : CoupleMap.g {pageIso.{u} L.Z (suc L.n)} z (c'.page p a b) = Q.homologyPairing p (CoupleMap.g {pageIso.{u} L.X (suc L.n)} x a) (CoupleMap.g {pageIso.{u} L.Y (suc L.n)} y b)
+    => page-suc.{u} L.Z L.n (c'.page p a b) *> theta-step.{u} L c c' p a b *> natural-step.{u} L c Q sq p _ _
+       *> inv (pmap2 (Q.homologyPairing p) (page-suc.{u} L.X L.n a) (page-suc.{u} L.Y L.n b))
+    \where {
       \func isoMap.{u} (C : ExactCouple.{u}) (n : Nat)
-        => CoupleMap.complexMap {cumulative.level C n (cumulative-exact C n)} {ExactCouple.page C n} (pageIso C n)
+        : LComplexMap.{u} (Xc.{u} C n) (ExactCouple.complex {ExactCouple.page.{u} C n})
+        => CoupleMap.complexMap.{u} {cumulative.level.{u} C n (cumulative-exact.{u} C n)} {ExactCouple.page.{u} C n} (pageIso.{u} C n)
+
+      \lemma page-suc.{u} (C : ExactCouple.{u}) (n : Nat) {x : C.G} (a : Couple.E {cumulative.{u} C (suc n)} x)
+        : CoupleMap.g {pageIso.{u} C (suc n)} x a
+          = LComplexMap.lhomology.{u} {_} {_} {_} {_} {Xc.{u} C n} {ExactCouple.complex {ExactCouple.page.{u} C n}} (isoMap.{u} C n) x
+              (nextPage.theta.{u} C n (cumulative-exact.{u} C n) x a)
+        => idp
+
+      \lemma theta-step.{u} (L : WindowLeibniz.{u}) (c : PageClosure.{u} L L.n) (c' : PageClosure.{u} L (suc L.n)) {x y z : L.X.G} (p : x + y = z)
+                            (a : Couple.E {cumulative.{u} L.X (suc L.n)} x) (b : Couple.E {cumulative.{u} L.Y (suc L.n)} y)
+        => pmap (LComplexMap.lhomology.{u} {_} {_} {_} {_} {Xc.{u} L.Z L.n} {ExactCouple.complex {ExactCouple.page.{u} L.Z L.n}} (isoMap.{u} L.Z L.n) z) (theta-mul.{u} L c c' p a b)
+
+      \lemma natural-step.{u} (L : WindowLeibniz.{u}) (c : PageClosure.{u} L L.n)
+                              (Q : DiffPairing.{u} (ExactCouple.complex {ExactCouple.page.{u} L.X L.n}) (ExactCouple.complex {ExactCouple.page.{u} L.Y L.n}) (ExactCouple.complex {ExactCouple.page.{u} L.Z L.n}))
+                              (sq : \Pi {x y z : L.X.G} (p : x + y = z) (a : Couple.E {cumulative.{u} L.X L.n} x) (b : Couple.E {cumulative.{u} L.Y L.n} y)
+                                -> CoupleMap.g {pageIso.{u} L.Z L.n} z (c.page p a b) = Q.mul p (CoupleMap.g {pageIso.{u} L.X L.n} x a) (CoupleMap.g {pageIso.{u} L.Y L.n} y b))
+                              {x y z : L.X.G} (p : x + y = z) (a : LHomology.{u} (Xc.{u} L.X L.n) x) (b : LHomology.{u} (Xc.{u} L.Y L.n) y)
+        => DiffPairing.homology-natural.{u} {_} {_} {_} {Xc.{u} L.X L.n} {Xc.{u} L.Y L.n} {Xc.{u} L.Z L.n}
+             {ExactCouple.complex {ExactCouple.page.{u} L.X L.n}} {ExactCouple.complex {ExactCouple.page.{u} L.Y L.n}} {ExactCouple.complex {ExactCouple.page.{u} L.Z L.n}}
+             (pageDiff.{u} {L.X} {L.Y} {L.Z} {L.n} L c) Q (isoMap.{u} L.X L.n) (isoMap.{u} L.Y L.n) (isoMap.{u} L.Z L.n) sq p a b
+    }
 }
 
 \record WindowPairing.{u} \extends WindowLeibniz.{u} {
@@ -227,10 +254,11 @@
           (MZ.short z).func-*c *> pmap (sgn x *c) (short-msmul p s u) *> inv *c-assoc *> pmap (`*c _) (sgn-sq x) *> ide_*c *> pmap2 (mul p) sa ub)
     })
 } \where
-  \func closure.{u} (P : WindowPairing.{u}) : PageClosure P P.n \cowith
-    | cycle-mul p => P.cycle-product p
-    | boundary-left p b h => P.boundary-times-cycle p b h
-    | boundary-right p a h => P.cycle-times-boundary p a h
+  \func closure.{u} {X : ExactCouple.{u}} {Y Z : ExactCouple.{u} X.R X.G X.di X.dj X.dk} {P : LayerPairing X Y Z} {n : Nat}
+                    (W : WindowPairing.{u} { | X => X | Y => Y | Z => Z | mul => P.mul | n => n }) : PageClosure P n \cowith
+    | cycle-mul p => W.cycle-product p
+    | boundary-left p b h => W.boundary-times-cycle p b h
+    | boundary-right p a h => W.cycle-times-boundary p a h
 
 
 \record LayerAlgebra.{u} \extends LayerPairing.{u} {

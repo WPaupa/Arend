@@ -83,22 +83,42 @@
       | in~ z => pmap in~ (ext idp)
     }
 
-  \func wh {a a' : Int} {b b' : Bound} (ha : a' <= a) (hb : Bound.Le b' b) (y : G) : LinearMap (LHomology (Win a b) y) (LHomology (Win a' b') y)
-    => DiffMap.hom {R} {G} {deg} {Win a b} {Win a' b'} (wmap ha hb) y
+  \sfunc wh {a a' : Int} {b b' : Bound} (ha : a' <= a) (hb : Bound.Le b' b) (y : G) : LinearMap (LHomology (Win a b) y) (LHomology (Win a' b') y)
+    => DiffMap.hom.{u} {R} {G} {deg} {Win a b} {Win a' b'} (wmap ha hb) y
+
+  \lemma wh-eval {a a' : Int} {b b' : Bound} (ha : a' <= a) (hb : Bound.Le b' b) (y : G)
+    : wh ha hb y = DiffMap.hom.{u} {R} {G} {deg} {Win a b} {Win a' b'} (wmap ha hb) y
+    => \peval wh ha hb y
+
+  \lemma wh-app {a a' : Int} {b b' : Bound} (ha : a' <= a) (hb : Bound.Le b' b) {y : G} (x : LHomology (Win a b) y)
+    : wh ha hb y x = DiffMap.hom.{u} {R} {G} {deg} {Win a b} {Win a' b'} (wmap ha hb) y x
+    => rewrite (wh-eval ha hb y) idp
 
   \func whom {a a' : Int} {b b' : Bound} (ha : a' <= a) (hb : Bound.Le b' b) {u v : G} (e : u = v)
-    : LinearMap (LHomology (Win a b) u) (LHomology (Win a' b') v)
-    => homAt {R} {G} {deg} {Win a b} {Win a' b'} (wmap ha hb) e
+    : LinearMap (LHomology (Win a b) u) (LHomology (Win a' b') v) \elim v, e
+    | _, idp => wh ha hb u
+
+  \sfunc wc {a b : Int} {c : Bound} (hab : a <= b) (hbc : Bound.Le (fin b) c) (u : G) : LinearMap (LHomology (Win a (fin b)) u) (LHomology (Win b c) (u + deg))
+    => DiffSES.conn.{u} {ses hab hbc} u
+
+  \lemma wc-eval {a b : Int} {c : Bound} (hab : a <= b) (hbc : Bound.Le (fin b) c) (u : G) : wc hab hbc u = DiffSES.conn {ses hab hbc} u
+    => \peval wc hab hbc u
+
+  \lemma wc-app {a b : Int} {c : Bound} (hab : a <= b) (hbc : Bound.Le (fin b) c) {u : G} (x : LHomology (Win a (fin b)) u)
+    : wc hab hbc u x = DiffSES.conn.{u} {ses hab hbc} u x
+    => rewrite (wc-eval hab hbc u) idp
 
   \func conn {a b : Int} {c : Bound} (hab : a <= b) (hbc : Bound.Le (fin b) c) {u v : G} (e : u + deg = v)
-    : LinearMap (LHomology (Win a (fin b)) u) (LHomology (Win b c) v)
-    => DiffSES.connAt {R} {G} {deg} {Win b c} {Win a c} {Win a (fin b)} (ses hab hbc) e
+    : LinearMap (LHomology (Win a (fin b)) u) (LHomology (Win b c) v) \elim v, e
+    | _, idp => wc hab hbc u
 
   \lemma wmap-id {a : Int} {b : Bound} (h : a <= a) (hb : Bound.Le b b) {y : G} (w : DiffModule.D {Win a b} y) : DiffMap.f {wmap h hb} y w = w \elim w
     | in~ t => pmap in~ (ext idp)
 
-  \lemma wh-id {a : Int} {b : Bound} (h : a <= a) (hb : Bound.Le b b) {y : G} (w : LHomology (Win a b) y) : wh h hb y w = w \elim w
-    | in~ z => pmap in~ (ext (wmap-id h hb z.1))
+  \lemma wh-id {a : Int} {b : Bound} (h : a <= a) (hb : Bound.Le b b) {y : G} (w : LHomology (Win a b) y) : wh h hb y w = w
+    => rewrite (wh-eval h hb y) (\case \elim w \with {
+      | in~ z => pmap in~ (ext (wmap-id h hb z.1))
+    })
 
   \lemma wh-inj {a : Int} {b : Bound} (h : a <= a) (hb : Bound.Le b b) (y : G) : IsInj (wh h hb y)
     => \lam p => inv (wh-id h hb _) *> p *> wh-id h hb _
@@ -112,8 +132,10 @@
     | in~ t => pmap in~ (ext idp)
 
   \lemma wh-comp {a a' a'' : Int} {b b' b'' : Bound} (ha : a' <= a) (hb : Bound.Le b' b) (ha' : a'' <= a') (hb' : Bound.Le b'' b') (ha'' : a'' <= a)
-                 (hb'' : Bound.Le b'' b) {y : G} (w : LHomology (Win a b) y) : wh ha' hb' y (wh ha hb y w) = wh ha'' hb'' y w \elim w
-    | in~ z => pmap in~ (ext (wmap-comp ha hb ha' hb' ha'' hb'' z.1))
+                 (hb'' : Bound.Le b'' b) {y : G} (w : LHomology.{u} (Win a b) y) : wh ha' hb' y (wh ha hb y w) = wh ha'' hb'' y w
+    => rewrite (wh-eval ha hb y, wh-eval ha' hb' y, wh-eval ha'' hb'' y) (\case \elim w \with {
+      | in~ z => pmap in~ (ext (wmap-comp ha hb ha' hb' ha'' hb'' z.1))
+    })
 
   \lemma whom-comp {a a' a'' : Int} {b b' b'' : Bound} (ha : a' <= a) (hb : Bound.Le b' b) (ha' : a'' <= a') (hb' : Bound.Le b'' b') (ha'' : a'' <= a)
                    (hb'' : Bound.Le b'' b) {u v w : G} (e : u = v) (e' : v = w) (x : LHomology (Win a b) u)
@@ -155,51 +177,66 @@
                   })
     }
 } \where {
+  \lemma exact-ip.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {a b : Int} {c : Bound} (hab : a <= b) (hbc : Bound.Le (fin b) c) (u : G)
+    : AbExactAt (FilteredDiff.wh.{u} {FX} hab Bound.Le-refl u) (FilteredDiff.wh.{u} {FX} <=-refl hbc u)
+    => rewrite (FilteredDiff.wh-eval.{u} {FX} hab Bound.Le-refl u, FilteredDiff.wh-eval.{u} {FX} <=-refl hbc u) (DiffSES.exact-middle.{u} {FilteredDiff.ses.{u} {FX} hab hbc} u)
+
+  \lemma exact-pc.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {a b : Int} {c : Bound} (hab : a <= b) (hbc : Bound.Le (fin b) c) (u : G)
+    : AbExactAt (FilteredDiff.wh.{u} {FX} <=-refl hbc u) (FilteredDiff.wc.{u} {FX} hab hbc u)
+    => rewrite (FilteredDiff.wh-eval.{u} {FX} <=-refl hbc u, FilteredDiff.wc-eval.{u} {FX} hab hbc u) (DiffSES.exact-right.{u} {FilteredDiff.ses.{u} {FX} hab hbc} u)
+
+  \lemma exact-ci.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {a b : Int} {c : Bound} (hab : a <= b) (hbc : Bound.Le (fin b) c) (u : G)
+    : AbExactAt (FilteredDiff.wc.{u} {FX} hab hbc u) (FilteredDiff.wh.{u} {FX} hab Bound.Le-refl (u + deg))
+    => rewrite (FilteredDiff.wc-eval.{u} {FX} hab hbc u, FilteredDiff.wh-eval.{u} {FX} hab Bound.Le-refl (u + deg)) (DiffSES.exact-left.{u} {FilteredDiff.ses.{u} {FX} hab hbc} u)
+
   \func sesMap.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {a b a' b' : Int} {c c' : Bound}
                (hab : a <= b) (hbc : Bound.Le (fin b) c) (hab' : a' <= b') (hbc' : Bound.Le (fin b') c') (ha : a' <= a) (hb : b' <= b) (hc : Bound.Le c' c)
-    : DiffSES.SESMap (FX.ses hab hbc) (FX.ses hab' hbc') \cowith
-    | fA => FX.wmap hb hc
-    | fB => FX.wmap ha hc
-    | fC => FX.wmap {a} {a'} {fin b} {fin b'} ha hb
-    | sq-i _ t => FX.wmap-comp hab Bound.Le-refl ha hc (<=-transitive ha hab) hc t *> inv (FX.wmap-comp hb hc hab' Bound.Le-refl (<=-transitive ha hab) hc t)
-    | sq-p _ t => FX.wmap-comp <=-refl hbc ha hb ha (Bound.Le-trans {fin b'} {fin b} hb hbc) t
-                    *> inv (FX.wmap-comp ha hc <=-refl hbc' ha (Bound.Le-trans {fin b'} {fin b} hb hbc) t)
+    : DiffSES.SESMap (FilteredDiff.ses.{u} {FX} hab hbc) (FilteredDiff.ses.{u} {FX} hab' hbc') \cowith
+    | fA => FilteredDiff.wmap.{u} {FX} hb hc
+    | fB => FilteredDiff.wmap.{u} {FX} ha hc
+    | fC => FilteredDiff.wmap.{u} {FX} {a} {a'} {fin b} {fin b'} ha hb
+    | sq-i _ t => FilteredDiff.wmap-comp.{u} {FX} hab Bound.Le-refl ha hc (<=-transitive ha hab) hc t *> inv (FilteredDiff.wmap-comp.{u} {FX} hb hc hab' Bound.Le-refl (<=-transitive ha hab) hc t)
+    | sq-p _ t => FilteredDiff.wmap-comp.{u} {FX} <=-refl hbc ha hb ha (Bound.Le-trans {fin b'} {fin b} hb hbc) t
+                    *> inv (FilteredDiff.wmap-comp.{u} {FX} ha hc <=-refl hbc' ha (Bound.Le-trans {fin b'} {fin b} hb hbc) t)
 
   \lemma conn-wh.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {a b a' b' : Int} {c c' : Bound}
                  (hab : a <= b) (hbc : Bound.Le (fin b) c) (hab' : a' <= b') (hbc' : Bound.Le (fin b') c') (ha : a' <= a) (hb : b' <= b) (hc : Bound.Le c' c)
-                 {u : G} (x : LHomology (FX.Win a (fin b)) u)
-    : DiffSES.conn {FX.ses hab' hbc'} u (FX.wh {a} {a'} {fin b} {fin b'} ha hb u x) = FX.wh hb hc (u + deg) (DiffSES.conn {FX.ses hab hbc} u x)
-    => DiffSES.conn-natural {R} {G} {deg} {FX.Win b c} {FX.Win a c} {FX.Win a (fin b)} {FX.Win b' c'} {FX.Win a' c'} {FX.Win a' (fin b')}
-                            {FX.ses hab hbc} {FX.ses hab' hbc'} (sesMap FX hab hbc hab' hbc' ha hb hc) x
+                 {u : G} (x : LHomology.{u} (FilteredDiff.Win.{u} {FX} a (fin b)) u)
+    : FilteredDiff.wc.{u} {FX} hab' hbc' u (FilteredDiff.wh.{u} {FX} {a} {a'} {fin b} {fin b'} ha hb u x) = FilteredDiff.wh.{u} {FX} hb hc (u + deg) (FilteredDiff.wc.{u} {FX} hab hbc u x)
+    => rewrite (FilteredDiff.wc-eval.{u} {FX} hab' hbc' u, FilteredDiff.wc-eval.{u} {FX} hab hbc u, FilteredDiff.wh-eval.{u} {FX} {a} {a'} {fin b} {fin b'} ha hb u, FilteredDiff.wh-eval.{u} {FX} hb hc (u + deg))
+         (DiffSES.conn-natural.{u} {R} {G} {deg} {FilteredDiff.Win.{u} {FX} b c} {FilteredDiff.Win.{u} {FX} a c} {FilteredDiff.Win.{u} {FX} a (fin b)} {FilteredDiff.Win.{u} {FX} b' c'} {FilteredDiff.Win.{u} {FX} a' c'} {FilteredDiff.Win.{u} {FX} a' (fin b')}
+                               {FilteredDiff.ses.{u} {FX} hab hbc} {FilteredDiff.ses.{u} {FX} hab' hbc'} (sesMap.{u} FX hab hbc hab' hbc' ha hb hc) x)
 
   \lemma conn-whom.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {a b a' b' : Int} {c c' : Bound}
                    (hab : a <= b) (hbc : Bound.Le (fin b) c) (hab' : a' <= b') (hbc' : Bound.Le (fin b') c') (ha : a' <= a) (hb : b' <= b) (hc : Bound.Le c' c)
-                   {u u' v v' : G} (e : u + deg = v) (e0 : u = u') (e' : u' + deg = v') (e2 : v = v') (x : LHomology (FX.Win a (fin b)) u)
-    : FX.conn hab' hbc' e' (FX.whom {a} {a'} {fin b} {fin b'} ha hb e0 x) = FX.whom hb hc e2 (FX.conn hab hbc e x) \elim u', v', e0, e2
+                   {u u' v v' : G} (e : u + deg = v) (e0 : u = u') (e' : u' + deg = v') (e2 : v = v') (x : LHomology.{u} (FilteredDiff.Win.{u} {FX} a (fin b)) u)
+    : FilteredDiff.conn.{u} {FX} hab' hbc' e' (FilteredDiff.whom.{u} {FX} {a} {a'} {fin b} {fin b'} ha hb e0 x) = FilteredDiff.whom.{u} {FX} hb hc e2 (FilteredDiff.conn.{u} {FX} hab hbc e x) \elim u', v', e0, e2
     | _, _, idp, idp => \case \elim v, \elim e, \elim e' \with {
-      | _, idp, e' => pmap (\lam t => FX.conn hab' hbc' t (FX.wh {a} {a'} {fin b} {fin b'} ha hb u x)) (prop-pi {u + deg = u + deg} {e'} {idp}) *> conn-wh FX hab hbc hab' hbc' ha hb hc x
+      | _, idp, e' => pmap (\lam t => FilteredDiff.conn.{u} {FX} hab' hbc' t (FilteredDiff.wh.{u} {FX} {a} {a'} {fin b} {fin b'} ha hb u x)) (prop-pi {u + deg = u + deg} {e'} {idp}) *> conn-wh.{u} FX hab hbc hab' hbc' ha hb hc x
     }
 
   \func unwmap.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {a a' : Int}
-                   (hf : \Pi {y : G} {u : X.D y} -> FX.F a' y u -> FX.F a y u) : DiffMap (FX.Win a' inf) (FX.Win a inf) \cowith
-    | f y => QuotientLModule.map {_} {IModule (FX.F a' y)} {IModule (FX.F a y)} {FX.N a' inf y} {FX.N a inf y}
+                   (hf : \Pi {y : G} {u : X.D y} -> FX.F a' y u -> FX.F a y u) : DiffMap (FilteredDiff.Win.{u} {FX} a' inf) (FilteredDiff.Win.{u} {FX} a inf) \cowith
+    | f y => QuotientLModule.map {_} {IModule (FX.F a' y)} {IModule (FX.F a y)} {FilteredDiff.N.{u} {FX} a' inf y} {FilteredDiff.N.{u} {FX} a inf y}
                                  (IModule.map {_} {_} {_} {FX.F a' y} {FX.F a y} LinearMap.id hf) (\lam h => h)
     | f-d _ u => \case \elim u \with {
       | in~ z => pmap in~ (ext idp)
     }
 
   \lemma unwmap-wh.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {a a' : Int} (h : a' <= a)
-                       (hf : \Pi {y : G} {u : X.D y} -> FX.F a' y u -> FX.F a y u) {y : G} (x : LHomology (FX.Win a inf) y)
-    : DiffMap.hom {R} {G} {deg} {FX.Win a' inf} {FX.Win a inf} (unwmap FX hf) y (FX.wh {a} {a'} {inf} {inf} h () y x) = x \elim x
-    | in~ (in~ s, _) => pmap in~ (ext (pmap in~ (ext idp)))
+                       (hf : \Pi {y : G} {u : X.D y} -> FX.F a' y u -> FX.F a y u) {y : G} (x : LHomology.{u} (FilteredDiff.Win.{u} {FX} a inf) y)
+    : DiffMap.hom.{u} {R} {G} {deg} {FilteredDiff.Win.{u} {FX} a' inf} {FilteredDiff.Win.{u} {FX} a inf} (unwmap.{u} FX hf) y (FilteredDiff.wh.{u} {FX} {a} {a'} {inf} {inf} h () y x) = x
+    => rewrite (FilteredDiff.wh-eval.{u} {FX} {a} {a'} {inf} {inf} h () y) (\case \elim x \with {
+      | in~ (in~ s, _) => pmap in~ (ext (pmap in~ (ext idp)))
+    })
 
   \lemma whom-inj-full.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {a a' : Int} (h : a' <= a)
                            (hf : \Pi {y : G} {u : X.D y} -> FX.F a' y u -> FX.F a y u) {u v : G} (e : u = v)
-    : IsInj (FX.whom {a} {a'} {inf} {inf} h () e) \elim v, e
-    | _, idp => \lam {x} {x'} p => inv (unwmap-wh FX h hf x) *> pmap (DiffMap.hom {R} {G} {deg} {FX.Win a' inf} {FX.Win a inf} (unwmap FX hf) u) p *> unwmap-wh FX h hf x'
+    : IsInj (FilteredDiff.whom.{u} {FX} {a} {a'} {inf} {inf} h () e) \elim v, e
+    | _, idp => \lam {x} {x'} p => inv (unwmap-wh.{u} FX h hf x) *> pmap (DiffMap.hom.{u} {R} {G} {deg} {FilteredDiff.Win.{u} {FX} a' inf} {FilteredDiff.Win.{u} {FX} a inf} (unwmap.{u} FX hf) u) p *> unwmap-wh.{u} FX h hf x'
 
   \func embed.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) (a : Int)
-                  (hf : \Pi {y : G} (u : X.D y) -> FX.F a y u) : DiffMap X (FX.Win a inf) \cowith
+                  (hf : \Pi {y : G} (u : X.D y) -> FX.F a y u) : DiffMap X (FilteredDiff.Win.{u} {FX} a inf) \cowith
     | f _ => \new LinearMap {
       | func u => in~ (u, hf u)
       | func-+ => pmap in~ (ext idp)
@@ -207,16 +244,16 @@
     }
     | f-d _ _ => pmap in~ (ext idp)
 
-  \func unembed.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) (a : Int) : DiffMap (FX.Win a inf) X \cowith
-    | f y => QuotientLModule.desc {_} {IModule (FX.F a y)} {X.D y} {FX.N a inf y} (IModule.embed {FX.F a y}) (\lam h => h)
+  \func unembed.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) (a : Int) : DiffMap (FilteredDiff.Win.{u} {FX} a inf) X \cowith
+    | f y => QuotientLModule.desc {_} {IModule (FX.F a y)} {X.D y} {FilteredDiff.N.{u} {FX} a inf y} (IModule.embed {FX.F a y}) (\lam h => h)
     | f-d _ u => \case \elim u \with {
       | in~ z => idp
     }
 
   \func embed-iso.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) (a : Int)
                       (hf : \Pi {y : G} (u : X.D y) -> FX.F a y u) (y : G)
-    : ModuleIso {R} {LHomology X y} {LHomology (FX.Win a inf) y} (DiffMap.hom {R} {G} {deg} {X} {FX.Win a inf} (embed FX a hf) y) \cowith
-    | finv => DiffMap.hom {R} {G} {deg} {FX.Win a inf} {X} (unembed FX a) y
+    : ModuleIso {R} {LHomology.{u} X y} {LHomology.{u} (FilteredDiff.Win.{u} {FX} a inf) y} (DiffMap.hom.{u} {R} {G} {deg} {X} {FilteredDiff.Win.{u} {FX} a inf} (embed.{u} FX a hf) y) \cowith
+    | finv => DiffMap.hom.{u} {R} {G} {deg} {FilteredDiff.Win.{u} {FX} a inf} {X} (unembed.{u} FX a) y
     | finv_f x => \case \elim x \with {
       | in~ c => pmap in~ (ext idp)
     }
