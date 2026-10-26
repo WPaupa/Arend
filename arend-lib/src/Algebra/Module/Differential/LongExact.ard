@@ -1,0 +1,201 @@
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.Exact
+\import Algebra.Group.GroupHom
+\import Algebra.Group.SubGroup
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Module.Differential
+\import Algebra.Module.GradedComplex
+\import Algebra.Module.LinearMap
+\import Algebra.Module.Quotient
+\import Algebra.Module.SubLModule
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Function
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+\open GradedMap (pre)
+
+\record DiffMap.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} (X Y : DiffModule.{u} G deg R) {
+  | f (y : G) : LinearMap (X.D y) (Y.D y)
+  | f-d {x y : G} (q : x + deg = y) (u : X.D x) : Y.d q (f x u) = f y (X.d q u)
+
+  \lemma f-cycle {y : G} {u : X.D y} (c : X.LIsCycle y u) : Y.LIsCycle y (f y u)
+    => f-d idp u *> pmap (f _) c *> (f _).func-zro
+
+  \lemma f-boundary {y : G} {z : IModule (X.LIsCycle y)} (b : X.LIsBoundary y z) : Y.LIsBoundary y (f y z.1, f-cycle z.2) \elim b
+    | inP (u, e) => inP (f _ u, ext (f-d (pre y deg) u *> pmap (\lam w => f y w.1) e))
+} \where {
+  \func hom.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y : DiffModule.{u} G deg R} (F : DiffMap X Y) (y : G) : LinearMap (LHomology X y) (LHomology Y y)
+    => QuotientLModule.map {_} {IModule (X.LIsCycle y)} {IModule (Y.LIsCycle y)} {X.LIsBoundary y} {Y.LIsBoundary y}
+                           (IModule.map {_} {_} {_} {X.LIsCycle y} {Y.LIsCycle y} (F.f y) F.f-cycle) F.f-boundary
+
+  \func id.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} : DiffMap X X \cowith
+    | f _ => LinearMap.id
+    | f-d _ _ => idp
+
+  \func comp.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} (F' : DiffMap Y Z) (F : DiffMap X Y) : DiffMap X Z \cowith
+    | f y => F'.f y LinearMap.∘ F.f y
+    | f-d q u => F'.f-d q _ *> pmap (F'.f _) (F.f-d q u)
+
+  \lemma hom-comp.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} (F' : DiffMap Y Z) (F : DiffMap X Y) {y : G} (h : LHomology X y)
+    : hom F' y (hom F y h) = hom (comp F' F) y h \elim h
+    | in~ z => pmap in~ (ext idp)
+}
+
+\lemma boundary-at.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} {x y : G} (q : x + deg = y) {z : IModule (X.LIsCycle y)}
+                   (b : X.LIsBoundary y z) : ∃ (u : X.D x) (X.d q u = z.1)
+  => aux (GradedMap.source q) q b
+  \where
+    \lemma aux.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} {x y : G} (s : x = y - deg) (q : x + deg = y) {z : IModule (X.LIsCycle y)}
+               (b : X.LIsBoundary y z) : ∃ (u : X.D x) (X.d q u = z.1) \elim x, s, b
+      | _, idp, inP (u, e) => inP (u, pmap (\lam q' => X.d q' u) prop-pi *> pmap __.1 e)
+
+\record DiffSES.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} (A B C : DiffModule.{u} G deg R) {
+  | i : DiffMap A B
+  | p : DiffMap B C
+  | i-inj (y : G) : IsInj (i.f y)
+  | p-surj (y : G) : IsSurj (p.f y)
+  | exact (y : G) : AbExactAt (i.f y) (p.f y)
+
+  \func pairs (y : G) : SubLModule R (ProductLModule R (B.D y) (A.D (y + deg))) \cowith
+    | contains t => B.d idp t.1 = i.f (y + deg) t.2
+    | contains_zro => (B.d idp).func-zro *> inv (i.f _).func-zro
+    | contains_+ s t => (B.d idp).func-+ *> pmap2 (+) s t *> inv (i.f _).func-+
+    | contains_negative s => (B.d idp).func-negative *> pmap negative s *> inv (i.f _).func-negative
+    | contains_*c s => (B.d idp).func-*c *> pmap (_ *c) s *> inv (i.f _).func-*c
+
+  \lemma value-cycle {y : G} {b : B.D y} {a : A.D (y + deg)} (s : B.d idp b = i.f _ a) : A.LIsCycle (y + deg) a
+    => i-inj _ (inv (i.f-d idp a) *> pmap (B.d idp) (inv s) *> B.d-d idp idp b *> inv (i.f _).func-zro)
+
+  \func lift (y : G) : LinearMap (IModule (pairs y)) (C.D y) \cowith
+    | func t => p.f y t.1.1
+    | func-+ => (p.f y).func-+
+    | func-*c => (p.f y).func-*c
+
+  \func value (y : G) : LinearMap (IModule (pairs y)) (LHomology A (y + deg)) \cowith
+    | func t => in~ (t.1.2, value-cycle t.2)
+    | func-+ => pmap in~ (ext idp)
+    | func-*c => pmap in~ (ext idp)
+
+  \lemma value-kill {y : G} {t : IModule (pairs y)} (h : lift y t = 0) : value y t = 0
+    => \case AbExactAt.lift (exact y) h \with {
+      | inP (a', ia) => (AbQuotient.proj-zero {_} {A.LIsBoundary (y + deg)}).2
+          (transport (A.LIsBoundary (y + deg)) (ext (i-inj _ (inv (i.f-d idp a') *> pmap (B.d idp) ia *> t.2))) (A.boundary-intro idp a'))
+    }
+
+  \lemma lifts {y : G} (c : IModule (C.LIsCycle y)) : ImageLModule (lift y) c.1
+    => \case p-surj y c.1 \with {
+      | inP (b, pb) => TruncP.map (AbExactAt.lift (exact (y + deg)) (inv (p.f-d idp b) *> pmap (C.d idp) pb *> c.2)) \lam (a, ia) => (((b, a), inv ia), pb)
+    }
+
+  \func cycleMap (y : G) : LinearMap (IModule (C.LIsCycle y)) (LHomology A (y + deg))
+    => LinearMap.compose {_} {_} {ImLModule (lift y)} {_} (ImLModule.desc {_} {IModule (pairs y)} {C.D y} {LHomology A (y + deg)} (lift y) (value y) value-kill)
+                         (IModule.corestrict {ImageLModule (lift y)} {IModule (C.LIsCycle y)} (IModule.embed {C.LIsCycle y}) lifts)
+
+  \lemma cycleMap-eval {y : G} (c : IModule (C.LIsCycle y)) {b : B.D y} {a : A.D (y + deg)} (pb : p.f y b = c.1) (s : B.d idp b = i.f _ a)
+    : cycleMap y c = in~ (a, value-cycle s)
+    => ImLModule.desc.eval {_} {IModule (pairs y)} {C.D y} {LHomology A (y + deg)} (lift y) (value y) value-kill (c.1, lifts c) {((b, a), s)} pb
+
+  \func conn (y : G) : LinearMap (LHomology C y) (LHomology A (y + deg))
+    => QuotientLModule.desc {_} {IModule (C.LIsCycle y)} {_} {C.LIsBoundary y} (cycleMap y)
+        \lam {c} (inP (u, e)) => \case p-surj _ u \with {
+          | inP (b', pb') => cycleMap-eval c (inv (p.f-d (pre y deg) b') *> pmap (C.d _) pb' *> pmap __.1 e)
+                                           (B.d-d _ idp b' *> inv (i.f _).func-zro) *> pmap in~ (ext idp)
+        }
+
+  \lemma conn-eval {y : G} (c : IModule (C.LIsCycle y)) {b : B.D y} {a : A.D (y + deg)} (pb : p.f y b = c.1) (s : B.d idp b = i.f _ a)
+    : conn y (in~ c) = in~ (a, value-cycle s)
+    => cycleMap-eval c pb s
+
+  \lemma exact-middle (y : G) : AbExactAt (DiffMap.hom i y) (DiffMap.hom p y)
+    => \lam h => (\lam ph => \case \elim h, ph \with {
+      | in~ z, ph => \case (AbQuotient.proj-zero {_} {C.LIsBoundary y}).1 ph \with {
+        | inP (u, e) => \case p-surj _ u \with {
+          | inP (b', pb') =>
+            \have pz : p.f y (z.1 - B.d (pre y deg) b') = 0
+                => (p.f y).func-minus *> pmap (_ -) (inv (p.f-d _ b') *> pmap (C.d _) pb' *> pmap __.1 e) *> negative-right
+            \in TruncP.map (AbExactAt.lift (exact y) pz) \lam (a, ia) =>
+                \have ca : A.LIsCycle y a => i-inj _ (inv (i.f-d idp a) *> pmap (B.d idp) ia *> (B.d idp).func-minus
+                                                       *> pmap2 (-) z.2 (B.d-d _ idp b') *> negative-right *> inv (i.f _).func-zro)
+                \in (in~ (a, ca), (AbQuotient.proj-equality {_} {B.LIsBoundary y}).2 (inP (negative b', ext ((B.d _).func-negative *> equation.abGroup *> pmap (`- z.1) (inv ia)))))
+        }
+      }
+    }, \lam (inP (u, iu)) => pmap (DiffMap.hom p y) (inv iu) *> zero-on u)
+    \where
+      \lemma zero-on (u : LHomology A y) : DiffMap.hom p y (DiffMap.hom i y u) = 0 \elim u
+        | in~ a => pmap in~ (ext (AbExactAt.zero (exact y) a.1))
+
+  \lemma exact-right (y : G) : AbExactAt (DiffMap.hom p y) (conn y)
+    => \lam h => (\lam ch => \case \elim h, ch \with {
+      | in~ c, ch => \case lifts c \with {
+        | inP (t, pt) => \case boundary-at idp ((AbQuotient.proj-zero {_} {A.LIsBoundary (y + deg)}).1 (inv (conn-eval c pt t.2) *> ch)) \with {
+          | inP (u, du) =>
+            \have cb : B.LIsCycle y (t.1.1 - i.f y u)
+                => (B.d idp).func-minus *> pmap2 (-) t.2 (i.f-d idp u *> pmap (i.f _) du) *> negative-right
+            \in inP (in~ (t.1.1 - i.f y u, cb), pmap in~ (ext ((p.f y).func-minus *> pmap2 (-) pt (AbExactAt.zero (exact y) u) *> AddGroup.minus_zro)))
+        }
+      }
+    }, \lam (inP (u, pu)) => pmap (conn y) (inv pu) *> zero-on u)
+    \where
+      \lemma zero-on (u : LHomology B y) : conn y (DiffMap.hom p y u) = 0 \elim u
+        | in~ b => conn-eval (p.f y b.1, p.f-cycle b.2) idp (b.2 *> inv (i.f _).func-zro) *> pmap in~ (ext idp)
+
+  \lemma exact-left (y : G) : AbExactAt (conn y) (DiffMap.hom i (y + deg))
+    => \lam h => (\lam ih => \case \elim h, ih \with {
+      | in~ a, ih => \case boundary-at idp ((AbQuotient.proj-zero {_} {B.LIsBoundary (y + deg)}).1 ih) \with {
+        | inP (b, db) => \have cp : C.LIsCycle y (p.f y b) => p.f-d idp b *> pmap (p.f _) db *> AbExactAt.zero (exact _) a.1
+                         \in inP (in~ (p.f y b, cp), conn-eval (p.f y b, cp) idp db *> pmap in~ (ext idp))
+      }
+    }, \lam (inP (u, cu)) => pmap (DiffMap.hom i (y + deg)) (inv cu) *> zero-on u)
+    \where
+      \lemma zero-on (u : LHomology C y) : DiffMap.hom i (y + deg) (conn y u) = 0 \elim u
+        | in~ c => \case lifts c \with {
+          | inP (t, pt) => pmap (DiffMap.hom i (y + deg)) (conn-eval c pt t.2)
+              *> (AbQuotient.proj-zero {_} {B.LIsBoundary (y + deg)}).2 (transport (B.LIsBoundary (y + deg)) (ext t.2) (B.boundary-intro idp t.1.1))
+        }
+} \where {
+  \func connAt.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {A B C : DiffModule.{u} G deg R} (S : DiffSES A B C) {a b : G} (e : a + deg = b)
+    : LinearMap (LHomology C a) (LHomology A b) \elim b, e
+    | _, idp => S.conn a
+
+  \record SESMap.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {A B C A' B' C' : DiffModule.{u} G deg R} (S : DiffSES A B C) (S' : DiffSES A' B' C') {
+    | fA : DiffMap A A'
+    | fB : DiffMap B B'
+    | fC : DiffMap C C'
+    | sq-i (y : G) (a : A.D y) : fB.f y (S.i.f y a) = S'.i.f y (fA.f y a)
+    | sq-p (y : G) (b : B.D y) : fC.f y (S.p.f y b) = S'.p.f y (fB.f y b)
+  }
+
+  \lemma conn-natural.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {A B C A' B' C' : DiffModule.{u} G deg R} {S : DiffSES A B C} {S' : DiffSES A' B' C'}
+                      (M : SESMap S S') {y : G} (h : LHomology C y) : S'.conn y (DiffMap.hom M.fC y h) = DiffMap.hom M.fA (y + deg) (S.conn y h) \elim h
+    | in~ c => \case S.lifts c \with {
+      | inP (t, pt) => S'.conn-eval (M.fC.f y c.1, M.fC.f-cycle c.2) {M.fB.f y t.1.1} {M.fA.f _ t.1.2} (inv (M.sq-p y _) *> pmap (M.fC.f y) pt)
+                                    (M.fB.f-d idp _ *> pmap (M.fB.f _) t.2 *> M.sq-i _ _)
+          *> pmap in~ (ext idp) *> inv (pmap (DiffMap.hom M.fA (y + deg)) (S.conn-eval c pt t.2))
+    }
+}
+
+\func homAt.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y : DiffModule.{u} G deg R} (F : DiffMap X Y) {a b : G} (e : a = b)
+  : LinearMap (LHomology X a) (LHomology Y b) \elim b, e
+  | _, idp => DiffMap.hom F a
+
+\lemma exact-post {U V W W' : AbGroup} {f : AddGroupHom U V} {g : AddGroupHom V W} {g' : AddGroupHom V W'} {h : AddGroupHom W W'}
+                  (hi : IsInj h) (hg : \Pi (v : V) -> g' v = h (g v)) (e : AbExactAt f g) : AbExactAt f g'
+  => \lam v => (\lam p => (e v).1 (hi (inv (hg v) *> p *> inv h.func-zro)), \lam s => hg v *> pmap h ((e v).2 s) *> h.func-zro)
+
+\lemma exact-pre {U U' V W : AbGroup} {f : AddGroupHom U V} {f' : AddGroupHom U' V} {g : AddGroupHom V W} {h : AddGroupHom U' U}
+                 (hs : IsSurj h) (hf : \Pi (u : U') -> f' u = f (h u)) (e : AbExactAt f g) : AbExactAt f' g
+  => \lam v => (\lam p => \case (e v).1 p \with {
+    | inP (u, fu) => TruncP.map (hs u) \lam (u', hu) => (u', hf u' *> pmap f hu *> fu)
+  }, \lam (inP (u', fu)) => (e v).2 (inP (h u', inv (hf u') *> fu)))
+
+\lemma exact-congr {U V W : AbGroup} {f f' : AddGroupHom U V} {g g' : AddGroupHom V W} (ef : \Pi (u : U) -> f u = f' u) (eg : \Pi (v : V) -> g v = g' v)
+                   (e : AbExactAt f g) : AbExactAt f' g'
+  => \lam v => (\lam p => TruncP.map ((e v).1 (eg v *> p)) \lam (u, fu) => (u, inv (ef u) *> fu),
+                \lam (inP (u, fu)) => inv (eg v) *> (e v).2 (inP (u, ef u *> fu)))

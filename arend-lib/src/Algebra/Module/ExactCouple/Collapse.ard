@@ -1,0 +1,140 @@
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.Exact
+\import Algebra.Group.Filtration
+\import Algebra.Group.GroupHom
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Module.Differential (DiffModule, GradedMap)
+\import Algebra.Module.ExactCouple
+\import Algebra.Module.ExactCouple.Convergence
+\import Algebra.Module.ExactCouple.Cumulative
+\import Algebra.Module.ExactCouple.Product
+\import Algebra.Module.Filtration
+\import Algebra.Module.LinearMap
+\import Algebra.Module.ModuleIso
+\import Algebra.Module.Quotient
+\import Algebra.Module.SubLModule
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Arith.Nat
+\import Equiv
+\import Function
+\import Logic
+\import Logic.Meta
+\import Order.LinearOrder
+\import Order.PartialOrder
+\import Order.StrictOrder
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+\open GradedMap (pre)
+\open ExactCouple (jdeg)
+\open AddMonoid (*n)
+
+
+\lemma boundaries-vanish.{u} (C : ExactCouple.{u}) (N : Nat) {y : C.G}
+                             (h : \Pi (n : Nat) -> n < N -> \Pi (e : Couple.E {cumulative C n} (y - (C.dk + jdeg C.di C.dj n)))
+                               -> DiffModule.d {nextPage.Xc C n (cumulative-exact C n)} (pre y (C.dk + jdeg C.di C.dj n)) e = 0)
+                             {x : IModule (cumulative.Z C N y)} (b : cumulative.B C N y x) : x.1 = 0 \elim N
+  | 0 => PageClosure.B-base b
+  | suc N => boundaries-vanish C N (\lam n n<N => h n (n<N <∘ id<suc)) (B-next C N (h N id<suc) b)
+
+\lemma cycles-full.{u} (C : ExactCouple.{u}) (N : Nat) {y : C.G}
+                       (h : \Pi (n : Nat) -> n < N -> \Pi (e : Couple.E {cumulative C n} y) -> DiffModule.d {nextPage.Xc C n (cumulative-exact C n)} idp e = 0)
+                       (x : C.E y) : cumulative.Z C N y x \elim N
+  | 0 => cumulative.all-zero C _
+  | suc N => Z-next C N (h N id<suc) (cycles-full C N (\lam n n<N => h n (n<N <∘ id<suc)) x)
+
+\lemma Z-down.{u} (C : ExactCouple.{u}) (n m : Nat) {y : C.G} {x : C.E y} (c : cumulative.Z C (n Nat.+ m) y x) : cumulative.Z C n y x \elim m
+  | 0 => c
+  | suc m => Z-down C n m (cumulative.Z-dec C (n Nat.+ m) c)
+
+\lemma outgoing-vanish.{u} (C : ExactCouple.{u}) (N : Nat) {y : C.G} (h : \Pi (x : C.E y) -> cumulative.Z C N y x) (n : Nat) (n<N : n < N)
+                           (e : Couple.E {cumulative C n} y) : DiffModule.d {nextPage.Xc C n (cumulative-exact C n)} idp e = 0 \elim e
+  | in~ x => (nextPage.kernel-criterion C n (cumulative-exact C n) x).2
+      (Z-down C (suc n) (N -' suc n) (transportInv (\lam M => cumulative.Z C M y x.1) (<=_exists {suc n} {N} \lam h' => <_suc_<= h' n<N) (h x.1)))
+
+\lemma incoming-vanish.{u} (C : ExactCouple.{u}) (N : Nat) {y : C.G} (h : \Pi (x : IModule (cumulative.Z C N y)) -> cumulative.B C N y x -> x.1 = 0)
+                           (n : Nat) (n<N : n < N) (e : Couple.E {cumulative C n} (y - (C.dk + jdeg C.di C.dj n)))
+  : DiffModule.d {nextPage.Xc C n (cumulative-exact C n)} (pre y (C.dk + jdeg C.di C.dj n)) e = 0 \elim e
+  | in~ x => \case x.2 \with {
+    | inP (v, iv) =>
+      \let | p => +-assoc *> pre y (C.dk + jdeg C.di C.dj n)
+           | q => jdeg.index {_} {C.di} {C.dj} {n} p
+           | h1 : iter C (suc n) idp v = 0 => GradedMap.comp-eval C.i (iter C n) idp (pre _ (n *n C.di)) equation.abGroup v
+                                               *> pmap (C.i _) iv *> C.ik-zero idp _ x.1
+           | e' : N -' suc n Nat.+ suc n = N => NatSemiring.+-comm {N -' suc n} {suc n} *> <=_exists {suc n} {N} \lam h' => <_suc_<= h' n<N
+      \in cumulative.j-eval C n (pre _ (n *n C.di)) v p q (Couple.k {cumulative C n} idp (in~ x)) iv
+          *> pmap in~ (ext (h (C.j q v, _) (cumulative.B-intro C N q idp (iter.nat-move C e' idp idp (iter.zero-up C (N -' suc n) (suc n) idp idp h1)))))
+  }
+
+\lemma page-zero.{u} (C : ExactCouple.{u}) (n : Nat) {y : C.G} (h : \Pi (x : C.E y) -> x = 0) (e : Couple.E {cumulative C n} y) : e = 0 \elim e
+  | in~ x => (AbQuotient.proj-zero {_} {cumulative.B C n y}).2 (PageClosure.B-zero (h x.1))
+
+\lemma stable-zero.{u} (C : ExactCouple.{u}) (x0 : C.G) (k : Nat) (h : \Pi (t : C.D x0) -> t = 0)
+                       (e : Einf C (idp {C.G} {x0 - k *n C.di + C.dj})) : e = 0
+  => \case convergence.surj {C} {x0} {k} e \with {
+    | inP (g, ge) => inv ge *> pmap (convergence C x0 k) (gr-zero g) *> (convergence C x0 k).func-zro
+  }
+  \where
+    \lemma gr-zero (g : LFiltration.lgr {filtration C x0} k) : g = 0 \elim g
+      | in~ z => pmap in~ (ext (h z.1))
+
+\lemma abutment-zero.{u} (C : ExactCouple.{u}) (x0 : C.G) (N : Nat) (s : LeftStable C x0) (top : \Pi (t : C.D (x0 - N *n C.di)) -> t = 0)
+                         (h : \Pi (k : Nat) -> k < N -> \Pi (e : Einf C (idp {C.G} {x0 - k *n C.di + C.dj})) -> e = 0) (t : C.D x0) : t = 0
+  => Filtration.trivial {filtration C x0} {N} (filtration.bottom C x0) (filtration.top C top)
+       (\lam k k<N _ => convergence.inj {C} {x0} {k} s (h k k<N _ *> inv (convergence C x0 k).func-zro)) t
+
+\func collapse.{u} (C : ExactCouple.{u}) (x0 : C.G) {N k : Nat} (k<N : k < N) (top : \Pi (t : C.D (x0 - N *n C.di)) -> t = 0)
+                   (z : \Pi (j : Nat) -> j < N -> j /= k -> \Pi (q : Filtration.gr {filtration C x0} j) -> q = AddPointed.zro {Filtration.gr {filtration C x0} j})
+  : LinearMap (C.D x0) (Einf C (idp {C.G} {x0 - k *n C.di + C.dj}))
+  => LinearMap.compose {_} {C.D x0} {LFiltration.lgr {filtration C x0} k} {Einf C (idp {C.G} {x0 - k *n C.di + C.dj})} (convergence C x0 k)
+                       (concentrated C x0 k<N top z)
+  \where {
+    \func concentrated.{u} (C : ExactCouple.{u}) (x0 : C.G) {N k : Nat} (k<N : k < N) (top : \Pi (t : C.D (x0 - N *n C.di)) -> t = 0)
+                           (z : \Pi (j : Nat) -> j < N -> j /= k -> \Pi (q : Filtration.gr {filtration C x0} j) -> q = AddPointed.zro {Filtration.gr {filtration C x0} j})
+      : LinearMap (C.D x0) (LFiltration.lgr {filtration C x0} k) \cowith
+      | AddGroupHom => Filtration.concentrated {filtration C x0} k<N (filtration.bottom C x0) (filtration.top C top) z
+      | func-*c => pmap in~ (ext idp)
+
+    \lemma iso (s : LeftStable C x0) : ModuleIso {C.R} {C.D x0} {Einf C (idp {C.G} {x0 - k *n C.di + C.dj})} (collapse C x0 k<N top z)
+      => \let e => Filtration.concentrated.equiv {filtration C x0} k<N (filtration.bottom C x0) (filtration.top C top) z
+         \in (ModuleIso.iso<->inj+surj {_} {C.D x0} {Einf C (idp {C.G} {x0 - k *n C.di + C.dj})} {collapse C x0 k<N top z}).2
+               (\lam p => e.isInj (convergence.inj {C} {x0} {k} s p),
+                \lam v => \case convergence.surj {C} {x0} {k} v \with {
+                  | inP (g, gv) => inP (e.ret g, pmap (convergence C x0 k) (e.f_ret g) *> gv)
+                })
+  }
+
+\lemma column-edge-kernel.{u} (C : ExactCouple.{u}) {x0 y : C.G} (r : x0 + C.dj = y) (t : C.D x0)
+  : C.j r t = 0 <-> Filtration.F {filtration C x0} 1 t
+  => \let p : x0 - 1 *n C.di + C.di = x0 => equation.abGroup
+     \in (\lam jt => TruncP.map (AbExactAt.lift (C.exact-ij p r) jt) \lam (u, iu) => (u, GradedMap.id-right C.i idp _ p u *> iu),
+          \lam (inP (u, iu)) => inv (pmap (C.j r) (inv (GradedMap.id-right C.i idp _ p u) *> iu)) *> C.ji-zero p r u)
+
+\lemma column-edge-image.{u} (C : ExactCouple.{u}) {x0 y : C.G} (r : x0 + C.dj = y) (e : C.E y) : Zinf C y e <-> ∃ (t : C.D x0) (C.j r t = e)
+  => C.exact-jk r idp e
+
+\func row-edge.{u} (C : ExactCouple.{u}) (x0 : C.G) (k : Nat) (hk : \Pi (e : C.E (x0 - k *n C.di + C.dj)) -> C.k idp e = 0)
+                   (top : \Pi (t : C.D (x0 - suc k *n C.di)) -> t = 0) : LinearMap (C.E (x0 - k *n C.di + C.dj)) (C.D x0)
+  => LinearMap.compose {_} {C.E (x0 - k *n C.di + C.dj)} {ImLModule (C.j (idp {C.G} {x0 - k *n C.di + C.dj}))} {C.D x0}
+       (ImLModule.desc (C.j idp) (iter C k (pre x0 (k *n C.di))) (\lam jt => pmap (iter C k _) (j-inj jt) *> (iter C k _).func-zro))
+       (IModule.corestrict {ImageLModule (C.j idp)} LinearMap.id (\lam e => (C.exact-jk idp idp e).1 (hk e)))
+  \where {
+    \lemma j-inj {t : C.D (x0 - k *n C.di)} (jt : C.j idp t = 0) : t = 0
+      => \case AbExactAt.lift (C.exact-ij (equation.abGroup : x0 - suc k *n C.di + C.di = x0 - k *n C.di) idp) jt \with {
+        | inP (u, iu) => inv iu *> pmap (C.i _) (top u) *> (C.i _).func-zro
+      }
+
+    \lemma eval {e : C.E (x0 - k *n C.di + C.dj)} {t : C.D (x0 - k *n C.di)} (jt : C.j idp t = e) : row-edge C x0 k hk top e = iter C k (pre x0 (k *n C.di)) t
+      => ImLModule.desc.eval (C.j idp) (iter C k (pre x0 (k *n C.di))) _ (e, (C.exact-jk idp idp e).1 (hk e)) jt
+
+    \lemma kernel (s : LeftStable C x0) (e : C.E (x0 - k *n C.di + C.dj)) : row-edge C x0 k hk top e = 0 <-> Binf C idp (e, hk e)
+      => (\lam re => TruncP.map ((C.exact-jk idp idp e).1 (hk e)) \lam (t, jt) => (k, t, GradedMap.zero-move (iter C k) _ idp (inv (eval jt) *> re), jt),
+          \lam (inP (n, v, iv, jv)) => eval jv *> LeftStable.kernel s k (pre x0 (k *n C.di)) iv)
+
+    \lemma image (t : C.D x0) : (∃ (e : C.E (x0 - k *n C.di + C.dj)) (row-edge C x0 k hk top e = t)) <-> Filtration.F {filtration C x0} k t
+      => (\lam (inP (e, et)) => TruncP.map ((C.exact-jk idp idp e).1 (hk e)) \lam (t', jt) => (t', inv (eval jt) *> et),
+          \lam (inP (t', it)) => inP (C.j idp t', eval idp *> it))
+  }

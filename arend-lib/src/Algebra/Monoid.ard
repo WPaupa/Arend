@@ -387,6 +387,10 @@
     | 0 => idp
     | suc n => pmap (+ a) *n_pow
 
+  \lemma *n_zro {n : Nat} : n *n zro = zro \elim n
+    | 0 => idp
+    | suc n => zro-right *> *n_zro
+
   \lemma *n-rdistr {n m : Nat} {a : E} : (n Nat.+ m) *n a = n *n a + m *n a
     => *n_pow *> \this.pow_+ *> inv (pmap2 (+) *n_pow *n_pow)
 

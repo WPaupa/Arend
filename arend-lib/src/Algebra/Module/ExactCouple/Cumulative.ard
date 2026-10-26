@@ -60,6 +60,23 @@
           : F.f y (GradedMap.id {_} {_} {C.D} p u) = GradedMap.id {_} {_} {C'.D} p (F.f x u) \elim y, s
           | _, idp => pmap (F.f x) (GradedMap.id-eval {_} {_} {C.D} p u) *> inv (GradedMap.id-eval {_} {_} {C'.D} p (F.f x u))
 
+    \lemma add-index {G : AbGroup} {a : G} {m n : Nat} {x w : G} (p : x + n *n a = w) : w + m *n a = x + (m Nat.+ n) *n a
+      => inv (pmap (`+ m *n a) p) *> +-assoc *> pmap (x +) (+-comm *> inv AddMonoid.*n-rdistr)
+
+    \lemma add.{u} (C : ExactCouple.{u}) (m n : Nat) {x w y : C.G} (p : x + (m Nat.+ n) *n C.di = y) (p1 : x + n *n C.di = w) (p2 : w + m *n C.di = y)
+                   (u : C.D x) : iter C (m Nat.+ n) p u = iter C m p2 (iter C n p1 u) \elim m
+      | 0 => inv (GradedMap.id-left (iter C n) p1 p2 p u)
+      | suc m => pmap (C.i (+-assoc *> p)) (add C m n idp p1 (add-index p1) u)
+          *> inv (GradedMap.comp-eval C.i (iter C m) p2 (add-index p1) (+-assoc *> p) (iter C n p1 u))
+
+    \lemma zero-up.{u} (C : ExactCouple.{u}) (m n : Nat) {x y y' : C.G} (p : x + n *n C.di = y) (p' : x + (m Nat.+ n) *n C.di = y') {u : C.D x}
+                       (h : iter C n p u = 0) : iter C (m Nat.+ n) p' u = 0
+      => add C m n p' p (add-index p *> p') u *> pmap (iter C m _) h *> (iter C m _).func-zro
+
+    \lemma nat-move.{u} (C : ExactCouple.{u}) {n n' : Nat} (e : n = n') {x y y' : C.G} (p : x + n *n C.di = y) (p' : x + n' *n C.di = y') {u : C.D x}
+                        (h : iter C n p u = 0) : iter C n' p' u = 0 \elim n', e
+      | _, idp => GradedMap.zero-move (iter C n) p p' h
+
     \lemma image-dec.{u} (C : ExactCouple.{u}) (n : Nat) {x : C.G} {z : C.D x} (h : image C (suc n) x z) : image C n x z \elim h
       | inP (v, iv) =>
         \let s : x - suc n *n C.di + C.di + n *n C.di = x => equation.abGroup *> pre x (suc n *n C.di)
@@ -192,9 +209,12 @@
     \func mapE.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap C C') (n : Nat) (y : C.G)
       : LinearMap (Couple.E {cumulative C n} y) (Couple.E {cumulative C' n} y)
       => QuotientLModule.map {_} {IModule (cumulative.Z C n y)} {IModule (cumulative.Z C' n y)} {cumulative.B C n y} {cumulative.B C' n y}
-                             (IModule.map {_} {_} {_} {cumulative.Z C n y} {cumulative.Z C' n y} (F.g y) (Z-map {C} {C'} F n))
-                             \lam (inP (u, bu)) => inP ((F.f _ u.1, inv (iter.natural {C} {C'} F n idp u.1) *> pmap (F.f _) u.2 *> AddMonoidHom.func-zro {F.f _}),
-                                                        ext (inv (F.g-j _ _) *> pmap (\lam t => F.g y t.1) bu))
+                             (IModule.map {_} {_} {_} {cumulative.Z C n y} {cumulative.Z C' n y} (F.g y) (Z-map {C} {C'} F n)) (B-map {C} {C'} F n)
+
+    \lemma B-map.{u} {C : ExactCouple.{u}} {C' : ExactCouple.{u} C.R C.G C.di C.dj C.dk} (F : CoupleMap C C') (n : Nat) {y : C.G} {x : IModule (cumulative.Z C n y)}
+                     (h : cumulative.B C n y x) : cumulative.B C' n y (F.g y x.1, Z-map {C} {C'} F n x.2) \elim h
+      | inP (u, bu) => inP ((F.f _ u.1, inv (iter.natural {C} {C'} F n idp u.1) *> pmap (F.f _) u.2 *> AddMonoidHom.func-zro {F.f _}),
+                            ext (inv (F.g-j _ _) *> pmap (\lam t => F.g y t.1) bu))
   }
 
 \func nextPage.{u} (C : ExactCouple.{u}) (n : Nat) (e : Couple.IsExact (cumulative C n))

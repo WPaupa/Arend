@@ -3,8 +3,10 @@
 \import Algebra.Meta
 \import Algebra.Group.GradedComplex
 \import Algebra.Module
+\import Algebra.Module.BilinearMap
 \import Algebra.Module.GradedComplex
 \import Algebra.Module.LinearMap
+\import Algebra.Module.Quotient
 \import Algebra.Module.SubLModule
 \import Algebra.Monoid
 \import Algebra.Pointed
@@ -84,7 +86,7 @@
           | _, idp => inP (u, pmap (\lam q => f q u) prop-pi)
   }
 
-\record DiffModule (G : AbGroup) (deg : G) \extends LGradedComplex {
+\record DiffModule.{u} (G : AbGroup.{u}) (deg : G) \extends LGradedComplex.{u} {
   | Ix => G
   | src y => y - deg
   | tgt y => y + deg
@@ -104,10 +106,66 @@
       | inP (v, q) => inP (v, ext q)
     }
 } \where
-  \func hom {R : Ring} {G : AbGroup} {deg : G} {X Y : DiffModule G deg R} (h : \Pi (x : G) -> LinearMap (X.D x) (Y.D x))
+  \func hom.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y : DiffModule.{u} G deg R} (h : \Pi (x : G) -> LinearMap (X.D x) (Y.D x))
             (c : \Pi {x y : G} (p : x + deg = y) (u : X.D x) -> Y.d p (h x u) = h y (X.d p u)) : LComplexMap X Y \cowith
     | f => h
     | commIn _ => c _
     | commOut _ => c idp
     | f-*c {y} => (h y).func-*c
+
+\record DiffPairing.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} (X Y Z : DiffModule.{u} G deg R) {
+  | mul {x y z : G} (p : x + y = z) : BilinearMap (X.D x) (Y.D y) (Z.D z)
+  | sgn : G -> R
+  | sgn-sq (x : G) : sgn x * sgn x = 1
+  | leibniz {x y z x' y' z' : G} (p : x + y = z) (q : z + deg = z') (r1 : x + deg = x') (q1 : x' + y = z') (r2 : y + deg = y') (q2 : x + y' = z')
+            (a : X.D x) (b : Y.D y) : Z.d q (mul p a b) = mul q1 (X.d r1 a) b + sgn x *c mul q2 a (Y.d r2 b)
+
+  \lemma sgn-twice {M : LModule R} (x : G) (m : M) : sgn x *c (sgn x *c m) = m
+    => inv *c-assoc *> pmap (`*c m) (sgn-sq x) *> ide_*c
+
+  \lemma cycle-mul {x y z : G} (p : x + y = z) {a : X.D x} {b : Y.D y} (ca : X.LIsCycle x a) (cb : Y.LIsCycle y b) : Z.LIsCycle z (mul p a b)
+    => leibniz p idp idp (equation.abGroup *> pmap (`+ deg) p) idp (equation.abGroup *> pmap (`+ deg) p) a b
+       *> pmap2 (\lam s t => mul _ s b + sgn x *c mul _ a t) ca cb
+       *> pmap2 (\lam s t => s + sgn x *c t) (BilinearMap.zro-left (mul _)) (BilinearMap.zro-right (mul _)) *> pmap (0 +) LModule.*c_zro-right *> zro-left
+
+  \func cyclePairing {x y z : G} (p : x + y = z) : BilinearMap (IModule (X.LIsCycle x)) (IModule (Y.LIsCycle y)) (IModule (Z.LIsCycle z))
+    => BilinearMap.restrict (mul p) (cycle-mul p)
+
+  \lemma boundary-left {x y z : G} (p : x + y = z) {a : IModule (X.LIsCycle x)} (b : IModule (Y.LIsCycle y)) (h : X.LIsBoundary x a)
+    : Z.LIsBoundary z (cyclePairing p a b) \elim h
+    | inP (u, e) => inP (mul (equation.abGroup *> pmap (`- deg) p) u b.1, ext (
+        leibniz _ (GradedMap.pre z deg) (GradedMap.pre x deg) p idp (equation.abGroup *> p) u b.1
+        *> pmap2 (\lam s t => mul p s b.1 + sgn (x - deg) *c mul _ u t) (pmap __.1 e) b.2
+        *> pmap (_ + sgn (x - deg) *c __) (BilinearMap.zro-right (mul _)) *> pmap (_ +) LModule.*c_zro-right *> zro-right))
+
+  \lemma boundary-right {x y z : G} (p : x + y = z) (a : IModule (X.LIsCycle x)) {b : IModule (Y.LIsCycle y)} (h : Y.LIsBoundary y b)
+    : Z.LIsBoundary z (cyclePairing p a b) \elim h
+    | inP (v, e) => inP (sgn x *c mul (equation.abGroup *> pmap (`- deg) p) a.1 v, ext (
+        (Z.d _).func-*c
+        *> pmap (sgn x *c) (leibniz _ (GradedMap.pre z deg) idp (equation.abGroup *> p) (GradedMap.pre y deg) p a.1 v
+          *> pmap (\lam s => mul _ s v + sgn x *c mul p a.1 (Y.d _ v)) a.2
+          *> pmap (`+ _) (BilinearMap.zro-left (mul _)) *> zro-left)
+        *> sgn-twice x _ *> pmap (\lam t => mul p a.1 t.1) e))
+
+  \func homologyPairing {x y z : G} (p : x + y = z) : BilinearMap (LHomology X x) (LHomology Y y) (LHomology Z z)
+    => bilinearQuotient {R} {IModule (X.LIsCycle x)} {IModule (Y.LIsCycle y)} {IModule (Z.LIsCycle z)} (cyclePairing p) (boundary-left p) (boundary-right p)
+} \where {
+    \func Leibniz.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R}
+                  (mul : \Pi {x y z : G} (p : x + y = z) -> BilinearMap (X.D x) (Y.D y) (Z.D z)) (sgn : G -> R) : \Prop
+      => \Pi {x y z : G} (p : x + y = z) (q1 : x + deg + y = z + deg) (q2 : x + (y + deg) = z + deg) (a : X.D x) (b : Y.D y)
+           -> Z.d idp (mul p a b) = mul q1 (X.d idp a) b + sgn x *c mul q2 a (Y.d idp b)
+
+    \lemma leibniz-at.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R}
+                      (mul : \Pi {x y z : G} (p : x + y = z) -> BilinearMap (X.D x) (Y.D y) (Z.D z)) (sgn : G -> R) (l : Leibniz mul sgn)
+                      {x y z x' y' z' : G} (p : x + y = z) (q : z + deg = z') (r1 : x + deg = x') (q1 : x' + y = z') (r2 : y + deg = y') (q2 : x + y' = z')
+                      (a : X.D x) (b : Y.D y) : Z.d q (mul p a b) = mul q1 (X.d r1 a) b + sgn x *c mul q2 a (Y.d r2 b) \elim x', y', z', q, r1, r2
+      | _, _, _, idp, idp, idp => l p q1 q2 a b
+
+    \lemma homology-natural.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z X' Y' Z' : DiffModule.{u} G deg R} (P : DiffPairing X Y Z) (P' : DiffPairing X' Y' Z')
+                            (FX : LComplexMap X X') (FY : LComplexMap Y Y') (FZ : LComplexMap Z Z')
+                            (sq : \Pi {x y z : G} (p : x + y = z) (a : X.D x) (b : Y.D y) -> FZ.f z (P.mul p a b) = P'.mul p (FX.f x a) (FY.f y b))
+                            {x y z : G} (p : x + y = z) (a : LHomology X x) (b : LHomology Y y)
+      : LComplexMap.lhomology FZ z (P.homologyPairing p a b) = P'.homologyPairing p (LComplexMap.lhomology FX x a) (LComplexMap.lhomology FY y b) \elim a, b
+      | in~ a, in~ b => pmap in~ (ext (sq p a.1 b.1))
+  }
 

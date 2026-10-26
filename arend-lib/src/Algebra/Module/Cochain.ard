@@ -12,13 +12,13 @@
 \import Paths
 \import Paths.Meta
 
-\record LCochainComplex \extends CochainComplex, LGradedComplex
+\record LCochainComplex.{u} \extends CochainComplex, LGradedComplex.{u}
   | dIn-*c {n} {_} {x} => \case \elim n, \elim x \with {
     | 0, _ => inv LModule.*c_zro-right
     | suc n, _ => dOut-*c
   }
 
-\record LCochainPairing {R : Ring} (LX LY LZ : LCochainComplex R) \extends CochainPairing {
+\record LCochainPairing.{u} {R : Ring.{u}} (LX LY LZ : LCochainComplex.{u} R) \extends CochainPairing {
   | X => LX
   | Y => LY
   | Z => LZ
@@ -38,16 +38,16 @@
                                LX.LIsBoundary LY.LIsBoundary LZ.LIsBoundary coboundary-left coboundary-right
 }
 
-\record LDGA \extends LCochainComplex, DGA {
+\record LDGA.{u} \extends LCochainComplex.{u}, DGA {
   | mul-*c-left {p q : Nat} {r : R} {a : D p} {b : D q} : mul p q (r *c a) b = r *c mul p q a b
   | mul-*c-right {p q : Nat} {r : R} {a : D p} {b : D q} : mul p q a (r *c b) = r *c mul p q a b
 } \where {
-  \func lpairing {R : Ring} (A : LDGA R) : LCochainPairing A A A \cowith
+  \func lpairing.{u} {R : Ring.{u}} (A : LDGA.{u} R) : LCochainPairing A A A \cowith
     | CochainPairing => A.pairing
     | *c-mul-left => A.mul-*c-left
     | *c-mul-right => A.mul-*c-right
 
-  \func graded {R : Ring} (A : LDGA R) : LGradedProduct R \cowith
+  \func graded.{u} {R : Ring.{u}} (A : LDGA.{u} R) : LGradedProduct R \cowith
     | H => A.D
     | mul => A.mul
     | one => A.one
@@ -57,23 +57,23 @@
     | *c-left => A.mul-*c-left
     | *c-right => A.mul-*c-right
 
-  \func lcohomologyProduct {R : Ring} (A : LDGA R) : LGradedProduct R
+  \func lcohomologyProduct.{u} {R : Ring.{u}} (A : LDGA.{u} R) : LGradedProduct R
     => LGradedProduct.quotient (LGradedProduct.sub (graded A) A.LIsCycle A.pairing.cocycle-mul A.one-cocycle) A.LIsBoundary
                                A.pairing.coboundary-left A.pairing.coboundary-right
 }
 
-\record LDGModule \extends DGModule, LCochainComplex {
-  \override A : LDGA
+\record LDGModule.{u} \extends DGModule, LCochainComplex.{u} {
+  \override A : LDGA.{u}
   | R => LDGA.R {A}
   | act-*c-left {p q : Nat} {r : R} {a : A.D p} {x : D q} : mul p q (r *c a) x = r *c mul p q a x
   | act-*c-right {p q : Nat} {r : R} {a : A.D p} {x : D q} : mul p q a (r *c x) = r *c mul p q a x
 } \where {
-  \func lpairing {B : LDGA} (M : LDGModule B) : LCochainPairing B M M \cowith
+  \func lpairing.{u} {B : LDGA.{u}} (M : LDGModule.{u} B) : LCochainPairing B M M \cowith
     | CochainPairing => M.pairing
     | *c-mul-left => M.act-*c-left
     | *c-mul-right => M.act-*c-right
 
-  \func graded {B : LDGA} (M : LDGModule B) : LGradedModule (LDGA.graded B) \cowith
+  \func graded.{u} {B : LDGA.{u}} (M : LDGModule.{u} B) : LGradedModule (LDGA.graded B) \cowith
     | K => M.D
     | mul => M.mul
     | act-assoc => M.act-assoc
@@ -81,7 +81,7 @@
     | *c-act-left => M.act-*c-left
     | *c-act-right => M.act-*c-right
 
-  \func lcohomologyModule {B : LDGA} (M : LDGModule B) : LGradedModule (LDGA.lcohomologyProduct B)
+  \func lcohomologyModule.{u} {B : LDGA.{u}} (M : LDGModule.{u} B) : LGradedModule (LDGA.lcohomologyProduct B)
     => LGradedModule.quotient (LGradedModule.sub (graded M) B.LIsCycle B.pairing.cocycle-mul B.one-cocycle M.LIsCycle M.pairing.cocycle-mul)
                               B.LIsBoundary B.pairing.coboundary-left B.pairing.coboundary-right M.LIsBoundary M.pairing.coboundary-left M.pairing.coboundary-right
 }

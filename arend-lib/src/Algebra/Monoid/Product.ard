@@ -1,6 +1,7 @@
 \import Algebra.Monoid
 \import Algebra.Pointed
 \import Paths
+\open AddMonoid (*n)
 
 \instance ProductMonoid (M N : Monoid) : Monoid (\Sigma M N)
   | ide => (1, 1)
@@ -15,6 +16,15 @@
   | zro-left => pmap2 (__,__) zro-left zro-left
   | zro-right => pmap2 (__,__) zro-right zro-right
   | +-assoc => pmap2 (__,__) +-assoc +-assoc
+  \where {
+    \lemma proj1_*n {A B : AddMonoid} (n : Nat) (x : \Sigma A B) : ((*n) {ProductAddMonoid A B} n x).1 = n *n x.1 \elim n
+      | 0 => idp
+      | suc n => pmap (`+ x.1) (proj1_*n n x)
+
+    \lemma proj2_*n {A B : AddMonoid} (n : Nat) (x : \Sigma A B) : ((*n) {ProductAddMonoid A B} n x).2 = n *n x.2 \elim n
+      | 0 => idp
+      | suc n => pmap (`+ x.2) (proj2_*n n x)
+  }
 
 \instance ProductCMonoid (M N : CMonoid) : CMonoid
   | Monoid => ProductMonoid M N

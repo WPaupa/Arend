@@ -1,0 +1,116 @@
+\import Algebra.Group
+\import Algebra.Group.Cokernel
+\import Algebra.Group.SubGroup
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Module.BilinearMap
+\import Algebra.Module.Differential
+\import Algebra.Module.Differential.Filtered
+\import Algebra.Module.Differential.LongExact (DiffSES)
+\import Algebra.Module.GradedComplex
+\import Algebra.Module.LinearMap
+\import Algebra.Module.Quotient
+\import Algebra.Module.SubLModule
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Arith.Int
+\import Logic
+\import Order.LinearOrder
+\import Order.PartialOrder
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+
+\record FilteredPairing.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R}
+                        (P : DiffPairing X Y Z) (FX : FilteredDiff X) (FY : FilteredDiff Y) (FZ : FilteredDiff Z) {
+  | F-mul {a b : Int} {x y z : G} (p : x + y = z) {s : X.D x} {t : Y.D y} : FX.F a x s -> FY.F b y t -> FZ.F (a + b) z (P.mul p s t)
+
+  \lemma Fb-mul-left {b : Bound} {a' : Int} {x y z : G} (p : x + y = z) {s : X.D x} {t : Y.D y} (hs : FX.Fb b x s) (ht : FY.F a' y t)
+    : FZ.Fb (Bound.add b a') z (P.mul p s t) \elim b
+    | fin n => F-mul p hs ht
+    | inf => pmap (P.mul p __ t) hs *> BilinearMap.zro-left (P.mul p)
+
+  \lemma Fb-mul-right {a : Int} {b' : Bound} {x y z : G} (p : x + y = z) {s : X.D x} {t : Y.D y} (hs : FX.F a x s) (ht : FY.Fb b' y t)
+    : FZ.Fb (Bound.add b' a) z (P.mul p s t) \elim b'
+    | fin n => transport (\lam k => FZ.F k z (P.mul p s t)) +-comm (F-mul p hs ht)
+    | inf => pmap (P.mul p s) ht *> BilinearMap.zro-right (P.mul p)
+
+  \func wpair {a a' a'' : Int} {b b' b'' : Bound} (ha : a'' <= a + a') (hb : Bound.Le b'' (Bound.add b a')) (hb' : Bound.Le b'' (Bound.add b' a))
+    : DiffPairing (FX.Win a b) (FY.Win a' b') (FZ.Win a'' b'') \cowith
+    | mul {x} {y} {z} p => bilinearQuotient {R} {IModule (FX.F a x)} {IModule (FY.F a' y)} {IModule (FZ.F a'' z)}
+                             (BilinearMap.restrict {R} {X.D x} {Y.D y} {Z.D z} (P.mul p) {FX.F a x} {FY.F a' y} {FZ.F a'' z} \lam hs ht => FZ.F-mono ha (F-mul p hs ht))
+                             {FX.N a b x} {FY.N a' b' y} {FZ.N a'' b'' z}
+                             (\lam t h => FZ.Fb-mono hb (Fb-mul-left p h t.2)) (\lam s h => FZ.Fb-mono hb' (Fb-mul-right p s.2 h))
+    | sgn => P.sgn
+    | sgn-sq => P.sgn-sq
+    | leibniz p q r1 q1 r2 q2 s t => \case \elim s, \elim t \with {
+      | in~ s, in~ t => pmap in~ (ext (P.leibniz p q r1 q1 r2 q2 s.1 t.1))
+    }
+
+  \func hpair {a a' a'' : Int} {b b' b'' : Bound} (ha : a'' <= a + a') (hb : Bound.Le b'' (Bound.add b a')) (hb' : Bound.Le b'' (Bound.add b' a))
+              {x y z : G} (p : x + y = z) : BilinearMap (LHomology (FX.Win a b) x) (LHomology (FY.Win a' b') y) (LHomology (FZ.Win a'' b'') z)
+    => DiffPairing.homologyPairing {wpair ha hb hb'} p
+} \where {
+  \lemma hpair-whom.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
+                        {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ)
+                        {a a' a'' c c' c'' : Int} {b b' b'' d d' d'' : Bound}
+                        (ha : a'' <= a + a') (hb : Bound.Le b'' (Bound.add b a')) (hb' : Bound.Le b'' (Bound.add b' a))
+                        (hc : c'' <= c + c') (hd : Bound.Le d'' (Bound.add d c')) (hd' : Bound.Le d'' (Bound.add d' c))
+                        (h1 : c <= a) (k1 : Bound.Le d b) (h2 : c' <= a') (k2 : Bound.Le d' b') (h3 : c'' <= a'') (k3 : Bound.Le d'' b'')
+                        {x y z x1 y1 z1 : G} (p : x + y = z) (p1 : x1 + y1 = z1) (e1 : x = x1) (e2 : y = y1) (e3 : z = z1)
+                        (s : LHomology (FX.Win a b) x) (t : LHomology (FY.Win a' b') y)
+    : FZ.whom h3 k3 e3 (FP.hpair ha hb hb' p s t) = FP.hpair hc hd hd' p1 (FX.whom h1 k1 e1 s) (FY.whom h2 k2 e2 t) \elim x1, y1, z1, e1, e2, e3
+    | _, _, _, idp, idp, idp => (\case \elim s, \elim t \with {
+      | in~ (in~ s, _), in~ (in~ t, _) => pmap in~ (ext (pmap in~ (ext idp)))
+    } : FZ.wh h3 k3 z (FP.hpair ha hb hb' p s t) = FP.hpair hc hd hd' p (FX.wh h1 k1 x s) (FY.wh h2 k2 y t))
+      *> pmap (\lam q => FP.hpair hc hd hd' q (FX.wh h1 k1 x s) (FY.wh h2 k2 y t)) prop-pi
+
+  \lemma conn-leibniz.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
+                          {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ)
+                          {a b a' b' a'' b'' e : Int} {c c' c'' f : Bound}
+                          (ha0 : a'' <= a + a') (hb0 : b'' <= b + a') (hb0' : b'' <= b' + a)
+                          (habx : a <= b) (hbcx : Bound.Le (fin b) c) (haby : a' <= b') (hbcy : Bound.Le (fin b') c')
+                          (habz : a'' <= b'') (hbcz : Bound.Le (fin b'') c'')
+                          (h1 : e <= b + a') (k1 : Bound.Le f (Bound.add c a')) (k1' : Bound.Le f (fin (b' + b)))
+                          (h2 : e <= a + b') (k2 : Bound.Le f (fin (b + b'))) (k2' : Bound.Le f (Bound.add c' a))
+                          (hE : e <= b'') (kE : Bound.Le f c'')
+                          {x y z x' y' z' w : G} (p : x + y = z) (ex : x + deg = x') (ey : y + deg = y') (ez' : z + deg = z') (ez : z' = w)
+                          (p1 : x' + y = w) (p2 : x + y' = w) {sx : R} (es : P.sgn x = sx)
+                          (s : LHomology (FX.Win a (fin b)) x) (t : LHomology (FY.Win a' (fin b')) y)
+    : FZ.whom hE kE ez (FZ.conn habz hbcz ez' (FP.hpair {a} {a'} {a''} {fin b} {fin b'} {fin b''} ha0 hb0 hb0' p s t))
+      = FP.hpair h1 k1 k1' p1 (FX.conn habx hbcx ex s) t + (*c) {LHomology (FZ.Win e f) w} sx (FP.hpair h2 k2 k2' p2 s (FY.conn haby hbcy ey t))
+      \elim x', y', z', w, ex, ey, ez', ez, sx, es
+    | _, _, _, _, idp, idp, idp, idp, _, idp => \case \elim s, \elim t \with {
+      | in~ (in~ s0, cs), in~ (in~ t0, ct) =>
+        \let | ds : FX.F b (x + deg) (X.d idp s0.1) => (AbQuotient.proj-zero {_} {FX.N a (fin b) (x + deg)}).1 cs
+             | dt : FY.F b' (y + deg) (Y.d idp t0.1) => (AbQuotient.proj-zero {_} {FY.N a' (fin b') (y + deg)}).1 ct
+             | st : IModule (FZ.F a'' z) => (P.mul p s0.1 t0.1, FZ.F-mono ha0 (FP.F-mul p s0.2 t0.2))
+             | cst => DiffPairing.cycle-mul {FP.wpair {a} {a'} {a''} {fin b} {fin b'} {fin b''} ha0 hb0 hb0'} p cs ct
+             | dst : FZ.F b'' (z + deg) (Z.d idp st.1) => (AbQuotient.proj-zero {_} {FZ.N a'' (fin b'') (z + deg)}).1 cst
+        \in pmap (FZ.whom hE kE idp) (DiffSES.conn-eval {FZ.ses habz hbcz} (in~ st, cst) {in~ st} {in~ (Z.d idp st.1, dst)}
+                                                        (pmap in~ (ext idp)) (pmap in~ (ext idp)))
+            *> pmap in~ (ext (pmap in~ (ext (P.leibniz p idp idp p1 idp p2 s0.1 t0.1))))
+            *> inv (pmap2 (\lam u v => FP.hpair h1 k1 k1' p1 u (in~ (in~ t0, ct)) + (*c) {LHomology (FZ.Win e f) (z + deg)} (P.sgn x) (FP.hpair h2 k2 k2' p2 (in~ (in~ s0, cs)) v))
+                          (DiffSES.conn-eval {FX.ses habx hbcx} (in~ s0, cs) {in~ s0} {in~ (X.d idp s0.1, ds)} (pmap in~ (ext idp)) (pmap in~ (ext idp)))
+                          (DiffSES.conn-eval {FY.ses haby hbcy} (in~ t0, ct) {in~ t0} {in~ (Y.d idp t0.1, dt)} (pmap in~ (ext idp)) (pmap in~ (ext idp))))
+    }
+}
+
+\record FilteredAlgebra.{u} \extends FilteredPairing.{u} {
+  | Y => X
+  | Z => X
+  | FY => FX
+  | FZ => FX
+  | one : X.D 0
+  | one-cycle : X.d idp one = 0
+  | one-F : FX.F 0 0 one
+  | one-left {y : G} (p : 0 + y = y) (b : X.D y) : P.mul p one b = b
+  | one-right {x : G} (p : x + 0 = x) (a : X.D x) : P.mul p a one = a
+  | mul-assoc {x y z u v w : G} (p1 : x + y = u) (p2 : u + z = v) (p3 : y + z = w) (p4 : x + w = v) (a : X.D x) (b : X.D y) (c : X.D z)
+    : P.mul p2 (P.mul p1 a b) c = P.mul p4 a (P.mul p3 b c)
+}
+
+\record FilteredCommAlgebra.{u} \extends FilteredAlgebra.{u}
+  | csgn : G -> G -> R
+  | mul-comm {x y z : G} (p : x + y = z) (p' : y + x = z) (a : X.D x) (b : X.D y) : P.mul p a b = csgn x y *c P.mul p' b a

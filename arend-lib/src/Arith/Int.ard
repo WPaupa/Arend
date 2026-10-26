@@ -283,6 +283,10 @@
     \lemma pos>=0 {n : Nat} : 0 IntRing.<= pos n \elim n
       | 0 => \case __
       | suc n => \case __
+
+    \lemma *n_neg {n : Nat} : n IntRing.*n neg 1 = neg n \elim n
+      | 0 => idp
+      | suc n => pmap (\lam t => t IntRing.+ neg 1) (*n_neg {n})
   }
 
 \func iabs (x : Int) : Nat
@@ -501,3 +505,31 @@
 
 \lemma int_<-dec {x y : Int} {so : So (int_<=-dec.int_<=_Bool (isuc x) y)} : x < y
   => id<isuc <∘l int_<=-dec {isuc x} {y} {so}
+
+\func toNat (x : Int) : Nat
+  | pos n => n
+  | neg _ => 0
+  \where {
+    \lemma <=-pos (x : Int) : x <= pos (toNat x) \elim x
+      | pos n => <=-refl
+      | neg (suc n) => neg<=pos
+
+    \lemma ofPos {x : Int} (h : 0 <= x) : pos (toNat x) = x \elim x
+      | pos n => idp
+      | neg (suc n) => absurd (suc/=0 (pos/<=neg h))
+
+    \lemma ofNeg {x : Int} (h : x < 0) : toNat x = 0 \elim x
+      | pos n => absurd (<-irreflexive (pos<pos.conv h <∘l zero<=_))
+      | neg _ => idp
+
+    \lemma monotone {x y : Int} (h : x <= y) : toNat x <= toNat y \elim x, y
+      | pos n, pos m => pos<=pos.conv h
+      | neg _, _ => zero<=_
+      | pos n, neg (suc m) => absurd (suc/=0 (pos/<=neg h))
+
+    \lemma subadditive (x y : Int) : toNat (x + y) <= toNat x Nat.+ toNat y
+      => \case LinearOrder.dec<_<= (x + y) 0 \with {
+        | inl h => transportInv (`<= _) (ofNeg h) zero<=_
+        | inr h => pos<=pos.conv (transportInv (`<= _) (ofPos h) (IntRing.<=_+ (<=-pos x) (<=-pos y)))
+      }
+  }

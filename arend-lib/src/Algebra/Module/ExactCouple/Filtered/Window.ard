@@ -1,0 +1,220 @@
+\import Algebra.Group
+\import Algebra.Group.Exact
+\import Algebra.Group.Product
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Module.Differential
+\import Algebra.Module.Differential.Filtered
+\import Algebra.Module.Differential.LongExact (DiffSES, exact-congr)
+\import Algebra.Module.ExactCouple
+\import Algebra.Module.ExactCouple.Cumulative
+\import Algebra.Module.ExactCouple.Filtered
+\import Algebra.Module.ExactCouple.Window
+\import Algebra.Module.GradedComplex
+\import Algebra.Module.LinearMap
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Arith.Int
+\import Logic
+\import Order.LinearOrder
+\import Order.PartialOrder
+\import Paths
+\import Paths.Meta
+\open GradedMap (pre)
+\open ExactCouple (jdeg)
+\open AddMonoid (*n)
+
+\func filteredWindow.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) (n : Nat)
+  : WindowDiagram (filteredCouple FX) n \cowith
+  | W => W'
+  | rho => rho'
+  | delta => delta'
+  | delta-rho y t => delta-rho' y t
+  | dshort y => LinearMap.compose {R} {W' y} {Couple.D {filteredCouple FX} (jx y)} {Couple.E {filteredCouple FX} (jz y)}
+                                  (Couple.j {filteredCouple FX} {jx y} {jz y} (jdeg.index {Bi G} {neg 1, 0} {0, 0} {n} {dk y} (+-assoc {Bi G} *> idp))) (delta' y)
+  | j-delta _ _ => idp
+  | V => V'
+  | q => q'
+  | obstruction => obst
+  | obstruction-k _ _ => idp
+  | exact-rho y => exact-congr {_} {_} {_} {rho' y} {rho' y} {DiffSES.conn {FX.ses (linarith : y.1 <= y.1 + 1) (lo-top y)} y.2} {obst y}
+                               (\lam _ => idp) (\lam x => inv (obstruction-eq y x)) (DiffSES.exact-right {FX.ses (linarith : y.1 <= y.1 + 1) (lo-top y)} y.2)
+  | exact-q y => exact-congr {_} {_} {_} {FX.whom {top y} {y.1 + 1} {inf} {inf} (lo-top y) () (inv (deg-top y))}
+                             {iter (filteredCouple FX) n {jx y} {dk y} (pre {Bi G} (dk y) ((*n) {Bi G} n (neg 1, 0)))} {q' y} {q' y}
+                             (\lam w => inv (iter-whom FX n {jx y} {dk y} (pre {Bi G} _ _) <=-refl idp (lo-top y) (inv (deg-top y)) w)
+                                        *> pmap (iter (filteredCouple FX) n _) (FX.whom-id <=-refl () idp w))
+                             (\lam _ => idp) (q-gen (lo-top y) (inv (deg-top y)))
+  | S => S'
+  | short y => LinearMap.compose {R} {S' y} {Couple.D {filteredCouple FX} (mj y)} {Couple.E {filteredCouple FX} y}
+                                 (Couple.j {filteredCouple FX} {mj y} {y} (pre {Bi G} y (0, 0))) (tower' y)
+  | tower => tower'
+  | exact-tower y => exact-congr {_} {_} {_} {tower' y} {tower' y} {FX.whom {(mj y).1} {bot y} {inf} {inf} (bot-le y) () (bot-deg y)}
+                                 {iter (filteredCouple FX) n {mj y} {mjn y} idp}
+                                 (\lam _ => idp)
+                                 (\lam w => inv (iter-whom FX n {mj y} {mjn y} idp <=-refl idp (bot-le y) (bot-deg y) w)
+                                            *> pmap (iter (filteredCouple FX) n _) (FX.whom-id <=-refl () idp w))
+                                 (tower-gen (bot-le y) (deg-bot y) (bot-deg y))
+  | tower-short _ _ => idp
+  | wrestrict {w} {y} p => FX.whom {w.1} {y.1} {inf} {fin (top y)} (filteredCouple.le-j p) () (filteredCouple.deg-j p)
+  | rho-wrestrict {w} {y} p t => FX.whom-comp {w.1} {y.1} {y.1} {inf} {fin (top y)} {fin (y.1 + 1)} (filteredCouple.le-j p) () <=-refl (lo-top y)
+                                              (filteredCouple.le-j p) () (filteredCouple.deg-j p) idp t
+                                 *> FX.whom-unique (filteredCouple.le-j p) (filteredCouple.le-j p) () () _ (filteredCouple.deg-j p) t
+  \where {
+    \func dk (y : Bi G) : Bi G => (+) {Bi G} y (1, deg)
+
+    \func jx (y : Bi G) : Bi G => (-) {Bi G} (dk y) ((*n) {Bi G} n (neg 1, 0))
+
+    \func jz (y : Bi G) : Bi G => (+) {Bi G} y ((+) {Bi G} (1, deg) (jdeg {Bi G} (neg 1, 0) (0, 0) n))
+
+    \func mj (y : Bi G) : Bi G => (-) {Bi G} y (0, 0)
+
+    \func mjn (y : Bi G) : Bi G => (+) {Bi G} (mj y) ((*n) {Bi G} n (neg 1, 0))
+
+    \func top (y : Bi G) : Int => (jx y).1
+
+    \func bot (y : Bi G) : Int => (mjn y).1
+
+    \func W' (y : Bi G) => LHomology (FX.Win y.1 (fin (top y))) y.2
+
+    \func V' (y : Bi G) => LHomology (FX.Win (y.1 + 1) (fin (top y))) (y.2 + deg)
+
+    \func S' (y : Bi G) => LHomology (FX.Win (bot y) (fin (mj y).1)) ((mj y).2 - deg)
+
+    \func rho' (y : Bi G) : LinearMap (W' y) (Couple.E {filteredCouple FX} y)
+      => FX.whom {y.1} {y.1} {fin (top y)} {fin (y.1 + 1)} <=-refl (lo-top y) idp
+
+    \func delta' (y : Bi G) : LinearMap (W' y) (Couple.D {filteredCouple FX} (jx y))
+      => FX.conn (le-top y) () (deg-top y)
+
+    \func q' (y : Bi G) : LinearMap (Couple.D {filteredCouple FX} (dk y)) (V' y)
+      => FX.whom {y.1 + 1} {y.1 + 1} {inf} {fin (top y)} <=-refl () idp
+
+    \func obst (y : Bi G) : LinearMap (Couple.E {filteredCouple FX} y) (V' y)
+      => LinearMap.compose {R} {Couple.E {filteredCouple FX} y} {Couple.D {filteredCouple FX} (dk y)} {V' y} (q' y) (Couple.k {filteredCouple FX} {y} idp)
+
+    \func tower' (y : Bi G) : LinearMap (S' y) (Couple.D {filteredCouple FX} (mj y))
+      => FX.conn (bot-le y) () (deg-bot y)
+
+    \lemma top-eq (y : Bi G) : top y = y.1 + 1 - neg n
+      => pmap (\lam (z : Bi G) => y.1 + 1 - z.1) (Bi.ndi n)
+
+    \lemma le-top (y : Bi G) : y.1 <= top y
+      => transportInv (y.1 <=) (top-eq y) (linarith : y.1 <= y.1 + 1 - neg n)
+
+    \lemma lo-top (y : Bi G) : y.1 + 1 <= top y
+      => transportInv (y.1 + 1 <=) (top-eq y) (linarith : y.1 + 1 <= y.1 + 1 - neg n)
+
+    \lemma deg-top (y : Bi G) : y.2 + deg = (jx y).2
+      => inv (pmap (\lam (z : Bi G) => y.2 + deg - z.2) (Bi.ndi n) *> AddGroup.minus_zro)
+
+    \lemma bot-le (y : Bi G) : bot y <= (mj y).1
+      => transportInv (`<= (mj y).1) (pmap (\lam (z : Bi G) => (mj y).1 + z.1) (Bi.ndi n)) (linarith : (mj y).1 + neg n <= (mj y).1)
+
+    \lemma deg-bot (y : Bi G) : (mj y).2 - deg + deg = (mj y).2
+      => equation.abGroup
+
+    \lemma bot-deg (y : Bi G) : (mj y).2 = (mjn y).2
+      => inv (pmap (\lam (z : Bi G) => (mj y).2 + z.2) (Bi.ndi n) *> zro-right)
+
+    \lemma q-gen {a b : Int} {u v : G} (h : b <= a) (e : u = v)
+      : AbExactAt (FX.whom {a} {b} {inf} {inf} h () e) (FX.whom {b} {b} {inf} {fin a} <=-refl () idp) \elim v, e
+      | _, idp => DiffSES.exact-middle {FX.ses h ()} u
+
+    \lemma tower-gen {a b : Int} {u v w : G} (h : a <= b) (e : u + deg = v) (e' : v = w)
+      : AbExactAt (FX.conn {a} {b} {inf} h () e) (FX.whom {b} {a} {inf} {inf} h () e') \elim v, w, e, e'
+      | _, _, idp, idp => DiffSES.exact-left {FX.ses h ()} u
+
+    \func conn-k (y : Bi G) : LinearMap (Couple.E {filteredCouple FX} y) (LHomology (FX.Win (y.1 + 1) inf) (y.2 + deg))
+      => FX.conn {y.1} {y.1 + 1} {inf} (linarith : y.1 <= y.1 + 1) () (filteredCouple.deg-k {G} {deg} {y} idp)
+
+    \lemma k-eq (y : Bi G) (x : Couple.E {filteredCouple FX} y)
+      : Couple.k {filteredCouple FX} {y} idp x = FX.whom {y.1 + 1} {y.1 + 1} {inf} {inf} (filteredCouple.le-k {G} {deg} {y} idp) () idp (conn-k y x)
+      => idp
+
+    \lemma delta-rho' (y : Bi G) (t : W' y)
+      : iter (filteredCouple FX) n {jx y} {dk y} (pre {Bi G} (dk y) ((*n) {Bi G} n (neg 1, 0))) (delta' y t)
+        = Couple.k {filteredCouple FX} {y} idp (rho' y t)
+      => pmap (iter (filteredCouple FX) n {jx y} {dk y} _) (inv (FX.whom-id {top y} {inf} <=-refl () idp (delta' y t)))
+         *> iter-whom FX n {jx y} {dk y} (pre {Bi G} _ _) <=-refl idp (lo-top y) (inv (deg-top y)) (delta' y t)
+         *> FX.whom-unique {top y} {y.1 + 1} {inf} {inf} (lo-top y) (lo-top y) () () (inv (deg-top y)) (inv (deg-top y) *> idp) (delta' y t)
+         *> inv (FX.whom-comp {top y} {y.1 + 1} {y.1 + 1} {inf} {inf} {inf} (lo-top y) () (filteredCouple.le-k {G} {deg} {y} idp) () (lo-top y) ()
+                              (inv (deg-top y)) idp (delta' y t))
+         *> inv (pmap (FX.whom {y.1 + 1} {y.1 + 1} {inf} {inf} (filteredCouple.le-k {G} {deg} {y} idp) () idp)
+                      (FilteredDiff.conn-whom {_} {_} {_} {_} FX {y.1} {top y} {y.1} {y.1 + 1} {inf} {inf} (le-top y) () (linarith : y.1 <= y.1 + 1) ()
+                                              <=-refl (lo-top y) () (deg-top y) idp (filteredCouple.deg-k {G} {deg} {y} idp) (inv (deg-top y)) t))
+         *> inv (k-eq y (rho' y t))
+
+    \lemma obstruction-eq (y : Bi G) (x : Couple.E {filteredCouple FX} y)
+      : obst y x = DiffSES.conn {FX.ses (linarith : y.1 <= y.1 + 1) (lo-top y)} y.2 x
+      => pmap (q' y) (k-eq y x)
+         *> FX.whom-comp {y.1 + 1} {y.1 + 1} {y.1 + 1} {inf} {inf} {fin (top y)} (filteredCouple.le-k {G} {deg} {y} idp) () <=-refl ()
+                         (filteredCouple.le-k {G} {deg} {y} idp) () idp idp (conn-k y x)
+         *> FX.whom-unique {y.1 + 1} {y.1 + 1} {inf} {fin (top y)} (filteredCouple.le-k {G} {deg} {y} idp) <=-refl () () (idp *> idp) idp (conn-k y x)
+         *> inv (FilteredDiff.conn-whom {_} {_} {_} {_} FX {y.1} {y.1 + 1} {y.1} {y.1 + 1} {inf} {fin (top y)} (linarith : y.1 <= y.1 + 1) ()
+                                        (linarith : y.1 <= y.1 + 1) (lo-top y) <=-refl <=-refl () (filteredCouple.deg-k {G} {deg} {y} idp) idp idp idp x)
+         *> pmap (FX.conn (linarith : y.1 <= y.1 + 1) (lo-top y) idp) (FX.whom-id {y.1} {fin (y.1 + 1)} <=-refl <=-refl idp x)
+  }
+
+\func filteredFrame.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) (m : Nat)
+  : WindowFrame (filteredCouple FX) (suc m) \cowith
+  | WindowDiagram => filteredWindow FX (suc m)
+  | M y => LHomology (FX.Win y.1 (fin (mtop y))) y.2
+  | shorten y => FX.whom {y.1} {y.1} {fin (top y)} {fin (mtop y)} <=-refl (mtop-le y) idp
+  | mrho y => FX.whom {y.1} {y.1} {fin (mtop y)} {fin (y.1 + 1)} <=-refl (lo-mtop y) idp
+  | mrho-shorten y t => FX.whom-comp {y.1} {y.1} {y.1} {fin (top y)} {fin (mtop y)} {fin (y.1 + 1)} <=-refl (mtop-le y) <=-refl (lo-mtop y) <=-refl (lo-top y) idp idp t
+                        *> FX.whom-unique {y.1} {y.1} {fin (top y)} {fin (y.1 + 1)} <=-refl <=-refl (lo-top y) (lo-top y) (idp *> idp) idp t
+  | mdelta y => FX.conn {y.1} {mtop y} {inf} (le-mtop y) () (deg-mtop y)
+  | mdelta-shorten y t => FilteredDiff.conn-whom {_} {_} {_} {_} FX {y.1} {top y} {y.1} {mtop y} {inf} {inf} (filteredWindow.le-top {G} {deg} {suc m} y) () (le-mtop y) ()
+                                                 <=-refl (mtop-le y) () (filteredWindow.deg-top {G} {deg} {suc m} y) idp (deg-mtop y)
+                                                 (filteredCouple.deg-i {G} {jx y} {mx y} idp) t
+  | restrict {w} {y} p => FX.whom {w.1} {y.1} {inf} {fin (mtop y)} (filteredCouple.le-j p) () (filteredCouple.deg-j p)
+  | mrho-restrict {w} {y} p t => FX.whom-comp {w.1} {y.1} {y.1} {inf} {fin (mtop y)} {fin (y.1 + 1)} (filteredCouple.le-j p) () <=-refl (lo-mtop y)
+                                              (filteredCouple.le-j p) () (filteredCouple.deg-j p) idp t
+                                 *> FX.whom-unique {w.1} {y.1} {inf} {fin (y.1 + 1)} (filteredCouple.le-j p) (filteredCouple.le-j p) () () _ (filteredCouple.deg-j p) t
+  | far {x} {y} p => FX.whom {x.1} {y.1} {fin (mtop x)} {fin (mtop y)} (filteredCouple.le-i p) (far-le p) (filteredCouple.deg-i p)
+  | Void x => LHomology (FX.Win x.1 (fin x.1)) x.2
+  | void-zero v => FX.H-zero v
+  | toVoid x => FX.whom {x.1} {x.1} {fin (mtop x)} {fin x.1} <=-refl (le-mtop x) idp
+  | fromVoid {x} {y} p => FX.whom {x.1} {y.1} {fin x.1} {fin (y.1 + 1)} (filteredCouple.le-i p) (void-le p) (filteredCouple.deg-i p)
+  | mrho-far {x} {y} p t =>
+    \have H : y.1 + 1 <= mtop x => <=-transitive (lo-mtop y) (far-le p)
+    \in FX.whom-comp {x.1} {y.1} {y.1} {fin (mtop x)} {fin (mtop y)} {fin (y.1 + 1)} (filteredCouple.le-i p) (far-le p) <=-refl (lo-mtop y)
+                     (filteredCouple.le-i p) H (filteredCouple.deg-i p) idp t
+        *> FX.whom-unique {x.1} {y.1} {fin (mtop x)} {fin (y.1 + 1)} (filteredCouple.le-i p) (filteredCouple.le-i p) H H _ (idp *> filteredCouple.deg-i p) t
+        *> inv (FX.whom-comp {x.1} {x.1} {y.1} {fin (mtop x)} {fin x.1} {fin (y.1 + 1)} <=-refl (le-mtop x) (filteredCouple.le-i p) (void-le p)
+                             (filteredCouple.le-i p) H idp (filteredCouple.deg-i p) t)
+  \where {
+    \func top (y : Bi G) : Int => filteredWindow.top {G} {deg} {suc m} y
+
+    \func jx (y : Bi G) : Bi G => filteredWindow.jx {G} {deg} {suc m} y
+
+    \func mx (y : Bi G) : Bi G => (+) {Bi G} (jx y) (neg 1, 0)
+
+    \func mtop (y : Bi G) : Int => (mx y).1
+
+    \lemma mtop-eq (y : Bi G) : mtop y = y.1 + 1 - neg (suc m) + neg 1
+      => pmap (`+ neg 1) (filteredWindow.top-eq {G} {deg} {suc m} y)
+
+    \lemma lo-top (y : Bi G) : y.1 + 1 <= top y
+      => filteredWindow.lo-top {G} {deg} {suc m} y
+
+    \lemma mtop-le (y : Bi G) : mtop y <= top y
+      => filteredCouple.le-i {G} {jx y} {mx y} idp
+
+    \lemma le-mtop (y : Bi G) : y.1 <= mtop y
+      => transportInv (y.1 <=) (mtop-eq y) (linarith : y.1 <= y.1 + 1 - neg (suc m) + neg 1)
+
+    \lemma lo-mtop (y : Bi G) : y.1 + 1 <= mtop y
+      => transportInv (y.1 + 1 <=) (mtop-eq y) (linarith : y.1 + 1 <= y.1 + 1 - neg (suc m) + neg 1)
+
+    \lemma deg-mtop (y : Bi G) : y.2 + deg = (mx y).2
+      => filteredWindow.deg-top {G} {deg} {suc m} y *> filteredCouple.deg-i {G} {jx y} {mx y} idp
+
+    \lemma far-le {x y : Bi G} (p : (+) {Bi G} x (neg 1, 0) = y) : mtop y <= mtop x \elim y, p
+      | _, idp => rewrite (mtop-eq x, mtop-eq ((+) {Bi G} x (neg 1, 0)))
+                    (linarith : x.1 + neg 1 + 1 - neg (suc m) + neg 1 <= x.1 + 1 - neg (suc m) + neg 1)
+
+    \lemma void-le {x y : Bi G} (p : (+) {Bi G} x (neg 1, 0) = y) : y.1 + 1 <= x.1 \elim y, p
+      | _, idp => (linarith : x.1 + neg 1 + 1 <= x.1)
+  }

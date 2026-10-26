@@ -53,14 +53,29 @@
                      (sq1 : \Pi (x : A) -> b (i x) = i' (a x)) (sq2 : \Pi (y : B) -> c (p y) = p' (b y))
   : Iso {AbGroupCat.{l}} b
   => AbGroupCat.isoOfEquiv b (QEquiv.fromInjSurj
-      (b.injective \lam {y} by=0 => \case AbExactAt.lift e ((AbGroupCat.equivOfIso ci).isInj (sq2 y *> pmap p' by=0 *> p'.func-zro *> inv c.func-zro)) \with {
-        | inP (x, ix) => inv ix *> pmap i ((AbGroupCat.equivOfIso ai).isInj (i'i (inv (sq1 x) *> pmap b ix *> by=0 *> inv i'.func-zro) *> inv a.func-zro)) *> i.func-zro
-      })
-      \lam y' => \case ps (Iso.hinv {ci} (p' y')) \with {
-        | inP (z, pz) => \case AbExactAt.lift e' {y' - b z} (p'.func-minus *> pmap (_ -) (inv (sq2 z) *> pmap c pz *> (AbGroupCat.equivOfIso ci).f_sec _) *> AddGroup.toZero idp) \with {
-          | inP (x', ix') => inP (z + i (Iso.hinv {ai} x'), b.func-+ *> pmap (_ +) (sq1 _ *> pmap i' ((AbGroupCat.equivOfIso ai).f_sec x') *> ix') *> add-sub)
-        }
-      })
-  \where
+      (injective e i'i (\lam q => (AbGroupCat.equivOfIso ai).isInj q) (\lam q => (AbGroupCat.equivOfIso ci).isInj q) sq1 sq2)
+      (surjective ps e' (AbGroupCat.equivOfIso ai).isSurj (AbGroupCat.equivOfIso ci).isSurj sq1 sq2))
+  \where {
     \lemma add-sub {G : AbGroup} {b y : G} : b + (y - b) = y
       => equation.abGroup
+
+    \lemma injective {A B C A' B' C' : AbGroup} {i : AddGroupHom A B} {p : AddGroupHom B C} {i' : AddGroupHom A' B'} {p' : AddGroupHom B' C'}
+                     (e : AbExactAt i p) (i'i : IsInj i') {a : AddGroupHom A A'} (ai : IsInj a) {b : AddGroupHom B B'} {c : AddGroupHom C C'} (ci : IsInj c)
+                     (sq1 : \Pi (x : A) -> b (i x) = i' (a x)) (sq2 : \Pi (y : B) -> c (p y) = p' (b y)) : IsInj b
+      => b.injective \lam {y} by=0 => \case AbExactAt.lift e (ci (sq2 y *> pmap p' by=0 *> p'.func-zro *> inv c.func-zro)) \with {
+        | inP (x, ix) => inv ix *> pmap i (ai (i'i (inv (sq1 x) *> pmap b ix *> by=0 *> inv i'.func-zro) *> inv a.func-zro)) *> i.func-zro
+      }
+
+    \lemma surjective {A B C A' B' C' : AbGroup} {i : AddGroupHom A B} {p : AddGroupHom B C} {i' : AddGroupHom A' B'} {p' : AddGroupHom B' C'}
+                      (ps : IsSurj p) (e' : AbExactAt i' p') {a : AddGroupHom A A'} (as : IsSurj a) {b : AddGroupHom B B'} {c : AddGroupHom C C'} (cs : IsSurj c)
+                      (sq1 : \Pi (x : A) -> b (i x) = i' (a x)) (sq2 : \Pi (y : B) -> c (p y) = p' (b y)) : IsSurj b
+      => \lam y' => \case cs (p' y') \with {
+        | inP (w, cw) => \case ps w \with {
+          | inP (z, pz) => \case AbExactAt.lift e' {y' - b z} (p'.func-minus *> pmap (_ -) (inv (sq2 z) *> pmap c pz *> cw) *> AddGroup.toZero idp) \with {
+            | inP (x', ix') => \case as x' \with {
+              | inP (x, ax) => inP (z + i x, b.func-+ *> pmap (_ +) (sq1 x *> pmap i' ax *> ix') *> add-sub)
+            }
+          }
+        }
+      }
+  }

@@ -37,6 +37,8 @@
   | tower (y : C.G) : LinearMap (S y) (C.D (y - C.dj))
   | exact-tower (y : C.G) : AbExactAt (tower y) (iter C n (idp {C.G} {y - C.dj + n *n C.di}))
   | tower-short (y : C.G) (s : S y) : C.j (pre y C.dj) (tower y s) = short y s
+  | wrestrict {w y : C.G} (p : w + C.dj = y) : LinearMap (C.D w) (W y)
+  | rho-wrestrict {w y : C.G} (p : w + C.dj = y) (t : C.D w) : rho y (wrestrict p t) = C.j p t
 
   \lemma cycles {y : C.G} (x : C.E y) : cumulative.Z C n y x <-> ∃ (t : W y) (rho y t = x)
     => (\lam h => (exact-rho y x).1 (obstruction-k y x *> (exact-q y _).2 h),
@@ -46,12 +48,38 @@
     => (\lam (inP (u, bu)) => TruncP.map ((exact-tower _ u.1).1 u.2) \lam (s, ts) => (s, inv (tower-short y s) *> pmap (C.j _) ts *> pmap __.1 bu),
         \lam (inP (s, ss)) => inP ((tower y s, (exact-tower _ _).2 (inP (s, idp))), ext (tower-short y s *> ss)))
 
+  \func class {y : C.G} (t : W y) : Couple.E {cumulative C n} y
+    => in~ (rho y t, (cycles (rho y t)).2 (inP (t, idp)))
+
+  \lemma class-surj {y : C.G} (e : Couple.E {cumulative C n} y) : ∃ (t : W y) (class t = e) \elim e
+    | in~ x => TruncP.map ((cycles x.1).1 x.2) \lam (t, rt) => (t, pmap in~ (ext rt))
+
   \lemma differential {y : C.G} (t : W y)
-    : Couple.j {cumulative C n} (+-assoc *> idp) (Couple.k {cumulative C n} idp (in~ (rho y t, (cycles (rho y t)).2 (inP (t, idp)))))
+    : Couple.j {cumulative C n} (+-assoc *> idp) (Couple.k {cumulative C n} idp (class t))
       = in~ (dshort y t, cumulative.Z-zero C n (inv (pmap (C.k idp) (j-delta y t)) *> C.kj-zero _ idp _))
     => cumulative.j-eval C n (pre _ _) (delta y t) (+-assoc *> idp) (jdeg.index (+-assoc *> idp))
-                         (Couple.k {cumulative C n} idp (in~ (rho y t, (cycles (rho y t)).2 (inP (t, idp))))) (delta-rho y t)
+                         (Couple.k {cumulative C n} idp (class t)) (delta-rho y t)
        *> pmap in~ (ext (j-delta y t))
+}
+
+\record WindowFrame \extends WindowDiagram {
+  | M : C.G -> LModule C.R
+  | shorten (y : C.G) : LinearMap (W y) (M y)
+  | mrho (y : C.G) : LinearMap (M y) (C.E y)
+  | mrho-shorten (y : C.G) (t : W y) : mrho y (shorten y t) = rho y t
+  | mdelta (y : C.G) : LinearMap (M y) (C.D (y + C.dk - n *n C.di + C.di))
+  | mdelta-shorten (y : C.G) (t : W y) : mdelta y (shorten y t) = C.i idp (delta y t)
+  | restrict {w y : C.G} (p : w + C.dj = y) : LinearMap (C.D w) (M y)
+  | mrho-restrict {w y : C.G} (p : w + C.dj = y) (t : C.D w) : mrho y (restrict p t) = C.j p t
+  | far {x y : C.G} (p : x + C.di = y) : LinearMap (M x) (M y)
+  | Void : C.G -> LModule C.R
+  | void-zero {x : C.G} (v : Void x) : v = 0
+  | toVoid (x : C.G) : LinearMap (M x) (Void x)
+  | fromVoid {x y : C.G} (p : x + C.di = y) : LinearMap (Void x) (C.E y)
+  | mrho-far {x y : C.G} (p : x + C.di = y) (m : M x) : mrho y (far p m) = fromVoid p (toVoid x m)
+
+  \lemma disjoint {x y : C.G} (p : x + C.di = y) (m : M x) : mrho y (far p m) = 0
+    => mrho-far p m *> pmap (fromVoid p) (void-zero _) *> (fromVoid p).func-zro
 }
 
 \record WindowStep \extends WindowDiagram {
@@ -65,7 +93,7 @@
   | delta-long-rho (y : C.G) (l : Long y) : iter C (suc n) (pre (y + C.dk) (suc n *n C.di)) (delta-long y l) = C.k idp (rho y (shrink y l))
 
   \lemma corrected-lift {y : C.G} (t : W y)
-    (h : Couple.j {cumulative C n} (+-assoc *> idp) (Couple.k {cumulative C n} idp (in~ (rho y t, (cycles (rho y t)).2 (inP (t, idp))))) = 0)
+    (h : Couple.j {cumulative C n} (+-assoc *> idp) (Couple.k {cumulative C n} idp (class t)) = 0)
     : ∃ (l : Long y) (rho y (shrink y l) = rho y t)
     => \case (boundaries _).1 ((AbQuotient.proj-zero {_} {cumulative.B C n _}).1 (inv (differential t) *> h)) \with {
       | inP (s, ss) => TruncP.map ((exact-shrink y (t - inner y s)).1 ((dshort y).func-minus *> pmap2 (-) idp (dshort-inner y s *> ss) *> negative-right))
@@ -73,7 +101,7 @@
     }
 
   \lemma next-cycle {y : C.G} (t : W y)
-    (h : Couple.j {cumulative C n} (+-assoc *> idp) (Couple.k {cumulative C n} idp (in~ (rho y t, (cycles (rho y t)).2 (inP (t, idp))))) = 0)
+    (h : Couple.j {cumulative C n} (+-assoc *> idp) (Couple.k {cumulative C n} idp (class t)) = 0)
     : cumulative.Z C (suc n) y (rho y t)
     => TruncP.map (corrected-lift t h) \lam (l, rl) => (delta-long y l, delta-long-rho y l *> pmap (C.k idp) rl)
 }
@@ -94,8 +122,7 @@
     => TruncP.map h \lam (u, su) => (s y u, inv (s-short y u) *> pmap (F.g y) su)
 
   \lemma class {y : C.G} (t : A.W y)
-    : CoupleMap.g {cumulativeMap {C} {C'} F n} y (in~ (A.rho y t, (A.cycles (A.rho y t)).2 (inP (t, idp))))
-      = in~ (A'.rho y (w y t), (A'.cycles (A'.rho y (w y t))).2 (inP (w y t, idp)))
+    : CoupleMap.g {cumulativeMap {C} {C'} F n} y (A.class t) = A'.class (w y t)
     => pmap in~ (ext (w-rho y t))
 
   \lemma differential {y : C.G} (t : A.W y)

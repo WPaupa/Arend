@@ -96,6 +96,16 @@
 
     \lemma odd-mul {G : AddGroup} (k l : Nat) (a : G) : signed (suc (k Nat.+ k) Nat.* suc (l Nat.+ l)) a = negative a
       => step _ a *> pmap negative (add _ (k Nat.+ k) a *> pmap (signed _) (double k a) *> pmap (signed __ a) NatSemiring.ldistr *> double _ a)
+
+    \lemma sq {R : Ring} (k : Nat) : signed {R} k 1 * signed {R} k 1 = 1 \elim k
+      | 0 => ide-left
+      | 1 => Ring.negative_* *> ide-left
+      | suc (suc k) => sq k
+
+    \lemma ide-*c {R : Ring} {M : LModule R} (k : Nat) (m : M) : signed {R} k 1 *c m = signed k m \elim k
+      | 0 => ide_*c
+      | 1 => LModule.neg_ide_*c
+      | suc (suc k) => ide-*c k m
   }
 
 \record GradedPairing (H K L : Nat -> AbGroup)

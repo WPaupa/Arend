@@ -1,3 +1,4 @@
+\import Algebra.Group.GroupCat
 \import Algebra.Linear.Matrix
 \import Algebra.Linear.Matrix.Smith
 \import Algebra.Meta
@@ -6,6 +7,7 @@
 \import Algebra.Monoid
 \import Algebra.Monoid.MonoidHom
 \import Algebra.Ring
+\import Category (Iso)
 \import Data.Array
 \import Equiv
 \import Function
@@ -47,6 +49,23 @@
             | finv_f => e.ret_f
             | f_finv => e.f_ret
           })
+
+  \func toAbIso.{u} {R : Ring.{u}} {U V : LModule.{u} R} {f : LinearMap U V} (e : ModuleIso f) : Iso {AbGroupCat.{u}} f
+    => AbGroupCat.isoOfEquiv f (QEquiv.fromInjSurj e.isInj e.isSurj)
+
+  \lemma fromAbIso.{u} {R : Ring.{u}} {U V : LModule.{u} R} {f : LinearMap U V} (e : Iso {AbGroupCat.{u}} f) : ModuleIso f
+    => iso<->inj+surj.2 ((AbGroupCat.equivOfIso e).isInj, (AbGroupCat.equivOfIso e).isSurj)
+
+  \lemma square-left {R : Ring} {U U' V V' : LModule R} {f : LinearMap U V} {f' : LinearMap U' V'} {a : LinearMap U U'} {b : LinearMap V V'}
+                     (sq : \Pi (u : U) -> b (f u) = f' (a u)) (fi : ModuleIso f) (f'i : ModuleIso f') (ai : ModuleIso a) : ModuleIso b
+    => iso<->inj+surj.2 (\lam {v} {v'} p => inv (fi.f_finv v) *> pmap f (ai.isInj (f'i.isInj (inv (sq _) *> pmap b (fi.f_finv v) *> p *> inv (pmap b (fi.f_finv v')) *> sq _)))
+                                            *> fi.f_finv v',
+                         \lam v' => inP (f (ai.finv (f'i.finv v')), sq _ *> pmap f' (ai.f_finv _) *> f'i.f_finv v'))
+
+  \lemma square-right {R : Ring} {U U' V V' : LModule R} {f : LinearMap U V} {f' : LinearMap U' V'} {a : LinearMap U U'} {b : LinearMap V V'}
+                      (sq : \Pi (u : U) -> b (f u) = f' (a u)) (fi : ModuleIso f) (f'i : ModuleIso f') (bi : ModuleIso b) : ModuleIso a
+    => iso<->inj+surj.2 (\lam {u} {w} p => fi.isInj (bi.isInj (sq u *> pmap f' p *> inv (sq w))),
+                         \lam u' => inP (fi.finv (bi.finv (f' u')), f'i.isInj (inv (sq _) *> pmap b (fi.f_finv _) *> bi.f_finv _)))
 }
 
 \func toLinearMapIso {R : Ring} {U V : LModule R} {n : Nat} {lu : Array U n} (bu : U.IsBasis lu) {lv : Array V n} (bv : V.IsBasis lv) (A : Monoid.Inv {MatrixRing R n}) : ModuleIso {R} {U} {V} \cowith

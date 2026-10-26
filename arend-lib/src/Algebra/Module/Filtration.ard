@@ -42,14 +42,14 @@
                                (\lam b h => c h b.2) (\lam a h => c a.2 h)
 }
 
-\record FilteredLCochainComplex \extends LCochainComplex, FilteredCochainComplex
+\record FilteredLCochainComplex.{u} \extends LCochainComplex.{u}, FilteredCochainComplex
   | filt-*c {p n : Nat} {r : R} {x : D n} : (filt n).F p x -> (filt n).F p (r *c x)
   \where {
-    \func lfilt (X : FilteredLCochainComplex) (n : Nat) : LFiltration (X.D n) \cowith
+    \func lfilt.{u} (X : FilteredLCochainComplex.{u}) (n : Nat) : LFiltration (X.D n) \cowith
       | Filtration => X.filt n
       | F-*c => X.filt-*c
 
-    \func lgr (X : FilteredLCochainComplex) (p : Nat) : LCochainComplex X.R \cowith
+    \func lgr.{u} (X : FilteredLCochainComplex.{u}) (p : Nat) : LCochainComplex.{u} X.R \cowith
       | D n => (lfilt X n).lgr p
       | delta n => Filtration.map (X.delta n) (\lam {q} => X.delta-F {q} {n}) p
       | delta-delta n x => \case \elim x \with {
@@ -59,7 +59,7 @@
         | in~ a => pmap in~ (ext X.dOut-*c)
       }
 
-    \func lgrCochainPairing {R : Ring} {X Y Z : FilteredLCochainComplex R} (P : LCochainPairing X Y Z) (c : IsFiltered P) (p q : Nat)
+    \func lgrCochainPairing.{u} {R : Ring.{u}} {X Y Z : FilteredLCochainComplex.{u} R} (P : LCochainPairing X Y Z) (c : IsFiltered P) (p q : Nat)
       : LCochainPairing (lgr X p) (lgr Y q) (lgr Z (p Nat.+ q)) \cowith
       | CochainPairing => grCochainPairing P c p q
       | *c-mul-left {_} {_} {_} {a} {b} => \case \elim a, \elim b \with {
@@ -70,15 +70,17 @@
       }
   }
 
-\record FilteredLDGA \extends LDGA, FilteredDGA, FilteredLCochainComplex
+\record FilteredLDGA.{u} \extends LDGA.{u}, FilteredDGA, FilteredLCochainComplex.{u}
   \where
-    \func lgrPairing (A : FilteredLDGA) (p q : Nat)
+    \func lgrPairing.{u} (A : FilteredLDGA.{u}) (p q : Nat)
       : LCochainPairing (FilteredLCochainComplex.lgr A p) (FilteredLCochainComplex.lgr A q) (FilteredLCochainComplex.lgr A (p Nat.+ q))
       => FilteredLCochainComplex.lgrCochainPairing (LDGA.lpairing A) A.filt-mul p q
 
-\record FilteredLDGModule \extends LDGModule, FilteredDGModule, FilteredLCochainComplex {
-  \override A : FilteredLDGA
+\record FilteredLCDGA.{u} \extends FilteredLDGA.{u}, CDGA
+
+\record FilteredLDGModule.{u} \extends LDGModule.{u}, FilteredDGModule, FilteredLCochainComplex.{u} {
+  \override A : FilteredLDGA.{u}
 } \where
-  \func lgrPairing {C : FilteredLDGA} (M : FilteredLDGModule C) (p q : Nat)
+  \func lgrPairing.{u} {C : FilteredLDGA.{u}} (M : FilteredLDGModule.{u} C) (p q : Nat)
     : LCochainPairing (FilteredLCochainComplex.lgr C p) (FilteredLCochainComplex.lgr M q) (FilteredLCochainComplex.lgr M (p Nat.+ q))
     => FilteredLCochainComplex.lgrCochainPairing {C.R} {C} {M} {M} (LDGModule.lpairing M) M.filt-act p q

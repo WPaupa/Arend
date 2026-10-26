@@ -1,7 +1,10 @@
 \import Algebra.Group
 \import Algebra.Module
 \import Algebra.Module.LinearMap
+\import Algebra.Module.SubLModule
 \import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Pointed
 \import Algebra.Ring
 \import Data.Array
 \import Paths
@@ -10,6 +13,30 @@
 \record BilinearMap {R : Ring} (A B C : LModule R) (\coerce func : A -> B -> C)
   | linear-left {b : B} : LinearMap A C (func __ b)
   | linear-right {a : A} : LinearMap B C (func a)
+  \where {
+    \lemma zro-left {R : Ring} {A B C : LModule R} (f : BilinearMap A B C) {b : B} : f 0 b = 0
+      => AddMonoidHom.func-zro {f.linear-left {b}}
+
+    \lemma zro-right {R : Ring} {A B C : LModule R} (f : BilinearMap A B C) {a : A} : f a 0 = 0
+      => AddMonoidHom.func-zro {f.linear-right {a}}
+
+    \func zero {R : Ring} {A B C : LModule R} : BilinearMap A B C \cowith
+      | func _ _ => 0
+      | linear-left => LinearMap.zero
+      | linear-right => LinearMap.zero
+
+    \func restrict {R : Ring} {A B C : LModule R} (f : BilinearMap A B C) {S : SubLModule R A} {T : SubLModule R B} {U : SubLModule R C}
+                   (c : \Pi {a : A} {b : B} -> S a -> T b -> U (f a b)) : BilinearMap (IModule S) (IModule T) (IModule U) \cowith
+      | func a b => (f a.1 b.1, c a.2 b.2)
+      | linear-left => \new LinearMap {
+        | func-+ => ext f.linear-left.func-+
+        | func-*c => ext f.linear-left.func-*c
+      }
+      | linear-right => \new LinearMap {
+        | func-+ => ext f.linear-right.func-+
+        | func-*c => ext f.linear-right.func-*c
+      }
+  }
 
 \lemma *-bilinear {R : CRing} : BilinearMap (RingLModule R) (RingLModule R) (RingLModule R) (*) \cowith
   | linear-left => *-linear-left

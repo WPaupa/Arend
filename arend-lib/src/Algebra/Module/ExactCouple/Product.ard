@@ -1,0 +1,277 @@
+\import Algebra.Group
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Module.BilinearMap
+\import Algebra.Module.Differential
+\import Algebra.Module.ExactCouple
+\import Algebra.Module.ExactCouple.Cumulative
+\import Algebra.Module.ExactCouple.Window
+\import Algebra.Module.GradedComplex
+\import Algebra.Module.LinearMap
+\import Algebra.Module.Quotient
+\import Algebra.Module.SubLModule
+\import Algebra.Monoid
+\import Algebra.Monoid.SubMonoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Logic
+\import Logic.Meta
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+\open GradedMap (pre)
+\open ExactCouple (jdeg)
+\open AddMonoid (*n)
+
+\record LayerPairing.{u} (X : ExactCouple.{u}) (Y Z : ExactCouple.{u} X.R X.G X.di X.dj X.dk) {
+  | mul {x y z : X.G} (p : x + y = z) : BilinearMap (X.E x) (Y.E y) (Z.E z)
+} \where {
+  \func compose.{u} {X' : ExactCouple.{u}} {X Y Z Y' Z' : ExactCouple.{u} X'.R X'.G X'.di X'.dj X'.dk} (P : LayerPairing X Y Z)
+                    (FX : CoupleMap X' X) (FY : CoupleMap Y' Y) (FZ : CoupleMap Z Z') : LayerPairing X' Y' Z' \cowith
+    | mul {x} {y} {z} p => \new BilinearMap {
+      | func a b => FZ.g z (P.mul p (FX.g x a) (FY.g y b))
+      | linear-left => \new LinearMap {
+        | func-+ => pmap (\lam t => FZ.g z (P.mul p t _)) (FX.g x).func-+ *> pmap (FZ.g z) (P.mul p).linear-left.func-+ *> (FZ.g z).func-+
+        | func-*c => pmap (\lam t => FZ.g z (P.mul p t _)) (FX.g x).func-*c *> pmap (FZ.g z) (P.mul p).linear-left.func-*c *> (FZ.g z).func-*c
+      }
+      | linear-right => \new LinearMap {
+        | func-+ => pmap (\lam t => FZ.g z (P.mul p _ t)) (FY.g y).func-+ *> pmap (FZ.g z) (P.mul p).linear-right.func-+ *> (FZ.g z).func-+
+        | func-*c => pmap (\lam t => FZ.g z (P.mul p _ t)) (FY.g y).func-*c *> pmap (FZ.g z) (P.mul p).linear-right.func-*c *> (FZ.g z).func-*c
+      }
+    }
+}
+
+\record PageClosure.{u} {X : ExactCouple.{u}} {Y Z : ExactCouple.{u} X.R X.G X.di X.dj X.dk} (P : LayerPairing X Y Z) (n : Nat) {
+  | cycle-mul {x y z : X.G} (p : x + y = z) {a : X.E x} {b : Y.E y} : cumulative.Z X n x a -> cumulative.Z Y n y b -> cumulative.Z Z n z (P.mul p a b)
+  | boundary-left {x y z : X.G} (p : x + y = z) {a : IModule (cumulative.Z X n x)} (b : IModule (cumulative.Z Y n y))
+    : cumulative.B X n x a -> cumulative.B Z n z (P.mul p a.1 b.1, cycle-mul p a.2 b.2)
+  | boundary-right {x y z : X.G} (p : x + y = z) (a : IModule (cumulative.Z X n x)) {b : IModule (cumulative.Z Y n y)}
+    : cumulative.B Y n y b -> cumulative.B Z n z (P.mul p a.1 b.1, cycle-mul p a.2 b.2)
+
+  \func page {x y z : X.G} (p : x + y = z)
+    : BilinearMap (Couple.E {cumulative X n} x) (Couple.E {cumulative Y n} y) (Couple.E {cumulative Z n} z)
+    => bilinearQuotient {_} {IModule (cumulative.Z X n x)} {IModule (cumulative.Z Y n y)} {IModule (cumulative.Z Z n z)}
+                        (BilinearMap.restrict (P.mul p) (cycle-mul p)) (boundary-left p) (boundary-right p)
+} \where {
+  \lemma B-zero.{u} {C : ExactCouple.{u}} {n : Nat} {y : C.G} {e : IModule (cumulative.Z C n y)} (h : e.1 = 0) : cumulative.B C n y e
+    => transportInv (cumulative.B C n y) (ext h) (SubAddMonoid.contains_zro {cumulative.B C n y})
+
+  \lemma B-base.{u} {C : ExactCouple.{u}} {y : C.G} {e : IModule (cumulative.Z C 0 y)} (h : cumulative.B C 0 y e) : e.1 = 0
+    => \case cumulative.B-elim C 0 (pre y C.dj) h \with {
+      | inP (v, iv, jv) => inv jv *> pmap (C.j _) (GradedMap.id-zero {_} {_} {C.D} idp iv) *> (C.j _).func-zro
+    }
+
+  \func base.{u} {X : ExactCouple.{u}} {Y Z : ExactCouple.{u} X.R X.G X.di X.dj X.dk} (P : LayerPairing X Y Z) : PageClosure P 0 \cowith
+    | cycle-mul _ _ _ => cumulative.all-zero Z _
+    | boundary-left p b h => B-zero (pmap (P.mul p __ b.1) (B-base h) *> BilinearMap.zro-left (P.mul p))
+    | boundary-right p a h => B-zero (pmap (P.mul p a.1) (B-base h) *> BilinearMap.zro-right (P.mul p))
+
+  \func compose.{u} {X' : ExactCouple.{u}} {X Y Z Y' Z' : ExactCouple.{u} X'.R X'.G X'.di X'.dj X'.dk} {P : LayerPairing X Y Z} {n : Nat}
+                    (c : PageClosure P n) (FX : CoupleMap X' X) (FY : CoupleMap Y' Y) (FZ : CoupleMap Z Z')
+    : PageClosure (LayerPairing.compose {X'} {X} {Y} {Z} {Y'} {Z'} P FX FY FZ) n \cowith
+    | cycle-mul p ha hb => cumulativeMap.Z-map {Z} {Z'} FZ n (c.cycle-mul p (cumulativeMap.Z-map {X'} {X} FX n ha) (cumulativeMap.Z-map {Y'} {Y} FY n hb))
+    | boundary-left p b h => cumulativeMap.B-map {Z} {Z'} FZ n (c.boundary-left p (_, cumulativeMap.Z-map {Y'} {Y} FY n b.2) (cumulativeMap.B-map {X'} {X} FX n h))
+    | boundary-right p a h => cumulativeMap.B-map {Z} {Z'} FZ n (c.boundary-right p (_, cumulativeMap.Z-map {X'} {X} FX n a.2) (cumulativeMap.B-map {Y'} {Y} FY n h))
+
+  \lemma natural.{u} {X : ExactCouple.{u}} {Y Z X' Y' Z' : ExactCouple.{u} X.R X.G X.di X.dj X.dk}
+                     {P : LayerPairing X Y Z} {P' : LayerPairing X' Y' Z'} {n : Nat} (c : PageClosure P n) (c' : PageClosure P' n)
+                     (FX : CoupleMap X X') (FY : CoupleMap Y Y') (FZ : CoupleMap Z Z')
+                     (sq : \Pi {x y z : X.G} (p : x + y = z) (a : X.E x) (b : Y.E y) -> FZ.g z (P.mul p a b) = P'.mul p (FX.g x a) (FY.g y b))
+                     {x y z : X.G} (p : x + y = z) (a : Couple.E {cumulative X n} x) (b : Couple.E {cumulative Y n} y)
+    : CoupleMap.g {cumulativeMap {Z} {Z'} FZ n} z (c.page p a b)
+      = c'.page p (CoupleMap.g {cumulativeMap {X} {X'} FX n} x a) (CoupleMap.g {cumulativeMap {Y} {Y'} FY n} y b) \elim a, b
+    | in~ a, in~ b => pmap in~ (ext (sq p a.1 b.1))
+
+  \lemma compose-page.{u} {X' : ExactCouple.{u}} {X Y Z Y' Z' : ExactCouple.{u} X'.R X'.G X'.di X'.dj X'.dk} {P : LayerPairing X Y Z} {n : Nat}
+                          (c : PageClosure P n) (FX : CoupleMap X' X) (FY : CoupleMap Y' Y) (FZ : CoupleMap Z Z')
+                          {x y z : X.G} (p : x + y = z) (a : Couple.E {cumulative X' n} x) (b : Couple.E {cumulative Y' n} y)
+    : PageClosure.page {compose {X'} {X} {Y} {Z} {Y'} {Z'} c FX FY FZ} p a b
+      = CoupleMap.g {cumulativeMap {Z} {Z'} FZ n} z (c.page p (CoupleMap.g {cumulativeMap {X'} {X} FX n} x a) (CoupleMap.g {cumulativeMap {Y'} {Y} FY n} y b)) \elim a, b
+    | in~ a, in~ b => idp
+}
+
+
+\record WindowLeibniz.{u} (n : Nat) \extends LayerPairing.{u} {
+  | AX : WindowDiagram X n
+  | AY : WindowDiagram Y n
+  | AZ : WindowDiagram Z n
+  | sgn : X.G -> X.R
+  | sgn-sq (x : X.G) : sgn x * sgn x = 1
+  | wmul {x y z : X.G} (p : x + y = z) : BilinearMap (AX.W x) (AY.W y) (AZ.W z)
+  | rho-wmul {x y z : X.G} (p : x + y = z) (s : AX.W x) (t : AY.W y) : AZ.rho z (wmul p s t) = mul p (AX.rho x s) (AY.rho y t)
+  | dwmul {w y z : X.G} (p : w + X.dj + y = z) : BilinearMap (X.D w) (AY.W y) (AZ.W z)
+  | rho-dwmul {w x y z : X.G} (p : w + X.dj + y = z) (r : w + X.dj = x) (p' : x + y = z) (t : X.D w) (s : AY.W y)
+    : AZ.rho z (dwmul p t s) = mul p' (X.j r t) (AY.rho y s)
+  | wdmul {x w z : X.G} (p : x + (w + X.dj) = z) : BilinearMap (AX.W x) (Y.D w) (AZ.W z)
+  | rho-wdmul {x w y z : X.G} (p : x + (w + X.dj) = z) (r : w + X.dj = y) (p' : x + y = z) (s : AX.W x) (t : Y.D w)
+    : AZ.rho z (wdmul p s t) = mul p' (AX.rho x s) (Y.j r t)
+  | leibniz-window {x y z z' : X.G} (p : x + y = z) (r : z + X.dk - n *n X.di + X.dj = z') (q : x + X.dk - n *n X.di + X.dj + y = z')
+                   (q' : x + (y + X.dk - n *n X.di + X.dj) = z') (s : AX.W x) (t : AY.W y)
+    : AZ.wrestrict r (AZ.delta z (wmul p s t)) = dwmul q (AX.delta x s) t + sgn x *c wdmul q' s (AY.delta y t)
+
+  \lemma cycle-product {x y z : X.G} (p : x + y = z) {a : X.E x} {b : Y.E y} (ha : cumulative.Z X n x a) (hb : cumulative.Z Y n y b)
+    : cumulative.Z Z n z (mul p a b)
+    => (AZ.cycles _).2 (\case (AX.cycles a).1 ha, (AY.cycles b).1 hb \with {
+      | inP (s, sa), inP (t, tb) => inP (wmul p s t, rho-wmul p s t *> pmap2 (mul p) sa tb)
+    })
+
+  \lemma dshort-mul {x y z : X.G} (p : x + y = z) (q1 : x + (X.dk + jdeg X.di X.dj n) + y = z + (X.dk + jdeg X.di X.dj n))
+                    (q2 : x + (y + (X.dk + jdeg X.di X.dj n)) = z + (X.dk + jdeg X.di X.dj n)) (s : AX.W x) (t : AY.W y)
+    : AZ.dshort z (wmul p s t) = mul q1 (AX.dshort x s) (AY.rho y t) + sgn x *c mul q2 (AX.rho x s) (AY.dshort y t)
+    => inv (AZ.j-delta z _) *> inv (AZ.rho-wrestrict _ _)
+       *> pmap (AZ.rho _) (leibniz-window p (jdeg.index (+-assoc *> idp)) (pmap (`+ y) (jdeg.index idp *> +-assoc) *> q1)
+                                          (pmap (x +) (jdeg.index idp *> +-assoc) *> q2) s t)
+       *> (AZ.rho _).func-+
+       *> pmap2 (+) (rho-dwmul _ (jdeg.index (+-assoc *> idp)) q1 _ _ *> pmap (mul q1 __ _) (AX.j-delta x s))
+                    ((AZ.rho _).func-*c *> pmap (sgn x *c) (rho-wdmul _ (jdeg.index (+-assoc *> idp)) q2 _ _ *> pmap (mul q2 _) (AY.j-delta y t)))
+} \where {
+  \func Xc.{u} (C : ExactCouple.{u}) (n : Nat) => nextPage.Xc C n (cumulative-exact C n)
+
+  \lemma page-leibniz.{u} (L : WindowLeibniz.{u}) (c : PageClosure L L.n)
+    : DiffPairing.Leibniz {_} {_} {_} {Xc L.X L.n} {Xc L.Y L.n} {Xc L.Z L.n} (\lam p => c.page p) L.sgn
+    => \lam p q1 q2 a b => \case L.AX.class-surj a, L.AY.class-surj b \with {
+      | inP (s, sa), inP (t, tb) => rewriteI (sa, tb)
+          (rewrite (L.AX.differential s : DiffModule.d {Xc L.X L.n} idp (L.AX.class s) = _,
+                    L.AY.differential t : DiffModule.d {Xc L.Y L.n} idp (L.AY.class t) = _)
+            (pmap (DiffModule.d {Xc L.Z L.n} idp)
+                  (pmap in~ (ext (inv (L.rho-wmul p s t))) : c.page p (L.AX.class s) (L.AY.class t) = L.AZ.class (L.wmul p s t))
+              *> L.AZ.differential (L.wmul p s t) *> pmap in~ (ext (L.dshort-mul p q1 q2 s t))))
+    }
+
+  \func pageDiff.{u} (L : WindowLeibniz.{u}) (c : PageClosure L L.n) : DiffPairing (Xc L.X L.n) (Xc L.Y L.n) (Xc L.Z L.n) \cowith
+    | mul p => c.page p
+    | sgn => L.sgn
+    | sgn-sq => L.sgn-sq
+    | leibniz => DiffPairing.leibniz-at {_} {_} {_} {Xc L.X L.n} {Xc L.Y L.n} {Xc L.Z L.n} (\lam p => c.page p) L.sgn (page-leibniz L c)
+
+  \lemma theta-mul.{u} (L : WindowLeibniz.{u}) (c : PageClosure L L.n) (c' : PageClosure L (suc L.n)) {x y z : L.X.G} (p : x + y = z)
+                   (a : Couple.E {cumulative L.X (suc L.n)} x) (b : Couple.E {cumulative L.Y (suc L.n)} y)
+    : nextPage.theta L.Z L.n (cumulative-exact L.Z L.n) z (c'.page p a b)
+      = DiffPairing.homologyPairing {pageDiff L c} p (nextPage.theta L.X L.n (cumulative-exact L.X L.n) x a) (nextPage.theta L.Y L.n (cumulative-exact L.Y L.n) y b) \elim a, b
+    | in~ a, in~ b => pmap in~ (ext (pmap in~ (ext idp)))
+
+  \lemma pageIso-mul.{u} (L : WindowLeibniz.{u}) (c : PageClosure L L.n) (c' : PageClosure L (suc L.n))
+                     (Q : DiffPairing (ExactCouple.complex {ExactCouple.page L.X L.n}) (ExactCouple.complex {ExactCouple.page L.Y L.n}) (ExactCouple.complex {ExactCouple.page L.Z L.n}))
+                     (sq : \Pi {x y z : L.X.G} (p : x + y = z) (a : Couple.E {cumulative L.X L.n} x) (b : Couple.E {cumulative L.Y L.n} y)
+                       -> CoupleMap.g {pageIso L.Z L.n} z (c.page p a b) = Q.mul p (CoupleMap.g {pageIso L.X L.n} x a) (CoupleMap.g {pageIso L.Y L.n} y b))
+                     {x y z : L.X.G} (p : x + y = z) (a : Couple.E {cumulative L.X (suc L.n)} x) (b : Couple.E {cumulative L.Y (suc L.n)} y)
+    : CoupleMap.g {pageIso L.Z (suc L.n)} z (c'.page p a b) = Q.homologyPairing p (CoupleMap.g {pageIso L.X (suc L.n)} x a) (CoupleMap.g {pageIso L.Y (suc L.n)} y b)
+    => pmap (LComplexMap.lhomology {_} {_} {_} {_} {Xc L.Z L.n} {ExactCouple.complex {ExactCouple.page L.Z L.n}} (isoMap L.Z L.n) z) (theta-mul L c c' p a b)
+       *> DiffPairing.homology-natural {_} {_} {_} {Xc L.X L.n} {Xc L.Y L.n} {Xc L.Z L.n}
+            {ExactCouple.complex {ExactCouple.page L.X L.n}} {ExactCouple.complex {ExactCouple.page L.Y L.n}} {ExactCouple.complex {ExactCouple.page L.Z L.n}}
+            (pageDiff L c) Q (isoMap L.X L.n) (isoMap L.Y L.n) (isoMap L.Z L.n) sq p _ _
+    \where
+      \func isoMap.{u} (C : ExactCouple.{u}) (n : Nat)
+        => CoupleMap.complexMap {cumulative.level C n (cumulative-exact C n)} {ExactCouple.page C n} (pageIso C n)
+}
+
+\record WindowPairing.{u} \extends WindowLeibniz.{u} {
+  | MX : WindowFrame X n
+  | MY : WindowFrame Y n
+  | MZ : WindowFrame Z n
+  | AX => MX
+  | AY => MY
+  | AZ => MZ
+  | smul {x y z : X.G} (p : x + y = z) : BilinearMap (MX.S x) (MY.M y) (MZ.S z)
+  | dmmul {w y z : X.G} (p : w + X.dj + y = z) : BilinearMap (X.D w) (MY.M y) (MZ.M z)
+  | mrho-dmmul {w x y z : X.G} (p : w + X.dj + y = z) (r : w + X.dj = x) (p' : x + y = z) (t : X.D w) (m : MY.M y)
+    : MZ.mrho z (dmmul p t m) = mul p' (X.j r t) (MY.mrho y m)
+  | sdmul {x w z : X.G} (p : x + w + n *n X.di = z + X.dk + X.di) : BilinearMap (MX.S x) (Y.D w) (MZ.M z)
+  | sdmul-i {x w w' z z' : X.G} (p : x + w' + n *n X.di = z + X.dk + X.di) (p' : x + w + n *n X.di = z' + X.dk + X.di) (q : w + X.di = w')
+            (r : z' + X.di = z) (u : MX.S x) (t : Y.D w) : sdmul p u (Y.i q t) = MZ.far r (sdmul p' u t)
+  | leibniz-left {x y z : X.G} (p : x + y = z) (q : x - X.dj + X.dj + y = z) (q' : x + (y + X.dk - n *n X.di + X.di) + n *n X.di = z + X.dk + X.di)
+                 (u : MX.S x) (m : MY.M y)
+    : MZ.restrict (pre z X.dj) (MZ.tower z (smul p u m)) = dmmul q (MX.tower x u) m + sgn (x - (X.dk + X.dj + X.di)) *c sdmul q' u (MY.mdelta y m)
+  | msmul {x y z : X.G} (p : x + y = z) : BilinearMap (MX.M x) (MY.S y) (MZ.S z)
+  | mdmul {x w z : X.G} (p : x + (w + X.dj) = z) : BilinearMap (MX.M x) (Y.D w) (MZ.M z)
+  | mrho-mdmul {x w y z : X.G} (p : x + (w + X.dj) = z) (r : w + X.dj = y) (p' : x + y = z) (m : MX.M x) (t : Y.D w)
+    : MZ.mrho z (mdmul p m t) = mul p' (MX.mrho x m) (Y.j r t)
+  | dsmul {w y z : X.G} (p : w + y + n *n X.di = z + X.dk + X.di) : BilinearMap (X.D w) (MY.S y) (MZ.M z)
+  | dsmul-i {w w' y z z' : X.G} (p : w' + y + n *n X.di = z + X.dk + X.di) (p' : w + y + n *n X.di = z' + X.dk + X.di) (q : w + X.di = w')
+            (r : z' + X.di = z) (t : X.D w) (u : MY.S y) : dsmul p (X.i q t) u = MZ.far r (dsmul p' t u)
+  | leibniz-right {x y z : X.G} (p : x + y = z) (q : x + X.dk - n *n X.di + X.di + y + n *n X.di = z + X.dk + X.di) (q' : x + (y - X.dj + X.dj) = z)
+                  (m : MX.M x) (u : MY.S y)
+    : MZ.restrict (pre z X.dj) (MZ.tower z (msmul p m u)) = dsmul q (MX.mdelta x m) u + sgn x *c mdmul q' m (MY.tower y u)
+
+  \lemma short-smul {x y z : X.G} (p : x + y = z) (u : MX.S x) (t : MY.W y)
+    : MZ.short z (smul p u (MY.shorten y t)) = mul p (MX.short x u) (MY.rho y t)
+    => inv (MZ.tower-short z _) *> inv (MZ.mrho-restrict _ _)
+       *> pmap (MZ.mrho z) (leibniz-left p (pmap (`+ y) (pre x X.dj) *> p) (equation.abGroup *> pmap (\lam w => w + X.dk + X.di) p) u (MY.shorten y t))
+       *> (MZ.mrho z).func-+
+       *> pmap2 (+) (mrho-dmmul _ (pre x X.dj) p _ _ *> pmap2 (mul p) (MX.tower-short x u) (MY.mrho-shorten y t))
+                    ((MZ.mrho z).func-*c *> pmap (_ *c) (pmap (\lam v => MZ.mrho z (sdmul _ u v)) (MY.mdelta-shorten y t)
+                       *> pmap (MZ.mrho z) (sdmul-i _ (equation.abGroup *> pmap (`+ X.dk) p *> equation.abGroup) idp (pre z X.di) u _) *> MZ.disjoint _ _)
+                       *> LModule.*c_zro-right)
+       *> zro-right
+
+  \lemma boundary-times-cycle {x y z : X.G} (p : x + y = z) {a : IModule (cumulative.Z X n x)} (b : IModule (cumulative.Z Y n y))
+                              {c : cumulative.Z Z n z (mul p a.1 b.1)} (h : cumulative.B X n x a) : cumulative.B Z n z (mul p a.1 b.1, c)
+    => (MZ.boundaries _).2 (\case (MX.boundaries a).1 h, (MY.cycles b.1).1 b.2 \with {
+      | inP (u, ua), inP (t, tb) => inP (smul p u (MY.shorten y t), short-smul p u t *> pmap2 (mul p) ua tb)
+    })
+
+  \lemma short-msmul {x y z : X.G} (p : x + y = z) (s : MX.W x) (u : MY.S y)
+    : MZ.short z (msmul p (MX.shorten x s) u) = sgn x *c mul p (MX.rho x s) (MY.short y u)
+    => inv (MZ.tower-short z _) *> inv (MZ.mrho-restrict _ _)
+       *> pmap (MZ.mrho z) (leibniz-right p (equation.abGroup *> pmap (\lam w => w + X.dk + X.di) p) (pmap (x +) (pre y X.dj) *> p) (MX.shorten x s) u)
+       *> (MZ.mrho z).func-+
+       *> pmap2 (+) (pmap (\lam v => MZ.mrho z (dsmul _ v u)) (MX.mdelta-shorten x s)
+                       *> pmap (MZ.mrho z) (dsmul-i _ (equation.abGroup *> pmap (`+ X.dk) p *> equation.abGroup) idp (pre z X.di) _ u) *> MZ.disjoint _ _)
+                    ((MZ.mrho z).func-*c *> pmap (sgn x *c) (mrho-mdmul _ (pre y X.dj) p _ _ *> pmap2 (mul p) (MX.mrho-shorten x s) (MY.tower-short y u)))
+       *> zro-left
+
+  \lemma cycle-times-boundary {x y z : X.G} (p : x + y = z) (a : IModule (cumulative.Z X n x)) {b : IModule (cumulative.Z Y n y)}
+                              {c : cumulative.Z Z n z (mul p a.1 b.1)} (h : cumulative.B Y n y b) : cumulative.B Z n z (mul p a.1 b.1, c)
+    => (MZ.boundaries _).2 (\case (MX.cycles a.1).1 a.2, (MY.boundaries b).1 h \with {
+      | inP (s, sa), inP (u, ub) => inP (sgn x *c msmul p (MX.shorten x s) u,
+          (MZ.short z).func-*c *> pmap (sgn x *c) (short-msmul p s u) *> inv *c-assoc *> pmap (`*c _) (sgn-sq x) *> ide_*c *> pmap2 (mul p) sa ub)
+    })
+} \where
+  \func closure.{u} (P : WindowPairing.{u}) : PageClosure P P.n \cowith
+    | cycle-mul p => P.cycle-product p
+    | boundary-left p b h => P.boundary-times-cycle p b h
+    | boundary-right p a h => P.cycle-times-boundary p a h
+
+
+\record LayerAlgebra.{u} \extends LayerPairing.{u} {
+  | Y => X
+  | Z => X
+  | one : X.E 0
+  | one-lift : ∃ (t : X.D (0 - X.dj)) (X.j (pre 0 X.dj) t = one)
+  | one-left {x : X.G} (p : 0 + x = x) (a : X.E x) : mul p one a = a
+  | one-right {x : X.G} (p : x + 0 = x) (a : X.E x) : mul p a one = a
+  | mul-assoc {x y z u v w : X.G} (p1 : x + y = u) (p2 : u + z = v) (p3 : y + z = w) (p4 : x + w = v) (a : X.E x) (b : X.E y) (c : X.E z)
+    : mul p2 (mul p1 a b) c = mul p4 a (mul p3 b c)
+
+  \lemma one-k : X.k idp one = 0
+    => \case one-lift \with {
+      | inP (t, jt) => pmap (X.k idp) (inv jt) *> X.kj-zero _ idp t
+    }
+} \where {
+  \func pageOne.{u} (A : LayerAlgebra.{u}) (n : Nat) : Couple.E {cumulative A.X n} 0
+    => in~ (A.one, cumulative.Z-zero A.X n A.one-k)
+
+  \lemma pageOne-d.{u} (A : LayerAlgebra.{u}) (n : Nat) : DiffModule.d {WindowLeibniz.Xc A.X n} idp (pageOne A n) = 0
+    => pmap (Couple.j {cumulative A.X n} _) (ext A.one-k : Couple.k {cumulative A.X n} idp (pageOne A n) = 0) *> (Couple.j {cumulative A.X n} _).func-zro
+
+  \lemma page-one-left.{u} {A : LayerAlgebra.{u}} {n : Nat} (c : PageClosure A n) {x : A.X.G} (p : 0 + x = x) (a : Couple.E {cumulative A.X n} x)
+    : c.page p (pageOne A n) a = a \elim a
+    | in~ a => pmap in~ (ext (A.one-left p a.1))
+
+  \lemma page-one-right.{u} {A : LayerAlgebra.{u}} {n : Nat} (c : PageClosure A n) {x : A.X.G} (p : x + 0 = x) (a : Couple.E {cumulative A.X n} x)
+    : c.page p a (pageOne A n) = a \elim a
+    | in~ a => pmap in~ (ext (A.one-right p a.1))
+
+  \lemma page-assoc.{u} {A : LayerAlgebra.{u}} {n : Nat} (c : PageClosure A n) {x y z u v w : A.X.G} (p1 : x + y = u) (p2 : u + z = v) (p3 : y + z = w) (p4 : x + w = v)
+                        (a : Couple.E {cumulative A.X n} x) (b : Couple.E {cumulative A.X n} y) (e : Couple.E {cumulative A.X n} z)
+    : c.page p2 (c.page p1 a b) e = c.page p4 a (c.page p3 b e) \elim a, b, e
+    | in~ a, in~ b, in~ e => pmap in~ (ext (A.mul-assoc p1 p2 p3 p4 a.1 b.1 e.1))
+}
+
+\record LayerCommAlgebra.{u} \extends LayerAlgebra.{u}  | ksgn : X.G -> X.G -> X.R
+  | mul-comm {x y z : X.G} (p : x + y = z) (p' : y + x = z) (a : X.E x) (b : X.E y) : mul p a b = ksgn x y *c mul p' b a
+  \where
+    \lemma page-comm.{u} {A : LayerCommAlgebra.{u}} {n : Nat} (c : PageClosure A n) {x y z : A.X.G} (p : x + y = z) (p' : y + x = z)
+                         (a : Couple.E {cumulative A.X n} x) (b : Couple.E {cumulative A.X n} y)
+      : c.page p a b = (*c) {Couple.E {cumulative A.X n} z} (A.ksgn x y) (c.page p' b a) \elim a, b
+      | in~ a, in~ b => pmap in~ (ext (A.mul-comm p p' a.1 b.1))

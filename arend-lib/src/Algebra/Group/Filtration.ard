@@ -20,6 +20,13 @@
   | F : Nat -> SubAddGroup M
   | F-suc {p : Nat} {x : M} : F (suc p) x -> F p x
 
+  \lemma mono {k l : Nat} (h : k <= l) {x : M} (f : F l x) : F k x
+    => drop (l -' k) (transport (\lam j => F j x) (inv (<=_exists h)) f)
+    \where
+      \lemma drop {k : Nat} (n : Nat) {x : M} (f : F (k Nat.+ n) x) : F k x \elim n
+        | 0 => f
+        | suc n => drop n (F-suc f)
+
   \func Next (p : Nat) => SubAddGroup.restrict (F p) (F (suc p))
 
   \func gr (p : Nat) => AbQuotient (Next p)

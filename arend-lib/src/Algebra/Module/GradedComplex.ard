@@ -13,8 +13,8 @@
 \import Paths.Meta
 \import Relation.Equivalence
 
-\record LGradedComplex (R : Ring) \extends GradedComplex {
-  \override D : Ix -> LModule R
+\record LGradedComplex.{u} (R : Ring.{u}) \extends GradedComplex {
+  \override D : Ix -> LModule.{u} R
   | dIn-*c {y : Ix} {r : R} {x : D (src y)} : dIn y (r *c x) = r *c dIn y x
   | dOut-*c {y : Ix} {r : R} {x : D y} : dOut y (r *c x) = r *c dOut y x
 
@@ -29,9 +29,9 @@
   \func LIsBoundary (y : Ix) => ImageLModule (lboundary y)
 }
 
-\func LHomology {R : Ring} (X : LGradedComplex R) (y : X.Ix) => QuotientLModule (X.LIsBoundary y)
+\func LHomology.{u} {R : Ring.{u}} (X : LGradedComplex.{u} R) (y : X.Ix) : LModule.{u} R => QuotientLModule (X.LIsBoundary y)
 
-\record LComplexMap {R : Ring} {J : \Set} {s t : J -> J} (LX LY : LGradedComplex R J s t) \extends ComplexMap {
+\record LComplexMap.{u} {R : Ring.{u}} {J : \Set} {s t : J -> J} (LX LY : LGradedComplex.{u} R J s t) \extends ComplexMap {
   | Ix => J
   | src => s
   | tgt => t
@@ -43,21 +43,21 @@
     | AddGroupHom => f y
     | func-*c => f-*c
 } \where {
-  \func lhomology {R : Ring} {J : \Set} {s t : J -> J} {X Y : LGradedComplex R J s t} (F : LComplexMap X Y) (y : J)
+  \func lhomology.{u} {R : Ring.{u}} {J : \Set} {s t : J -> J} {X Y : LGradedComplex.{u} R J s t} (F : LComplexMap X Y) (y : J)
     : LinearMap (LHomology X y) (LHomology Y y) \cowith
     | AddGroupHom => F.homology y
     | func-*c {_} {h} => \case \elim h \with {
       | in~ z => pmap in~ (ext F.f-*c)
     }
 
-  \func inverse {R : Ring} {J : \Set} {s t : J -> J} {X Y : LGradedComplex R J s t} (F : LComplexMap X Y) (e : \Pi (y : J) -> ModuleIso {R} {X.D y} {Y.D y} (F.lf y))
+  \func inverse.{u} {R : Ring.{u}} {J : \Set} {s t : J -> J} {X Y : LGradedComplex.{u} R J s t} (F : LComplexMap X Y) (e : \Pi (y : J) -> ModuleIso {R} {X.D y} {Y.D y} (F.lf y))
     : LComplexMap Y X \cowith
     | f y => (e y).finv
     | commIn y v => (e y).isInj (inv (F.commIn y ((e (s y)).finv v)) *> pmap (Y.dIn y) ((e (s y)).f_finv v) *> inv ((e y).f_finv _))
     | commOut y v => (e (t y)).isInj (inv (F.commOut y ((e y).finv v)) *> pmap (Y.dOut y) ((e y).f_finv v) *> inv ((e (t y)).f_finv _))
     | f-*c => (e _).finv.func-*c
 
-  \func homologyIso {R : Ring} {J : \Set} {s t : J -> J} {X Y : LGradedComplex R J s t} (F : LComplexMap X Y) (e : \Pi (y : J) -> ModuleIso {R} {X.D y} {Y.D y} (F.lf y))
+  \func homologyIso.{u} {R : Ring.{u}} {J : \Set} {s t : J -> J} {X Y : LGradedComplex.{u} R J s t} (F : LComplexMap X Y) (e : \Pi (y : J) -> ModuleIso {R} {X.D y} {Y.D y} (F.lf y))
                     (y : J) : ModuleIso {R} {LHomology X y} {LHomology Y y} (lhomology F y) \cowith
     | finv => lhomology (inverse F e) y
     | finv_f h => \case \elim h \with {

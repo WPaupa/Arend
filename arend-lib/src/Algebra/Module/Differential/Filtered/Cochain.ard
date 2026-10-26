@@ -1,0 +1,254 @@
+\import Algebra.Group
+\import Algebra.Group.Filtration (Filtration)
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Module.BilinearMap
+\import Algebra.Module.Cochain
+\import Algebra.Module.Differential
+\import Algebra.Module.Differential.Filtered
+\import Algebra.Module.Differential.Filtered.Product
+\import Algebra.Module.Filtration
+\import Algebra.Module.Graded
+\import Algebra.Module.LinearMap
+\import Algebra.Module.SubLModule
+\import Algebra.Monoid
+\import Algebra.Monoid.MonoidHom
+\import Algebra.Monoid.SubMonoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Algebra.Ring.DirectSum (signed)
+\import Arith.Int
+\import Arith.Nat
+\import Logic
+\import Order.LinearOrder
+\import Order.PartialOrder
+\import Paths
+\import Paths.Meta
+
+\func cochainD.{u} {R : Ring.{u}} (A : LCochainComplex.{u} R) (x : Int) : LModule.{u} R \elim x
+  | pos n => A.D n
+  | neg (suc n) => IModule (KernelLModule (LinearMap.id {R} {A.D 0}))
+  \where
+    \lemma zero-neg.{u} {R : Ring.{u}} {A : LCochainComplex.{u} R} {n : Nat} (z : cochainD A (neg (suc n))) : z = AddPointed.zro {cochainD A (neg (suc n))}
+      => ext z.2
+
+\func cochainDiff.{u} {R : Ring.{u}} (A : LCochainComplex.{u} R) : DiffModule.{u} IntRing 1 R \cowith
+  | D => cochainD A
+  | d {x} p => transport (\lam z => LinearMap (cochainD A x) (cochainD A z)) p (d0 x)
+  | d-d p q u => dd p q u
+  \where {
+    \func d0 (x : Int) : LinearMap (cochainD A x) (cochainD A (x + 1)) \elim x
+      | pos n => \new LinearMap {
+        | func => A.delta n
+        | func-+ => (A.delta n).func-+
+        | func-*c => A.dOut-*c
+      }
+      | neg (suc n) => LinearMap.zero {R} {cochainD A (neg (suc n))} {cochainD A (neg (suc n) + 1)}
+
+    \lemma dd0 (x : Int) (u : cochainD A x) : d0 (x + 1) (d0 x u) = AddPointed.zro {cochainD A (x + 1 + 1)} \elim x
+      | pos n => A.delta-delta n u
+      | neg (suc n) => AddMonoidHom.func-zro {d0 (neg (suc n) + 1)}
+
+    \lemma dd {x y z : Int} (p : x + 1 = y) (q : y + 1 = z) (u : cochainD A x)
+      : transport (\lam w => LinearMap (cochainD A y) (cochainD A w)) q (d0 y) (transport (\lam w => LinearMap (cochainD A x) (cochainD A w)) p (d0 x) u)
+        = AddPointed.zro {cochainD A z} \elim y, z, p, q
+      | _, _, idp, idp => dd0 x u
+  }
+
+\func cochainFilt.{u} {R : Ring.{u}} (A : FilteredLCochainComplex.{u} R) : FilteredDiff (cochainDiff A) \cowith
+  | F => cF
+  | F-d => cF-d
+  | F-mono h => cF-mono h
+  \where {
+    \func cF (a y : Int) : SubLModule R (cochainD A y) \elim y
+      | pos n => LFiltration.LF {FilteredLCochainComplex.lfilt A n} (toNat a)
+      | neg (suc n) => topSubLModule _
+
+    \lemma cF-d {a x y : Int} (q : x + 1 = y) {u : cochainD A x} (h : cF a x u) : cF a y (DiffModule.d {cochainDiff A} q u) \elim x, y, q
+      | pos n, _, idp => A.delta-F h
+      | neg (suc n), _, idp => SubAddMonoid.contains_zro {cF a (neg (suc n) + 1)}
+
+    \lemma cF-mono {a b : Int} (h : a <= b) {y : Int} {u : cochainD A y} (f : cF b y u) : cF a y u \elim y
+      | pos n => Filtration.mono {A.filt n} (toNat.monotone h) f
+      | neg (suc n) => ()
+
+    \lemma bottom (h : \Pi {n : Nat} (x : A.D n) -> (A.filt n).F 0 x) {y : Int} (u : cochainD A y) : cF 0 y u \elim y
+      | pos n => h u
+      | neg (suc n) => ()
+  }
+
+\func cochainPairing.{u} {R : Ring.{u}} (A : LDGA.{u} R) : DiffPairing (cochainDiff A) (cochainDiff A) (cochainDiff A) \cowith
+  | mul => mulr
+  | sgn => sgn
+  | sgn-sq => sgn-sq
+  | leibniz => leib
+  \where {
+    \func mul0 (x y : Int) : BilinearMap (cochainD A x) (cochainD A y) (cochainD A (x + y)) \elim x, y
+      | pos n, pos m => LGradedPairing.bilinear {LCochainPairing.graded {LDGA.lpairing A}} n m
+      | pos n, neg (suc m) => BilinearMap.zero {R} {cochainD A (pos n)} {cochainD A (neg (suc m))} {cochainD A (pos n + neg (suc m))}
+      | neg (suc n), y => BilinearMap.zero {R} {cochainD A (neg (suc n))} {cochainD A y} {cochainD A (neg (suc n) + y)}
+
+    \func mulr {x y z : Int} (p : x + y = z) : BilinearMap (cochainD A x) (cochainD A y) (cochainD A z)
+      => transport (\lam w => BilinearMap (cochainD A x) (cochainD A y) (cochainD A w)) p (mul0 x y)
+
+    \func sgn (x : Int) : R \elim x
+      | pos n => signed n 1
+      | neg _ => 1
+
+    \lemma sgn-sq (x : Int) : sgn x * sgn x = 1 \elim x
+      | pos n => signed.sq n
+      | neg _ => ide-left
+
+    \lemma tr-app {x y w w' : Int} (e : w = w') (f : BilinearMap (cochainD A x) (cochainD A y) (cochainD A w)) (s : cochainD A x) (t : cochainD A y)
+      : transport (\lam v => BilinearMap (cochainD A x) (cochainD A y) (cochainD A v)) e f s t = transport (\lam k => cochainD A k) e (f s t) \elim w', e
+      | _, idp => idp
+
+    \lemma tr-loop {x y w : Int} (e : w = w) (f : BilinearMap (cochainD A x) (cochainD A y) (cochainD A w))
+      : transport (\lam v => BilinearMap (cochainD A x) (cochainD A y) (cochainD A v)) e f = f
+      => pmap (\lam e' => transport (\lam v => BilinearMap (cochainD A x) (cochainD A y) (cochainD A v)) e' f) (prop-pi {w = w} {e} {idp})
+
+    \lemma tr-loop-app {x y w : Int} (e : w = w) (f : BilinearMap (cochainD A x) (cochainD A y) (cochainD A w)) (s : cochainD A x) (t : cochainD A y)
+      : transport (\lam v => BilinearMap (cochainD A x) (cochainD A y) (cochainD A v)) e f s t = f s t
+      => pmap (\lam (g : BilinearMap (cochainD A x) (cochainD A y) (cochainD A w)) => g s t) (tr-loop e f)
+
+    \lemma tr-pos {n m : Nat} (e : n = m) (v : A.D n) : transport (\lam k => cochainD A k) (pmap pos e) v = transport (\lam k => A.D k) e v \elim m, e
+      | _, idp => idp
+
+    \lemma tr-nat {n m : Nat} (e : n = m) (e' : pos n = pos m) (v : A.D n) : transport (\lam k => cochainD A k) e' v = transport (\lam k => A.D k) e v
+      => pmap (\lam t => transport (\lam k => cochainD A k) t v) (prop-pi {pos n = pos m} {e'} {pmap pos e}) *> tr-pos e v
+
+    \func d0 (x : Int) => cochainDiff.d0 {R} {A} x
+
+    \lemma leib-zl {x y : Int} (q1 : x + 1 + y = x + y + 1) (q2 : x + (y + 1) = x + y + 1) {a : cochainD A x} (h : a = AddPointed.zro {cochainD A x})
+                   (b : cochainD A y)
+      : d0 (x + y) (mul0 x y a b) = (+) {cochainD A (x + y + 1)} (mulr q1 (d0 x a) b) ((*c) {cochainD A (x + y + 1)} (sgn x) (mulr q2 a (d0 y b)))
+      => pmap (\lam a' => d0 (x + y) (mul0 x y a' b)) h *> pmap (d0 (x + y)) (BilinearMap.zro-left (mul0 x y)) *> AddMonoidHom.func-zro {d0 (x + y)}
+         *> inv (pmap2 ((+) {cochainD A (x + y + 1)})
+                       (pmap (\lam a' => mulr q1 (d0 x a') b) h *> pmap (mulr q1 __ b) (AddMonoidHom.func-zro {d0 x}) *> BilinearMap.zro-left (mulr q1))
+                       (pmap (\lam a' => (*c) {cochainD A (x + y + 1)} (sgn x) (mulr q2 a' (d0 y b))) h
+                         *> pmap ((*c) {cochainD A (x + y + 1)} (sgn x)) (BilinearMap.zro-left (mulr q2)) *> LModule.*c_zro-right)
+                 *> zro-left)
+
+    \lemma leib-zr {x y : Int} (q1 : x + 1 + y = x + y + 1) (q2 : x + (y + 1) = x + y + 1) (a : cochainD A x) {b : cochainD A y}
+                   (h : b = AddPointed.zro {cochainD A y})
+      : d0 (x + y) (mul0 x y a b) = (+) {cochainD A (x + y + 1)} (mulr q1 (d0 x a) b) ((*c) {cochainD A (x + y + 1)} (sgn x) (mulr q2 a (d0 y b)))
+      => pmap (\lam b' => d0 (x + y) (mul0 x y a b')) h *> pmap (d0 (x + y)) (BilinearMap.zro-right (mul0 x y)) *> AddMonoidHom.func-zro {d0 (x + y)}
+         *> inv (pmap2 ((+) {cochainD A (x + y + 1)})
+                       (pmap (mulr q1 (d0 x a)) h *> BilinearMap.zro-right (mulr q1))
+                       (pmap (\lam b' => (*c) {cochainD A (x + y + 1)} (sgn x) (mulr q2 a (d0 y b'))) h
+                         *> pmap (\lam t => (*c) {cochainD A (x + y + 1)} (sgn x) (mulr q2 a t)) (AddMonoidHom.func-zro {d0 y})
+                         *> pmap ((*c) {cochainD A (x + y + 1)} (sgn x)) (BilinearMap.zro-right (mulr q2)) *> LModule.*c_zro-right)
+                 *> zro-left)
+
+    \lemma leib0 {x y : Int} (q1 : x + 1 + y = x + y + 1) (q2 : x + (y + 1) = x + y + 1) (a : cochainD A x) (b : cochainD A y)
+      : d0 (x + y) (mul0 x y a b) = (+) {cochainD A (x + y + 1)} (mulr q1 (d0 x a) b) ((*c) {cochainD A (x + y + 1)} (sgn x) (mulr q2 a (d0 y b)))
+      \elim x, y
+      | pos n, pos m => A.delta-mul n m a b
+          *> pmap2 (+) (inv (tr-loop-app {R} {A} {pos (suc n)} {pos m} q1 (mul0 (pos (suc n)) (pos m)) (A.delta n a) b))
+                       (inv (signed.ide-*c n _) *> inv (pmap (signed n 1 *c) (tr-loop-app {R} {A} {pos n} {pos (suc m)} q2 (mul0 (pos n) (pos (suc m))) a (A.delta m b))))
+      | pos n, neg (suc m) => leib-zr {R} {A} {pos n} {neg (suc m)} q1 q2 a (cochainD.zero-neg {R} {A} {m} b)
+      | neg (suc n), y => leib-zl {R} {A} {neg (suc n)} {y} q1 q2 (cochainD.zero-neg {R} {A} {n} a) b
+
+    \lemma leib {x y z x' y' z' : Int} (p : x + y = z) (q : z + 1 = z') (r1 : x + 1 = x') (q1 : x' + y = z') (r2 : y + 1 = y') (q2 : x + y' = z')
+                (a : cochainD A x) (b : cochainD A y)
+      : DiffModule.d {cochainDiff A} q (mulr p a b)
+        = (+) {cochainD A z'} (mulr q1 (DiffModule.d {cochainDiff A} r1 a) b) ((*c) {cochainD A z'} (sgn x) (mulr q2 a (DiffModule.d {cochainDiff A} r2 b)))
+      \elim z, x', y', z', p, q, r1, r2
+      | _, _, _, _, idp, idp, idp, idp => leib0 q1 q2 a b
+  }
+
+\func cochainFiltPairing.{u} {R : Ring.{u}} (A : FilteredLDGA.{u} R)
+  : FilteredPairing (cochainPairing A) (cochainFilt A) (cochainFilt A) (cochainFilt A) \cowith
+  | F-mul => fmul
+  \where {
+    \open cochainPairing (mul0, mulr)
+    \open cochainFilt (cF)
+
+    \lemma fmul0 {a b x y : Int} {s : cochainD A x} {t : cochainD A y} (hs : cF a x s) (ht : cF b y t) : cF (a + b) (x + y) (mul0 x y s t) \elim x, y
+      | pos n, pos m => Filtration.mono {A.filt (n Nat.+ m)} (toNat.subadditive a b) (A.filt-mul hs ht)
+      | pos n, neg (suc m) => transportInv (cF (a + b) (pos n + neg (suc m))) (pmap (mul0 (pos n) (neg (suc m)) s) (cochainD.zero-neg {R} {A} {m} t)
+                                *> BilinearMap.zro-right (mul0 (pos n) (neg (suc m))) {s}) (SubAddMonoid.contains_zro {cF (a + b) (pos n + neg (suc m))})
+      | neg (suc n), y => transportInv (cF (a + b) (neg (suc n) + y)) (pmap (mul0 (neg (suc n)) y __ t) (cochainD.zero-neg {R} {A} {n} s)
+                            *> BilinearMap.zro-left (mul0 (neg (suc n)) y) {t}) (SubAddMonoid.contains_zro {cF (a + b) (neg (suc n) + y)})
+
+    \lemma fmul {a b x y z : Int} (p : x + y = z) {s : cochainD A x} {t : cochainD A y} (hs : cF a x s) (ht : cF b y t) : cF (a + b) z (mulr p s t) \elim z, p
+      | _, idp => fmul0 hs ht
+  }
+
+\func cochainAlgebra.{u} {R : Ring.{u}} (A : FilteredLDGA.{u} R) : FilteredAlgebra.{u} \cowith
+  | R => R
+  | G => IntRing
+  | deg => 1
+  | X => cochainDiff A
+  | P => cochainPairing A
+  | FX => cochainFilt A
+  | F-mul => cochainFiltPairing.fmul
+  | one => A.one
+  | one-cycle => A.one-cocycle
+  | one-F => A.filt-one
+  | one-left => one-l
+  | one-right => one-r
+  | mul-assoc => assoc
+  \where {
+    \open cochainPairing (mul0, mulr, tr-app, tr-loop-app, tr-nat)
+
+    \lemma one-l {y : Int} (p : 0 + y = y) (b : cochainD A y) : mulr p A.one b = b \elim y
+      | pos m => tr-loop-app {R} {A} {0} {pos m} p (mul0 0 (pos m)) A.one b *> A.one-left m b
+      | neg (suc m) => pmap (mulr {R} {A} {0} {neg (suc m)} p A.one) (cochainD.zero-neg {R} {A} {m} b)
+          *> BilinearMap.zro-right (mulr {R} {A} {0} {neg (suc m)} p) *> inv (cochainD.zero-neg {R} {A} {m} b)
+
+    \lemma one-r {x : Int} (p : x + 0 = x) (a : cochainD A x) : mulr p a A.one = a \elim x
+      | pos n => tr-loop-app {R} {A} {pos n} {0} p (mul0 (pos n) 0) a A.one *> A.one-right n a
+      | neg (suc n) => pmap (mulr {R} {A} {neg (suc n)} {0} p __ A.one) (cochainD.zero-neg {R} {A} {n} a)
+          *> BilinearMap.zro-left (mulr {R} {A} {neg (suc n)} {0} p) *> inv (cochainD.zero-neg {R} {A} {n} a)
+
+    \lemma assoc0 {x y z : Int} (p4 : x + (y + z) = x + y + z) (a : cochainD A x) (b : cochainD A y) (c : cochainD A z)
+      : mul0 (x + y) z (mul0 x y a b) c = mulr p4 a (mul0 y z b c) \elim x, y, z
+      | pos n, pos m, pos k => A.mul-assoc n m k a b c *> inv (tr-nat (inv NatSemiring.+-assoc) p4 _) *> inv (tr-app {R} {A} {pos n} {pos (m Nat.+ k)} p4 (mul0 (pos n) (pos (m Nat.+ k))) a _)
+      | neg (suc n), y, z => pmap (\lam a' => mul0 (neg (suc n) + y) z (mul0 (neg (suc n)) y a' b) c) (cochainD.zero-neg {R} {A} {n} a)
+          *> pmap (mul0 (neg (suc n) + y) z __ c) (BilinearMap.zro-left (mul0 (neg (suc n)) y) {b}) *> BilinearMap.zro-left (mul0 (neg (suc n) + y) z) {c}
+          *> inv (pmap (mulr {R} {A} {neg (suc n)} {y + z} p4 __ (mul0 y z b c)) (cochainD.zero-neg {R} {A} {n} a)
+                  *> BilinearMap.zro-left (mulr {R} {A} {neg (suc n)} {y + z} p4))
+      | pos n, neg (suc m), z => pmap (\lam b' => mul0 (pos n + neg (suc m)) z (mul0 (pos n) (neg (suc m)) a b') c) (cochainD.zero-neg {R} {A} {m} b)
+          *> pmap (mul0 (pos n + neg (suc m)) z __ c) (BilinearMap.zro-right (mul0 (pos n) (neg (suc m))) {a}) *> BilinearMap.zro-left (mul0 (pos n + neg (suc m)) z) {c}
+          *> inv (pmap (\lam b' => mulr {R} {A} {pos n} {neg (suc m) + z} p4 a (mul0 (neg (suc m)) z b' c)) (cochainD.zero-neg {R} {A} {m} b)
+                  *> pmap (mulr {R} {A} {pos n} {neg (suc m) + z} p4 a) (BilinearMap.zro-left (mul0 (neg (suc m)) z) {c})
+                  *> BilinearMap.zro-right (mulr {R} {A} {pos n} {neg (suc m) + z} p4))
+      | pos n, pos m, neg (suc k) => pmap (mul0 (pos (n Nat.+ m)) (neg (suc k)) (mul0 (pos n) (pos m) a b)) (cochainD.zero-neg {R} {A} {k} c)
+          *> BilinearMap.zro-right (mul0 (pos (n Nat.+ m)) (neg (suc k))) {mul0 (pos n) (pos m) a b}
+          *> inv (pmap (\lam c' => mulr {R} {A} {pos n} {pos m + neg (suc k)} p4 a (mul0 (pos m) (neg (suc k)) b c')) (cochainD.zero-neg {R} {A} {k} c)
+                  *> pmap (mulr {R} {A} {pos n} {pos m + neg (suc k)} p4 a) (BilinearMap.zro-right (mul0 (pos m) (neg (suc k))) {b})
+                  *> BilinearMap.zro-right (mulr {R} {A} {pos n} {pos m + neg (suc k)} p4))
+
+    \lemma assoc {x y z u v w : Int} (p1 : x + y = u) (p2 : u + z = v) (p3 : y + z = w) (p4 : x + w = v) (a : cochainD A x) (b : cochainD A y) (c : cochainD A z)
+      : mulr p2 (mulr p1 a b) c = mulr p4 a (mulr p3 b c) \elim u, v, w, p1, p2, p3
+      | _, _, _, idp, idp, idp => assoc0 p4 a b c
+  }
+
+\func cochainCommAlgebra.{u} {R : Ring.{u}} (A : FilteredLCDGA.{u} R) : FilteredCommAlgebra.{u} \cowith
+  | FilteredAlgebra => cochainAlgebra A
+  | csgn => csgn
+  | mul-comm => comm
+  \where {
+    \open cochainPairing (mul0, mulr, tr-app, tr-nat)
+
+    \func csgn (x y : Int) : R \elim x, y
+      | pos n, pos m => signed (m Nat.* n) 1
+      | pos n, neg (suc m) => 1
+      | neg (suc n), y => 1
+
+    \lemma comm0 {x y : Int} (p' : y + x = x + y) (a : cochainD A x) (b : cochainD A y)
+      : mul0 x y a b = (*c) {cochainD A (x + y)} (csgn x y) (mulr p' b a) \elim x, y
+      | pos n, pos m => A.koszul n m a b *> inv (signed.ide-*c (m Nat.* n) _)
+          *> pmap (signed (m Nat.* n) 1 *c) (inv (tr-nat NatSemiring.+-comm p' _) *> inv (tr-app {R} {A} {pos m} {pos n} p' (mul0 (pos m) (pos n)) b a))
+      | pos n, neg (suc m) => pmap (mul0 (pos n) (neg (suc m)) a) (cochainD.zero-neg {R} {A} {m} b) *> BilinearMap.zro-right (mul0 (pos n) (neg (suc m))) {a}
+          *> inv (pmap (\lam b' => (*c) {cochainD A (pos n + neg (suc m))} 1 (mulr {R} {A} {neg (suc m)} {pos n} p' b' a)) (cochainD.zero-neg {R} {A} {m} b)
+                  *> pmap ((*c) {cochainD A (pos n + neg (suc m))} 1) (BilinearMap.zro-left (mulr {R} {A} {neg (suc m)} {pos n} p')) *> LModule.*c_zro-right)
+      | neg (suc n), y => pmap (mul0 (neg (suc n)) y __ b) (cochainD.zero-neg {R} {A} {n} a) *> BilinearMap.zro-left (mul0 (neg (suc n)) y) {b}
+          *> inv (pmap (\lam a' => (*c) {cochainD A (neg (suc n) + y)} 1 (mulr {R} {A} {y} {neg (suc n)} p' b a')) (cochainD.zero-neg {R} {A} {n} a)
+                  *> pmap ((*c) {cochainD A (neg (suc n) + y)} 1) (BilinearMap.zro-right (mulr {R} {A} {y} {neg (suc n)} p')) *> LModule.*c_zro-right)
+
+    \lemma comm {x y z : Int} (p : x + y = z) (p' : y + x = z) (a : cochainD A x) (b : cochainD A y)
+      : mulr p a b = (*c) {cochainD A z} (csgn x y) (mulr p' b a) \elim z, p
+      | _, idp => comm0 p' a b
+  }

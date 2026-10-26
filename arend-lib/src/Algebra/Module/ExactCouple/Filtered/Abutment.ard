@@ -1,0 +1,65 @@
+\import Algebra.Group
+\import Algebra.Group.Product
+\import Algebra.Meta
+\import Algebra.Module
+\import Algebra.Module.Differential
+\import Algebra.Module.Differential.Filtered
+\import Algebra.Module.Differential.Filtered.Product
+\import Algebra.Module.Differential.LongExact (DiffMap)
+\import Algebra.Module.ExactCouple
+\import Algebra.Module.ExactCouple.Convergence
+\import Algebra.Module.ExactCouple.Filtered
+\import Algebra.Module.ExactCouple.Filtered.Page
+\import Algebra.Module.Filtration
+\import Algebra.Module.GradedComplex
+\import Algebra.Module.LinearMap
+\import Algebra.Module.ModuleIso
+\import Algebra.Monoid
+\import Algebra.Pointed
+\import Algebra.Ring
+\import Arith.Int
+\import Logic
+\import Order.LinearOrder
+\import Order.PartialOrder
+\import Paths
+\import Paths.Meta
+\import Relation.Equivalence
+\open AddMonoid (*n)
+
+\lemma filteredStable.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {x0 : Bi G}
+                          (lo : \Pi {y : G} (u : X.D y) -> FX.F x0.1 y u) : LeftStable (filteredCouple FX) x0
+  => \lam _ {x} {y} q p _ it => FilteredDiff.whom-inj-full FX (filteredCouple.le-i p) (\lam {_} {u} _ => FX.F-mono (below q) (lo u)) (filteredCouple.deg-i p)
+                                  (it *> inv (FX.whom {x.1} {y.1} {inf} {inf} (filteredCouple.le-i p) () (filteredCouple.deg-i p)).func-zro)
+  \where
+    \lemma below {G : AbGroup} {x0 x : Bi G} {l : Nat} (q : (+) {Bi G} x0 ((*n) {Bi G} l (neg 1, 0)) = x) : x.1 <= x0.1 \elim x, q
+      | _, idp => transportInv (`<= x0.1) (pmap (\lam (t : Bi G) => x0.1 + t.1) (Bi.ndi l)) (linarith : x0.1 + neg l <= x0.1)
+
+\lemma filteredTop.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) {x0 : Bi G} {N : Nat}
+                       (hi : \Pi {u : X.D x0.2} -> FX.F (x0.1 + N) x0.2 u -> u = 0)
+                       (t : Couple.D {filteredCouple FX} ((-) {Bi G} x0 ((*n) {Bi G} N (neg 1, 0)))) : t = 0
+  => FX.H-vanish (shift (inv (pmap (\lam (s : Bi G) => x0.1 - s.1) (Bi.ndi N) *> (linarith : x0.1 - neg N = x0.1 + N)))
+                        (inv (pmap (\lam (s : Bi G) => x0.2 - s.2) (Bi.ndi N) *> AddGroup.minus_zro))) t
+  \where
+    \lemma shift {b : Int} {y : G} (eb : x0.1 + N = b) (ey : x0.2 = y) {u : X.D y} : FX.F b y u -> u = 0 \elim b, y, eb, ey
+      | _, _, idp, idp => hi
+
+\func filteredAbutment.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) (x0 : Bi G)
+                           (lo : \Pi {y : G} (u : X.D y) -> FX.F x0.1 y u)
+  : ModuleIso {R} {LHomology X x0.2} {Couple.D {filteredCouple FX} x0} (DiffMap.hom {R} {G} {deg} {X} {FX.Win x0.1 inf} (FilteredDiff.embed FX x0.1 lo) x0.2)
+  => FilteredDiff.embed-iso FX x0.1 lo x0.2
+
+\lemma filteredConvergence.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X : DiffModule.{u} G deg R} (FX : FilteredDiff X) (x0 : Bi G)
+                               (lo : \Pi {y : G} (u : X.D y) -> FX.F x0.1 y u) (k : Nat)
+  : ModuleIso {R} {LFiltration.lgr {filtration (filteredCouple FX) x0} k}
+              {Einf (filteredCouple FX) (idp {Bi G} {(+) {Bi G} ((-) {Bi G} x0 ((*n) {Bi G} k (neg 1, 0))) (0, 0)})} (convergence (filteredCouple FX) x0 k)
+  => convergence.iso {filteredCouple FX} {x0} {k} (filteredStable FX lo)
+
+\lemma filteredAbutment-mul.{u} {R : Ring.{u}} {G : AbGroup.{u}} {deg : G} {X Y Z : DiffModule.{u} G deg R} {P : DiffPairing X Y Z}
+                                {FX : FilteredDiff X} {FY : FilteredDiff Y} {FZ : FilteredDiff Z} (FP : FilteredPairing P FX FY FZ) {x0 y0 z0 : Bi G}
+                                (p0 : (+) {Bi G} ((+) {Bi G} x0 y0) (0, 0) = z0)
+                                (lx : \Pi {y : G} (u : X.D y) -> FX.F x0.1 y u) (ly : \Pi {y : G} (u : Y.D y) -> FY.F y0.1 y u)
+                                (lz : \Pi {y : G} (u : Z.D y) -> FZ.F z0.1 y u) (a : LHomology X x0.2) (b : LHomology Y y0.2)
+  : DiffMap.hom {R} {G} {deg} {Z} {FZ.Win z0.1 inf} (FilteredDiff.embed FZ z0.1 lz) z0.2 (P.homologyPairing (filteredTail.t-deg p0) a b)
+    = TailPairing.tmul {filteredTail FP} p0 (DiffMap.hom {R} {G} {deg} {X} {FX.Win x0.1 inf} (FilteredDiff.embed FX x0.1 lx) x0.2 a)
+                                            (DiffMap.hom {R} {G} {deg} {Y} {FY.Win y0.1 inf} (FilteredDiff.embed FY y0.1 ly) y0.2 b) \elim a, b
+  | in~ a, in~ b => pmap in~ (ext (pmap in~ (ext idp)))

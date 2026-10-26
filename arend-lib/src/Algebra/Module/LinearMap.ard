@@ -58,6 +58,11 @@
     | func-+ => idp
     | func-*c => idp
 
+  \protected \func zero {R : Ring} {U V : LModule R} : LinearMap U V \cowith
+    | func _ => 0
+    | func-+ => inv zro-left
+    | func-*c => inv LModule.*c_zro-right
+
   \protected \func \fixl 8 compose \alias \infixl 8 ∘ {R : Ring} {U V W : LModule R} (g : LinearMap V W) (f : LinearMap U V) : LinearMap U W \cowith
     | func a => g (f a)
     | func-+ => pmap g func-+ *> func-+
