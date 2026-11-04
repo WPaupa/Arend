@@ -1,0 +1,97 @@
+\import Equiv
+\import Homotopy.Pointed
+\import Paths
+
+\open ->* (∘*)
+
+\func represent {P Q : Pointed} {MP MQ : \Type} (LP : QEquiv {P ->* P} {MP}) (LQ : QEquiv {P ->* Q} {MQ})
+                (RP : QEquiv {Q ->* P} {MP}) (RQ : QEquiv {Q ->* Q} {MQ}) (mP : (Q ->* P) -> MQ -> MP) (mQ : (P ->* Q) -> MP -> MQ)
+                (lP : \Pi (k : Q ->* P) (g : P ->* Q) -> LP (k ∘* g) = mP k (LQ g)) (lQ : \Pi (k : P ->* Q) (g : P ->* P) -> LQ (k ∘* g) = mQ k (LP g))
+                (rP : \Pi (k : Q ->* P) (g : Q ->* Q) -> RP (k ∘* g) = mP k (RQ g)) (rQ : \Pi (k : P ->* Q) (g : Q ->* P) -> RQ (k ∘* g) = mQ k (RP g))
+  : PointedEquiv P Q
+  => PointedEquiv.fromInverse (retAt LQ (RQ ->*.id)) (retAt RP (LP ->*.id))
+       (inverse LP LQ RP RQ (mP (retAt RP (LP ->*.id))) (retAt.f_ret RP (LP ->*.id)) (retAt.f_ret LQ (RQ ->*.id))
+                (lP (retAt RP (LP ->*.id)) (retAt LQ (RQ ->*.id))) (rP (retAt RP (LP ->*.id)) ->*.id))
+       (inverse RQ RP LQ LP (mQ (retAt LQ (RQ ->*.id))) (retAt.f_ret LQ (RQ ->*.id)) (retAt.f_ret RP (LP ->*.id))
+                (rQ (retAt LQ (RQ ->*.id)) (retAt RP (LP ->*.id))) (lQ (retAt LQ (RQ ->*.id)) ->*.id))
+  \where {
+    \func char {P Q : Pointed} {MP MQ : \Type} (LP : QEquiv {P ->* P} {MP}) (LQ : QEquiv {P ->* Q} {MQ})
+               (RP : QEquiv {Q ->* P} {MP}) (RQ : QEquiv {Q ->* Q} {MQ}) (mP : (Q ->* P) -> MQ -> MP) (mQ : (P ->* Q) -> MP -> MQ)
+               (lP : \Pi (k : Q ->* P) (g : P ->* Q) -> LP (k ∘* g) = mP k (LQ g)) (lQ : \Pi (k : P ->* Q) (g : P ->* P) -> LQ (k ∘* g) = mQ k (LP g))
+               (rP : \Pi (k : Q ->* P) (g : Q ->* Q) -> RP (k ∘* g) = mP k (RQ g)) (rQ : \Pi (k : P ->* Q) (g : Q ->* P) -> RQ (k ∘* g) = mQ k (RP g))
+               (g : P ->* Q) (e : LQ g = RQ ->*.id)
+      : PointedEquiv.map {represent LP LQ RP RQ mP mQ lP lQ rP rQ} = g
+      => (\peval retAt LQ (RQ ->*.id)) *> pmap LQ.ret (inv e) *> LQ.ret_f g
+
+    \func eval {P Q : Pointed} {MP MQ : \Type} (LP : QEquiv {P ->* P} {MP}) (LQ : QEquiv {P ->* Q} {MQ})
+               (RP : QEquiv {Q ->* P} {MP}) (RQ : QEquiv {Q ->* Q} {MQ}) (mP : (Q ->* P) -> MQ -> MP) (mQ : (P ->* Q) -> MP -> MQ)
+               (lP : \Pi (k : Q ->* P) (g : P ->* Q) -> LP (k ∘* g) = mP k (LQ g)) (lQ : \Pi (k : P ->* Q) (g : P ->* P) -> LQ (k ∘* g) = mQ k (LP g))
+               (rP : \Pi (k : Q ->* P) (g : Q ->* Q) -> RP (k ∘* g) = mP k (RQ g)) (rQ : \Pi (k : P ->* Q) (g : Q ->* P) -> RQ (k ∘* g) = mQ k (RP g))
+      : LQ (PointedEquiv.map {represent LP LQ RP RQ mP mQ lP lQ rP rQ}) = RQ ->*.id
+      => retAt.f_ret LQ (RQ ->*.id)
+
+    \func natural.{l} {P Q P' Q' : Pointed.{l}} {M M' : Pointed.{l} -> \Type l}
+                  (L : \Pi (T : Pointed.{l}) -> QEquiv {P ->* T} {M T}) (R : \Pi (T : Pointed.{l}) -> QEquiv {Q ->* T} {M T})
+                  (m : \Pi {T T' : Pointed.{l}} (k : T ->* T') -> M T -> M T')
+                  (Lp : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : P ->* T) -> L T' (k ∘* g) = m k (L T g))
+                  (Rp : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : Q ->* T) -> R T' (k ∘* g) = m k (R T g))
+                  (L' : \Pi (T : Pointed.{l}) -> QEquiv {P' ->* T} {M' T}) (R' : \Pi (T : Pointed.{l}) -> QEquiv {Q' ->* T} {M' T})
+                  (m' : \Pi {T T' : Pointed.{l}} (k : T ->* T') -> M' T -> M' T')
+                  (Lp' : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : P' ->* T) -> L' T' (k ∘* g) = m' k (L' T g))
+                  (Rp' : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : Q' ->* T) -> R' T' (k ∘* g) = m' k (R' T g))
+                  (a : P ->* P') (b : Q ->* Q') (phi : \Pi (T : Pointed.{l}) -> M' T -> M T)
+                  (La : \Pi (T : Pointed.{l}) (k : P' ->* T) -> L T (k ∘* a) = phi T (L' T k))
+                  (Rb : \Pi (T : Pointed.{l}) (k : Q' ->* T) -> R T (k ∘* b) = phi T (R' T k))
+      : PointedEquiv.map {representFam L' R' m' Lp' Rp'} ∘* a = b ∘* PointedEquiv.map {representFam L R m Lp Rp}
+      => QEquiv.isInj {L Q'}
+           (La Q' _ *> pmap (phi Q') (eval (L' P') (L' Q') (R' P') (R' Q') (\lam k => m' k) (\lam k => m' k) (Lp' {Q'} {P'}) (Lp' {P'} {Q'}) (Rp' {Q'} {P'}) (Rp' {P'} {Q'}))
+            *> inv (Rb Q' ->*.id) *> pmap (R Q') (inv (->*.compose-id b)) *> Rp b ->*.id
+            *> pmap (m b) (inv (eval (L P) (L Q) (R P) (R Q) (\lam k => m k) (\lam k => m k) (Lp {Q} {P}) (Lp {P} {Q}) (Rp {Q} {P}) (Rp {P} {Q})))
+            *> inv (Lp b _))
+
+    \sfunc retAt {A B : \Type} (e : QEquiv {A} {B}) (y : B) : A
+      => e.ret y
+      \where
+        \sfunc f_ret {A B : \Type} (e : QEquiv {A} {B}) (y : B) : e (retAt e y) = y
+          => pmap e (\peval retAt e y) *> e.f_ret y
+
+    \sfunc inverse {P Q : Pointed} {MP MQ : \Type} (L1 : QEquiv {P ->* P} {MP}) (L2 : QEquiv {P ->* Q} {MQ})
+                   (R1 : QEquiv {Q ->* P} {MP}) (R2 : QEquiv {Q ->* Q} {MQ}) (m : MQ -> MP) {b : Q ->* P} {t : P ->* Q}
+                   (hb : R1 b = L1 ->*.id) (ht : L2 t = R2 ->*.id)
+                   (lp : L1 (b ∘* t) = m (L2 t)) (rp : R1 (b ∘* ->*.id) = m (R2 ->*.id)) : b ∘* t = ->*.id
+      => L1.isInj (lp *> pmap m ht *> inv rp *> pmap R1 (->*.compose-id b) *> hb)
+  }
+
+\func representFam.{l} {P Q : Pointed.{l}} {M : Pointed.{l} -> \Type l}
+                       (L : \Pi (T : Pointed.{l}) -> QEquiv {P ->* T} {M T}) (R : \Pi (T : Pointed.{l}) -> QEquiv {Q ->* T} {M T})
+                       (m : \Pi {T T' : Pointed.{l}} (k : T ->* T') -> M T -> M T')
+                       (Lp : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : P ->* T) -> L T' (k ∘* g) = m k (L T g))
+                       (Rp : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : Q ->* T) -> R T' (k ∘* g) = m k (R T g))
+  : PointedEquiv P Q
+  => represent (L P) (L Q) (R P) (R Q) (\lam k => m k) (\lam k => m k) (Lp {Q} {P}) (Lp {P} {Q}) (Rp {Q} {P}) (Rp {P} {Q})
+  \where {
+    \func char.{l} {P Q : Pointed.{l}} {M : Pointed.{l} -> \Type l}
+                   (L : \Pi (T : Pointed.{l}) -> QEquiv {P ->* T} {M T}) (R : \Pi (T : Pointed.{l}) -> QEquiv {Q ->* T} {M T})
+                   (m : \Pi {T T' : Pointed.{l}} (k : T ->* T') -> M T -> M T')
+                   (Lp : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : P ->* T) -> L T' (k ∘* g) = m k (L T g))
+                   (Rp : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : Q ->* T) -> R T' (k ∘* g) = m k (R T g))
+                   (g : P ->* Q) (e : L Q g = R Q ->*.id)
+      : PointedEquiv.map {representFam L R m Lp Rp} = g
+      => represent.char (L P) (L Q) (R P) (R Q) (\lam k => m k) (\lam k => m k) (Lp {Q} {P}) (Lp {P} {Q}) (Rp {Q} {P}) (Rp {P} {Q}) g e
+
+    \func eval.{l} {P Q : Pointed.{l}} {M : Pointed.{l} -> \Type l}
+                   (L : \Pi (T : Pointed.{l}) -> QEquiv {P ->* T} {M T}) (R : \Pi (T : Pointed.{l}) -> QEquiv {Q ->* T} {M T})
+                   (m : \Pi {T T' : Pointed.{l}} (k : T ->* T') -> M T -> M T')
+                   (Lp : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : P ->* T) -> L T' (k ∘* g) = m k (L T g))
+                   (Rp : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : Q ->* T) -> R T' (k ∘* g) = m k (R T g))
+      : L Q (PointedEquiv.map {representFam L R m Lp Rp}) = R Q ->*.id
+      => represent.eval (L P) (L Q) (R P) (R Q) (\lam k => m k) (\lam k => m k) (Lp {Q} {P}) (Lp {P} {Q}) (Rp {Q} {P}) (Rp {P} {Q})
+  }
+
+\sfunc chain {A B C : Pointed} {a b c : A ->* C} {F : B ->* C} {d e : A ->* B}
+             (p : a = b) (q : b = c) (r : c = F ∘* d) (s : e = d) : a = F ∘* e
+  => p *> q *> r *> inv (pmap (->*.compose F) s)
+
+\sfunc square {X B B' C C' : Pointed} {u : X ->* B'} {v : X ->* B} {K : B ->* B'} {P : B ->* C} {P' : B' ->* C'} {K' : C ->* C'}
+              (p : u = K ∘* v) (q : P' ∘* K = K' ∘* P) : P' ∘* u = K' ∘* (P ∘* v)
+  => pmap (P' ∘*) p *> ->*.compose-assoc P' K v *> pmap (`∘* v) q *> inv (->*.compose-assoc K' P v)

@@ -2,9 +2,13 @@
 
 \import Algebra.Group.Exact
 \import Algebra.Group.GroupCat
+\import Arith.Int (isuc, toNat)
 \import Arith.Nat
 \import Category
+\import Data.Or
 \import Equiv
+\import Equiv.Fiber
+\import Equiv.Path
 \import Equiv.Sigma
 \import Homotopy.Connectivity
 \import Homotopy.EilenbergMacLane.Definition
@@ -13,6 +17,7 @@
 \import Homotopy.FiberSequence
 \import Homotopy.FiberSequence.Connectivity
 \import Homotopy.FiberSequence.Exact
+\import Homotopy.FiberSequence.Mapping
 \import Homotopy.HLevel
 \import Homotopy.HomotopyGroup
 \import Homotopy.HomotopyGroup.Connectivity
@@ -21,6 +26,7 @@
 \import Homotopy.Truncation
 \import Logic
 \import Logic.Unique
+\import Order.LinearOrder
 \import Order.PartialOrder
 \import Order.StrictOrder
 \import Paths
@@ -78,4 +84,192 @@
 
     \func fibProj-equiv {A B : \Type} {g : A -> B} {b : B} (h : isProp B) : QEquiv (\lam (t : Fib g b) => t.1)
       => contr-right \lam a => isProp=>PathContr B h (g a) b
+
+    \lemma contr.{u} {k : Nat} {X : Pointed.{u}} (h : X ofHLevel_-1+ suc k) : Contr (ConnCover k X)
+      => IsEquiv=>contrFibers (inT-isEquiv.{u} h) (inT base)
+
+    \lemma level.{u} {k m : Nat} {X : Pointed.{u}} (h : X ofHLevel_-1+ m) : ConnCover k X ofHLevel_-1+ m
+      => \case LinearOrder.dec<_<= k m \with {
+        | inl p => HLevels-sigma (\lam x => inT x = {Trunc_-1+ (suc k) X} inT base) h
+                                 (\lam x => HLevel_-1_<= k m (LinearOrder.<_<= p) (isTruncated {Trunc_-1+.level (suc k) X} (inT x) (inT base)))
+        | inr p => HLevel_-1_<= 0 m zero<=_ (toProp (isContr=>isProp (contr (HLevel_-1_<= m (suc k) (<=-transitive p id<=suc) h))))
+      }
+
+    \func postEquiv.{u} {k : Nat} {S X : Pointed.{u}} (c : isNConnectedType (suc k) S) : QEquiv {S ->* ConnCover k X} {S ->* X}
+      => liftEquiv (Trunc_-1+.unit (suc k) X) (nconnected-pointed-contr.{u} {suc k} c (isTruncated {Trunc_-1+.level (suc k) X}))
+
+    \func lift.{u} {k : Nat} {S X : Pointed.{u}} (c : isNConnectedType (suc k) S) (f : S ->* X) : S ->* ConnCover k X
+      => (postEquiv c).ret f
+      \where {
+        \func proj.{u} {k : Nat} {S X : Pointed.{u}} (c : isNConnectedType (suc k) S) (f : S ->* X)
+          : ConnCover.proj k X ->*.∘* lift c f = f
+          => (postEquiv c).f_ret f
+
+        \lemma space.{u} {k : Nat} {S X : Pointed.{u}} (c : isNConnectedType (suc k) S) (f : S ->* X)
+          : Contr (\Sigma (g : S ->* ConnCover k X) (ConnCover.proj k X ->*.∘* g = f))
+          => IsEquiv=>contrFibers (inP (postEquiv c)) f
+
+        \func pathEquiv.{u} {k : Nat} {S X : Pointed.{u}} (c : isNConnectedType (suc k) S) {g g' : S ->* ConnCover k X}
+          : QEquiv {g = g'} {ConnCover.proj k X ->*.∘* g = ConnCover.proj k X ->*.∘* g'}
+          => IsEquiv.toQEquiv (pmapIsEquiv (inP (postEquiv c)))
+
+        \func path2Equiv.{u} {k : Nat} {S X : Pointed.{u}} (c : isNConnectedType (suc k) S) {g g' : S ->* ConnCover k X} {s s' : g = g'}
+          : QEquiv {s = s'} {pmap (ConnCover.proj k X ->*.∘*) s = pmap (ConnCover.proj k X ->*.∘*) s'}
+          => IsEquiv.toQEquiv (pmapIsEquiv (inP (pathEquiv c {g} {g'})))
+
+        \func homotopy.{u} {k : Nat} {S X : Pointed.{u}} (c : isNConnectedType (suc k) S) {g g' : S ->* ConnCover k X} {f f' : S ->* X}
+                       (p : ConnCover.proj k X ->*.∘* g = f) (p' : ConnCover.proj k X ->*.∘* g' = f') (H : f = f') : g = g'
+          => (pathEquiv c).ret (p *> H *> inv p')
+
+        \func pre.{u} {k : Nat} {S S' X : Pointed.{u}} (c : isNConnectedType (suc k) S) (c' : isNConnectedType (suc k) S') (f : S ->* X) (s : S' ->* S)
+          : lift c' (f ->*.∘* s) = lift c f ->*.∘* s
+          => homotopy c' (proj c' (f ->*.∘* s)) (->*.compose-assoc (ConnCover.proj k X) (lift c f) s *> pmap (->*.∘* s) (proj c f)) idp
+      }
+
+    \func coverMap.{u} {k : Nat} {X X' : Pointed.{u}} (f : X ->* X') : ConnCover k X ->* ConnCover k X'
+      => lift (connected k X) (f ->*.∘* ConnCover.proj k X)
+      \where {
+        \func proj.{u} {k : Nat} {X X' : Pointed.{u}} (f : X ->* X') : ConnCover.proj k X' ->*.∘* coverMap f = f ->*.∘* ConnCover.proj k X
+          => lift.proj (connected k X) (f ->*.∘* ConnCover.proj k X)
+
+        \func id.{u} {k : Nat} {X : Pointed.{u}} : coverMap {k} (->*.id {X}) = ->*.id
+          => (lift.pathEquiv (connected k X) {coverMap ->*.id} { ->*.id}).ret (proj ->*.id)
+
+        \func comp.{u} {k : Nat} {X X' X'' : Pointed.{u}} (g : X' ->* X'') (f : X ->* X') : coverMap {k} (g ->*.∘* f) = coverMap g ->*.∘* coverMap f
+          => (lift.pathEquiv (connected k X)).ret
+               (proj (g ->*.∘* f) *> inv (->*.compose-assoc g f (ConnCover.proj k X)) *> pmap (g ->*.∘*) (inv (proj f))
+                *> ->*.compose-assoc g (ConnCover.proj k X') (coverMap f) *> pmap (->*.∘* coverMap f) (inv (proj g))
+                *> inv (->*.compose-assoc (ConnCover.proj k X'') (coverMap g) (coverMap f)))
+
+        \func step.{u} {k : Nat} {X X' : Pointed.{u}} (f : X ->* X') : ConnCover.step k X' ->*.∘* coverMap {suc k} f = coverMap {k} f ->*.∘* ConnCover.step k X
+          => (lift.pathEquiv {k} (nconnected-mono {suc k} id<=suc (connected (suc k) X)) {ConnCover.step k X' ->*.∘* coverMap f} {coverMap f ->*.∘* ConnCover.step k X}).ret
+               (->*.compose-assoc (ConnCover.proj k X') (ConnCover.step k X') (coverMap f) *> proj f
+                *> ->*.compose-assoc f (ConnCover.proj k X) (ConnCover.step k X) *> pmap (->*.∘* ConnCover.step k X) (inv (proj f))
+                *> inv (->*.compose-assoc (ConnCover.proj k X') (coverMap f) (ConnCover.step k X)))
+      }
+
+    \func truncLoop.{u} (k : Nat) (X : Pointed.{u}) : PointedEquiv (Loop (Trunc_-1+.pointed (suc (suc k)) X)) (Trunc_-1+.pointed (suc k) (Loop X)) \cowith
+      | map => ((Trunc_-1+.equality {suc k} base base).f, idp)
+      | map-isEquiv => inP (Trunc_-1+.equality base base)
+      \where {
+        \func unit.{u} (k : Nat) (X : Pointed.{u}) : (truncLoop k X).map ->*.∘* Loop-Func (Trunc_-1+.unit (suc (suc k)) X) = Trunc_-1+.unit (suc k) (Loop X)
+          => ->*.ext (\lam p => pmap (Trunc_-1+.equality {suc k} base base).f (idp_*> (pmap inT p)) *> inT-path p) idp
+
+        \func inT-path.{u} {n : Nat} {A : \Type u} {a a' : A} (p : a = a') : (Trunc_-1+.equality {n} a a').f (pmap inT p) = inT p \elim p
+          | idp => idp
+      }
+
+    \func loopFib {X Y : Pointed} (f : X ->* Y) : PointedEquiv (Loop (PointedFib f)) (PointedFib (Loop-Func f)) \cowith
+      | map => loopFibMap f
+      | map-isEquiv => loopFibMap.isEquiv f
+
+    \sfunc loop.{u} (k : Nat) (X : Pointed.{u}) : PointedEquiv (Loop (ConnCover (suc k) X)) (ConnCover k (Loop X))
+      => fibCongr (truncLoop.unit k X) PointedEquiv.∘~ fibEquivPost.{u} {Loop X} {Loop (Trunc_-1+.pointed (suc (suc k)) X)} {Trunc_-1+.pointed (suc k) (Loop X)}
+                                                                            (Loop-Func (Trunc_-1+.unit (suc (suc k)) X)) (truncLoop k X)
+           PointedEquiv.∘~ loopFib (Trunc_-1+.unit (suc (suc k)) X)
+      \where {
+        \func natural.{u} (k : Nat) {X X' : Pointed.{u}} (f : X ->* X')
+          : coverMap.{u} {k} {Loop X} {Loop X'} (Loop-Func f) ->*.∘* (loop.{u} k X).map = (loop.{u} k X').map ->*.∘* Loop-Func (coverMap.{u} {suc k} f)
+          => gen.{u} k f (loop.{u} k X).map (loop.{u} k X').map (loop.proj.{u} k X) (loop.proj.{u} k X')
+          \where
+            \func gen.{u} (k : Nat) {X X' : Pointed.{u}} (f : X ->* X')
+                          (L : Loop (ConnCover (suc k) X) ->* ConnCover k (Loop X)) (L' : Loop (ConnCover (suc k) X') ->* ConnCover k (Loop X'))
+                          (p : ConnCover.proj k (Loop X) ->*.∘* L = Loop-Func (ConnCover.proj (suc k) X))
+                          (p' : ConnCover.proj k (Loop X') ->*.∘* L' = Loop-Func (ConnCover.proj (suc k) X'))
+              : coverMap.{u} {k} {Loop X} {Loop X'} (Loop-Func f) ->*.∘* L = L' ->*.∘* Loop-Func (coverMap.{u} {suc k} f)
+              => (lift.pathEquiv {k} {Loop (ConnCover (suc k) X)} {Loop X'} (loop-nconnected {suc k} (ConnCover (suc k) X) (connected (suc k) X))
+                                 {coverMap.{u} {k} {Loop X} {Loop X'} (Loop-Func f) ->*.∘* L} {L' ->*.∘* Loop-Func (coverMap {suc k} f)}).ret
+                   (->*.compose-assoc (ConnCover.proj k (Loop X')) (coverMap.{u} {k} {Loop X} {Loop X'} (Loop-Func f)) L
+                    *> pmap (->*.∘* L) (coverMap.proj.{u} {k} {Loop X} {Loop X'} (Loop-Func f))
+                    *> inv (->*.compose-assoc (Loop-Func f) (ConnCover.proj k (Loop X)) L)
+                    *> pmap (Loop-Func f ->*.∘*) p
+                    *> inv (Loop-Func-comp f (ConnCover.proj (suc k) X))
+                    *> pmap Loop-Func (inv (coverMap.proj f))
+                    *> Loop-Func-comp (ConnCover.proj (suc k) X') (coverMap f)
+                    *> pmap (->*.∘* Loop-Func (coverMap f)) (inv p')
+                    *> inv (->*.compose-assoc (ConnCover.proj k (Loop X')) L' (Loop-Func (coverMap f))))
+
+        \func step.{u} (k : Nat) (X : Pointed.{u})
+          : (loop.{u} k X).map ->*.∘* Loop-Func (ConnCover.step.{u} (suc k) X) = ConnCover.step.{u} k (Loop X) ->*.∘* (loop.{u} (suc k) X).map
+          => gen.{u} k X (loop.{u} k X).map (loop.{u} (suc k) X).map (loop.proj.{u} k X) (loop.proj.{u} (suc k) X)
+          \where
+            \func gen.{u} (k : Nat) (X : Pointed.{u})
+                          (L : Loop (ConnCover (suc k) X) ->* ConnCover k (Loop X)) (L' : Loop (ConnCover (suc (suc k)) X) ->* ConnCover (suc k) (Loop X))
+                          (p : ConnCover.proj k (Loop X) ->*.∘* L = Loop-Func (ConnCover.proj (suc k) X))
+                          (p' : ConnCover.proj (suc k) (Loop X) ->*.∘* L' = Loop-Func (ConnCover.proj (suc (suc k)) X))
+              : L ->*.∘* Loop-Func (ConnCover.step (suc k) X) = ConnCover.step k (Loop X) ->*.∘* L'
+              => (lift.pathEquiv {k} {Loop (ConnCover (suc (suc k)) X)} {Loop X}
+                    (nconnected-mono {suc k} id<=suc (loop-nconnected {suc (suc k)} (ConnCover (suc (suc k)) X) (connected (suc (suc k)) X)))
+                    {L ->*.∘* Loop-Func (ConnCover.step (suc k) X)} {ConnCover.step k (Loop X) ->*.∘* L'}).ret
+                   (->*.compose-assoc (ConnCover.proj k (Loop X)) L (Loop-Func (ConnCover.step (suc k) X))
+                    *> pmap (->*.∘* Loop-Func (ConnCover.step (suc k) X)) p
+                    *> inv (Loop-Func-comp (ConnCover.proj (suc k) X) (ConnCover.step (suc k) X))
+                    *> inv p'
+                    *> inv (->*.compose-assoc (ConnCover.proj k (Loop X)) (ConnCover.step k (Loop X)) L'))
+
+        \func eval.{u} (k : Nat) (X : Pointed.{u})
+          : (loop.{u} k X).map
+            = (fibCongrMap (truncLoop.unit.{u} k X)
+                 ->*.∘* (fibEquivPost.{u} {Loop X} {Loop (Trunc_-1+.pointed (suc (suc k)) X)} {Trunc_-1+.pointed (suc k) (Loop X)}
+                                         (Loop-Func (Trunc_-1+.unit (suc (suc k)) X)) (truncLoop.{u} k X)).map)
+              ->*.∘* loopFibMap (Trunc_-1+.unit (suc (suc k)) X)
+          => pmap (\lam (e : PointedEquiv (Loop (ConnCover (suc k) X)) (ConnCover k (Loop X))) => e.map) (\peval loop.{u} k X)
+
+        \func junc.{u} (k : Nat) (X : Pointed.{u})
+          : fibProj ((truncLoop.{u} k X).map ->*.∘* Loop-Func (Trunc_-1+.unit (suc (suc k)) X))
+              ->*.∘* (fibEquivPost.{u} {Loop X} {Loop (Trunc_-1+.pointed (suc (suc k)) X)} {Trunc_-1+.pointed (suc k) (Loop X)}
+                                      (Loop-Func (Trunc_-1+.unit (suc (suc k)) X)) (truncLoop.{u} k X)).map
+            = fibProj (Loop-Func (Trunc_-1+.unit (suc (suc k)) X))
+          => idp
+
+        \func proj.{u} (k : Nat) (X : Pointed.{u}) : ConnCover.proj k (Loop X) ->*.∘* (loop.{u} k X).map = Loop-Func (ConnCover.proj (suc k) X)
+          => comb {Loop (ConnCover (suc k) X)} {PointedFib (Loop-Func (Trunc_-1+.unit (suc (suc k)) X))}
+                  {PointedFib ((truncLoop.{u} k X).map ->*.∘* Loop-Func (Trunc_-1+.unit (suc (suc k)) X))}
+                  {PointedFib (Trunc_-1+.unit (suc k) (Loop X))} {Loop X}
+                  {ConnCover.proj k (Loop X)} {(loop.{u} k X).map} {fibCongrMap (truncLoop.unit.{u} k X)}
+                  {(fibEquivPost.{u} {Loop X} {Loop (Trunc_-1+.pointed (suc (suc k)) X)} {Trunc_-1+.pointed (suc k) (Loop X)}
+                                   (Loop-Func (Trunc_-1+.unit (suc (suc k)) X)) (truncLoop.{u} k X)).map}
+                  {loopFibMap (Trunc_-1+.unit (suc (suc k)) X)}
+                  {fibProj ((truncLoop.{u} k X).map ->*.∘* Loop-Func (Trunc_-1+.unit (suc (suc k)) X))}
+                  {fibProj (Loop-Func (Trunc_-1+.unit (suc (suc k)) X))} {Loop-Func (ConnCover.proj (suc k) X)}
+                  (eval.{u} k X) (fibCongrMap.proj (truncLoop.unit.{u} k X)) (junc.{u} k X) (loopFibMap.proj (Trunc_-1+.unit (suc (suc k)) X))
+
+        \sfunc comb {A B C D E : Pointed} {pr : D ->* E} {L : A ->* D} {Cm : C ->* D} {P : B ->* C} {F : A ->* B}
+                    {p0 : C ->* E} {q : B ->* E} {r : A ->* E}
+                    (e : L = (Cm ->*.∘* P) ->*.∘* F) (h1 : pr ->*.∘* Cm = p0) (h0 : p0 ->*.∘* P = q) (h2 : q ->*.∘* F = r) : pr ->*.∘* L = r
+          => pmap (pr ->*.∘*) e *> ->*.compose-assoc pr (Cm ->*.∘* P) F
+             *> pmap (->*.∘* F) (->*.compose-assoc pr Cm P *> pmap (->*.∘* P) h1 *> h0) *> h2
+      }
+
+    \func loop0.{u} (X : Pointed.{u}) : PointedEquiv (Loop (ConnCover 0 X)) (Loop X)
+      => \new PointedEquiv {
+           | map => fibProj (Loop-Func (Trunc_-1+.unit 1 X))
+           | map-isEquiv => inP (fibProj-equiv (ToProp.fromProp (isTruncated {Trunc_-1+.level 1 X} (inT base) (inT base))))
+         } PointedEquiv.∘~ loopFib (Trunc_-1+.unit 1 X)
+  }
+
+\func Cover.{u} (c : Int) (X : Pointed.{u}) : Pointed.{u} \elim c
+  | pos k => ConnCover k X
+  | neg (suc _) => X
+  \where {
+    \func proj.{u} (c : Int) (X : Pointed.{u}) : Cover c X ->* X \elim c
+      | pos k => ConnCover.proj k X
+      | neg (suc _) => ->*.id
+
+    \lemma connected.{u} (c : Int) (X : Pointed.{u}) : isNConnectedType (toNat (isuc c)) (Cover c X) \elim c
+      | pos k => ConnCover.connected k X
+      | neg (suc _) => inhabited=>nconnected0.{u} {X} base
+
+    \func lower.{u} (X : Pointed.{u}) : PointedEquiv (PointedFib (Trunc_-1+.unit 0 X)) X \cowith
+      | map => fibProj (Trunc_-1+.unit 0 X)
+      | map-isEquiv => inP (ConnCover.fibProj-equiv (ToProp.fromProp (isTruncated {Trunc_-1+.level 0 X})))
+
+    \lemma level.{u} {c : Int} {m : Nat} {X : Pointed.{u}} (h : X ofHLevel_-1+ m) : Cover c X ofHLevel_-1+ m \elim c
+      | pos k => ConnCover.level h
+      | neg (suc _) => h
+
+    \func loop.{u} (c : Int) (X : Pointed.{u}) : PointedEquiv (Loop (Cover (isuc c) X)) (Cover c (Loop X)) \elim c
+      | pos k => ConnCover.loop k X
+      | neg (suc 0) => ConnCover.loop0 X
+      | neg (suc (suc _)) => PointedEquiv.id
   }

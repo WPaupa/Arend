@@ -195,6 +195,9 @@
           : pmap (comparison G) (ppglue {G.R1} {G.R0} {G.R2} {G.r0} {G.r2} (pinr a)) = corner02 G (G.g12 a) *> pmap pinr (ppglue a) *> inv (corner22 G (G.g32 a))
           => conjugate (eval G) (ppglue {G.R1} {G.R0} {G.R2} {G.r0} {G.r2} (pinr a))
 
+        \sfunc restrict (G : Grid) : universal.restrict G (comparison G).f = Data.unswap (universal.restrict (transpose G) (\lam y => y))
+          => pmap (universal.restrict G) (eval G) *> universal.restrict-extend G (Data.unswap (universal.restrict (transpose G) (\lam y => y)))
+
         \sfunc conjugate {A B : \Type} {e e' : A -> B} (q : e = e') {x y : A} (p : x = y) : pmap e p = pmap (__ x) q *> pmap e' p *> inv (pmap (__ y) q) \elim q
           | idp => inv (idp_*> _)
 

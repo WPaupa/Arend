@@ -2,10 +2,13 @@
 \import Data.Or
 \import Equiv
 \import Homotopy.Cofiber
+\import Homotopy.Cofiber.Corner
 \import Homotopy.Pointed
 \import Homotopy.Pushout \hiding (PushoutPointed)
 \import Homotopy.Pushout.Grid
+\import Homotopy.Smash
 \import Homotopy.Smash.Pushout
+\import Homotopy.Wedge
 \import Logic
 \import Logic.Unique
 \import Paths
@@ -77,6 +80,32 @@
     \func inc.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (t : \Sigma Y K)
       : (cofSmash f K).1 (pinl (pinr t)) = pinr ((Cof.inc f).1 t.1, t.2)
       => pmap (cols f K) (Grid.comparison.corner02 (grid f K) t)
+
+    \func inc-natural.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u})
+      : cofSmash f K ->*.∘* Cof.inc (SmashPushout.map f (->*.id {K})) = SmashPushout.map (Cof.inc f) (->*.id {K})
+      => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {\lam s => cols f K (Grid.comparison (grid f K) (pinl s))} {(SmashPushout.map (Cof.inc f) (->*.id {K})).1}
+                          (\lam b => pmap (cols f K) (Grid.comparison.corner00 (grid f K) b)) (inc f K) (inc-glue f K))
+                 (inv (idp_*> _))
+      \where {
+        \func inc-glue.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (w : Or Y K)
+          : pmap (cols f K) (Grid.comparison.corner00 (grid f K) (side Y K w)) *> pmap (SmashPushout.map (Cof.inc f) (->*.id {K})).1 (ppglue w)
+            = pmap (\lam s => cols f K (Grid.comparison (grid f K) (pinl s))) (ppglue w) *> inc f K (corner Y K w) \elim w
+          | inl y => cancel-end _ _ _ *> inv (pmap (`*> inc f K (corner Y K (inl y))) (edge f K (inl y)))
+          | inr k => cancel-end _ _ _ *> inv (pmap (`*> inc f K (corner Y K (inr k))) (edge f K (inr k)))
+
+        \func edge.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (w : Or Y K)
+          : pmap (\lam s => cols f K (Grid.comparison (grid f K) (pinl s))) (ppglue w)
+            = pmap (cols f K) (Grid.comparison.corner00 (grid f K) (side Y K w)) *> pmap (cols f K) (ppglue (pinl w))
+              *> inv (pmap (cols f K) (Grid.comparison.corner02 (grid f K) (corner Y K w)))
+          => pmap (pmap (cols f K)) (Grid.comparison.edge01 (grid f K) w) *> dist (cols f K) _ _ _
+
+        \func dist {S T : \Type} (h : S -> T) {a b c d : S} (p : a = b) (q : b = c) (r : d = c)
+          : pmap h (p *> q *> inv r) = pmap h p *> pmap h q *> inv (pmap h r) \elim c, r
+          | _, idp => pmap_*>-comm h p q
+
+        \func cancel-end {T : \Type} {a b c d : T} (p : a = b) (q : b = c) (r : d = c) : p *> q = (p *> q *> inv r) *> r \elim d, r
+          | _, idp => idp
+      }
 
     \func jTo {X Y K : \Type} (f : X -> Y)
               (z : PushoutData {Or X K} {Or Y K} {Or (\Sigma) K} (Or.map __ f (\lam k => k)) (Or.map __ (\lam _ => ()) (\lam k => k))) : Or (Cof f) K
@@ -173,4 +202,88 @@
             = idp *> pmap (\lam c => (c, k)) (pmap pinl (inv e) *> ppglue x0) \elim e
           | idp => pmap (idp *>) (lift (bTo f) (ppglue (x0, k)) *> inv (lift (\lam c => (c, k)) (ppglue x0)))
       }
+  }
+
+\sfunc cofSmashEquiv.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) : PointedEquiv (Cof.pointed (Smash.map.{u} f (->*.id {K}))) (Smash.{u} (Cof.pointed f) K)
+  => SmashPushout.toSmash.{u} (Cof.pointed f) K PointedEquiv.∘~ pushout.{u} f K PointedEquiv.∘~ PointedEquiv.inverse (model.{u} f K)
+  \where {
+    \func eval.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u})
+      : (cofSmashEquiv.{u} f K).map = ((SmashPushout.toSmash.{u} (Cof.pointed f) K).map ->*.∘* cofSmash.{u} f K) ->*.∘* (PointedEquiv.inverse (model.{u} f K)).map
+      => pmap (\lam (e : PointedEquiv (Cof.pointed (Smash.map.{u} f (->*.id {K}))) (Smash.{u} (Cof.pointed f) K)) => e.map) (\peval cofSmashEquiv.{u} f K)
+
+    \func pushout.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) : PointedEquiv (Cof.pointed (SmashPushout.map f (->*.id {K}))) (SmashPushout (Cof.pointed f) K) \cowith
+      | map => cofSmash f K
+      | map-isEquiv => cofSmash.isEquiv f K
+
+    \func model.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u})
+      : PointedEquiv (Cof.pointed (SmashPushout.map f (->*.id {K}))) (Cof.pointed (Smash.map f (->*.id {K}))) \cowith
+      | map => (congr _ _ _ _ (SmashPushout.toSmash X K).map.1 (SmashPushout.toSmash Y K).map.1 (\lam _ => ()) (square f K) (\lam _ => idp), idp)
+      | map-isEquiv => congr.isEquiv _ _ _ _ (PointedEquiv.toHAEquiv (SmashPushout.toSmash X K)) (PointedEquiv.toHAEquiv (SmashPushout.toSmash Y K)) idEquiv
+                                     (square f K) (\lam _ => idp)
+      \where
+        \func square.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) (s : SmashPushout X K)
+          : (Smash.map f (->*.id {K})).1 ((SmashPushout.toSmash X K).map.1 s) = (SmashPushout.toSmash Y K).map.1 ((SmashPushout.map f (->*.id {K})).1 s)
+          => inv (->*.happly (SmashPushout.toSmash.natural f (->*.id {K})) s)
+
+    \func inc.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u})
+      : (cofSmashEquiv f K).map ->*.∘* Cof.inc (Smash.map f (->*.id {K})) = Smash.map (Cof.inc f) (->*.id {K})
+      => PointedEquiv.epi (SmashPushout.toSmash.{u} Y K)
+           (formula {SmashPushout.{u} Y K} {Smash.{u} Y K} {Cof.pointed (SmashPushout.map.{u} f (->*.id {K}))} {Cof.pointed (Smash.map.{u} f (->*.id {K}))}
+                    {SmashPushout.{u} (Cof.pointed f) K} {Smash.{u} (Cof.pointed f) K} {(cofSmashEquiv.{u} f K).map} {SmashPushout.toSmash.{u} (Cof.pointed f) K} {cofSmash.{u} f K} {PointedEquiv.inverse (model.{u} f K)} {(model.{u} f K).map}
+                    {Cof.inc (SmashPushout.map.{u} f (->*.id {K}))} {Cof.inc (Smash.map.{u} f (->*.id {K}))} {(SmashPushout.toSmash.{u} Y K).map}
+                    {SmashPushout.map.{u} (Cof.inc f) (->*.id {K})} {Smash.map.{u} (Cof.inc f) (->*.id {K})}
+                    (eval.{u} f K) idp (PointedEquiv.inverse-ret (model.{u} f K)) (cofSmash.inc-natural.{u} f K) (SmashPushout.toSmash.natural.{u} (Cof.inc f) (->*.id {K})))
+
+    \sfunc formula {A A' P P' S B : Pointed} {E : P' ->* B} {T : PointedEquiv S B} {C : P ->* S} {Minv : PointedEquiv P' P} {M : P ->* P'}
+                   {i : A ->* P} {i' : A' ->* P'} {t : A ->* A'} {s : A ->* S} {q : A' ->* B} (hE : E = (T.map ->*.∘* C) ->*.∘* Minv.map)
+                   (hm : i' ->*.∘* t = M ->*.∘* i) (r : Minv.map ->*.∘* M = ->*.id) (hc : C ->*.∘* i = s) (ht : T.map ->*.∘* s = q ->*.∘* t)
+      : (E ->*.∘* i') ->*.∘* t = q ->*.∘* t
+      => pmap (\lam (F : P' ->* B) => (F ->*.∘* i') ->*.∘* t) hE
+         *> inv (->*.compose-assoc ((T.map ->*.∘* C) ->*.∘* Minv.map) i' t) *> pmap (((T.map ->*.∘* C) ->*.∘* Minv.map) ->*.∘*) hm
+         *> ->*.compose-assoc ((T.map ->*.∘* C) ->*.∘* Minv.map) M i
+         *> pmap (->*.∘* i) (inv (->*.compose-assoc (T.map ->*.∘* C) Minv.map M) *> pmap ((T.map ->*.∘* C) ->*.∘*) r *> ->*.compose-id (T.map ->*.∘* C))
+         *> inv (->*.compose-assoc T.map C i) *> pmap (T.map ->*.∘*) hc *> ht
+  }
+
+\func cofSmashEquivRight.{u} (K : Pointed.{u}) {X Y : Pointed.{u}} (g : X ->* Y)
+  : PointedEquiv (Cof.pointed (Smash.map.{u} (->*.id {K}) g)) (Smash.{u} K (Cof.pointed g))
+  => Smash.swap.equiv.{u} (Cof.pointed g) K PointedEquiv.∘~ cofSmashEquiv.{u} g K PointedEquiv.∘~ E.{u} K g
+  \where
+    \func inc.{u} (K : Pointed.{u}) {X Y : Pointed.{u}} (g : X ->* Y)
+      : (cofSmashEquivRight.{u} K g).map ->*.∘* Cof.inc (Smash.map.{u} (->*.id {K}) g) = Smash.map.{u} (->*.id {K}) (Cof.inc g)
+      => inv (->*.compose-assoc (Smash.swap.{u} (Cof.pointed g) K ->*.∘* (cofSmashEquiv.{u} g K).map) (E.{u} K g).map (Cof.inc (Smash.map.{u} (->*.id {K}) g)))
+         *> pmap ((Smash.swap.{u} (Cof.pointed g) K ->*.∘* (cofSmashEquiv.{u} g K).map) ->*.∘*)
+                 (Cof.equiv.inc.{u} {Smash.{u} K X} {Smash.{u} K Y} {Smash.{u} X K} {Smash.{u} Y K}
+                                    {Smash.map.{u} (->*.id {K}) g} {Smash.map.{u} g (->*.id {K})} (Smash.swap.equiv.{u} K X) (Smash.swap.equiv.{u} K Y) (\lam x => inv (->*.happly (Smash.swap.natural.{u} (->*.id {K}) g) x)))
+         *> ->*.compose-assoc (Smash.swap.{u} (Cof.pointed g) K ->*.∘* (cofSmashEquiv.{u} g K).map) (Cof.inc (Smash.map.{u} g (->*.id {K}))) (Smash.swap.{u} K Y)
+         *> pmap (->*.∘* Smash.swap.{u} K Y)
+                 (inv (->*.compose-assoc (Smash.swap.{u} (Cof.pointed g) K) (cofSmashEquiv.{u} g K).map (Cof.inc (Smash.map.{u} g (->*.id {K}))))
+                  *> pmap (Smash.swap.{u} (Cof.pointed g) K ->*.∘*) (cofSmashEquiv.inc.{u} g K)
+                  *> Smash.swap.natural.{u} (Cof.inc g) (->*.id {K}))
+         *> inv (->*.compose-assoc (Smash.map.{u} (->*.id {K}) (Cof.inc g)) (Smash.swap.{u} Y K) (Smash.swap.{u} K Y))
+         *> pmap (Smash.map.{u} (->*.id {K}) (Cof.inc g) ->*.∘*) (Smash.swap.invol.{u} {K} {Y})
+         *> ->*.compose-id (Smash.map.{u} (->*.id {K}) (Cof.inc g))
+
+    \func E.{u} (K : Pointed.{u}) {X Y : Pointed.{u}} (g : X ->* Y)
+      => Cof.equiv.{u} {Smash.{u} K X} {Smash.{u} K Y} {Smash.{u} X K} {Smash.{u} Y K}
+                       {Smash.map.{u} (->*.id {K}) g} {Smash.map.{u} g (->*.id {K})} (Smash.swap.equiv.{u} K X)
+                       (Smash.swap.equiv.{u} K Y) (\lam x => inv (->*.happly (Smash.swap.natural.{u} (->*.id {K}) g) x))
+
+\func smashCorner.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+  : PointedEquiv (Cof.pointed (cornerQuotient.corner.{u} (Smash.map.{u} (->*.id {A}) g) (Smash.map.{u} f (->*.id {B}))))
+                 (Wedge.pointed.{u} (Smash.{u} A (Cof.pointed g)) (Smash.{u} (Cof.pointed f) B))
+  => Wedge.map.equiv.{u} (cofSmashEquivRight.{u} A g) (cofSmashEquiv.{u} f B)
+       PointedEquiv.∘~ cornerQuotient.{u} (Smash.map.{u} (->*.id {A}) g) (Smash.map.{u} f (->*.id {B}))
+  \where {
+    \func branch-left.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (t : Smash.{u} A Y)
+      : (smashCorner.{u} f g).map.1 (pinl (pinl t)) = pinl ((Smash.map.{u} (->*.id {A}) (Cof.inc g)).1 t)
+      => pmap (Wedge.map.{u} (cofSmashEquivRight.{u} A g).map (cofSmashEquiv.{u} f B).map).1
+              (cornerQuotient.branch-left.{u} (Smash.map.{u} (->*.id {A}) g) (Smash.map.{u} f (->*.id {B})) t)
+         *> pmap pinl (->*.happly (cofSmashEquivRight.inc.{u} A g) t)
+
+    \func branch-right.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (t : Smash.{u} X B)
+      : (smashCorner.{u} f g).map.1 (pinl (pinr t)) = pinr ((Smash.map.{u} (Cof.inc f) (->*.id {B})).1 t)
+      => pmap (Wedge.map.{u} (cofSmashEquivRight.{u} A g).map (cofSmashEquiv.{u} f B).map).1
+              (cornerQuotient.branch-right.{u} (Smash.map.{u} (->*.id {A}) g) (Smash.map.{u} f (->*.id {B})) t)
+         *> pmap pinr (->*.happly (cofSmashEquiv.inc.{u} f B) t)
   }

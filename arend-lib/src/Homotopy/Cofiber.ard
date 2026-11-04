@@ -1,5 +1,6 @@
 \import Data.Maybe
 \import Equiv
+\import Equiv.Path
 \import Homotopy.Pointed
 \import Homotopy.Pushout \hiding (PushoutPointed)
 \import Homotopy.Suspension
@@ -33,6 +34,58 @@
       : extend g h ∘* inc f = g
       => ->*.ext (\lam _ => idp) idp
 
+    \func restrict {X Y Z : Pointed} {f : X ->* Y} (g : pointed f ->* Z) : CofCocone f Z
+      => (\lam y => g.1 (pinl y), g.2, \lam x => axis g (ppglue x), cancel (pmap g.1 (ppglue base)) (pmap (\lam y => g.1 (pinl y)) f.2 *> g.2))
+      \where {
+        \func axis {X Y Z : Pointed} {f : X ->* Y} (g : pointed f ->* Z) {y : Y} (q : pinl y = {Cof f.1} pinr ()) : g.1 (pinl y) = base
+          => pmap g.1 q *> inv (pmap g.1 (ppglue base)) *> pmap (\lam y => g.1 (pinl y)) f.2 *> g.2
+
+        \func cancel {A : \Type} {a c w : A} (P : a = c) (W : a = w) : P *> inv P *> W = W \elim c, w, P, W
+          | _, _, idp, idp => idp
+      }
+
+    \func mapsOut {X Y Z : Pointed} {f : X ->* Y} : QEquiv {pointed f ->* Z} {CofCocone f Z} \cowith
+      | f => restrict
+      | ret d => extend (d.1, d.2) d.3
+      | ret_f g => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(extend {X} {Y} {Z} {f} ((restrict g).1, (restrict g).2) (restrict g).3).1} {g.1}
+                                     (\lam _ => idp) (\lam _ => inv g.2 *> inv (pmap (\lam y => g.1 (pinl y)) f.2) *> pmap g.1 (ppglue base))
+                                     (\lam x => square (pmap g.1 (ppglue x)) (pmap g.1 (ppglue base)) (pmap (\lam y => g.1 (pinl y)) f.2) g.2))
+                           (idp_*> g.2)
+      | f_sec d => pmap (\lam (p : \Sigma (u : base = {Z} base) (d.3 base *> u = pmap d.1 f.2 *> d.2)) => ((d.1, d.2, \lam x => d.3 x *> p.1, p.2) : CofCocone f Z))
+                        (contract (d.3 base) (pmap d.1 f.2 *> d.2) d.4)
+      \where {
+        \func square {A : \Type} {a b c d e : A} (Pa : a = c) (Pb : b = c) (Q : b = d) (g2 : d = e)
+          : idp *> Pa = (Pa *> inv Pb *> Q *> g2) *> (inv g2 *> inv Q *> Pb) \elim c, d, e, Pb, Q, g2
+          | _, _, _, idp, idp, idp => idp_*> Pa
+
+        \func contract {A : \Type} {a z : A} (Hb W : a = z) (c : Hb = W)
+          : ((inv Hb *> W, restrict.cancel Hb W) : \Sigma (u : z = z) (Hb *> u = W)) = (idp, c) \elim W, c
+          | _, idp => contract' Hb
+
+        \func contract' {A : \Type} {a z : A} (Hb : a = z) : ((inv Hb *> Hb, restrict.cancel Hb Hb) : \Sigma (u : z = z) (Hb *> u = Hb)) = (idp, idp) \elim z, Hb
+          | _, idp => idp
+      }
+
+    \func pathEquiv {X Y Z : Pointed} {f : X ->* Y} {g g' : pointed f ->* Z} : QEquiv {g = g'} {restrict g = restrict g'}
+      => IsEquiv.toQEquiv (pmapIsEquiv (inP mapsOut))
+
+    \func ext {X Y Z : Pointed} {f : X ->* Y} {g g' : pointed f ->* Z} (p : restrict g = restrict g') : g = g'
+      => pathEquiv.ret p
+
+    \func restrict-post {X Y Z Z' : Pointed} {f : X ->* Y} (k : Z ->* Z') (g : pointed f ->* Z) : restrict (k ∘* g) = CofCocone.post k (restrict g)
+      => CofCocone.ext3 (\lam x => axis-post k.1 (pmap g.1 (ppglue x)) (pmap g.1 (ppglue base)) (pmap (\lam y => g.1 (pinl y)) f.2) g.2 k.2)
+                        (corner-post k.1 (pmap g.1 (ppglue base)) (pmap (\lam y => g.1 (pinl y)) f.2) g.2 k.2)
+      \where {
+        \func axis-post {T E : \Type} (k : T -> E) {a b c d e : T} (Pq : a = c) (Pb : b = c) (Q : b = d) (g2 : d = e) {e' : E} (k2 : k e = e')
+          : pmap k Pq *> inv (pmap k Pb) *> pmap k Q *> (pmap k g2 *> k2) = pmap k (Pq *> inv Pb *> Q *> g2) *> k2 \elim c, d, e, Pb, Q, g2, e', k2
+          | _, _, _, idp, idp, idp, _, idp => idp
+
+        \func corner-post {T E : \Type} (k : T -> E) {b c d e : T} (P : b = c) (Q : b = d) (g2 : d = e) {e' : E} (k2 : k e = e')
+          : axis-post k P P Q g2 k2 *> CofCocone.post.corner k (restrict.cancel P (Q *> g2)) k2 = restrict.cancel (pmap k P) (pmap k Q *> (pmap k g2 *> k2))
+          \elim c, d, e, P, Q, g2, e', k2
+          | _, _, _, idp, idp, idp, _, idp => idp
+      }
+
     \func map {A B A' B' : \Type} {f : A -> B} {f' : A' -> B'} (a : A -> A') (b : B -> B') (h : \Pi (x : A) -> b (f x) = f' (a x))
                 (c : Cof f) : Cof f'
       => rec (\lam y => pinl (b y)) (\lam _ => pinr ()) (\lam x => pmap pinl (h x) *> ppglue (a x)) c
@@ -49,7 +102,25 @@
                                (h : \Pi (x : X) -> b.1 (f.1 x) = f'.1 (a.1 x)) : quotient f' ∘* map* a b h = Susp-Func a ∘* quotient f
           => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(quotient f' ∘* map* a b h).1} {(Susp-Func a ∘* quotient f).1}
                                (\lam _ => idp) (\lam _ => idp) (\lam _ => inv (pmap_*>-comm (quotient f').1 _ _))) idp
+
+        \func comp {X Y X' Y' X'' Y'' : Pointed} {f : X ->* Y} {f' : X' ->* Y'} {f'' : X'' ->* Y''} (a : X ->* X') (b : Y ->* Y')
+                   (h : \Pi (x : X) -> b.1 (f.1 x) = f'.1 (a.1 x)) (a' : X' ->* X'') (b' : Y' ->* Y'') (h' : \Pi (x : X') -> b'.1 (f'.1 x) = f''.1 (a'.1 x))
+          : map* (a' ∘* a) (b' ∘* b) (\lam x => pmap b'.1 (h x) *> h' (a.1 x)) = map* a' b' h' ∘* map* a b h
+          => ->*.ext (homotopy {_} {_} {_} {_} {_} {_} {(map* (a' ∘* a) (b' ∘* b) (\lam x => pmap b'.1 (h x) *> h' (a.1 x))).1} {(map* a' b' h' ∘* map* a b h).1}
+                               (\lam _ => idp) (\lam _ => idp)
+                               (\lam x => idp_*> _ *> pmap_*>-comm (map* a' b' h').1 (pmap pinl (h x)) (ppglue (a.1 x)) *> inv (*>-assoc _ _ _)
+                                          *> pmap (`*> ppglue (a'.1 (a.1 x))) (inv (pmap_*>-comm pinl (pmap b'.1 (h x)) (h' (a.1 x))))))
+                     (idp_*> _ *> inv (pmap_*>-comm pinl (pmap b'.1 b.2) b'.2))
       }
+
+    \func equiv.{u} {X Y X' Y' : Pointed.{u}} {f : X ->* Y} {f' : X' ->* Y'} (a : PointedEquiv X X') (b : PointedEquiv Y Y')
+                    (h : \Pi (x : X) -> f'.1 (a.map.1 x) = b.map.1 (f.1 x)) : PointedEquiv (pointed f) (pointed f') \cowith
+      | map => (PushoutData.congr f.1 (\lam _ => ()) f'.1 (\lam _ => ()) a.map.1 b.map.1 (\lam _ => ()) h (\lam _ => idp), pmap pinl b.map.2)
+      | map-isEquiv => PushoutData.congr.isEquiv.{u} _ _ _ _ (PointedEquiv.toHAEquiv a) (PointedEquiv.toHAEquiv b) idEquiv h (\lam _ => idp)
+      \where
+        \func inc.{u} {X Y X' Y' : Pointed.{u}} {f : X ->* Y} {f' : X' ->* Y'} (a : PointedEquiv X X') (b : PointedEquiv Y Y')
+                      (h : \Pi (x : X) -> f'.1 (a.map.1 x) = b.map.1 (f.1 x)) : (equiv.{u} a b h).map ∘* Cof.inc f = Cof.inc f' ∘* b.map
+          => ->*.ext (\lam _ => idp) idp
 
     \func quotient {X Y : Pointed} (f : X ->* Y) : pointed f ->* Susp.pointed X
       => (rec (\lam _ => north) (\lam _ => south) pmerid, idp)
@@ -190,4 +261,30 @@
                       *> glue-square (\lam d => pinl (just d)) pinr (\lam y => ppglue (just y)) _ _ (hg x)
                       *> inv (pmap_*>-comm (excision f' g').map.1 _ _)
       }
+  }
+
+\func CofCocone {X Y : Pointed} (f : X ->* Y) (T : Pointed)
+  => \Sigma (h : Y -> T) (h0 : h base = base) (H : \Pi (x : X) -> h (f.1 x) = base) (H base = pmap h f.2 *> h0)
+  \where {
+    \func post {X Y T T' : Pointed} {f : X ->* Y} (k : T ->* T') (d : CofCocone f T) : CofCocone f T'
+      => (\lam y => k.1 (d.1 y), pmap k.1 d.2 *> k.2, \lam x => pmap k.1 (d.3 x) *> k.2, corner k.1 d.4 k.2)
+      \where {
+        \func corner {T E : \Type} (k : T -> E) {a b e : T} {Hb : a = e} {Q : a = b} {h0 : b = e} (c : Hb = Q *> h0) {e' : E} (k2 : k e = e')
+          : pmap k Hb *> k2 = pmap k Q *> (pmap k h0 *> k2)
+          => pmap (\lam x => pmap k x *> k2) c *> dist k Q h0 k2
+
+        \func dist {T E : \Type} (k : T -> E) {a b e : T} (Q : a = b) (h0 : b = e) {e' : E} (k2 : k e = e')
+          : pmap k (Q *> h0) *> k2 = pmap k Q *> (pmap k h0 *> k2) \elim e, h0, e', k2
+          | _, idp, _, idp => idp
+      }
+
+    \func ext3 {X Y T : Pointed} {f : X ->* Y} {h : Y -> T} {h0 : h base = base} {H H' : \Pi (x : X) -> h (f.1 x) = base}
+               {c : H base = pmap h f.2 *> h0} {c' : H' base = pmap h f.2 *> h0} (P : \Pi (x : X) -> H x = H' x) (C : P base *> c' = c)
+      : ((h, h0, H, c) : CofCocone f T) = (h, h0, H', c')
+      => gen (path (\lam i x => P x @ i)) C
+      \where
+        \func gen {X Y T : Pointed} {f : X ->* Y} {h : Y -> T} {h0 : h base = base} {H H' : \Pi (x : X) -> h (f.1 x) = base}
+                  {c : H base = pmap h f.2 *> h0} {c' : H' base = pmap h f.2 *> h0} (p : H = H') (C : pmap (__ base) p *> c' = c)
+          : ((h, h0, H, c) : CofCocone f T) = (h, h0, H', c') \elim p
+          | idp => pmap (\lam e => ((h, h0, H, e) : CofCocone f T)) (inv C *> idp_*> c')
   }

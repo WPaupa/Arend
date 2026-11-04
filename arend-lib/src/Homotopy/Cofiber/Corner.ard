@@ -1,0 +1,127 @@
+\import Equiv
+\import Equiv.Sigma (sigma-equiv)
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Yoneda
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Wedge
+\import Paths
+
+\open PushoutData (ppglue, rec)
+\open ->* (∘*)
+
+\func cornerQuotient.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2)
+  : PointedEquiv (Cof.pointed (cornerQuotient.corner.{l} i1 i2)) (Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2))
+  => represent (L.{l} i1 i2 (Cof.pointed (corner.{l} i1 i2))) (L.{l} i1 i2 (Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2)))
+               (R.{l} i1 i2 (Cof.pointed (corner.{l} i1 i2))) (R.{l} i1 i2 (Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2)))
+               (\lam k => Data.post.{l} k) (\lam k => Data.post.{l} k) (L.post.{l} i1 i2) (L.post.{l} i1 i2) (R.post.{l} i1 i2) (R.post.{l} i1 i2)
+  \where {
+    \func eval.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2)
+      : L.{l} i1 i2 (Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2)) (cornerQuotient.{l} i1 i2).map
+        = R.{l} i1 i2 (Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2)) ->*.id
+      => represent.eval (L.{l} i1 i2 (Cof.pointed (corner.{l} i1 i2))) (L.{l} i1 i2 (Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2)))
+                        (R.{l} i1 i2 (Cof.pointed (corner.{l} i1 i2))) (R.{l} i1 i2 (Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2)))
+                        (\lam k => Data.post.{l} k) (\lam k => Data.post.{l} k) (L.post.{l} i1 i2) (L.post.{l} i1 i2) (R.post.{l} i1 i2) (R.post.{l} i1 i2)
+
+    \func branch-left.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) (x : P1)
+      : (cornerQuotient.{l} i1 i2).map.1 (pinl (pinl x)) = pinl (pinl x)
+      => pmap (\lam (d : Data.{l} i1 i2 (Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2))) => d.1 x) (eval.{l} i1 i2)
+
+    \func branch-right.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) (y : P2)
+      : (cornerQuotient.{l} i1 i2).map.1 (pinl (pinr y)) = pinr (pinl y)
+      => pmap (\lam (d : Data.{l} i1 i2 (Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2))) => d.2 y) (eval.{l} i1 i2)
+
+    \func total.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) : Pointed.{l}
+      => \new Pointed (PushoutData i1.1 i2.1) (pinl base)
+
+    \func corner.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) : P0 ->* total.{l} i1 i2
+      => (\lam p => pinl (i1.1 p), pmap pinl i1.2)
+
+    \func Data.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) (T : Pointed.{l})
+      => \Sigma (l : P1 -> T) (r : P2 -> T) (\Pi (p : P0) -> l (i1.1 p) = r (i2.1 p))
+                (h0 : l base = base) (H : \Pi (p : P0) -> l (i1.1 p) = base) (H base = pmap l i1.2 *> h0)
+      \where
+        \func post.{l} {P0 P1 P2 : Pointed.{l}} {i1 : P0 ->* P1} {i2 : P0 ->* P2} {T T' : Pointed.{l}} (k : T ->* T') (d : Data.{l} i1 i2 T)
+          : Data.{l} i1 i2 T'
+          => (\lam x => k.1 (d.1 x), \lam y => k.1 (d.2 y), \lam p => pmap k.1 (d.3 p), pmap k.1 d.4 *> k.2,
+              \lam p => pmap k.1 (d.5 p) *> k.2, CofCocone.post.corner k.1 d.6 k.2)
+
+    \func L.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) (T : Pointed.{l})
+      : QEquiv {Cof.pointed (corner.{l} i1 i2) ->* T} {Data.{l} i1 i2 T}
+      => transQEquiv (Cof.mapsOut {P0} {total.{l} i1 i2} {T} {corner.{l} i1 i2}) (cocone.{l} i1 i2 T)
+      \where {
+        \func cocone.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) (T : Pointed.{l})
+          : QEquiv {CofCocone (corner.{l} i1 i2) T} {Data.{l} i1 i2 T} \cowith
+          | f d => (\lam x => d.1 (pinl x), \lam y => d.1 (pinr y), \lam p => pmap d.1 (ppglue p), d.2, d.3, d.4)
+          | ret d => (rec d.1 d.2 d.3, d.4, d.5, d.6)
+          | ret_f d => path (\lam i => ((PushoutData.rec.equiv T).ret_f d.1 @ i, d.2, d.3, d.4))
+          | f_sec _ => idp
+
+        \func post.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) {T T' : Pointed.{l}} (k : T ->* T')
+                       (g : Cof.pointed (corner.{l} i1 i2) ->* T)
+          : L.{l} i1 i2 T' (k ∘* g) = Data.post.{l} k (L.{l} i1 i2 T g)
+          => pmap (cocone.{l} i1 i2 T') (Cof.restrict-post {P0} {total.{l} i1 i2} {T} {T'} {corner.{l} i1 i2} k g)
+      }
+
+    \func R.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) (T : Pointed.{l})
+      : QEquiv {Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2) ->* T} {Data.{l} i1 i2 T}
+      => Wedge.mapsOut.{l} {Cof.pointed i1} {Cof.pointed i2} {T}
+           `transQEquiv` sigma-equiv (Cof.mapsOut {P0} {P1} {T} {i1}) (\lam _ => Cof.mapsOut {P0} {P2} {T} {i2}) `transQEquiv` pair.{l} i1 i2 T
+      \where {
+        \func pair.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) (T : Pointed.{l})
+          : QEquiv {\Sigma (CofCocone i1 T) (CofCocone i2 T)} {Data.{l} i1 i2 T} \cowith
+          | f d => (d.1.1, d.2.1, \lam p => d.1.3 p *> inv (d.2.3 p), d.1.2, d.1.3, d.1.4)
+          | ret d => ((d.1, d.4, d.5, d.6), (d.2, inv (pmap d.2 i2.2) *> (inv (d.3 base) *> d.5 base), \lam p => inv (d.3 p) *> d.5 p,
+                                             unc (pmap d.2 i2.2) (inv (d.3 base) *> d.5 base)))
+          | ret_f d => path (\lam i => (d.1, null-ext (\lam p => cancel-left (d.1.3 p) (d.2.3 p))
+                                                    (unc (pmap d.2.1 i2.2) (inv (d.1.3 base *> inv (d.2.3 base)) *> d.1.3 base)) d.2.4 @ i))
+          | f_sec d => pmap (\lam G => ((d.1, d.2, G, d.4, d.5, d.6) : Data.{l} i1 i2 T)) (path (\lam i p => cancel-right (d.3 p) (d.5 p) @ i))
+
+        \func post.{l} {P0 P1 P2 : Pointed.{l}} (i1 : P0 ->* P1) (i2 : P0 ->* P2) {T T' : Pointed.{l}} (k : T ->* T')
+                       (g : Wedge.pointed.{l} (Cof.pointed i1) (Cof.pointed i2) ->* T)
+          : R.{l} i1 i2 T' (k ∘* g) = Data.post.{l} k (R.{l} i1 i2 T g)
+          => pmap (pair.{l} i1 i2 T')
+                  (path (\lam i => ((pmap Cof.restrict (inv (->*.compose-assoc k g (Wedge.left.{l} (Cof.pointed i1) (Cof.pointed i2))))
+                                     *> Cof.restrict-post k (g ∘* Wedge.left.{l} (Cof.pointed i1) (Cof.pointed i2))) @ i,
+                                    (pmap Cof.restrict (inv (->*.compose-assoc k g (Wedge.right.{l} (Cof.pointed i1) (Cof.pointed i2))))
+                                     *> Cof.restrict-post k (g ∘* Wedge.right.{l} (Cof.pointed i1) (Cof.pointed i2))) @ i)))
+             *> pair-post.{l} k (Cof.restrict (g ∘* Wedge.left.{l} (Cof.pointed i1) (Cof.pointed i2)))
+                                (Cof.restrict (g ∘* Wedge.right.{l} (Cof.pointed i1) (Cof.pointed i2)))
+
+        \func pair-post.{l} {P0 P1 P2 : Pointed.{l}} {i1 : P0 ->* P1} {i2 : P0 ->* P2} {T T' : Pointed.{l}} (k : T ->* T')
+                            (d1 : CofCocone i1 T) (d2 : CofCocone i2 T)
+          : pair.{l} i1 i2 T' (CofCocone.post k d1, CofCocone.post k d2) = Data.post.{l} k (pair.{l} i1 i2 T (d1, d2))
+          => pmap (\lam G => ((\lam x => k.1 (d1.1 x), \lam y => k.1 (d2.1 y), G, pmap k.1 d1.2 *> k.2, \lam p => pmap k.1 (d1.3 p) *> k.2,
+                              CofCocone.post.corner k.1 d1.4 k.2) : Data.{l} i1 i2 T'))
+                  (path (\lam i p => glue-post k.1 (d1.3 p) (d2.3 p) k.2 @ i))
+      }
+
+    \func null-ext {X Y T : Pointed} {f : X ->* Y} {h : Y -> T} {H H' : \Pi (x : X) -> h (f.1 x) = base} (E : \Pi (x : X) -> H x = H' x)
+                   {h0 h0' : h base = base} (c : H base = pmap h f.2 *> h0) (c' : H' base = pmap h f.2 *> h0')
+      : ((h, h0, H, c) : CofCocone f T) = (h, h0', H', c')
+      => gen (path (\lam i x => E x @ i)) c c'
+      \where {
+        \func gen {X Y T : Pointed} {f : X ->* Y} {h : Y -> T} {H H' : \Pi (x : X) -> h (f.1 x) = base} (P : H = H')
+                  {h0 h0' : h base = base} (c : H base = pmap h f.2 *> h0) (c' : H' base = pmap h f.2 *> h0')
+          : ((h, h0, H, c) : CofCocone f T) = (h, h0', H', c') \elim P
+          | idp => pmap (\lam (t : \Sigma (u : h base = base) (H base = pmap h f.2 *> u)) => ((h, t.1, H, t.2) : CofCocone f T))
+                        (contr (pmap h f.2) (H base) h0 c *> inv (contr (pmap h f.2) (H base) h0' c'))
+
+        \func contr {T : \Type} {a b e : T} (q : a = b) (w : a = e) (u : b = e) (c : w = q *> u)
+          : ((u, c) : \Sigma (u : b = e) (w = q *> u)) = (inv q *> w, unc q w) \elim b, e, q, w, u, c
+          | _, _, idp, _, idp, idp => idp
+      }
+
+    \func unc {T : \Type} {a b e : T} (q : a = b) (w : a = e) : w = q *> (inv q *> w) \elim b, e, q, w
+      | _, _, idp, idp => idp
+
+    \func cancel-left {T : \Type} {x y e : T} (a : x = e) (b : y = e) : inv (a *> inv b) *> a = b \elim x, y, a, b
+      | _, _, idp, idp => idp
+
+    \func cancel-right {T : \Type} {x y e : T} (g : x = y) (h : x = e) : h *> inv (inv g *> h) = g \elim y, e, g, h
+      | _, _, idp, idp => idp
+
+    \func glue-post {T E : \Type} (k : T -> E) {x y e : T} (a : x = e) (b : y = e) {e' : E} (k2 : k e = e')
+      : (pmap k a *> k2) *> inv (pmap k b *> k2) = pmap k (a *> inv b) \elim y, b, e', k2
+      | _, idp, _, idp => idp
+  }

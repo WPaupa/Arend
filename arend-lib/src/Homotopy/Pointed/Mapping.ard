@@ -63,6 +63,9 @@
 
     \func pre {X' X : Pointed} (s : X' ->* X) (Z : Pointed) : Map* X Z ->* Map* X' Z
       => (\lam f => f ∘* s, idp)
+      \where
+        \func id {X Z : Pointed} : pre (->*.id {X}) Z = ->*.id
+          => ->*.ext (\lam f => ->*.compose-id f) idp
 
     \func preEquiv {X' X : Pointed} (s : PointedEquiv X' X) (Z : Pointed) : PointedEquiv (Map* X Z) (Map* X' Z) \cowith
       | map => pre s.map Z
@@ -143,6 +146,12 @@
       : a = a'
       => pmap fromHom (loopExt {X} {Map* Y Z} {toHom a} {toHom a'} \lam x => pmap fromHom (loopExt {Y} {Z} {toHom (->*.happly a x)} {toHom (->*.happly a' x)} (h x)))
 
+    \sfunc ext3 {X Y Z W : Pointed} {a a' : Loop (Map* X (Map* Y (Map* Z W)))}
+               (h : \Pi (x : X) (y : Y) (z : Z) -> pmap (\lam (f : X ->* Map* Y (Map* Z W)) => ((f.1 x).1 y).1 z) a
+                                                     = pmap (\lam (f : X ->* Map* Y (Map* Z W)) => ((f.1 x).1 y).1 z) a')
+      : a = a'
+      => pmap fromHom (loopExt {X} {Map* Y (Map* Z W)} {toHom a} {toHom a'} \lam x => ext2 {Y} {Z} {W} { ->*.happly a x} { ->*.happly a' x} (h x))
+
     \func squareToPath {A : \Type} {a0 a1 b0 b1 : A} (p : a0 = a1) (q : b0 = b1) {t : a0 = b0} {b : a1 = b1}
                        (s : Path (\lam j => p @ j = q @ j) t b) : t *> q = p *> b \elim p, q
       | idp, idp => s *> inv (idp_*> b)
@@ -215,6 +224,20 @@
           : idp_*> (pmap G f2 *> g2)
             = inv (*>-assoc idp (pmap G f2) g2) *> pmap (`*> g2) (inv (pmap_*>-comm G idp f2) *> pmap (pmap G) (idp_*> f2)) \elim f2, g2
           | idp, idp => idp
+
+    \func natural (X : Pointed) {W W' : Pointed} (g : W ->* W')
+      : (mapLoop* X W').map ∘* Map*.post X (Loop-Func g) = Loop-Func (Map*.post X g) ∘* (mapLoop* X W).map
+      => natural.gen X g.1 g.2
+      \where
+        \func gen (X : Pointed) {W : Pointed} {E : \Type} (g : W -> E) {e : E} (g2 : g base = e)
+          : (mapLoop* X (Pointed.make e)).map ∘* Map*.post X (Loop-Func {W} {Pointed.make e} (g, g2))
+            = Loop-Func (Map*.post X {W} {Pointed.make e} (g, g2)) ∘* (mapLoop* X W).map \elim e, g2
+          | _, idp => ->*.ext (post (g, idp)) idp
+
+    \func natural-pre {X' X : Pointed} (W : Pointed) (g : X' ->* X)
+      : (mapLoop* X' W).map ∘* Map*.pre g (Loop W) = Loop-Func (Map*.pre g W) ∘* (mapLoop* X W).map
+      => loopExt (\lam h => ext (\lam x => inv (pmap_*>-comm (\lam (F : X' ->* W) => F.1 x) (inv idp) (pmap (\lam (F : X ->* W) => F ∘* g) (fromHom h))
+                                                *> idp_*> _)))
 
     \func post {X W W' : Pointed} (g : W ->* W') (h : X ->* Loop W)
       : fromHom (Loop-Func g ∘* h) = (Loop-Func (Map*.post X g)).1 (fromHom h)

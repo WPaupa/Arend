@@ -1,8 +1,13 @@
+\import Equiv
+\import Equiv.Path
 \import Homotopy.Cofiber
 \import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
 \import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Sphere
 \import Homotopy.Suspension
 \import Homotopy.Wedge
+\import Logic
 \import Paths
 
 \open PushoutData (ppglue)
@@ -15,8 +20,264 @@
 
     \func extend.{l} {X Y Z : Pointed.{l}} (f : \Sigma X Y -> Z) (l : \Pi (x : X) -> f (x, base) = base) (r : \Pi (y : Y) -> f (base, y) = base)
                      (c : l base = r base) : Smash X Y ->* Z
-      => Cof.extend {Wedge.pointed X Y} {PointedProduct X Y} {Z} {Wedge.toProduct X Y} (f, l base)
-           (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam z => f (wedgeToProduct X Y z)} {\lam _ => base} l r (\lam _ => c *> inv (idp_*> _)))
+      => Cof.extend {Wedge.pointed X Y} {PointedProduct X Y} {Z} {Wedge.toProduct X Y} (f, l base) (null f l r c)
+      \where
+        \func null.{l} {X Y Z : Pointed.{l}} (f : \Sigma X Y -> Z) (l : \Pi (x : X) -> f (x, base) = base) (r : \Pi (y : Y) -> f (base, y) = base)
+                       (c : l base = r base) (w : Wedge X Y) : f (wedgeToProduct X Y w) = base
+          => PushoutData.drec (\lam w => f (wedgeToProduct X Y w) = base) l r (\lam _ => c) w
+
+    \func restrict.{l} {X Y Z : Pointed.{l}} (g : Smash X Y ->* Z) : SmashCocone X Y Z
+      => (\lam t => g.1 (pinl t), \lam x => axis g (ppglue (pinl x)), \lam y => axis g (ppglue (pinr y)), pmap (axis g) (corner X Y))
+      \where {
+        \func axis.{l} {X Y Z : Pointed.{l}} (g : Smash X Y ->* Z) {t : \Sigma X Y} (q : pinl t = {Cof (wedgeToProduct X Y)} pinr ()) : g.1 (pinl t) = base
+          => pmap g.1 q *> inv (pmap g.1 (ppglue (pinl base))) *> g.2
+
+        \func corner.{l} (X Y : Pointed.{l}) : ppglue (pinl base) = {pinl (base, base) = {Cof (wedgeToProduct X Y)} pinr ()} ppglue (pinr base)
+          => path (\lam i => ppglue (pglue () i))
+      }
+
+    \func mapsOut.{l} {X Y Z : Pointed.{l}} : QEquiv {Smash X Y ->* Z} {SmashCocone X Y Z} \cowith
+      | f => restrict
+      | ret d => extend d.1 d.2 d.3 d.4
+      | ret_f => extend-restrict
+      | f_sec d => pmap (\lam (u : base = base) => ((d.1, \lam x => d.2 x *> u, \lam y => d.3 y *> u, pmap (\lam t => t *> u) d.4) : SmashCocone X Y Z))
+                        (inv_*> (d.2 base))
+      \where {
+        \func extend-restrict.{l} {X Y Z : Pointed.{l}} (g : Smash X Y ->* Z)
+          : extend (restrict g).1 (restrict g).2 (restrict g).3 (restrict g).4 = g
+          => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {(extend (restrict g).1 (restrict g).2 (restrict g).3 (restrict g).4).1} {g.1}
+                        (\lam _ => idp) (\lam _ => inv g.2 *> pmap g.1 (ppglue (pinl base)))
+                        (PushoutData.drec (\lam w => idp *> pmap g.1 (ppglue w) = extend.null (restrict g).1 (restrict g).2 (restrict g).3 (restrict g).4 w
+                                                       *> (inv g.2 *> pmap g.1 (ppglue (pinl base))))
+                                          (\lam x => cancel (pmap g.1 (ppglue (pinl x))) (pmap g.1 (ppglue (pinl base))) g.2)
+                                          (\lam y => cancel (pmap g.1 (ppglue (pinr y))) (pmap g.1 (ppglue (pinl base))) g.2)
+                                          (\lam _ => path (\lam i => cancel (pmap g.1 (ppglue (pglue () i))) (pmap g.1 (ppglue (pinl base))) g.2))))
+                     (base-coh (pmap g.1 (ppglue (pinl base))) g.2)
+
+        \func cancel {A : \Type} {a b c e : A} (P : a = c) (Pb : b = c) (g2 : b = e) : idp *> P = (P *> inv Pb *> g2) *> (inv g2 *> Pb) \elim c, e, Pb, g2
+          | _, _, idp, idp => idp_*> P
+
+        \func base-coh {A : \Type} {b c e : A} (Pb : b = c) (g2 : b = e) : idp *> g2 = Pb *> inv Pb *> g2 \elim c, e, Pb, g2
+          | _, _, idp, idp => idp
+      }
+
+    \func pathEquiv.{l} {X Y Z : Pointed.{l}} {g g' : Smash X Y ->* Z} : QEquiv {g = g'} {restrict g = restrict g'}
+      => IsEquiv.toQEquiv (pmapIsEquiv (inP mapsOut))
+
+    \func ext.{l} {X Y Z : Pointed.{l}} {g g' : Smash X Y ->* Z} (p : restrict g = restrict g') : g = g'
+      => pathEquiv.ret p
+
+    \func ext2.{l} {X Y Z : Pointed.{l}} {g g' : Smash X Y ->* Z} {p p' : g = g'} (s : pmap restrict p = pmap restrict p') : p = p'
+      => (IsEquiv.toQEquiv (pmapIsEquiv (inP (pathEquiv {X} {Y} {Z} {g} {g'})))).ret s
+
+    \func restrict-post.{l} {X Y Z Z' : Pointed.{l}} (k : Z ->* Z') (g : Smash X Y ->* Z) : restrict (k ->*.∘* g) = SmashCocone.post k (restrict g)
+      => SmashCocone.ext (\lam _ => idp) (\lam x => axis-post k g (ppglue (pinl x))) (\lam y => axis-post k g (ppglue (pinr y)))
+                       (inv (homotopy-isNatural (restrict.axis (k ->*.∘* g)) (\lam q => idp *> (pmap k.1 (restrict.axis g q) *> k.2)) (axis-post k g) (restrict.corner X Y)))
+      \where {
+        \func first.{l} {X Y Z Z' : Pointed.{l}} (k : Z ->* Z') (g : Smash.{l} X Y ->* Z) (t : \Sigma X Y)
+          : pmap (\lam (e : SmashCocone.{l} X Y Z') => e.1 t) (restrict-post.{l} k g) = idp
+          => SmashCocone.ext.first.{l} {X} {Y} {Z'} {restrict.{l} (k ->*.∘* g)} {SmashCocone.post.{l} k (restrict.{l} g)} (\lam _ => idp) _ _ _ t
+
+        \func axis-post.{l} {X Y Z Z' : Pointed.{l}} (k : Z ->* Z') (g : Smash X Y ->* Z) {t : \Sigma X Y} (q : pinl t = {Cof (wedgeToProduct X Y)} pinr ())
+          : restrict.axis (k ->*.∘* g) q = idp *> (pmap k.1 (restrict.axis g q) *> k.2)
+          => lem k.1 (pmap g.1 q) (pmap g.1 (ppglue (pinl base))) g.2 k.2
+
+        \func lem {A B : \Type} (k : A -> B) {a b c e : A} {e' : B} (P : a = c) (Pb : b = c) (g2 : b = e) (k2 : k e = e')
+          : pmap k P *> inv (pmap k Pb) *> (pmap k g2 *> k2) = idp *> (pmap k (P *> inv Pb *> g2) *> k2) \elim c, e, Pb, g2, k2
+          | _, _, idp, idp, idp => inv (idp_*> _)
+      }
+
+    \func map.{l} {X X' Y Y' : Pointed.{l}} (f : X ->* X') (g : Y ->* Y') : Smash X Y ->* Smash X' Y'
+      => mapsOut.ret (SmashCocone.pre f g (restrict ->*.id))
+      \where {
+        \func id.{l} {X Y : Pointed.{l}} : map (->*.id {X}) (->*.id {Y}) = ->*.id
+          => ext (mapsOut.f_sec _ *> SmashCocone.pre.id (restrict ->*.id))
+
+        \func comp.{l} {X X' X'' Y Y' Y'' : Pointed.{l}} (f : X ->* X') (f' : X' ->* X'') (g : Y ->* Y') (g' : Y' ->* Y'')
+          : map (f' ->*.∘* f) (g' ->*.∘* g) = map f' g' ->*.∘* map f g
+          => ext (mapsOut.f_sec _ *> SmashCocone.pre.comp f f' g g' (restrict ->*.id)
+                  *> inv (restrict-pre (map f' g') f g *> pmap (SmashCocone.pre f g) (mapsOut.f_sec _)))
+      }
+
+    \func swap.{l} (X Y : Pointed.{l}) : Smash X Y ->* Smash Y X
+      => mapsOut.ret (SmashCocone.flip (restrict ->*.id))
+      \where {
+        \func cocone.{l} {X Y Z : Pointed.{l}} (h : Smash Y X ->* Z) : restrict (h ->*.∘* swap X Y) = SmashCocone.flip (restrict h)
+          => restrict-post h (swap X Y) *> pmap (SmashCocone.post h) (mapsOut.f_sec (SmashCocone.flip (restrict ->*.id)))
+             *> SmashCocone.flip.post h (restrict ->*.id) *> pmap SmashCocone.flip (inv (restrict-post h ->*.id) *> pmap restrict (->*.compose-id h))
+
+        \func invol.{l} {X Y : Pointed.{l}} : swap Y X ->*.∘* swap X Y = ->*.id
+          => ext (cocone (swap Y X) *> pmap SmashCocone.flip (mapsOut.f_sec (SmashCocone.flip (restrict ->*.id))) *> SmashCocone.flip.flip (restrict ->*.id))
+
+        \func natural.{l} {X X' Y Y' : Pointed.{l}} (f : X ->* X') (g : Y ->* Y') : swap X' Y' ->*.∘* map f g = map g f ->*.∘* swap X Y
+          => ext (restrict-pre (swap X' Y') f g *> pmap (SmashCocone.pre f g) (mapsOut.f_sec (SmashCocone.flip (restrict ->*.id)))
+                  *> SmashCocone.flip.pre g f (restrict ->*.id) *> inv (cocone (map g f) *> pmap SmashCocone.flip (mapsOut.f_sec (SmashCocone.pre g f (restrict ->*.id)))))
+
+        \func equiv.{l} (X Y : Pointed.{l}) : PointedEquiv (Smash X Y) (Smash Y X) \cowith
+          | map => swap X Y
+          | map-isEquiv => inP \new QEquiv {
+            | ret => (swap Y X).1
+            | ret_f => ->*.happly invol
+            | f_sec => ->*.happly invol
+          }
+      }
+
+    \func unit.{l} (X : Pointed.{l}) : PointedEquiv (Smash (Sphere.pointed 0) X) X \cowith
+      | map => to X
+      | map-isEquiv => inP \new QEquiv {
+        | ret => (back X).1
+        | ret_f => ->*.happly back-to
+        | f_sec _ => idp
+      }
+      \where {
+        \func to.{l} (X : Pointed.{l}) : Smash (Sphere.pointed 0) X ->* X
+          => extend (\lam t => pick base t.1 t.2) (\lam s => pick-base base s) (\lam _ => idp) idp
+
+        \func pick {A : \Type} (a : A) (s : Sphere 0) (y : A) : A
+          => Susp.rec a y (\lam e => absurd e) s
+
+        \func pick-base {A : \Type} (a : A) (s : Sphere 0) : pick a s a = a \elim s
+          | north => idp
+          | south => idp
+          | pglue () _
+
+        \func D.{l} (X : Pointed.{l}) => restrict (->*.id {Smash (Sphere.pointed 0) X})
+
+        \func back.{l} (X : Pointed.{l}) : X ->* Smash (Sphere.pointed 0) X
+          => (\lam x => proj.1 (south, x), (D X).2 south)
+
+        \func hom.{l} {X : Pointed.{l}} (s : Sphere 0) (x : X) : proj.1 (south, pick base s x) = {Smash (Sphere.pointed 0) X} proj.1 (s, x) \elim s
+          | north => (D X).2 south *> inv ((D X).3 x)
+          | south => idp
+          | pglue () _
+
+        \func lhom.{l} {X : Pointed.{l}} (s : Sphere 0) : pmap (back X).1 (pick-base base s) *> (D X).2 south = hom s base *> (D X).2 s \elim s
+          | north => cancel ((D X).2 south) ((D X).3 base) *> pmap (((D X).2 south *> inv ((D X).3 base)) *>) (inv (D X).4)
+          | south => idp
+          | pglue () _
+
+        \func cancel {A : \Type} {p q w : A} (a : p = q) (b : w = q) : idp *> a = (a *> inv b) *> b \elim w, b
+          | _, idp => idp_*> a
+
+        \func cancel2 {P T : \Type} (F : P -> T) {a b : P} (k : a = b) {t : T} (r : t = F b) : (r *> pmap F (inv k)) *> pmap F k = idp *> r \elim a, k
+          | _, idp => inv (idp_*> r)
+
+        \func to-back.{l} {X : Pointed.{l}} : to X ->*.∘* back X = ->*.id
+          => ->*.ext (\lam _ => idp) (inv (pmap_*>-comm (to X).1 (ppglue (pinl south)) (inv (ppglue (pinl base)))
+                                           *> pmap (pmap (to X).1 (ppglue (pinl south)) *>) (pmap_inv-comm (to X).1 (ppglue (pinl base)))))
+
+        \func back-to.{l} {X : Pointed.{l}} : back X ->*.∘* to X = ->*.id
+          => ext (restrict-post (back X) (to X)
+                  *> pmap (SmashCocone.post (back X)) (mapsOut.f_sec ((\lam t => pick base t.1 t.2, \lam s => pick-base base s, \lam _ => idp, idp) : SmashCocone (Sphere.pointed 0) X X))
+                  *> SmashCocone.ext (\lam t => hom t.1 t.2) lhom (\lam x => cancel ((D X).2 south) ((D X).3 x))
+                                     (cancel2 (((D X).2 south *> inv ((D X).3 base)) *>) (D X).4 (cancel ((D X).2 south) ((D X).3 base))))
+      }
+
+    \func unitRight.{l} (X : Pointed.{l}) : PointedEquiv (Smash X (Sphere.pointed 0)) X
+      => unit X PointedEquiv.∘~ swap.equiv X (Sphere.pointed 0)
+
+    \func restrict-pre.{l} {X X' Y Y' Z : Pointed.{l}} (h : Smash X' Y' ->* Z) (f : X ->* X') (g : Y ->* Y')
+      : restrict (h ->*.∘* map f g) = SmashCocone.pre f g (restrict h)
+      => A.{l} h f g *> B.{l} h f g *> C.{l} h f g *> D.{l} h f g
+      \where
+        \func first.{l} {X X' Y Y' Z : Pointed.{l}} (h : Smash.{l} X' Y' ->* Z) (f : X ->* X') (g : Y ->* Y') (t : \Sigma X Y)
+          : pmap (\lam (e : SmashCocone.{l} X Y Z) => e.1 t) (restrict-pre.{l} h f g) = idp
+          => pmap_*>-comm (\lam (e : SmashCocone.{l} X Y Z) => e.1 t) (A.{l} h f g) (B.{l} h f g *> (C.{l} h f g *> D.{l} h f g))
+             *> pmap (pmap (\lam (e : SmashCocone.{l} X Y Z) => e.1 t) (A.{l} h f g) *>)
+                     (pmap_*>-comm (\lam (e : SmashCocone.{l} X Y Z) => e.1 t) (B.{l} h f g) (C.{l} h f g *> D.{l} h f g)
+                      *> pmap (pmap (\lam (e : SmashCocone.{l} X Y Z) => e.1 t) (B.{l} h f g) *>)
+                              (pmap_*>-comm (\lam (e : SmashCocone.{l} X Y Z) => e.1 t) (C.{l} h f g) (D.{l} h f g)))
+             *> pmap2 (*>) (restrict-post.first.{l} h (map.{l} f g) t)
+                     (pmap2 (*>) idp
+                            (pmap2 (*>) (SmashCocone.ext.first.{l} {X} {Y} {Z} {SmashCocone.post.{l} h (SmashCocone.pre.{l} f g (restrict.{l} (->*.id {Smash.{l} X' Y'})))}
+                                                                   {SmashCocone.pre.{l} f g (SmashCocone.post.{l} h (restrict.{l} (->*.id {Smash.{l} X' Y'})))} (\lam _ => idp) _ _ _ t)
+                                   (pmap_*>-comm (\lam (e : SmashCocone.{l} X' Y' Z) => e.1 (f.1 t.1, g.1 t.2)) (inv (restrict-post.{l} h (->*.id {Smash.{l} X' Y'})))
+                                                 (pmap restrict.{l} (->*.compose-id h))
+                                    *> pmap (`*> idp) (pmap_inv-comm (\lam (e : SmashCocone.{l} X' Y' Z) => e.1 (f.1 t.1, g.1 t.2)) (restrict-post.{l} h (->*.id {Smash.{l} X' Y'}))
+                                                       *> pmap inv (restrict-post.first.{l} h (->*.id {Smash.{l} X' Y'}) (f.1 t.1, g.1 t.2))))))
+
+        \func A.{l} {X X' Y Y' Z : Pointed.{l}} (h : Smash.{l} X' Y' ->* Z) (f : X ->* X') (g : Y ->* Y') => restrict-post.{l} h (map.{l} f g)
+
+        \func B.{l} {X X' Y Y' Z : Pointed.{l}} (h : Smash.{l} X' Y' ->* Z) (f : X ->* X') (g : Y ->* Y')
+          => pmap (SmashCocone.post.{l} h) (mapsOut.f_sec (SmashCocone.pre.{l} f g (restrict.{l} (->*.id {Smash.{l} X' Y'}))))
+
+        \func C.{l} {X X' Y Y' Z : Pointed.{l}} (h : Smash.{l} X' Y' ->* Z) (f : X ->* X') (g : Y ->* Y')
+          => SmashCocone.pre.post.{l} h f g (restrict.{l} (->*.id {Smash.{l} X' Y'}))
+
+        \func D.{l} {X X' Y Y' Z : Pointed.{l}} (h : Smash.{l} X' Y' ->* Z) (f : X ->* X') (g : Y ->* Y')
+          => pmap (SmashCocone.pre.{l} f g) (inv (restrict-post.{l} h (->*.id {Smash.{l} X' Y'})) *> pmap restrict.{l} (->*.compose-id h))
+
+    \func adjunction.{l} {X Y T : Pointed.{l}} : QEquiv {Smash X Y ->* T} {X ->* Map* Y T}
+      => transQEquiv mapsOut SmashCocone.curryEquiv
+      \where {
+        \func post.{l} {X Y T T' : Pointed.{l}} (k : T ->* T') (g : Smash X Y ->* T)
+          : adjunction.{l} {X} {Y} {T'} (k ->*.∘* g) = Map*.post Y k ->*.∘* adjunction.{l} {X} {Y} {T} g
+          => pmap SmashCocone.curry (restrict-post k g) *> SmashCocone.curry.post k (restrict g)
+
+        \func post-first.{l} {X Y T T' : Pointed.{l}} (k : T ->* T') (g : Smash.{l} X Y ->* T) (x : X) (y : Y)
+          : pmap (\lam (F : X ->* Map* Y T') => (F.1 x).1 y) (post.{l} k g) = idp
+          => pmap_*>-comm (\lam (F : X ->* Map* Y T') => (F.1 x).1 y) (pmap (SmashCocone.curry.{l} {X} {Y} {T'}) (restrict-post.{l} k g))
+                          (SmashCocone.curry.post.{l} k (restrict.{l} g))
+             *> pmap2 (*>) (restrict-post.first.{l} k g (x, y)) (SmashCocone.curry.post-first.{l} k (restrict.{l} g) x y)
+
+        \func pointed-post-first.{l} {X Y T T' : Pointed.{l}} (k : T ->* T') (K : Smash.{l} X Y ->* T) (x : X) (y : Y)
+          : pmap (\lam (G : Map* (Smash.{l} X Y) T ->* Map* X (Map* Y T')) => ((G.1 K).1 x).1 y) (pointed-post.{l} {X} {Y} {T} {T'} k) = idp
+          => pointed-post-gen-first k.1 k.2 K x y
+
+        \func pointed-post-gen-first.{l} {X Y T : Pointed.{l}} {E : \Type l} (k : T -> E) {e : E} (k2 : k base = e) (K : Smash.{l} X Y ->* T) (x : X) (y : Y)
+          : pmap (\lam (G : Map* (Smash.{l} X Y) T ->* Map* X (Map* Y (Pointed.make e))) => ((G.1 K).1 x).1 y) (pointed-post.gen.{l} {X} {Y} {T} k k2) = idp
+          \elim e, k2
+          | _, idp => post-first.{l} {X} {Y} {T} {Pointed.make (k base)} (k, idp) K x y
+
+        \func pre.{l} {X X' Y Y' T : Pointed.{l}} (k : Smash X' Y' ->* T) (u : X ->* X') (v : Y ->* Y')
+          : adjunction.{l} {X} {Y} {T} (k ->*.∘* map u v) = (Map*.pre v T ->*.∘* adjunction.{l} {X'} {Y'} {T} k) ->*.∘* u
+          => pmap SmashCocone.curry (restrict-pre k u v) *> SmashCocone.curry.pre u v (restrict k)
+
+        \func pre-first.{l} {X X' Y Y' T : Pointed.{l}} (k : Smash.{l} X' Y' ->* T) (u : X ->* X') (v : Y ->* Y') (x : X) (y : Y)
+          : pmap (\lam (F : X ->* Map* Y T) => (F.1 x).1 y) (pre.{l} k u v) = idp
+          => pmap_*>-comm (\lam (F : X ->* Map* Y T) => (F.1 x).1 y) (pmap (SmashCocone.curry.{l} {X} {Y} {T}) (restrict-pre.{l} k u v))
+                          (SmashCocone.curry.pre.{l} u v (restrict.{l} k))
+             *> pmap2 (*>) (restrict-pre.first.{l} k u v (x, y)) (SmashCocone.curry.pre-first.{l} u v (restrict.{l} k) x y)
+
+        \func pre-zero.{l} {X X' Y Y' T : Pointed.{l}} (u : X ->* X') (v : Y ->* Y') : pre.{l} (base {Map* (Smash.{l} X' Y') T}) u v = idp
+          => mapLoop*.ext2 {X} {Y} {T} (\lam x y => pre-first.{l} (base {Map* (Smash.{l} X' Y') T}) u v x y)
+
+        \func pointed-pre.{l} {X X' Y Y' T : Pointed.{l}} (u : X ->* X') (v : Y ->* Y')
+          : pointed.{l} {X} {Y} {T} ->*.∘* Map*.pre (map.{l} u v) T = (Map*.pre u (Map* Y T) ->*.∘* Map*.post X' (Map*.pre v T)) ->*.∘* pointed.{l} {X'} {Y'} {T}
+          => ->*.ext {Map* (Smash.{l} X' Y') T} {Map* X (Map* Y T)} {pointed.{l} {X} {Y} {T} ->*.∘* Map*.pre (map.{l} u v) T}
+                     {(Map*.pre u (Map* Y T) ->*.∘* Map*.post X' (Map*.pre v T)) ->*.∘* pointed.{l} {X'} {Y'} {T}}
+                     (\lam (K : Smash.{l} X' Y' ->* T) => pre.{l} K u v) (pointed-pre-coh.{l} u v)
+
+        \func pointed-pre-coh.{l} {X X' Y Y' T : Pointed.{l}} (u : X ->* X') (v : Y ->* Y')
+          : pre.{l} (base {Map* (Smash.{l} X' Y') T}) u v *> ((Map*.pre u (Map* Y T) ->*.∘* Map*.post X' (Map*.pre v T)) ->*.∘* pointed.{l} {X'} {Y'} {T}).2
+            = (pointed.{l} {X} {Y} {T} ->*.∘* Map*.pre (map.{l} u v) T).2
+          => pre-zero.{l} u v
+
+        \func eval.{l} {Y T : Pointed.{l}} : Smash (Map* Y T) Y ->* T
+          => adjunction.ret ->*.id
+
+        \func pointed.{l} {X Y T : Pointed.{l}} : Map* (Smash X Y) T ->* Map* X (Map* Y T)
+          => (adjunction.f, idp)
+
+        \func post-zero.{l} {X Y T : Pointed.{l}} {E : \Type l} (k : T -> E)
+          : post {X} {Y} {T} {Pointed.make (k base)} (k, idp) (->*.zero (Smash X Y) T) = idp
+          => pmap (\lam t => pmap SmashCocone.curry (SmashCocone.ext {X} {Y} {Pointed.make (k base)} {restrict (->*.zero (Smash X Y) (Pointed.make (k base)))}
+                                                                    {restrict (->*.zero (Smash X Y) (Pointed.make (k base)))}
+                                                                    (\lam _ => idp) (\lam _ => idp) (\lam _ => idp) (inv t)))
+                  (const-natural (restrict.corner X Y))
+
+        \func pointed-post.{l} {X Y T T' : Pointed.{l}} (k : T ->* T')
+          : pointed ->*.∘* Map*.post (Smash X Y) k = Map*.post X (Map*.post Y k) ->*.∘* pointed
+          => pointed-post.gen k.1 k.2
+          \where
+            \func gen.{l} {X Y T : Pointed.{l}} {E : \Type l} (k : T -> E) {e : E} (k2 : k base = e)
+              : pointed ->*.∘* Map*.post (Smash X Y) {T} {Pointed.make e} (k, k2) = Map*.post X (Map*.post Y {T} {Pointed.make e} (k, k2)) ->*.∘* pointed \elim e, k2
+              | _, idp => ->*.ext (post (k, idp)) (post-zero k)
+
+        \func const-natural {A B : \Type} {b : B} {a a' : A} (p : a = a')
+          : homotopy-isNatural (\lam (_ : A) => idp {B} {b}) (\lam _ => idp) (\lam _ => idp) p = idp \elim p
+          | idp => idp
+      }
 
     \func suspLeft.{l} (X Y : Pointed.{l}) : Smash (Susp.pointed X) Y ->* Susp.pointed (Smash X Y)
       => extend (\lam t => Susp.map (\lam x => proj.1 (x, t.2)) t.1)
@@ -29,4 +290,211 @@
     \func suspNull {A B : \Type} {k : A -> B} {b : B} (e : \Pi (a : A) -> k a = b) (s : Susp A) : Susp.map k s = north
       => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Susp.map k} {\lam _ => north} (\lam _ => idp) (\lam _ => inv (pmerid b))
            (\lam a => inv (pmap (\lam w => pmerid w *> inv (pmerid b)) (e a) *> *>_inv (pmerid b))) s
+  }
+
+\func SmashCocone.{l} (X Y Z : Pointed.{l})
+  => \Sigma (f : \Sigma X Y -> Z) (l : \Pi (x : X) -> f (x, base) = base) (r : \Pi (y : Y) -> f (base, y) = base) (l base = r base)
+  \where {
+    \func ext.{l} {X Y Z : Pointed.{l}} {d d' : SmashCocone X Y Z} (H : \Pi (t : \Sigma X Y) -> d.1 t = d'.1 t)
+                  (L : \Pi (x : X) -> d.2 x = H (x, base) *> d'.2 x) (R : \Pi (y : Y) -> d.3 y = H (base, y) *> d'.3 y)
+                  (C : L base *> pmap (H (base, base) *>) d'.4 = d.4 *> R base) : d = d'
+      => gen (path (\lam i t => H t @ i)) L R C
+      \where {
+        \func gen.{l} {X Y Z : Pointed.{l}} {f f' : \Sigma X Y -> Z} (P : f = f')
+                      {l : \Pi (x : X) -> f (x, base) = base} {r : \Pi (y : Y) -> f (base, y) = base} {c : l base = r base}
+                      {l' : \Pi (x : X) -> f' (x, base) = base} {r' : \Pi (y : Y) -> f' (base, y) = base} {c' : l' base = r' base}
+                      (L : \Pi (x : X) -> l x = pmap (__ (x, base)) P *> l' x) (R : \Pi (y : Y) -> r y = pmap (__ (base, y)) P *> r' y)
+                      (C : L base *> pmap (pmap (__ (base, base)) P *>) c' = c *> R base)
+          : ((f, l, r, c) : SmashCocone X Y Z) = (f', l', r', c') \elim P
+          | idp => axes (path (\lam i x => (L x *> idp_*> (l' x)) @ i)) (path (\lam i y => (R y *> idp_*> (r' y)) @ i)) (square (L base) (R base) c c' C)
+
+        \func axes.{l} {X Y Z : Pointed.{l}} {f : \Sigma X Y -> Z}
+                       {l l' : \Pi (x : X) -> f (x, base) = base} (Pl : l = l') {r r' : \Pi (y : Y) -> f (base, y) = base} (Pr : r = r')
+                       {c : l base = r base} {c' : l' base = r' base} (C : pmap (__ base) Pl *> c' = c *> pmap (__ base) Pr)
+          : ((f, l, r, c) : SmashCocone X Y Z) = (f, l', r', c') \elim Pl, Pr
+          | idp, idp => pmap (\lam (e : l base = r base) => ((f, l, r, e) : SmashCocone X Y Z)) (inv C *> idp_*> c')
+
+        \func first.{l} {X Y Z : Pointed.{l}} {d d' : SmashCocone X Y Z} (H : \Pi (t : \Sigma X Y) -> d.1 t = d'.1 t)
+                        (L : \Pi (x : X) -> d.2 x = H (x, base) *> d'.2 x) (R : \Pi (y : Y) -> d.3 y = H (base, y) *> d'.3 y)
+                        (C : L base *> pmap (H (base, base) *>) d'.4 = d.4 *> R base) (t : \Sigma X Y)
+          : pmap (\lam (e : SmashCocone X Y Z) => e.1 t) (ext H L R C) = H t
+          => gen-first (path (\lam i t => H t @ i)) L R C t
+
+        \func gen-first.{l} {X Y Z : Pointed.{l}} {f f' : \Sigma X Y -> Z} (P : f = f')
+                            {l : \Pi (x : X) -> f (x, base) = base} {r : \Pi (y : Y) -> f (base, y) = base} {c : l base = r base}
+                            {l' : \Pi (x : X) -> f' (x, base) = base} {r' : \Pi (y : Y) -> f' (base, y) = base} {c' : l' base = r' base}
+                            (L : \Pi (x : X) -> l x = pmap (__ (x, base)) P *> l' x) (R : \Pi (y : Y) -> r y = pmap (__ (base, y)) P *> r' y)
+                            (C : L base *> pmap (pmap (__ (base, base)) P *>) c' = c *> R base) (t : \Sigma X Y)
+          : pmap (\lam (e : SmashCocone X Y Z) => e.1 t) (gen P L R C) = pmap (__ t) P \elim P
+          | idp => axes-first {X} {Y} {Z} {f} (path (\lam i x => (L x *> idp_*> (l' x)) @ i)) (path (\lam i y => (R y *> idp_*> (r' y)) @ i)) (square (L base) (R base) c c' C) t
+
+        \func axes-first.{l} {X Y Z : Pointed.{l}} {f : \Sigma X Y -> Z}
+                             {l l' : \Pi (x : X) -> f (x, base) = base} (Pl : l = l') {r r' : \Pi (y : Y) -> f (base, y) = base} (Pr : r = r')
+                             {c : l base = r base} {c' : l' base = r' base} (C : pmap (__ base) Pl *> c' = c *> pmap (__ base) Pr) (t : \Sigma X Y)
+          : pmap (\lam (e : SmashCocone X Y Z) => e.1 t) (axes {X} {Y} {Z} {f} Pl Pr C) = idp \elim Pl, Pr
+          | idp, idp => idp
+
+        \func square {A : \Type} {a b : A} {x y u v : a = b} (Lb : x = idp *> u) (Rb : y = idp *> v) (c : x = y) (c' : u = v)
+                     (C : Lb *> pmap (idp *>) c' = c *> Rb) : (Lb *> idp_*> u) *> c' = c *> (Rb *> idp_*> v) \elim y, v, c, c'
+          | _, _, idp, idp => pmap (`*> idp_*> u) C *> *>-assoc idp Rb (idp_*> u)
+      }
+
+    \func post.{l} {X Y Z Z' : Pointed.{l}} (k : Z ->* Z') (d : SmashCocone X Y Z) : SmashCocone X Y Z'
+      => (\lam t => k.1 (d.1 t), \lam x => pmap k.1 (d.2 x) *> k.2, \lam y => pmap k.1 (d.3 y) *> k.2, pmap (\lam q => pmap k.1 q *> k.2) d.4)
+
+    \func pre.{l} {X X' Y Y' Z : Pointed.{l}} (f : X ->* X') (g : Y ->* Y') (d : SmashCocone X' Y' Z) : SmashCocone X Y Z
+      => (\lam t => d.1 (f.1 t.1, g.1 t.2), \lam x => pmap (\lam y => d.1 (f.1 x, y)) g.2 *> d.2 (f.1 x),
+          \lam y => pmap (\lam x => d.1 (x, g.1 y)) f.2 *> d.3 (g.1 y), corner d f.2 g.2)
+      \where {
+        \func corner.{l} {X Y Z : Pointed.{l}} (d : SmashCocone X Y Z) {x0 : X} {y0 : Y} (a : x0 = base) (e : y0 = base)
+          : pmap (\lam y => d.1 (x0, y)) e *> d.2 x0 = pmap (\lam x => d.1 (x, y0)) a *> d.3 y0 \elim x0, y0, a, e
+          | _, _, idp, idp => pmap (idp *>) d.4
+
+        \func post.{l} {X X' Y Y' Z Z' : Pointed.{l}} (k : Z ->* Z') (f : X ->* X') (g : Y ->* Y') (d : SmashCocone X' Y' Z)
+          : SmashCocone.post k (pre f g d) = pre f g (SmashCocone.post k d)
+          => SmashCocone.ext (\lam _ => idp) (\lam x => axis (\lam y => d.1 (f.1 x, y)) g.2 (d.2 (f.1 x)) k.1 k.2)
+                           (\lam y => axis (\lam x => d.1 (x, g.1 y)) f.2 (d.3 (g.1 y)) k.1 k.2) (square d f.2 g.2 k.1 k.2)
+
+        \func axis {B C E : \Type} (h : B -> C) {b0 b1 : B} (a : b0 = b1) {c0 : C} (q : h b1 = c0) (k : C -> E) {e : E} (k2 : k c0 = e)
+          : pmap k (pmap h a *> q) *> k2 = idp *> (pmap (\lam b => k (h b)) a *> (pmap k q *> k2)) \elim b1, a, e, k2
+          | _, idp, _, idp => axis0 k q
+
+        \func axis0 {A E : \Type} (k : A -> E) {a c : A} (q : a = c) : pmap k (idp *> q) = idp *> (idp *> pmap k q) \elim c, q
+          | _, idp => idp
+
+        \func square.{l} {X' Y' Z : Pointed.{l}} (d : SmashCocone X' Y' Z) {x0 : X'} {y0 : Y'} (a : x0 = base) (b : y0 = base)
+                         {E : \Type l} (k : Z -> E) {e : E} (k2 : k base = e)
+          : axis (\lam y => d.1 (x0, y)) b (d.2 x0) k k2 *> pmap (idp *>) (corner (SmashCocone.post {X'} {Y'} {Z} {Pointed.make e} (k, k2) d) a b)
+            = pmap (\lam q => pmap k q *> k2) (corner d a b) *> axis (\lam x => d.1 (x, y0)) a (d.3 y0) k k2 \elim x0, y0, a, b, e, k2
+          | _, _, idp, idp, _, idp => gen k d.4
+
+        \func gen {A E : \Type} (k : A -> E) {a b : A} {u v : a = b} (c : u = v)
+          : axis0 k u *> pmap (idp *>) (pmap (idp *>) (pmap (pmap k) c)) = pmap (\lam q => pmap k q) (pmap (idp *>) c) *> axis0 k v \elim v, c
+          | _, idp => inv (idp_*> _)
+
+        \func id.{l} {X Y Z : Pointed.{l}} (d : SmashCocone X Y Z) : pre ->*.id ->*.id d = d
+          => SmashCocone.ext (\lam _ => idp) (\lam _ => idp) (\lam _ => idp) (idp_*> _)
+
+        \func comp.{l} {X X' X'' Y Y' Y'' Z : Pointed.{l}} (f : X ->* X') (f' : X' ->* X'') (g : Y ->* Y') (g' : Y' ->* Y'') (d : SmashCocone X'' Y'' Z)
+          : pre (f' ->*.∘* f) (g' ->*.∘* g) d = pre f g (pre f' g' d)
+          => SmashCocone.ext (\lam _ => idp) (\lam x => comp-axis (\lam y => d.1 (f'.1 (f.1 x), y)) g'.1 g.2 g'.2 (d.2 (f'.1 (f.1 x))))
+                             (\lam y => comp-axis (\lam x => d.1 (x, g'.1 (g.1 y))) f'.1 f.2 f'.2 (d.3 (g'.1 (g.1 y))))
+                             (comp-square f'.1 g'.1 d f'.2 g'.2 f.2 g.2)
+
+        \func comp-axis {B B' C : \Type} (h : B' -> C) (g1 : B -> B') {b0 b1 : B} (a : b0 = b1) {b2 : B'} (a' : g1 b1 = b2) {c : C} (q : h b2 = c)
+          : pmap h (pmap g1 a *> a') *> q = idp *> (pmap (\lam b => h (g1 b)) a *> (pmap h a' *> q)) \elim b1, a
+          | _, idp => comp-axis' h a' q
+
+        \func comp-axis' {B' C : \Type} (h : B' -> C) {b1 b2 : B'} (a' : b1 = b2) {c : C} (q : h b2 = c)
+          : pmap h (idp *> a') *> q = idp *> (idp *> (pmap h a' *> q)) \elim b2, a'
+          | _, idp => comp-axis0 q
+
+        \func comp-axis0 {A : \Type} {a c : A} (q : a = c) : idp *> q = idp *> (idp *> (idp *> q)) \elim c, q
+          | _, idp => idp
+
+        \func comp-square.{l} {E F : \Type l} {Z : Pointed.{l}} {A B : \Type l} (f'1 : A -> E) (g'1 : B -> F) {x1 : A} {y1 : B}
+                              {x2 : E} {y2 : F} (d : SmashCocone (Pointed.make x2) (Pointed.make y2) Z) (f'2 : f'1 x1 = x2) (g'2 : g'1 y1 = y2)
+                              {x0 : A} (a : x0 = x1) {y0 : B} (b : y0 = y1)
+          : comp-axis (\lam y => d.1 (f'1 x0, y)) g'1 b g'2 (d.2 (f'1 x0))
+            *> pmap (idp *>) (corner (pre {Pointed.make x1} {Pointed.make x2} {Pointed.make y1} {Pointed.make y2} (f'1, f'2) (g'1, g'2) d) a b)
+            = corner d (pmap f'1 a *> f'2) (pmap g'1 b *> g'2) *> comp-axis (\lam x => d.1 (x, g'1 y0)) f'1 a f'2 (d.3 (g'1 y0))
+          \elim x2, y2, f'2, g'2, x0, a, y0, b
+          | _, _, idp, idp, _, idp, _, idp => comp-gen d.4
+
+        \func comp-gen {A : \Type} {a b : A} {u v : a = b} (c : u = v)
+          : comp-axis0 u *> pmap (idp *>) (pmap (idp *>) (pmap (idp *>) c)) = pmap (idp *>) c *> comp-axis0 v \elim v, c
+          | _, idp => inv (idp_*> _)
+      }
+
+    \func flip.{l} {X Y Z : Pointed.{l}} (d : SmashCocone X Y Z) : SmashCocone Y X Z
+      => (\lam t => d.1 (t.2, t.1), d.3, d.2, inv d.4)
+      \where {
+        \func post.{l} {X Y Z Z' : Pointed.{l}} (k : Z ->* Z') (d : SmashCocone X Y Z)
+          : SmashCocone.post k (SmashCocone.flip d) = SmashCocone.flip (SmashCocone.post k d)
+          => pmap (\lam e => ((\lam t => k.1 (d.1 (t.2, t.1)), \lam y => pmap k.1 (d.3 y) *> k.2, \lam x => pmap k.1 (d.2 x) *> k.2, e) : SmashCocone Y X Z'))
+                  (pmap_inv-comm (\lam q => pmap k.1 q *> k.2) d.4)
+
+        \func flip.{l} {X Y Z : Pointed.{l}} (d : SmashCocone X Y Z) : SmashCocone.flip (SmashCocone.flip d) = d
+          => pmap (\lam e => ((d.1, d.2, d.3, e) : SmashCocone X Y Z)) (inv_inv d.4)
+
+        \func pre.{l} {X X' Y Y' Z : Pointed.{l}} (f : X ->* X') (g : Y ->* Y') (d : SmashCocone X' Y' Z)
+          : SmashCocone.pre g f (SmashCocone.flip d) = SmashCocone.flip (SmashCocone.pre f g d)
+          => pmap (\lam e => ((\lam t => d.1 (f.1 t.2, g.1 t.1), \lam y => pmap (\lam x => d.1 (x, g.1 y)) f.2 *> d.3 (g.1 y),
+                               \lam x => pmap (\lam y => d.1 (f.1 x, y)) g.2 *> d.2 (f.1 x), e) : SmashCocone Y X Z))
+                  (corner d f.2 g.2)
+          \where
+            \func corner.{l} {X Y Z : Pointed.{l}} (d : SmashCocone X Y Z) {x0 : X} {y0 : Y} (a : x0 = base) (b : y0 = base)
+              : SmashCocone.pre.corner (SmashCocone.flip d) b a = inv (SmashCocone.pre.corner d a b) \elim x0, y0, a, b
+              | _, _, idp, idp => pmap_inv-comm (idp *>) d.4
+      }
+
+    \func curry.{l} {X Y T : Pointed.{l}} (d : SmashCocone X Y T) : X ->* Map* Y T
+      => (\lam x => (\lam y => d.1 (x, y), d.2 x), ->*.ext d.3 (inv d.4))
+      \where {
+        \func post.{l} {X Y T T' : Pointed.{l}} (k : T ->* T') (d : SmashCocone X Y T) : curry (SmashCocone.post k d) = Map*.post Y k ->*.∘* curry d
+          => gen d k.1 k.2
+
+        \func gen.{l} {X Y T : Pointed.{l}} (d : SmashCocone X Y T) {E : \Type l} (k : T -> E) {e : E} (k2 : k base = e)
+          : curry {X} {Y} {Pointed.make e} (SmashCocone.post {X} {Y} {T} {Pointed.make e} (k, k2) d) = Map*.post Y {T} {Pointed.make e} (k, k2) ->*.∘* curry d \elim e, k2
+          | _, idp => pmap (\lam q => ((\lam x => (\lam y => k (d.1 (x, y)), pmap k (d.2 x)), q) : X ->* Map* Y (Pointed.make (k base))))
+                           (pmap (->*.ext {Y} {Pointed.make (k base)} {(\lam y => k (d.1 (base, y)), pmap k (d.2 base))} {(\lam _ => k base, idp)} (\lam y => pmap k (d.3 y)))
+                                 (inv (pmap_inv-comm (pmap k) d.4) *> inv (idp_*> _))
+                            *> inv (ext-post (\lam y => d.1 (base, y)) (\lam _ => base) (path (\lam i y => d.3 y @ i)) idp (inv d.4) k))
+
+        \func post-first.{l} {X Y T T' : Pointed.{l}} (k : T ->* T') (d : SmashCocone X Y T) (x : X) (y : Y)
+          : pmap (\lam (F : X ->* Map* Y T') => (F.1 x).1 y) (post.{l} k d) = idp
+          => gen-first d k.1 k.2 x y
+
+        \func gen-first.{l} {X Y T : Pointed.{l}} (d : SmashCocone X Y T) {E : \Type l} (k : T -> E) {e : E} (k2 : k base = e) (x : X) (y : Y)
+          : pmap (\lam (F : X ->* Map* Y (Pointed.make e)) => (F.1 x).1 y) (gen.{l} d k k2) = idp \elim e, k2
+          | _, idp => idp
+
+        \func pre.{l} {X X' Y Y' T : Pointed.{l}} (f : X ->* X') (g : Y ->* Y') (d : SmashCocone X' Y' T)
+          : curry (SmashCocone.pre f g d) = (Map*.pre g T ->*.∘* curry d) ->*.∘* f
+          => pre-gen f.1 g.1 d f.2 g.2
+
+        \func pre-gen.{l} {A B E F : \Type l} {T : Pointed.{l}} (f1 : A -> E) (g1 : B -> F) {x1 : A} {y1 : B} {x2 : E} {y2 : F}
+                          (d : SmashCocone (Pointed.make x2) (Pointed.make y2) T) (f2 : f1 x1 = x2) (g2 : g1 y1 = y2)
+          : curry {Pointed.make x1} {Pointed.make y1} {T} (SmashCocone.pre {Pointed.make x1} {Pointed.make x2} {Pointed.make y1} {Pointed.make y2} (f1, f2) (g1, g2) d)
+            = (Map*.pre {Pointed.make y1} {Pointed.make y2} (g1, g2) T ->*.∘* curry d) ->*.∘* (f1, f2) \elim x2, y2, f2, g2
+          | _, _, idp, idp => pmap (\lam (q : ((\lam y => d.1 (f1 x1, g1 y), idp *> d.2 (f1 x1)) : Pointed.make y1 ->* T) = ->*.zero (Pointed.make y1) T) =>
+                                      ((\lam x => ((\lam y => d.1 (f1 x, g1 y), idp *> d.2 (f1 x)) : Pointed.make y1 ->* T), q) : Pointed.make x1 ->* Map* (Pointed.make y1) T))
+                                   (pre-coh g1 (\lam y => d.1 (f1 x1, y)) (path (\lam i y => d.3 y @ i)) (d.2 (f1 x1)) d.4)
+
+        \func pre-first.{l} {X X' Y Y' T : Pointed.{l}} (f : X ->* X') (g : Y ->* Y') (d : SmashCocone X' Y' T) (x : X) (y : Y)
+          : pmap (\lam (F : X ->* Map* Y T) => (F.1 x).1 y) (pre.{l} f g d) = idp
+          => pre-gen-first f.1 g.1 d f.2 g.2 x y
+
+        \func pre-gen-first.{l} {A B E F : \Type l} {T : Pointed.{l}} (f1 : A -> E) (g1 : B -> F) {x1 : A} {y1 : B} {x2 : E} {y2 : F}
+                                (d : SmashCocone (Pointed.make x2) (Pointed.make y2) T) (f2 : f1 x1 = x2) (g2 : g1 y1 = y2) (x : A) (y : B)
+          : pmap (\lam (G : Pointed.make x1 ->* Map* (Pointed.make y1) T) => (G.1 x).1 y) (pre-gen.{l} f1 g1 d f2 g2) = idp \elim x2, y2, f2, g2
+          | _, _, idp, idp => idp
+
+        \func pre-coh {B Y' : \Type} {b0 : B} (g1 : B -> Y') {T : Pointed} (k : Y' -> T) (P : k = (\lam _ => base)) (k0 : k (g1 b0) = base)
+                      (c : k0 = pmap (__ (g1 b0)) P)
+          : ->*.ext {Pointed.make b0} {T} {\lam b => k (g1 b), idp *> k0} { ->*.zero (Pointed.make b0) T} (\lam b => idp *> pmap (__ (g1 b)) P) (inv (pmap (idp *>) c))
+            = idp *> pmap (\lam (h : Pointed.make (g1 b0) ->* T) => h ->*.∘* ((g1, idp) : Pointed.make b0 ->* Pointed.make (g1 b0)))
+                          (->*.ext {Pointed.make (g1 b0)} {T} {k, k0} { ->*.zero (Pointed.make (g1 b0)) T} (\lam y => pmap (__ y) P) (inv c))
+          \elim k, P, k0, c
+          | _, idp, _, idp => ->*.ext-happly.ext-idp {Pointed.make b0} (\lam _ => base) idp
+                              *> inv (pmap (\lam s => idp *> pmap (\lam (h : Pointed.make (g1 b0) ->* T) => h ->*.∘* ((g1, idp) : Pointed.make b0 ->* Pointed.make (g1 b0))) s)
+                                           (->*.ext-happly.ext-idp {Pointed.make (g1 b0)} (\lam _ => base) idp))
+
+        \func ext-post {A : Pointed} {E E' : \Type} (f1 g1 : A -> E) (P : f1 = g1) {e : E} (g2 : g1 base = e) {f2 : f1 base = e}
+                       (q : pmap (__ base) P *> g2 = f2) (k : E -> E')
+          : pmap (\lam (h : A ->* Pointed.make e) => ((k, idp) : Pointed.make e ->* Pointed.make (k e)) ->*.∘* h) (->*.ext {A} {Pointed.make e} {(f1, f2)} {(g1, g2)} (\lam x => pmap (__ x) P) q)
+            = ->*.ext {A} {Pointed.make (k e)} {\lam x => k (f1 x), pmap k f2} {\lam x => k (g1 x), pmap k g2} (\lam x => pmap k (pmap (__ x) P))
+                      (inv (pmap_*>-comm k _ _) *> pmap (pmap k) q) \elim P, e, g2, q
+          | idp, _, idp, idp => idp
+      }
+
+    \func uncurry.{l} {X Y T : Pointed.{l}} (F : X ->* Map* Y T) : SmashCocone X Y T
+      => (\lam t => (F.1 t.1).1 t.2, \lam x => (F.1 x).2, ->*.happly F.2, inv (->*.happly-base F.2))
+
+    \func curryEquiv.{l} {X Y T : Pointed.{l}} : QEquiv {SmashCocone X Y T} {X ->* Map* Y T} \cowith
+      | f => curry
+      | ret => uncurry
+      | ret_f d => pmap (\lam (e : d.2 base = d.3 base) => ((d.1, d.2, d.3, e) : SmashCocone X Y T)) (pmap inv (->*.happly-base-ext {Y} {T} {(\lam y => d.1 (base, y), d.2 base)} { ->*.zero Y T} d.3 (inv d.4)) *> inv_inv d.4)
+      | f_sec F => pmap (\lam e => ((F.1, ->*.ext (->*.happly F.2) e) : X ->* Map* Y T)) (inv_inv _)
+                   *> pmap (\lam e => ((F.1, e) : X ->* Map* Y T)) (->*.ext-happly F.2)
   }

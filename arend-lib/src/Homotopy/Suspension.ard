@@ -1,6 +1,7 @@
 \import Equiv
 \import Homotopy.Pointed
 \import Homotopy.Pushout \hiding (PushoutPointed)
+\import Logic
 \import Paths
 
 \func Susp (A : \Type) => PushoutData {A} (\lam _ => ()) (\lam _ => ())
@@ -62,6 +63,10 @@
     \sfunc id {X : Pointed} : Susp-Func (->*.id {X}) = ->*.id
       => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Susp.map (\lam x => x)} {\lam x => x}
                                        (\lam _ => idp) (\lam _ => idp) (\lam _ => idp_*> _)) idp
+
+    \func equiv {X Y : Pointed} (e : PointedEquiv X Y) : PointedEquiv (Susp.pointed X) (Susp.pointed Y) \cowith
+      | map => Susp-Func e.map
+      | map-isEquiv => inP (Susp.mapEquiv (PointedEquiv.toHAEquiv e))
 
     \sfunc zero {X Y : Pointed} : Susp-Func (->*.zero X Y) = ->*.zero _ _
       => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {Susp.map (\lam _ => base)} {\lam _ => north}

@@ -76,6 +76,20 @@
            | q' => Jl (\lam _ p'' => (rewrite p'' in f.2) = inv (pmap (\lam (h : A -> B) => h base) p'') *> f.2)
                       (inv (idp_*> _)) p' *> rotatePathLeft (inv q)
       \in path (\lam i => (p' @ i, pathOver q' @ i))
+
+    \func ext-happly {A B : Pointed} {f g : A ->* B} (s : f = g) : ext (happly s) (happly-base s) = s \elim s
+      | idp => ext-idp f.1 f.2
+      \where
+        \func ext-idp {A : Pointed} {E : \Type} (f1 : A -> E) {e : E} (f2 : f1 base = e)
+          : ext {A} {Pointed.make e} {f1, f2} {f1, f2} (\lam _ => idp) (idp_*> f2) = idp \elim f2
+          | idp => idp
+
+    \func happly-base-ext {A B : Pointed} {f g : A ->* B} (p : \Pi (x : A) -> f.1 x = g.1 x) (q : p base *> g.2 = f.2) : happly-base (ext p q) = q
+      => gen f.1 g.1 (path (\lam i x => p x @ i)) g.2 q
+      \where
+        \func gen {A : Pointed} {E : \Type} (f1 g1 : A -> E) (P : f1 = g1) {e : E} (g2 : g1 base = e) {f2 : f1 base = e} (q : pmap (__ base) P *> g2 = f2)
+          : happly-base {A} {Pointed.make e} {f1, f2} {g1, g2} (ext (\lam x => pmap (__ x) P) q) = q \elim P, e, g2, q
+          | idp, _, idp, idp => idp
   }
 
 \record PointedEquiv (X Y : Pointed)
@@ -85,6 +99,14 @@
     \func id {X : Pointed} : PointedEquiv X X \cowith
       | map => ->*.id
       | map-isEquiv => inP idEquiv
+
+    \func fromInverse {X Y : Pointed} (f : X ->* Y) (g : Y ->* X) (gf : g ->*.∘* f = ->*.id) (fg : f ->*.∘* g = ->*.id) : PointedEquiv X Y \cowith
+      | map => f
+      | map-isEquiv => inP \new QEquiv {
+        | ret => g.1
+        | ret_f => ->*.happly gf
+        | f_sec => ->*.happly fg
+      }
 
     \func toHAEquiv (e : PointedEquiv) : HAEquiv e.map.1
       => IsEquiv.toQEquiv e.map-isEquiv

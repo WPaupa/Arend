@@ -1,0 +1,37 @@
+\import Equiv
+\import Equiv.Sigma
+\import Homotopy.Fibration
+\import Homotopy.FiberSequence
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Logic.Unique
+\import Paths
+
+\open ->* (∘*)
+
+\func mapsIntoFib {S Z T : Pointed} (h : Z ->* T) : QEquiv {S ->* PointedFib h} {Fib (Map*.post S h).1 (->*.zero S T)}
+  => transQEquiv (unzip h) (zip h)
+  \where {
+    \func Data {S Z T : Pointed} (h : Z ->* T)
+      => \Sigma (f : S -> Z) (H : \Pi (s : S) -> h.1 (f s) = base) (\Sigma (p : f base = base) (pmap h.1 p *> h.2 = H base))
+
+    \func unzip {S Z T : Pointed} (h : Z ->* T) : QEquiv {S ->* PointedFib h} {Data {S} h} \cowith
+      | f g => (\lam s => (g.1 s).1, \lam s => (g.1 s).2, loopFibMap.fibPathMap g.2)
+      | ret t => (\lam s => (t.1 s, t.2 s), Fib.ext base (t.1 base, t.2 base) (base, h.2) t.3.1 t.3.2)
+      | ret_f g => pmap (\lam q => ((g.1, q) : S ->* PointedFib h))
+                        (pmap (\lam s => Fib.ext base (g.1 base) (base, h.2) s.1 s.2) (loopFibMap.fibPathMap=equiv (g.1 base) (base, h.2) g.2)
+                         *> (Fib.equiv base (g.1 base) (base, h.2)).ret_f g.2)
+      | f_sec t => pmap (\lam q => ((t.1, t.2, q) : Data {S} h))
+                        (loopFibMap.fibPathMap=equiv (t.1 base, t.2 base) (base, h.2) _ *> (Fib.equiv base (t.1 base, t.2 base) (base, h.2)).f_sec t.3)
+
+    \func zip {S Z T : Pointed} (h : Z ->* T) : QEquiv {Data {S} h} {Fib (Map*.post S h).1 (->*.zero S T)} \cowith
+      | f t => ((t.1, t.3.1), ->*.ext t.2 (inv t.3.2))
+      | ret u => (u.1.1, ->*.happly u.2, (u.1.2, inv (->*.happly-base u.2)))
+      | ret_f t => pmap (\lam q => ((t.1, t.2, (t.3.1, q)) : Data {S} h))
+                        (pmap inv (->*.happly-base-ext {S} {T} {h ∘* (t.1, t.3.1)} { ->*.zero S T} t.2 (inv t.3.2)) *> inv_inv t.3.2)
+      | f_sec u => pmap (\lam q => ((u.1, ->*.ext (->*.happly u.2) q) : Fib (Map*.post S h).1 (->*.zero S T))) (inv_inv _)
+                   *> pmap (\lam q => ((u.1, q) : Fib (Map*.post S h).1 (->*.zero S T))) (->*.ext-happly u.2)
+  }
+
+\func liftEquiv {S Z T : Pointed} (h : Z ->* T) (c : Contr (S ->* T)) : QEquiv {S ->* PointedFib h} {S ->* Z}
+  => transQEquiv (mapsIntoFib h) (contr-right \lam f => isProp=>PathContr (S ->* T) (isContr=>isProp c) (h ∘* f) (->*.zero S T))

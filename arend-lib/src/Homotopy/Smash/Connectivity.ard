@@ -37,6 +37,16 @@
     \func unit.{v} (Y : Pointed.{v}) : Y ->* UnitPointed
       => (\lam _ => (), idp)
 
+\lemma smash-connected.{u} {r s : Nat} {X Y : Pointed.{u}} (cX : isNConnectedType r X) (cY : isNConnectedType s Y)
+  : isNConnectedType (r Nat.+ s) (Smash X Y)
+  => (nconnected-unit.{u} {r Nat.+ s} {Smash X Y}).2
+       (nconnected-map-comp {r Nat.+ s} {Smash X Y} {Smash UnitPointed Y} {\Sigma} {_} {\lam _ => ()}
+                            (smash-left (smash-nconnected.unit X) ((nconnected-unit.{u} {r} {X}).1 cX) cY).2
+                            (nconnected-map-equiv.{u} (r Nat.+ s) {Smash UnitPointed Y} {\Sigma} {\lam _ => ()} (contr-equiv unit-left unit-isContr)))
+  \where
+    \lemma unit-left.{v} {Y : Pointed.{v}} : Contr (Smash UnitPointed Y)
+      => Contr.Contr_QEquiv (PointedEquiv.toHAEquiv (SmashPushout.toSmash UnitPointed Y)) (SmashPushout.unit-left Y)
+
 \func smashSwap.{u} (X Y : Pointed.{u}) : QEquiv {Smash X Y} {Smash Y X}
   => IsEquiv.toQEquiv (congr.isEquiv (wedgeToProduct X Y) (\lam _ => ()) (wedgeToProduct Y X) (\lam _ => ())
                                      (PushoutData.swap (\lam (_ : \Sigma) => base {X}) (\lam _ => base {Y})) product-nconnected.swap idEquiv

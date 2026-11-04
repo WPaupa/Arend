@@ -174,6 +174,10 @@
           => pmap (\lam t => fromSusp (g ->*.∘* t)) (inv (QEquiv.ret_f {adjoint X Z} k)) *> pmap fromSusp (toSusp.post g (fromSusp k))
              *> QEquiv.f_sec {adjoint X W} (Loop-Func g ->*.∘* fromSusp k)
 
+        \func pre {X Y Z : Pointed} (h : Susp.pointed Y ->* Z) (f : X ->* Y) : fromSusp (h ->*.∘* Susp-Func f) = fromSusp h ->*.∘* f
+          => pmap (\lam t => fromSusp (t ->*.∘* Susp-Func f)) (inv (QEquiv.ret_f {adjoint Y Z} h)) *> pmap fromSusp (inv (toSusp.pre (fromSusp h) f))
+             *> QEquiv.f_sec {adjoint X Z} (fromSusp h ->*.∘* f)
+
         \func id-unit (X : Pointed) : fromSusp {X} {Susp.pointed X} ->*.id = SuspLoopEquiv.unit X
           => ->*.ext {_} {_} {fromSusp ->*.id} {SuspLoopEquiv.unit X} (\lam _ => idp_*> _) idp
 

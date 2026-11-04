@@ -16,6 +16,7 @@
 
 \open PushoutData (ppglue, congr)
 \open ->* (∘*)
+\open Smash.unit (pick, pick-base)
 
 \func SmashPushout.{l} (X Y : Pointed.{l}) : Pointed.{l}
   => \new Pointed (PushoutData {Or X Y} (side X Y) (corner X Y)) (pinr (base, base))
@@ -119,14 +120,6 @@
     \func sphere.{l} (Y : Pointed.{l}) : SmashPushout (Sphere.pointed 0) Y ->* Y
       => (PushoutData.rec (\lam _ => base) (\lam t => pick base t.1 t.2) (glue Y), idp)
       \where {
-        \func pick {A : \Type} (a : A) (s : Sphere 0) (y : A) : A
-          => Susp.rec a y (\lam e => absurd e) s
-
-        \func pick-base {A : \Type} (a : A) (s : Sphere 0) : pick a s a = a \elim s
-          | north => idp
-          | south => idp
-          | pglue () _
-
         \func glue.{l} (Y : Pointed.{l}) (w : Or (Sphere 0) Y) : base = pick base (corner (Sphere.pointed 0) Y w).1 (corner (Sphere.pointed 0) Y w).2 \elim w
           | inl s => inv (pick-base base s)
           | inr _ => idp
@@ -192,5 +185,47 @@
 
         \func proj.{l} {X Y : Pointed.{l}} : (toSmash X Y).map ∘* SmashPushout.proj = Smash.proj
           => idp
+
+        \func S.{l} (X Y : Pointed.{l}) (z : PushoutData {Or X Y} {Bool} {\Sigma X Y} (side X Y) (\lam w => wedgeToProduct X Y (incl X Y w))) : Smash X Y
+          => PushoutData.swap.map (\lam (_ : Wedge X Y) => ()) (wedgeToProduct X Y) (collapse X Y (PushoutData.paste.from (side X Y) (incl X Y) (wedgeToProduct X Y) z))
+
+        \func SC.{l} (X Y : Pointed.{l}) (z : PushoutData {Wedge X Y} {Aux X Y} {\Sigma X Y} pinr (wedgeToProduct X Y)) : Smash X Y
+          => PushoutData.swap.map (\lam (_ : Wedge X Y) => ()) (wedgeToProduct X Y) (collapse X Y z)
+
+        \func tglue-l.{l} {X Y : Pointed.{l}} (x : X)
+          : pmap (toSmash X Y).map.1 (ppglue (inl x)) = idp *> inv (ppglue {Wedge X Y} {\Sigma X Y} {\Sigma} {wedgeToProduct X Y} {\lam _ => ()} (pinl x))
+          => pmap_idp_*> (S X Y) (ppglue (inl x)) *> pmap_*>-comm (SC X Y) (pmap pinl (ppglue (inl x))) (ppglue (pinl x))
+             *> pmap (idp *>) (pmap_idp_*> (PushoutData.swap.map (\lam (_ : Wedge X Y) => ()) (wedgeToProduct X Y)) (ppglue (pinl x)))
+
+        \func tglue-r.{l} {X Y : Pointed.{l}} (y : Y)
+          : pmap (toSmash X Y).map.1 (ppglue (inr y)) = idp *> inv (ppglue {Wedge X Y} {\Sigma X Y} {\Sigma} {wedgeToProduct X Y} {\lam _ => ()} (pinr y))
+          => pmap_idp_*> (S X Y) (ppglue (inr y)) *> pmap_*>-comm (SC X Y) (pmap pinl (ppglue (inr y))) (ppglue (pinr y))
+             *> pmap (idp *>) (pmap_idp_*> (PushoutData.swap.map (\lam (_ : Wedge X Y) => ()) (wedgeToProduct X Y)) (ppglue (pinr y)))
+
+        \func natural.{l} {X X' Y Y' : Pointed.{l}} (f : X ->* X') (g : Y ->* Y')
+          : (toSmash X' Y').map ∘* SmashPushout.map f g = Smash.map f g ∘* (toSmash X Y).map
+          => ->*.ext (PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam s => (toSmash X' Y').map.1 ((SmashPushout.map f g).1 s)} {\lam s => (Smash.map f g).1 ((toSmash X Y).map.1 s)}
+                                          (\lam _ => inv (ppglue (pinl base))) (\lam _ => idp) (natural-glue f g))
+                     (natural-base f.2 g.2)
+          \where {
+            \func natural-glue.{l} {X X' Y Y' : Pointed.{l}} (f : X ->* X') (g : Y ->* Y') (w : Or X Y)
+              : inv (ppglue (pinl base)) *> pmap (\lam s => (Smash.map f g).1 ((toSmash X Y).map.1 s)) (ppglue w)
+                = pmap (\lam s => (toSmash X' Y').map.1 ((SmashPushout.map f g).1 s)) (ppglue w) *> idp \elim w
+              | inl x => pmap (inv (ppglue (pinl base)) *>) (pmap (pmap (Smash.map f g).1) (tglue-l {X} {Y} x) *> pmap_idp_*> (Smash.map f g).1 _ *> pmap_inv-comm (Smash.map f g).1 _)
+                         *> alg (\lam y => Smash.proj.1 (f.1 x, y)) g.2 (ppglue (pinl (f.1 x))) (ppglue (pinl base))
+                         *> inv (pmap_*>-comm (toSmash X' Y').map.1 _ _ *> pmap (`*> _) (pmap_idp_*> (toSmash X' Y').map.1 _ *> tglue-l {X'} {Y'} (f.1 x)))
+              | inr y => pmap (inv (ppglue (pinl base)) *>) (pmap (pmap (Smash.map f g).1) (tglue-r {X} {Y} y) *> pmap_idp_*> (Smash.map f g).1 _ *> pmap_inv-comm (Smash.map f g).1 _)
+                         *> alg (\lam x => Smash.proj.1 (x, g.1 y)) f.2 (ppglue (pinr (g.1 y))) (ppglue (pinl base))
+                         *> inv (pmap_*>-comm (toSmash X' Y').map.1 _ _ *> pmap (`*> _) (pmap_idp_*> (toSmash X' Y').map.1 _ *> tglue-r {X'} {Y'} (g.1 y)))
+
+            \func alg {A B : \Type} (P : B -> A) {y0 y1 : B} (g2 : y0 = y1) {c u : A} (Q : P y1 = c) (Pb : u = c)
+              : inv Pb *> inv (pmap P g2 *> (Q *> inv Pb)) = (idp *> inv Q) *> pmap P (inv g2) \elim y1, g2, c, u, Q, Pb
+              | _, idp, _, _, idp, idp => idp
+
+            \func natural-base.{l} {X' Y' : Pointed.{l}} {x0 : X'} (f2 : x0 = base) {y0 : Y'} (g2 : y0 = base)
+              : idp *> (idp *> (pmap (\lam y => Smash.proj.1 (x0, y)) g2 *> (ppglue (pinl x0) *> inv (ppglue {Wedge X' Y'} {\Sigma X' Y'} {\Sigma} {wedgeToProduct X' Y'} {\lam _ => ()} (pinl base)))))
+                = pmap2 (\lam a b => Smash.proj.1 (a, b)) f2 g2 \elim x0, f2, y0, g2
+              | _, idp, _, idp => idp_*> _ *> idp_*> _ *> idp_*> _ *> *>_inv _
+          }
       }
   }

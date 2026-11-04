@@ -171,6 +171,11 @@
   | map => fibEquivPreMap h e
   | map-isEquiv => inP (fib-precomp (IsEquiv.toQEquiv e.map-isEquiv) h.1 base)
 
+\func fibEquivPost.{u} {A B C : Pointed.{u}} (h : A ->* B) (e : PointedEquiv B C) : PointedEquiv (PointedFib h) (PointedFib (e.map ->*.∘* h)) \cowith
+  | map => (\lam t => (t.1, pmap e.map.1 t.2 *> e.map.2), idp)
+  | map-isEquiv => transport (\lam P => P) (totalEquiv.{u} {A} {\lam a => h.1 a = base} {\lam a => e.map.1 (h.1 a) = base} (\lam _ q => pmap e.map.1 q *> e.map.2))
+                             (\lam _ => IsEquiv.trans (pmapIsEquiv e.map-isEquiv) (inP (pathConcatEquiv-right e.map.2)))
+
 \func fibCongrMap {A B : Pointed} {g h : A ->* B} (s : g = h) : PointedFib g ->* PointedFib h \elim s
   | idp => ->*.id
   \where

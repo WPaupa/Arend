@@ -65,6 +65,12 @@
                  (inv (->*.compose-assoc h (copair f g) (right A B)) *> pmap (h ->*.∘*) (right-eq f g) *> inv (right-eq (h ->*.∘* f) (h ->*.∘* g)))
       }
 
+    \func mapsOut.{l} {A B : Pointed.{l}} {Z : Pointed} : QEquiv {pointed A B ->* Z} {\Sigma (A ->* Z) (B ->* Z)} \cowith
+      | f h => (h ->*.∘* left A B, h ->*.∘* right A B)
+      | ret p => copair p.1 p.2
+      | ret_f => copair.eta
+      | f_sec p => path (\lam i => (copair.left-eq p.1 p.2 @ i, copair.right-eq p.1 p.2 @ i))
+
     \sfunc ext.{l} {A B : Pointed.{l}} {Z : Pointed} {h k : pointed A B ->* Z}
                    (p : h ->*.∘* left A B = k ->*.∘* left A B) (q : h ->*.∘* right A B = k ->*.∘* right A B) : h = k
       => inv (copair.eta h) *> pmap2 copair p q *> copair.eta k
