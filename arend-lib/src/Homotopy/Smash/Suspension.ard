@@ -200,19 +200,25 @@
 
 \func suspSmash.{l} (X Y : Pointed.{l}) : PointedEquiv (Smash.{l} (Susp.pointed X) Y) (Susp.pointed (Smash.{l} X Y))
   => representFam.{l} {Smash.{l} (Susp.pointed X) Y} {Susp.pointed (Smash.{l} X Y)} {\lam T => X ->* Loop (Map* Y T)}
-       (\lam T => left.{l} {X} {Y} {T}) (\lam T => right.{l} {X} {Y} {T}) (\lam {T} {T'} k => ->*.compose (Loop-Func (Map*.post Y k)))
+       (\lam T => left.{l} {X} {Y} {T}) (\lam T => right.{l} {X} {Y} {T}) (\lam k => ->*.compose (Loop-Func (Map*.post Y k)))
        (\lam {T} {T'} k h => left.post.{l} {X} {Y} {T} {T'} k h) (\lam {T} {T'} k h => right.post.{l} {X} {Y} {T} {T'} k h)
   \where {
+    \func eval.{l} (X Y : Pointed.{l})
+      : left.{l} {X} {Y} {Susp.pointed (Smash.{l} X Y)} (suspSmash.{l} X Y).map = right.{l} {X} {Y} {Susp.pointed (Smash.{l} X Y)} ->*.id
+      => representFam.eval.{l} {Smash.{l} (Susp.pointed X) Y} {Susp.pointed (Smash.{l} X Y)} {\lam T => X ->* Loop (Map* Y T)}
+           (\lam T => left.{l} {X} {Y} {T}) (\lam T => right.{l} {X} {Y} {T}) (\lam k => ->*.compose (Loop-Func (Map*.post Y k)))
+           (\lam {T} {T'} k h => left.post.{l} {X} {Y} {T} {T'} k h) (\lam {T} {T'} k h => right.post.{l} {X} {Y} {T} {T'} k h)
+
     \func natural.{l} {X X' Y Y' : Pointed.{l}} (f : X ->* X') (g : Y ->* Y')
       : (suspSmash.{l} X' Y').map ∘* Smash.map.{l} (Susp-Func f) g = Susp-Func (Smash.map.{l} f g) ∘* (suspSmash.{l} X Y).map
       => represent.natural.{l} {Smash.{l} (Susp.pointed X) Y} {Susp.pointed (Smash.{l} X Y)} {Smash.{l} (Susp.pointed X') Y'} {Susp.pointed (Smash.{l} X' Y')}
            {\lam T => X ->* Loop (Map* Y T)} {\lam T => X' ->* Loop (Map* Y' T)}
-           (\lam T => left.{l} {X} {Y} {T}) (\lam T => right.{l} {X} {Y} {T}) (\lam {T} {T'} k => ->*.compose (Loop-Func (Map*.post Y k)))
+           (\lam T => left.{l} {X} {Y} {T}) (\lam T => right.{l} {X} {Y} {T}) (\lam k => ->*.compose (Loop-Func (Map*.post Y k)))
            (\lam {T} {T'} k h => left.post.{l} {X} {Y} {T} {T'} k h) (\lam {T} {T'} k h => right.post.{l} {X} {Y} {T} {T'} k h)
-           (\lam T => left.{l} {X'} {Y'} {T}) (\lam T => right.{l} {X'} {Y'} {T}) (\lam {T} {T'} k => ->*.compose (Loop-Func (Map*.post Y' k)))
+           (\lam T => left.{l} {X'} {Y'} {T}) (\lam T => right.{l} {X'} {Y'} {T}) (\lam k => ->*.compose (Loop-Func (Map*.post Y' k)))
            (\lam {T} {T'} k h => left.post.{l} {X'} {Y'} {T} {T'} k h) (\lam {T} {T'} k h => right.post.{l} {X'} {Y'} {T} {T'} k h)
            (Smash.map.{l} (Susp-Func f) g) (Susp-Func (Smash.map.{l} f g)) (\lam T F => (Loop-Func (Map*.pre g T) ∘* F) ∘* f)
-           (\lam T k => left-pre.{l} f g k) (\lam T k => right-pre.{l} f g k)
+           (\lam _ k => left-pre.{l} f g k) (\lam _ k => right-pre.{l} f g k)
       \where {
         \func left-pre.{l} {X X' Y Y' T : Pointed.{l}} (f : X ->* X') (g : Y ->* Y') (k : Smash.{l} (Susp.pointed X') Y' ->* T)
           : left.{l} {X} {Y} {T} (k ∘* Smash.map.{l} (Susp-Func f) g) = (Loop-Func (Map*.pre g T) ∘* left.{l} {X'} {Y'} {T} k) ∘* f
@@ -237,7 +243,7 @@
 
     \func map-suspLeft.{l} (X Y : Pointed.{l}) : (suspSmash.{l} X Y).map = Smash.suspLeft.{l} X Y
       => representFam.char.{l} {Smash.{l} (Susp.pointed X) Y} {Susp.pointed (Smash.{l} X Y)} {\lam T => X ->* Loop (Map* Y T)}
-           (\lam T => left.{l} {X} {Y} {T}) (\lam T => right.{l} {X} {Y} {T}) (\lam {T} {T'} k => ->*.compose (Loop-Func (Map*.post Y k)))
+           (\lam T => left.{l} {X} {Y} {T}) (\lam T => right.{l} {X} {Y} {T}) (\lam k => ->*.compose (Loop-Func (Map*.post Y k)))
            (\lam {T} {T'} k h => left.post.{l} {X} {Y} {T} {T'} k h) (\lam {T} {T'} k h => right.post.{l} {X} {Y} {T} {T'} k h)
            (Smash.suspLeft.{l} X Y) (left-eq.{l} X Y)
       \where {

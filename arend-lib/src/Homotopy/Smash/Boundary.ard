@@ -1,0 +1,108 @@
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Cofiber.Null
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Cofiber
+\import Homotopy.Smash.Suspension
+\import Homotopy.Suspension
+\import Paths
+
+\open ->* (∘*)
+
+\func smashQuotient.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u})
+  : Cof.quotient (Smash.map.{u} f (->*.id {K}))
+    = ((suspSmash.{u} X K).map ∘* Smash.map.{u} (Cof.quotient f) (->*.id {K})) ∘* (cofSmashEquiv.{u} f K).map
+  => QEquiv.isInj {cofSmashEquiv.L.{u} f K (Susp.pointed (Smash.{u} X K))}
+       (main.{u} f K *> inv (factor.{u} f K ((suspSmash.{u} X K).map ∘* Smash.map.{u} (Cof.quotient f) (->*.id {K}))))
+  \where {
+    \func factor.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) {T : Pointed.{u}} (k : Smash.{u} (Cof.pointed f) K ->* T)
+      : cofSmashEquiv.L.{u} f K T (k ∘* (cofSmashEquiv.{u} f K).map) = cofSmashEquiv.R.{u} f K T k
+      => cofSmashEquiv.Lp.{u} f K k (cofSmashEquiv.{u} f K).map
+         *> pmap (CofNull.post.{u} (Map*.post K k)) (cofSmashEquiv.eval.{u} f K)
+         *> inv (cofSmashEquiv.Rp.{u} f K k ->*.id)
+         *> pmap (cofSmashEquiv.R.{u} f K T) (->*.compose-id k)
+
+    \func null.{u} {X Y T : Pointed.{u}} (f : X ->* Y) (l : X ->* Loop T) : CofNull.{u} f T
+      => (base {Map* Y T}, mapLoop*.fromHom l)
+
+    \func puppe.{u} {X Y T : Pointed.{u}} (f : X ->* Y) (H : Susp.pointed X ->* T)
+      : CofNull.fromCocone.{u} (Cof.restrict (H ∘* Cof.quotient f)) = null.{u} f (SuspLoopEquiv.fromSusp H)
+      => CofNull.ext.{u} (->*.ext {Y} {T} {((Cof.restrict (H ∘* Cof.quotient f)).1, (Cof.restrict (H ∘* Cof.quotient f)).2)} {base {Map* Y T}}
+                                  (\lam _ => (H ∘* Cof.quotient f).2) idp)
+           (mapLoop*.ext-base (\lam x => alg (pmap H.1 (pmerid x)) (pmap H.1 (pmerid base)) H.2
+                                         *> inv (pmap_*>-comm (\lam (G : X ->* T) => G.1 x)
+                                                              (pmap (∘* f) (->*.ext {Y} {T} {((Cof.restrict (H ∘* Cof.quotient f)).1, (Cof.restrict (H ∘* Cof.quotient f)).2)}
+                                                                                    {base {Map* Y T}} (\lam _ => (H ∘* Cof.quotient f).2) idp))
+                                                              (mapLoop*.fromHom (SuspLoopEquiv.fromSusp H)))))
+      \where
+        \func alg {T : \Type} {a b c : T} (A B : a = b) (H2 : a = c)
+          : A *> inv B *> idp *> (idp *> H2) = (idp *> H2) *> (inv H2 *> A *> inv B *> H2) \elim b, c, B, H2
+          | _, _, idp, idp => inv (idp_*> _ *> idp_*> A)
+
+    \func null-E.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K T : Pointed.{u}) (l : Smash.{u} X K ->* Loop T)
+      : cofSmashEquiv.E.{u} f K T (null.{u} (Smash.map.{u} f (->*.id {K})) l) = null.{u} f ((mapLoop* K T).map ∘* Smash.adjunction.{u} {X} {K} {Loop T} l)
+      => cofSmashEquiv.E.eval'.{u} f K T (base {Map* (Smash.{u} Y K) T}) (mapLoop*.fromHom l)
+         *> CofNull.ext.{u} {X} {Y} {Map* K T} {f} {base {Map* Y (Map* K T)}} {base {Map* Y (Map* K T)}}
+              {inv (cofSmashEquiv.pre'.{u} f (base {Map* (Smash.{u} Y K) T})) *> pmap (Smash.adjunction.{u} {X} {K} {T}) (mapLoop*.fromHom l)}
+              {mapLoop*.fromHom ((mapLoop* K T).map ∘* Smash.adjunction.{u} {X} {K} {Loop T} l)} idp
+              (mapLoop*.ext2-base (\lam x k => cofSmashEquiv.E.post.pre'-ev.{u} f (base {Map* (Smash.{u} Y K) T}) {mapLoop*.fromHom l} x k
+                                               *> inv (pmap (pmap (\lam (G : X ->* Map* K T) => (G.1 x).1 k))
+                                                            (idp_*> (mapLoop*.fromHom ((mapLoop* K T).map ∘* Smash.adjunction.{u} {X} {K} {Loop T} l))))))
+
+    \func main.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u})
+      : cofSmashEquiv.L.{u} f K (Susp.pointed (Smash.{u} X K)) (Cof.quotient (Smash.map.{u} f (->*.id {K})))
+        = cofSmashEquiv.R.{u} f K (Susp.pointed (Smash.{u} X K)) ((suspSmash.{u} X K).map ∘* Smash.map.{u} (Cof.quotient f) (->*.id {K}))
+      => cofSmashEquiv.L.eval.{u} f K (Susp.pointed (Smash.{u} X K)) (Cof.quotient (Smash.map.{u} f (->*.id {K})))
+         *> pmap (cofSmashEquiv.E.{u} f K (Susp.pointed (Smash.{u} X K)))
+                 (CofNull.mapsOut.eval.{u} (Cof.quotient (Smash.map.{u} f (->*.id {K}))) *> puppe.{u} (Smash.map.{u} f (->*.id {K})) ->*.id)
+         *> null-E.{u} f K (Susp.pointed (Smash.{u} X K)) (SuspLoopEquiv.fromSusp ->*.id)
+         *> pmap (null.{u} f) (inv (suspSmash.right.eval.{u} {X} {K} {Susp.pointed (Smash.{u} X K)} ->*.id))
+         *> pmap (null.{u} f) (inv (suspSmash.eval.{u} X K))
+         *> pmap (null.{u} f) (suspSmash.left.eval.{u} {X} {K} {Susp.pointed (Smash.{u} X K)} (suspSmash.{u} X K).map)
+         *> inv (puppe.{u} f (Smash.adjunction.{u} {Susp.pointed X} {K} {Susp.pointed (Smash.{u} X K)} (suspSmash.{u} X K).map))
+         *> inv (CofNull.mapsOut.eval.{u} (Smash.adjunction.{u} {Susp.pointed X} {K} {Susp.pointed (Smash.{u} X K)} (suspSmash.{u} X K).map ∘* Cof.quotient f))
+         *> pmap (CofNull.mapsOut.{u} {X} {Y} {Map* K (Susp.pointed (Smash.{u} X K))} {f})
+                 (inv (cofSmashEquiv.pre'.{u} (Cof.quotient f) (suspSmash.{u} X K).map))
+         *> inv (cofSmashEquiv.R.eval.{u} f K (Susp.pointed (Smash.{u} X K)) ((suspSmash.{u} X K).map ∘* Smash.map.{u} (Cof.quotient f) (->*.id {K})))
+  }
+
+\func smashQuotientRight.{u} (K : Pointed.{u}) {X Y : Pointed.{u}} (g : X ->* Y)
+  : Cof.quotient (Smash.map.{u} (->*.id {K}) g)
+    = ((suspSmashRight.{u} K X).map ∘* Smash.map.{u} (->*.id {K}) (Cof.quotient g)) ∘* (cofSmashEquivRight.{u} K g).map
+  => inv (pmap (∘* ((Smash.swap.{u} (Cof.pointed g) K ∘* (cofSmashEquiv.{u} g K).map) ∘* (E.{u} K g).map))
+               (inv (->*.compose-assoc (Susp-Func (Smash.swap.{u} X K) ∘* (suspSmash.{u} X K).map) (Smash.swap.{u} K (Susp.pointed X))
+                                       (Smash.map.{u} (->*.id {K}) (Cof.quotient g))))
+          *> pmap (\lam z => (Susp-Func (Smash.swap.{u} X K) ∘* (suspSmash.{u} X K).map ∘* z)
+                             ∘* ((Smash.swap.{u} (Cof.pointed g) K ∘* (cofSmashEquiv.{u} g K).map) ∘* (E.{u} K g).map))
+                  (Smash.swap.natural.{u} (->*.id {K}) (Cof.quotient g))
+          *> pmap (∘* ((Smash.swap.{u} (Cof.pointed g) K ∘* (cofSmashEquiv.{u} g K).map) ∘* (E.{u} K g).map))
+                  (->*.compose-assoc (Susp-Func (Smash.swap.{u} X K) ∘* (suspSmash.{u} X K).map) (Smash.map.{u} (Cof.quotient g) (->*.id {K}))
+                                     (Smash.swap.{u} K (Cof.pointed g)))
+          *> inv (->*.compose-assoc ((Susp-Func (Smash.swap.{u} X K) ∘* (suspSmash.{u} X K).map) ∘* Smash.map.{u} (Cof.quotient g) (->*.id {K}))
+                                    (Smash.swap.{u} K (Cof.pointed g))
+                                    ((Smash.swap.{u} (Cof.pointed g) K ∘* (cofSmashEquiv.{u} g K).map) ∘* (E.{u} K g).map))
+          *> pmap (((Susp-Func (Smash.swap.{u} X K) ∘* (suspSmash.{u} X K).map) ∘* Smash.map.{u} (Cof.quotient g) (->*.id {K})) ∘*)
+                  (->*.compose-assoc (Smash.swap.{u} K (Cof.pointed g)) (Smash.swap.{u} (Cof.pointed g) K ∘* (cofSmashEquiv.{u} g K).map) (E.{u} K g).map
+                   *> pmap (∘* (E.{u} K g).map)
+                           (->*.compose-assoc (Smash.swap.{u} K (Cof.pointed g)) (Smash.swap.{u} (Cof.pointed g) K) (cofSmashEquiv.{u} g K).map
+                            *> pmap (∘* (cofSmashEquiv.{u} g K).map) (Smash.swap.invol.{u} {Cof.pointed g} {K})))
+          *> ->*.compose-assoc ((Susp-Func (Smash.swap.{u} X K) ∘* (suspSmash.{u} X K).map) ∘* Smash.map.{u} (Cof.quotient g) (->*.id {K}))
+                               (cofSmashEquiv.{u} g K).map (E.{u} K g).map
+          *> pmap (∘* (E.{u} K g).map)
+                  (pmap (∘* (cofSmashEquiv.{u} g K).map)
+                        (inv (->*.compose-assoc (Susp-Func (Smash.swap.{u} X K)) (suspSmash.{u} X K).map (Smash.map.{u} (Cof.quotient g) (->*.id {K}))))
+                   *> inv (->*.compose-assoc (Susp-Func (Smash.swap.{u} X K)) ((suspSmash.{u} X K).map ∘* Smash.map.{u} (Cof.quotient g) (->*.id {K}))
+                                             (cofSmashEquiv.{u} g K).map)
+                   *> pmap (Susp-Func (Smash.swap.{u} X K) ∘*) (inv (smashQuotient.{u} g K)))
+          *> inv (->*.compose-assoc (Susp-Func (Smash.swap.{u} X K)) (Cof.quotient (Smash.map.{u} g (->*.id {K}))) (E.{u} K g).map)
+          *> pmap (Susp-Func (Smash.swap.{u} X K) ∘*)
+                  (Cof.map*.quotient-natural {Smash.{u} K X} {Smash.{u} K Y} {Smash.{u} X K} {Smash.{u} Y K} {Smash.map.{u} (->*.id {K}) g}
+                                             {Smash.map.{u} g (->*.id {K})} (Smash.swap.{u} K X) (Smash.swap.{u} K Y)
+                                             (\lam x => inv (inv (->*.happly (Smash.swap.natural.{u} (->*.id {K}) g) x))))
+          *> ->*.compose-assoc (Susp-Func (Smash.swap.{u} X K)) (Susp-Func (Smash.swap.{u} K X)) (Cof.quotient (Smash.map.{u} (->*.id {K}) g))
+          *> pmap (∘* Cof.quotient (Smash.map.{u} (->*.id {K}) g))
+                  (inv (Susp-Func.comp (Smash.swap.{u} X K) (Smash.swap.{u} K X)) *> pmap Susp-Func (Smash.swap.invol.{u} {K} {X}) *> Susp-Func.id))

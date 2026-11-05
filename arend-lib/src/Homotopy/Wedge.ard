@@ -63,6 +63,13 @@
           : h ->*.∘* copair f g = copair (h ->*.∘* f) (h ->*.∘* g)
           => ext (inv (->*.compose-assoc h (copair f g) (left A B)) *> pmap (h ->*.∘*) (left-eq f g) *> inv (left-eq (h ->*.∘* f) (h ->*.∘* g)))
                  (inv (->*.compose-assoc h (copair f g) (right A B)) *> pmap (h ->*.∘*) (right-eq f g) *> inv (right-eq (h ->*.∘* f) (h ->*.∘* g)))
+
+        \sfunc pre.{l} {A A' B B' : Pointed.{l}} {Z : Pointed} (u : A ->* A') (v : B ->* B') (f : A' ->* Z) (g : B' ->* Z)
+          : copair f g ->*.∘* map u v = copair (f ->*.∘* u) (g ->*.∘* v)
+          => ext (inv (->*.compose-assoc (copair f g) (map u v) (left A B)) *> pmap (copair f g ->*.∘*) (map.left-eq u v)
+                  *> ->*.compose-assoc (copair f g) (left A' B') u *> pmap (->*.∘* u) (left-eq f g) *> inv (left-eq (f ->*.∘* u) (g ->*.∘* v)))
+                 (inv (->*.compose-assoc (copair f g) (map u v) (right A B)) *> pmap (copair f g ->*.∘*) (map.right-eq u v)
+                  *> ->*.compose-assoc (copair f g) (right A' B') v *> pmap (->*.∘* v) (right-eq f g) *> inv (right-eq (f ->*.∘* u) (g ->*.∘* v)))
       }
 
     \func mapsOut.{l} {A B : Pointed.{l}} {Z : Pointed} : QEquiv {pointed A B ->* Z} {\Sigma (A ->* Z) (B ->* Z)} \cowith

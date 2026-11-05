@@ -1,0 +1,268 @@
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Cofiber.Corner
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Paths
+
+\open PushoutData (ppglue, rec, drec)
+\open PushoutData.homotopy-equiv (square)
+\open ->* (∘*)
+
+\func cofTotal.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                   (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a))
+  : PointedEquiv (Cof.pointed (gap.{l} u v u' v' S)) (Cof.pointed (cmap.{l} u v u' v' S))
+  => fromPre (map.{l} u v u' v' S) (pre.{l} u v u' v' S (Cof.pointed (gap.{l} u v u' v' S))) (\lam k => pre.eval.{l} u v u' v' S k)
+             (pre.{l} u v u' v' S (Cof.pointed (cmap.{l} u v u' v' S))) (\lam k => pre.eval.{l} u v u' v' S k)
+  \where {
+    \func gap.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                  (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) : cornerQuotient.total.{l} u v ->* A3
+      => (rec v'.1 u'.1 S, v'.2)
+
+    \func cmap.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                   (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) : Cof.pointed u ->* Cof.pointed u'
+      => Cof.map* {A0} {A1} {A2} {A3} {u} {u'} v v' S
+
+    \func col.{l} {A0 A1 A2 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) : cornerQuotient.total.{l} u v ->* Cof.pointed u
+      => (rec (\lam a => pinl a) (\lam _ => pinr ()) (\lam a => ppglue a), idp)
+
+    \func sq.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                 (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) (z : PushoutData u.1 v.1)
+      : pinl ((gap.{l} u v u' v' S).1 z) = {Cof u'.1} (cmap.{l} u v u' v' S).1 ((col.{l} u v).1 z)
+      => drec (\lam z => pinl ((gap.{l} u v u' v' S).1 z) = {Cof u'.1} (cmap.{l} u v u' v' S).1 ((col.{l} u v).1 z)) (\lam _ => idp) (\lam a => ppglue a)
+              (\lam a => (square (\lam z => pinl {_} {_} {_} {u'.1} {\lam _ => ()} ((gap.{l} u v u' v' S).1 z))
+                                 (\lam z => (cmap.{l} u v u' v' S).1 ((col.{l} u v).1 z)) (ppglue a) idp (ppglue (v.1 a))).ret (idp_*> _)) z
+
+    \func map.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                  (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) : Cof.pointed (gap.{l} u v u' v' S) ->* Cof.pointed (cmap.{l} u v u' v' S)
+      => Cof.map* {cornerQuotient.total.{l} u v} {A3} {Cof.pointed u} {Cof.pointed u'} {gap.{l} u v u' v' S} {cmap.{l} u v u' v' S}
+                  (col.{l} u v) (Cof.inc u') (sq.{l} u v u' v' S)
+
+    \func fromPre {P Q : Pointed} (m : P ->* Q) (eP : QEquiv {Q ->* P} {P ->* P}) (hP : \Pi (k : Q ->* P) -> eP k = k ∘* m)
+                  (eQ : QEquiv {Q ->* Q} {P ->* Q}) (hQ : \Pi (k : Q ->* Q) -> eQ k = k ∘* m) : PointedEquiv P Q
+      => PointedEquiv.fromInverse m (eP.ret ->*.id) (inv (hP (eP.ret ->*.id)) *> eP.f_sec ->*.id)
+           (eQ.isInj (hQ (m ∘* eP.ret ->*.id) *> inv (->*.compose-assoc m (eP.ret ->*.id) m)
+                      *> pmap (m ∘*) (inv (hP (eP.ret ->*.id)) *> eP.f_sec ->*.id) *> ->*.compose-id m *> inv (hQ ->*.id)))
+
+    \func PO {J B D : \Type} (al : J -> B) (be : J -> D) (b0 : B) : Pointed
+      => \new Pointed (PushoutData al be) (pinl b0)
+
+    \func Split {J B D : \Type} {al : J -> B} {be : J -> D} {b0 : B} {Z : Pointed} (m : PO al be b0 ->* Z) (T : Pointed)
+      => \Sigma (h : Z -> T) (h0 : h base = base) (H1 : \Pi (b : B) -> h (m.1 (pinl b)) = base) (H2 : \Pi (d : D) -> h (m.1 (pinr d)) = base)
+                (\Pi (j : J) -> H1 (al j) = pmap (\lam w => h (m.1 w)) (ppglue j) *> H2 (be j)) (H1 b0 = pmap h m.2 *> h0)
+
+    \func split {J B D : \Type} {al : J -> B} {be : J -> D} {b0 : B} {Z T : Pointed} (m : PO al be b0 ->* Z)
+      : QEquiv {CofCocone {PO al be b0} {Z} m T} {Split m T} \cowith
+      | f d => (d.1, d.2, \lam b => d.3 (pinl b), \lam e => d.3 (pinr e),
+                \lam j => (square (\lam w => d.1 (m.1 w)) (\lam _ => base) (ppglue j) (d.3 (pinl (al j))) (d.3 (pinr (be j)))).f (path (\lam i => d.3 (pglue j i))),
+                d.4)
+      | ret t => (t.1, t.2, drec (\lam w => t.1 (m.1 w) = base) t.3 t.4
+                                 (\lam j => (square (\lam w => t.1 (m.1 w)) (\lam _ => base) (ppglue j) (t.3 (al j)) (t.4 (be j))).ret (t.5 j)), t.6)
+      | ret_f d => path (\lam i => (d.1, d.2, \lam w => split-sec m d w @ i, d.4))
+      | f_sec t => path (\lam i => (t.1, t.2, t.3, t.4, \lam j => (square (\lam w => t.1 (m.1 w)) (\lam _ => base) (ppglue j) (t.3 (al j)) (t.4 (be j))).f_sec (t.5 j) @ i, t.6))
+
+    \func split-sec {J B D : \Type} {al : J -> B} {be : J -> D} {b0 : B} {Z T : Pointed} (m : PO al be b0 ->* Z)
+                    (d : CofCocone {PO al be b0} {Z} m T) (w : PushoutData al be)
+      : drec (\lam w => d.1 (m.1 w) = base) (\lam b => d.3 (pinl b)) (\lam e => d.3 (pinr e))
+             (\lam j => (square (\lam w => d.1 (m.1 w)) (\lam _ => base) (ppglue j) (d.3 (pinl (al j))) (d.3 (pinr (be j)))).ret
+                          ((square (\lam w => d.1 (m.1 w)) (\lam _ => base) (ppglue j) (d.3 (pinl (al j))) (d.3 (pinr (be j)))).f (path (\lam i => d.3 (pglue j i))))) w
+        = d.3 w \elim w
+      | pinl b => idp
+      | pinr e => idp
+      | pglue j i => path (\lam k => ((square (\lam w => d.1 (m.1 w)) (\lam _ => base) (ppglue j) (d.3 (pinl (al j))) (d.3 (pinr (be j)))).ret_f
+                                        (path (\lam i => d.3 (pglue j i))) @ k) @ i)
+
+    \func D.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) (T : Pointed.{l})
+      => Split {A0} {A1} {A2} {u.1} {v.1} {base} {A3} (gap.{l} u v u' v' S) T
+
+    \func Split2.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                     (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) (T : Pointed.{l})
+      => \Sigma (h : Cof u'.1 -> T) (h0 : h (pinl base) = base) (H1 : \Pi (a : A1) -> h (pinl (v'.1 a)) = base) (H2 : \Pi (e : \Sigma) -> h (pinr e) = base)
+                (\Pi (a : A0) -> H1 (u.1 a) = pmap (\lam x => h (pinl x)) (S a) *> (pmap h (ppglue (v.1 a)) *> H2 ()))
+                (H1 base = pmap (\lam x => h (pinl x)) v'.2 *> h0)
+
+    \func ra {V W T : \Type} (h : W -> T) (i : V -> W) {y y' : V} (s : y = y') {w : W} (g : i y' = w) {t : T} (r : h w = t)
+      : pmap h (pmap i s *> g) *> r = pmap (\lam x => h (i x)) s *> (pmap h g *> r) \elim y', s, w, g, t, r
+      | _, idp, _, idp, _, idp => idp
+
+    \func cancel1 {A : \Type} {a b c : A} (x : a = b) (r : b = c) : (x *> r) *> inv r = x \elim c, r
+      | _, idp => idp
+
+    \func cancel2 {A : \Type} {a b c : A} (x : a = c) (r : b = c) : (x *> inv r) *> r = x \elim c, r
+      | _, idp => idp
+
+    \func R2.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                 (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) (T : Pointed.{l})
+      : QEquiv {Split {A0} {A1} {\Sigma} {u.1} {\lam _ => ()} {base} {Cof.pointed u'} (cmap.{l} u v u' v' S) T} {Split2.{l} u v u' v' S T} \cowith
+      | f d => (d.1, d.2, d.3, d.4, \lam a => d.5 a *> ra d.1 pinl (S a) (ppglue (v.1 a)) (d.4 ()), d.6)
+      | ret d => (d.1, d.2, d.3, d.4, \lam a => d.5 a *> inv (ra d.1 pinl (S a) (ppglue (v.1 a)) (d.4 ())), d.6)
+      | ret_f d => path (\lam i => (d.1, d.2, d.3, d.4, \lam a => cancel1 (d.5 a) (ra d.1 pinl (S a) (ppglue (v.1 a)) (d.4 ())) @ i, d.6))
+      | f_sec d => path (\lam i => (d.1, d.2, d.3, d.4, \lam a => cancel2 (d.5 a) (ra d.1 pinl (S a) (ppglue (v.1 a)) (d.4 ())) @ i, d.6))
+
+    \func R3.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                 (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) (T : Pointed.{l})
+      : QEquiv {Split2.{l} u v u' v' S T} {D.{l} u v u' v' S T} \cowith
+      | f d => (\lam x => d.1 (pinl x), d.2, d.3, \lam a => pmap d.1 (ppglue a) *> d.4 (), d.5, d.6)
+      | ret d => (rec {A2} {A3} {\Sigma} {u'.1} {\lam _ => ()} d.1 (\lam _ => base) d.4, d.2, d.3, \lam _ => idp, d.5, d.6)
+      | ret_f d => sing {A0} {A1} {A2} {A3} {u} {v} {u'} {v'} {S} (\lam x => d.1 (pinl x)) (\lam a => pmap d.1 (ppglue a)) (d.4 ()) d.2 d.3 d.5 d.6
+                   *> path (\lam i => ((PushoutData.rec.equiv {A2} {A3} {\Sigma} {u'.1} {\lam _ => ()} T).ret_f d.1 @ i, d.2, d.3, d.4, d.5, d.6))
+      | f_sec _ => idp
+      \where
+        \func sing.{l} {A0 A1 A2 A3 : Pointed.{l}} {u : A0 ->* A1} {v : A0 ->* A2} {u' : A2 ->* A3} {v' : A1 ->* A3}
+                       {S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)} {T : Pointed.{l}} (L : A3 -> T) {t : T} (G : \Pi (a : A2) -> L (u'.1 a) = t) (Ht : t = base)
+                       (h0 : L base = base) (H1 : \Pi (a : A1) -> L (v'.1 a) = base) (Hg : \Pi (a : A0) -> H1 (u.1 a) = pmap L (S a) *> (G (v.1 a) *> Ht))
+                       (c : H1 base = pmap L v'.2 *> h0)
+          : ((rec {A2} {A3} {\Sigma} {u'.1} {\lam _ => ()} L (\lam _ => base) (\lam a => G a *> Ht), h0, H1, \lam _ => idp, Hg, c) : Split2.{l} u v u' v' S T)
+            = (rec {A2} {A3} {\Sigma} {u'.1} {\lam _ => ()} L (\lam _ => t) G, h0, H1, \lam _ => Ht, Hg, c) \elim t, Ht
+          | _, idp => idp
+
+    \func Lc.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                 (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) (T : Pointed.{l})
+      : QEquiv {CofCocone (gap.{l} u v u' v' S) T} {D.{l} u v u' v' S T}
+      => split {A0} {A1} {A2} {u.1} {v.1} {base} {A3} {T} (gap.{l} u v u' v' S)
+
+    \func Rc.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                 (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) (T : Pointed.{l})
+      : QEquiv {CofCocone (cmap.{l} u v u' v' S) T} {D.{l} u v u' v' S T}
+      => split {A0} {A1} {\Sigma} {u.1} {\lam _ => ()} {base} {Cof.pointed u'} {T} (cmap.{l} u v u' v' S)
+           `transQEquiv` R2.{l} u v u' v' S T `transQEquiv` R3.{l} u v u' v' S T
+
+    \func pre.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                  (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) (T : Pointed.{l})
+      : QEquiv {Cof.pointed (cmap.{l} u v u' v' S) ->* T} {Cof.pointed (gap.{l} u v u' v' S) ->* T}
+      => Cof.mapsOut {Cof.pointed u} {Cof.pointed u'} {T} {cmap.{l} u v u' v' S} `transQEquiv` Rc.{l} u v u' v' S T
+           `transQEquiv` symQEquiv (Lc.{l} u v u' v' S T) `transQEquiv` symQEquiv (Cof.mapsOut {cornerQuotient.total.{l} u v} {A3} {T} {gap.{l} u v u' v' S})
+      \where
+        \func eval.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                       (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) {T : Pointed.{l}} (k : Cof.pointed (cmap.{l} u v u' v' S) ->* T)
+          : pre.{l} u v u' v' S T k = k ∘* map.{l} u v u' v' S
+          => pmap (\lam (t : D.{l} u v u' v' S T) => (Cof.mapsOut {cornerQuotient.total.{l} u v} {A3} {T} {gap.{l} u v u' v' S}).ret ((Lc.{l} u v u' v' S T).ret t))
+                  (inv (char.{l} u v u' v' S k))
+             *> pmap (Cof.mapsOut {cornerQuotient.total.{l} u v} {A3} {T} {gap.{l} u v u' v' S}).ret ((Lc.{l} u v u' v' S T).ret_f (Cof.restrict {cornerQuotient.total.{l} u v} {A3} {T} {gap.{l} u v u' v' S} (k ∘* map.{l} u v u' v' S)))
+             *> (Cof.mapsOut {cornerQuotient.total.{l} u v} {A3} {T} {gap.{l} u v u' v' S}).ret_f (k ∘* map.{l} u v u' v' S)
+
+    \func char.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                   (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) {T : Pointed.{l}} (k : Cof.pointed (cmap.{l} u v u' v' S) ->* T)
+      : Lc.{l} u v u' v' S T (Cof.restrict {cornerQuotient.total.{l} u v} {A3} {T} {gap.{l} u v u' v' S} (k ∘* map.{l} u v u' v' S)) = Rc.{l} u v u' v' S T (Cof.restrict {Cof.pointed u} {Cof.pointed u'} {T} {cmap.{l} u v u' v' S} k)
+      => D-ext.{l} u v u' v' S (idp_*> k.2) (\lam a => Ez.{l} u v u' v' S k (pinl a) *> idp_*> _) (\lam a => Ez.{l} u v u' v' S k (pinr a))
+           (\lam a => Eg.{l} u v u' v' S k a)
+           (ec k.1 (pinl {Cof u.1} {Cof u'.1} {\Sigma} {(cmap.{l} u v u' v' S).1} {\lam _ => ()}) (ppglue (pinl base))
+               (pmap (\lam w => k.1 (pinl w)) (cmap.{l} u v u' v' S).2) k.2)
+
+    \func X.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) {T : Pointed.{l}} (k : Cof.pointed (cmap.{l} u v u' v' S) ->* T) (z : PushoutData u.1 v.1)
+      : k.1 (pinl (pinl ((gap.{l} u v u' v' S).1 z))) = base
+      => Cof.restrict.axis {cornerQuotient.total.{l} u v} {A3} {T} {gap.{l} u v u' v' S} (k ∘* map.{l} u v u' v' S) (ppglue z)
+
+    \func Th.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                 (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) {T : Pointed.{l}} (k : Cof.pointed (cmap.{l} u v u' v' S) ->* T) (w : Cof u.1)
+      : k.1 (pinl ((cmap.{l} u v u' v' S).1 w)) = base
+      => Cof.restrict.axis {Cof.pointed u} {Cof.pointed u'} {T} {cmap.{l} u v u' v' S} k (ppglue w)
+
+    \func Ez.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                 (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) {T : Pointed.{l}} (k : Cof.pointed (cmap.{l} u v u' v' S) ->* T) (z : PushoutData u.1 v.1)
+      : X.{l} u v u' v' S k z = pmap (\lam w => k.1 (pinl w)) (sq.{l} u v u' v' S z) *> Th.{l} u v u' v' S k ((col.{l} u v).1 z)
+      => ax-eq k.1 (pinl {Cof u.1} {Cof u'.1} {\Sigma} {(cmap.{l} u v u' v' S).1} {\lam _ => ()}) (sq.{l} u v u' v' S z) (ppglue ((col.{l} u v).1 z))
+               (ppglue (pinl base)) (pmap (\lam w => k.1 (pinl w)) (cmap.{l} u v u' v' S).2) k.2
+
+    \func Eg.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                 (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) {T : Pointed.{l}} (k : Cof.pointed (cmap.{l} u v u' v' S) ->* T) (a : A0)
+      : (square (\lam w => k.1 (pinl (pinl ((gap.{l} u v u' v' S).1 w)))) (\lam _ => base) (ppglue a)
+                (X.{l} u v u' v' S k (pinl (u.1 a))) (X.{l} u v u' v' S k (pinr (v.1 a)))).f (path (\lam i => X.{l} u v u' v' S k (pglue a i)))
+        *> pmap (pmap (\lam y => k.1 (pinl (pinl y))) (S a) *>) (Ez.{l} u v u' v' S k (pinr (v.1 a)))
+        = (Ez.{l} u v u' v' S k (pinl (u.1 a)) *> idp_*> (Th.{l} u v u' v' S k (pinl (u.1 a))))
+          *> ((square (\lam w => k.1 (pinl ((cmap.{l} u v u' v' S).1 w))) (\lam _ => base) (ppglue a)
+                      (Th.{l} u v u' v' S k (pinl (u.1 a))) (Th.{l} u v u' v' S k (pinr ()))).f (path (\lam i => Th.{l} u v u' v' S k (pglue a i)))
+              *> ra (\lam w => k.1 (pinl w)) (pinl {A2} {A3} {\Sigma} {u'.1} {\lam _ => ()}) (S a) (ppglue (v.1 a)) (Th.{l} u v u' v' S k (pinr ())))
+      => pmap (`*> pmap (pmap (\lam y => k.1 (pinl (pinl y))) (S a) *>) (Ez.{l} u v u' v' S k (pinr (v.1 a))))
+              (sq-nat (\lam w => k.1 (pinl (pinl ((gap.{l} u v u' v' S).1 w)))) (\lam _ => base) (X.{l} u v u' v' S k)
+                      (\lam z => pmap (\lam w => k.1 (pinl w)) (sq.{l} u v u' v' S z) *> Th.{l} u v u' v' S k ((col.{l} u v).1 z)) (Ez.{l} u v u' v' S k) (ppglue a))
+         *> canc _ _ _
+         *> pmap (Ez.{l} u v u' v' S k (pinl (u.1 a)) *>)
+                 (sq-comp (\lam z => pinl {A2} {A3} {\Sigma} {u'.1} {\lam _ => ()} ((gap.{l} u v u' v' S).1 z)) (col.{l} u v).1 (cmap.{l} u v u' v' S).1
+                          (\lam w => k.1 (pinl w)) (sq.{l} u v u' v' S) (Th.{l} u v u' v' S k) (ppglue a)
+                  *> pmap (\lam A => comb (\lam w => k.1 (pinl w)) idp (ppglue (v.1 a)) (Th.{l} u v u' v' S k (pinl (u.1 a))) (Th.{l} u v u' v' S k (pinr ()))
+                                         {pmap (pinl {A2} {A3} {\Sigma} {u'.1} {\lam _ => ()}) (S a) *> ppglue (v.1 a)} {pmap (pinl {A2} {A3} {\Sigma} {u'.1} {\lam _ => ()}) (S a)} A
+                                         ((square (\lam w => k.1 (pinl ((cmap.{l} u v u' v' S).1 w))) (\lam _ => base) (ppglue a)
+                                                  (Th.{l} u v u' v' S k (pinl (u.1 a))) (Th.{l} u v u' v' S k (pinr ()))).f (path (\lam i => Th.{l} u v u' v' S k (pglue a i)))))
+                          ((square (\lam z => pinl {A2} {A3} {\Sigma} {u'.1} {\lam _ => ()} ((gap.{l} u v u' v' S).1 z)) (\lam z => (cmap.{l} u v u' v' S).1 ((col.{l} u v).1 z))
+                                   (ppglue a) idp (ppglue (v.1 a))).f_sec (idp_*> _))
+                  *> final (\lam w => k.1 (pinl w)) (pinl {A2} {A3} {\Sigma} {u'.1} {\lam _ => ()}) (S a) (ppglue (v.1 a))
+                           (Th.{l} u v u' v' S k (pinl (u.1 a))) (Th.{l} u v u' v' S k (pinr ()))
+                           ((square (\lam w => k.1 (pinl ((cmap.{l} u v u' v' S).1 w))) (\lam _ => base) (ppglue a)
+                                    (Th.{l} u v u' v' S k (pinl (u.1 a))) (Th.{l} u v u' v' S k (pinr ()))).f (path (\lam i => Th.{l} u v u' v' S k (pglue a i)))))
+         *> inv (*>-assoc _ _ _)
+
+    \func D-ext.{l} {A0 A1 A2 A3 : Pointed.{l}} (u : A0 ->* A1) (v : A0 ->* A2) (u' : A2 ->* A3) (v' : A1 ->* A3)
+                    (S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)) {T : Pointed.{l}} {h : A3 -> T} {h0 h0' : h base = base}
+                    {H1 H1' : \Pi (a : A1) -> h (v'.1 a) = base} {H2 H2' : \Pi (a : A2) -> h (u'.1 a) = base}
+                    {Hg : \Pi (a : A0) -> H1 (u.1 a) = pmap h (S a) *> H2 (v.1 a)} {Hg' : \Pi (a : A0) -> H1' (u.1 a) = pmap h (S a) *> H2' (v.1 a)}
+                    {c : H1 base = pmap h v'.2 *> h0} {c' : H1' base = pmap h v'.2 *> h0'}
+                    (E0 : h0 = h0') (E1 : \Pi (a : A1) -> H1 a = H1' a) (E2 : \Pi (a : A2) -> H2 a = H2' a)
+                    (Eg : \Pi (a : A0) -> Hg a *> pmap (pmap h (S a) *>) (E2 (v.1 a)) = E1 (u.1 a) *> Hg' a)
+                    (Ec : c *> pmap (pmap h v'.2 *>) E0 = E1 base *> c')
+      : ((h, h0, H1, H2, Hg, c) : D.{l} u v u' v' S T) = (h, h0', H1', H2', Hg', c')
+      => gen.{l} E0 (path (\lam i a => E1 a @ i)) (path (\lam i a => E2 a @ i)) Eg Ec
+      \where
+        \func gen.{l} {A0 A1 A2 A3 : Pointed.{l}} {u : A0 ->* A1} {v : A0 ->* A2} {u' : A2 ->* A3} {v' : A1 ->* A3}
+                  {S : \Pi (a : A0) -> v'.1 (u.1 a) = u'.1 (v.1 a)} {T : Pointed.{l}} {h : A3 -> T} {h0 h0' : h base = base}
+                  {H1 H1' : \Pi (a : A1) -> h (v'.1 a) = base} {H2 H2' : \Pi (a : A2) -> h (u'.1 a) = base}
+                  {Hg : \Pi (a : A0) -> H1 (u.1 a) = pmap h (S a) *> H2 (v.1 a)} {Hg' : \Pi (a : A0) -> H1' (u.1 a) = pmap h (S a) *> H2' (v.1 a)}
+                  {c : H1 base = pmap h v'.2 *> h0} {c' : H1' base = pmap h v'.2 *> h0'}
+                  (E0 : h0 = h0') (P1 : H1 = H1') (P2 : H2 = H2')
+                  (Eg : \Pi (a : A0) -> Hg a *> pmap (pmap h (S a) *>) (pmap (__ (v.1 a)) P2) = pmap (__ (u.1 a)) P1 *> Hg' a)
+                  (Ec : c *> pmap (pmap h v'.2 *>) E0 = pmap (__ base) P1 *> c')
+          : ((h, h0, H1, H2, Hg, c) : D.{l} u v u' v' S T) = (h, h0', H1', H2', Hg', c') \elim E0, P1, P2
+          | idp, idp, idp => path (\lam i => (h, h0, H1, H2, \lam a => (Eg a *> idp_*> (Hg' a)) @ i, (Ec *> idp_*> c') @ i))
+
+    \func ax-eq {W0 Z T : \Type} (kk : Z -> T) (i : W0 -> Z) {c1 c2 : W0} (s : c1 = c2) {z : Z} (q : i c2 = z) {x : Z} (n : x = z) {t : T} (V : kk x = t)
+                {e : T} (k2 : t = e)
+      : pmap kk (pmap i s *> q) *> inv (pmap kk (idp *> n)) *> V *> (idp *> k2) = pmap (\lam c => kk (i c)) s *> (pmap kk q *> inv (pmap kk n) *> V *> k2)
+      \elim c2, s, z, q, x, n, t, V, e, k2
+      | _, idp, _, idp, _, idp, _, idp, _, idp => idp
+
+    \func ec {W0 Z T : \Type} (kk : Z -> T) (i : W0 -> Z) {c : W0} {z : Z} (n : i c = z) {t : T} (V : kk (i c) = t) {e : T} (k2 : t = e)
+      : Cof.restrict.cancel (pmap kk (idp *> n)) (V *> (idp *> k2)) *> pmap (V *>) (idp_*> k2)
+        = (ax-eq kk i idp n n V k2 *> idp_*> _) *> Cof.restrict.cancel (pmap kk n) (V *> k2) \elim z, n, t, V, e, k2
+      | _, idp, _, idp, _, idp => idp
+
+    \func sq-nat {Y T : \Type} (F G : Y -> T) (X X' : \Pi (y : Y) -> F y = G y) (E : \Pi (y : Y) -> X y = X' y) {y y' : Y} (r : y = y')
+      : (square F G r (X y) (X y')).f (path (\lam i => X (r @ i)))
+        = pmap (`*> pmap G r) (E y) *> (square F G r (X' y) (X' y')).f (path (\lam i => X' (r @ i))) *> inv (pmap (pmap F r *>) (E y')) \elim r
+      | idp => sq-nat-idp (E y)
+
+    \func sq-nat-idp {A : \Type} {b c : A} {a a' : b = c} (e : a = a')
+      : idp *> inv (idp_*> a) = pmap (`*> idp) e *> (idp *> inv (idp_*> a')) *> inv (pmap (idp *>) e) \elim a', e
+      | _, idp => inv (idp_*> _)
+
+    \func comb {W T : \Type} (g : W -> T) {a a' b b' : W} {t : T} (s : a = b) (s' : a' = b') (th : g b = t) (th' : g b' = t) {P : b = b'} {Q : a = a'}
+               (A : s *> P = Q *> s') (B : th = pmap g P *> th') : pmap g s *> th = pmap g Q *> (pmap g s' *> th')
+      => pmap (pmap g s *>) B *> inv (*>-assoc (pmap g s) (pmap g P) th')
+         *> pmap (`*> th') (inv (pmap_*>-comm g s P) *> pmap (pmap g) A *> pmap_*>-comm g Q s') *> *>-assoc (pmap g Q) (pmap g s') th'
+
+    \func sq-comp {Y U W T : \Type} (gp : Y -> W) (c : Y -> U) (Cw : U -> W) (g : W -> T) {t : T} (sg : \Pi (y : Y) -> gp y = Cw (c y))
+                  (Th : \Pi (w : U) -> g (Cw w) = t) {y y' : Y} (r : y = y')
+      : (square (\lam z => g (gp z)) (\lam _ => t) r (pmap g (sg y) *> Th (c y)) (pmap g (sg y') *> Th (c y'))).f
+          (path (\lam i => pmap g (sg (r @ i)) *> Th (c (r @ i))))
+        = comb g (sg y) (sg y') (Th (c y)) (Th (c y')) ((square gp (\lam z => Cw (c z)) r (sg y) (sg y')).f (path (\lam i => sg (r @ i))))
+               ((square (\lam w => g (Cw w)) (\lam _ => t) (pmap c r) (Th (c y)) (Th (c y'))).f (path (\lam i => Th (c (r @ i))))) \elim r
+      | idp => sq-comp-idp g (sg y) (Th (c y))
+
+    \func sq-comp-idp {W T : \Type} (g : W -> T) {a b : W} {t : T} (s : a = b) (th : g b = t)
+      : idp *> inv (idp_*> (pmap g s *> th)) = comb g s s th th {idp} {idp} (idp *> inv (idp_*> s)) (idp *> inv (idp_*> th)) \elim b, t, s, th
+      | _, _, idp, idp => idp
+
+    \func final {W0 W T : \Type} (g : W -> T) (i : W0 -> W) {y y' : W0} (s : y = y') {w : W} (q : i y' = w) {t : T} (th1 : g (i y) = t) (thr : g w = t)
+                (B : th1 = pmap g (pmap i s *> q) *> thr)
+      : comb g idp q th1 thr {pmap i s *> q} {pmap i s} (idp_*> (pmap i s *> q)) B = idp_*> th1 *> B *> ra g i s q thr \elim th1, B
+      | _, idp => final' g i s q thr
+
+    \func final' {W0 W T : \Type} (g : W -> T) (i : W0 -> W) {y y' : W0} (s : y = y') {w : W} (q : i y' = w) {t : T} (thr : g w = t)
+      : comb g idp q (pmap g (pmap i s *> q) *> thr) thr {pmap i s *> q} {pmap i s} (idp_*> (pmap i s *> q)) idp
+        = idp_*> (pmap g (pmap i s *> q) *> thr) *> idp *> ra g i s q thr \elim y', s, w, q, t, thr
+      | _, idp, _, idp, _, idp => idp
+
+    \func canc {A : \Type} {a b c d : A} (p : a = b) (q : b = c) (r : d = c) : (p *> (q *> inv r)) *> r = p *> q \elim c, r
+      | _, idp => idp
+  }
