@@ -4,10 +4,13 @@
 \import Homotopy.Pointed.Yoneda
 \import Homotopy.Pushout \hiding (PushoutPointed)
 \import Homotopy.Smash
+\import Homotopy.Sphere
+\import Homotopy.Suspension
 \import Logic
 \import Paths
 
 \open ->* (∘*)
+\open PushoutData (ppglue)
 
 \func assoc.{l} (X Y Z : Pointed.{l}) : PointedEquiv (Smash.{l} (Smash.{l} X Y) Z) (Smash.{l} X (Smash.{l} Y Z))
   => representFam.{l} {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} X (Smash.{l} Y Z)} {\lam T => X ->* Map* Y (Map* Z T)}
@@ -428,4 +431,475 @@
               : r' = K' ∘* r
               => e1 *> square p q *> pmap (K' ∘*) (inv e2)
       }
+  }
+
+\func triangle.{l} (X Y : Pointed.{l})
+  : Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map = Smash.map.{l} (Smash.unitRight.{l} X).map (->*.id {Y})
+  => cancel-right {Smash.{l} (Smash.{l} X (Sphere.pointed 0)) Y} {Smash.{l} X Y}
+                  {Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map}
+                  {Smash.map.{l} (Smash.unitRight.{l} X).map (->*.id {Y})} {Smash.map.{l} (j.{l} X) (->*.id {Y})}
+                  (adj-inj (stepB.{l} X Y)) (stepD.{l} X Y)
+  \where {
+    \func stepA.{l} (X Y : Pointed.{l})
+      : Smash.adjunction.{l} {Smash.{l} X (Sphere.pointed 0)} {Y} {Smash.{l} X Y}
+          (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map) ∘* j.{l} X
+        = Smash.adjunction.{l} {X} {Y} {Smash.{l} X Y} ->*.id
+      => chainA {X} {Map* (Sphere.pointed 0) (Map* Y (Smash.{l} X Y))} {Map* Y (Smash.{l} X Y)} {Map* (Smash.{l} (Sphere.pointed 0) Y) (Smash.{l} X Y)}
+                {Map*.eval {Sphere.pointed 0} {Map* Y (Smash.{l} X Y)} south}
+                {Smash.adjunction.{l} {Smash.{l} X (Sphere.pointed 0)} {Y} {Smash.{l} X Y}
+                  (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map) ∘* j.{l} X}
+                {assoc.left.{l} {X} {Sphere.pointed 0} {Y} {Smash.{l} X Y} (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map)}
+                {Smash.adjunction.{l} {X} {Sphere.pointed 0} {Map* Y (Smash.{l} X Y)} (Smash.adjunction.{l} {Smash.{l} X (Sphere.pointed 0)} {Y} {Smash.{l} X Y}
+                  (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map))}
+                {assoc.right.{l} {X} {Sphere.pointed 0} {Y} {Smash.{l} X Y} (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y))}
+                {Smash.adjunction.pointed.{l} {Sphere.pointed 0} {Y} {Smash.{l} X Y}}
+                {Smash.adjunction.{l} {X} {Smash.{l} (Sphere.pointed 0) Y} {Smash.{l} X Y} (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y))}
+                {(Map*.pre (Smash.unit.to.{l} Y) (Smash.{l} X Y) ∘* Smash.adjunction.{l} {X} {Y} {Smash.{l} X Y} ->*.id) ∘* ->*.id}
+                {Smash.adjunction.{l} {X} {Y} {Smash.{l} X Y} ->*.id}
+                (ev-adj.{l} (Smash.adjunction.{l} {Smash.{l} X (Sphere.pointed 0)} {Y} {Smash.{l} X Y}
+                              (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map)))
+                (assoc.left.eval.{l} {X} {Sphere.pointed 0} {Y} {Smash.{l} X Y}
+                  (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map))
+                (assoc.lift.{l} {X} {Sphere.pointed 0} {Y} {Smash.{l} X Y} (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y)))
+                (assoc.right.eval.{l} {X} {Sphere.pointed 0} {Y} {Smash.{l} X Y} (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y)))
+                (Smash.adjunction.pre.{l} {X} {X} {Smash.{l} (Sphere.pointed 0) Y} {Y} {Smash.{l} X Y} ->*.id ->*.id (Smash.unit.to.{l} Y))
+                (reassoc {X} {Map* Y (Smash.{l} X Y)} {Map* (Smash.{l} (Sphere.pointed 0) Y) (Smash.{l} X Y)} {Map* (Sphere.pointed 0) (Map* Y (Smash.{l} X Y))}
+                         {Map*.eval {Sphere.pointed 0} {Map* Y (Smash.{l} X Y)} south} {Smash.adjunction.pointed.{l} {Sphere.pointed 0} {Y} {Smash.{l} X Y}}
+                         {Map*.pre (Smash.unit.to.{l} Y) (Smash.{l} X Y)} {Smash.adjunction.{l} {X} {Y} {Smash.{l} X Y} ->*.id} (ev-pre.{l} Y (Smash.{l} X Y)))
+
+    \sfunc chainA {A D B C : Pointed} {E : D ->* B} {u : A ->* B} {w0 w1 w2 : A ->* D} {P : C ->* D} {v v' : A ->* C} {G : A ->* B}
+                  (ea : E ∘* w1 = u) (le : w0 = w1) (li : w0 = w2) (re : w2 = P ∘* v) (pr : v = v') (ra : E ∘* (P ∘* v') = G) : u = G
+      => inv ea *> pmap (E ∘*) (inv le *> li *> re *> pmap (P ∘*) pr) *> ra
+
+    \func stepB.{l} (X Y : Pointed.{l})
+      : Smash.adjunction.{l} {X} {Y} {Smash.{l} X Y}
+          ((Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map) ∘* Smash.map.{l} (j.{l} X) (->*.id {Y}))
+        = Smash.adjunction.{l} {X} {Y} {Smash.{l} X Y} ->*.id
+      => chainB {X} {Smash.{l} X (Sphere.pointed 0)} {Map* Y (Smash.{l} X Y)}
+                {Smash.adjunction.{l} {X} {Y} {Smash.{l} X Y}
+                  ((Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map) ∘* Smash.map.{l} (j.{l} X) (->*.id {Y}))}
+                {Map*.pre (->*.id {Y}) (Smash.{l} X Y)}
+                {Smash.adjunction.{l} {Smash.{l} X (Sphere.pointed 0)} {Y} {Smash.{l} X Y}
+                  (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map)}
+                {j.{l} X} {Smash.adjunction.{l} {X} {Y} {Smash.{l} X Y} ->*.id}
+                (Smash.adjunction.pre.{l} {X} {Smash.{l} X (Sphere.pointed 0)} {Y} {Y} {Smash.{l} X Y}
+                  (Smash.map.{l} (->*.id {X}) (Smash.unit.to.{l} Y) ∘* (assoc.{l} X (Sphere.pointed 0) Y).map) (j.{l} X) ->*.id)
+                (Map*.pre.id {Y} {Smash.{l} X Y}) (stepA.{l} X Y)
+
+    \sfunc chainB {A A' Q : Pointed} {x : A ->* Q} {Pr : Q ->* Q} {w : A' ->* Q} {J : A ->* A'} {y : A ->* Q}
+                  (p1 : x = (Pr ∘* w) ∘* J) (p2 : Pr = ->*.id) (p3 : w ∘* J = y) : x = y
+      => p1 *> pmap (\lam (P : Q ->* Q) => (P ∘* w) ∘* J) p2 *> p3
+
+    \func stepD.{l} (X Y : Pointed.{l})
+      : Smash.map.{l} (j.{l} X) (->*.id {Y}) ∘* Smash.map.{l} (Smash.unitRight.{l} X).map (->*.id {Y}) = ->*.id
+      => inv (Smash.map.comp.{l} (Smash.unitRight.{l} X).map (j.{l} X) (->*.id {Y}) (->*.id {Y}))
+         *> pmap (\lam (z : Smash.{l} X (Sphere.pointed 0) ->* Smash.{l} X (Sphere.pointed 0)) => Smash.map.{l} z (->*.id {Y})) (j-ret.{l} X)
+         *> Smash.map.id.{l}
+
+    \func j-ret.{l} (X : Pointed.{l}) : j.{l} X ∘* (Smash.unitRight.{l} X).map = ->*.id
+      => pmap (∘* (Smash.unitRight.{l} X).map)
+              (inv (PointedEquiv.inverse-comp (Smash.unitRight.{l} X) {j.{l} X} { ->*.id} (ret-j.{l} X))
+               *> ->*.compose-id (PointedEquiv.inverse (Smash.unitRight.{l} X)).map)
+         *> PointedEquiv.inverse-ret (Smash.unitRight.{l} X)
+
+    \func adj-inj.{l} {X Y T : Pointed.{l}} {g g' : Smash.{l} X Y ->* T}
+                      (e : Smash.adjunction.{l} {X} {Y} {T} g = Smash.adjunction.{l} {X} {Y} {T} g') : g = g'
+      => inv (QEquiv.ret_f {Smash.adjunction.{l} {X} {Y} {T}} g) *> pmap (QEquiv.ret {Smash.adjunction.{l} {X} {Y} {T}}) e
+         *> QEquiv.ret_f {Smash.adjunction.{l} {X} {Y} {T}} g'
+
+    \sfunc cancel-right {P Q : Pointed} {K R : P ->* Q} {J : Q ->* P} (h1 : K ∘* J = ->*.id) (h2 : J ∘* R = ->*.id) : K = R
+      => inv (->*.compose-id K) *> pmap (K ∘*) (inv h2) *> ->*.compose-assoc K J R *> pmap (∘* R) h1
+
+    \sfunc reassoc {A B C D : Pointed} {e : D ->* B} {a : C ->* D} {b : B ->* C} {G : A ->* B} (h : e ∘* (a ∘* b) = ->*.id)
+      : e ∘* (a ∘* ((b ∘* G) ∘* ->*.id)) = G
+      => pmap (\lam z => e ∘* (a ∘* z)) (->*.compose-id (b ∘* G)) *> ->*.compose-assoc e a (b ∘* G) *> ->*.compose-assoc (e ∘* a) b G
+         *> pmap (∘* G) (inv (->*.compose-assoc e a b) *> h)
+
+    \func j.{l} (X : Pointed.{l}) : X ->* Smash.{l} X (Sphere.pointed 0)
+      => (\lam x => Smash.proj.1 (x, south), (Smash.restrict.{l} (->*.id {Smash.{l} X (Sphere.pointed 0)})).3 south)
+
+    \func ev-adj.{l} {X W : Pointed.{l}} (h : Smash.{l} X (Sphere.pointed 0) ->* W)
+      : Map*.eval {Sphere.pointed 0} {W} south ∘* Smash.adjunction.{l} {X} {Sphere.pointed 0} {W} h = h ∘* j.{l} X
+      => ->*.ext (\lam _ => idp) (axis-j h.1 (ppglue (pinr south)) (ppglue (pinl base)) h.2)
+
+    \func axis-j {A B : \Type} (h : A -> B) {a b c : A} (q : a = c) (gl : b = c) {e : B} (h2 : h b = e)
+      : idp *> (pmap h (q *> inv gl) *> h2) = pmap h q *> inv (pmap h gl) *> h2 \elim c, gl, e, h2
+      | _, idp, _, idp => idp_*> (pmap h q)
+
+    \func ret-j.{l} (X : Pointed.{l}) : (Smash.unitRight.{l} X).map ∘* j.{l} X = ->*.id
+      => ->*.ext (\lam _ => idp)
+                 (inv (pmap2 (*>)
+                             (pdist (Smash.unitRight.{l} X).map.1 (ppglue (pinr south)) (ppglue (pinl base))
+                              *> pmap2 (*>) (pdist (Smash.unit.to.{l} X).1 (ppglue (pinl south)) (ppglue (pinl base)))
+                                            (pmap inv (pdist (Smash.unit.to.{l} X).1 (ppglue (pinr base)) (ppglue (pinl base)))))
+                             (pdist (Smash.unit.to.{l} X).1 (ppglue (pinr base)) (ppglue (pinl base)))))
+
+    \func pdist {A B : \Type} (F : A -> B) {a b c : A} (p : a = c) (p' : b = c) : pmap F (p *> inv p') = pmap F p *> inv (pmap F p') \elim c, p'
+      | _, idp => idp
+
+    \func ev-pre.{l} (Y M : Pointed.{l})
+      : Map*.eval {Sphere.pointed 0} {Map* Y M} south ∘* (Smash.adjunction.pointed.{l} {Sphere.pointed 0} {Y} {M} ∘* Map*.pre (Smash.unit.to.{l} Y) M) = ->*.id
+      => ->*.ext (\lam v => ->*.ext (\lam _ => idp) (idp3 v.2)) (mapLoop*.ext (\lam _ => idp))
+
+    \func idp3 {A : \Type} {a b : A} (p : a = b) : idp *> p = idp *> (idp *> (idp *> p)) \elim p
+      | idp => idp
+  }
+
+\func hexagon.{l} (X Y Z : Pointed.{l})
+  : (assoc.{l} Y Z X).map ∘* Smash.swap.{l} X (Smash.{l} Y Z) ∘* (assoc.{l} X Y Z).map
+    = Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map ∘* Smash.map.{l} (Smash.swap.{l} X Y) (->*.id {Z})
+  => left-inj {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)}
+              {(assoc.{l} Y Z X).map ∘* Smash.swap.{l} X (Smash.{l} Y Z) ∘* (assoc.{l} X Y Z).map}
+              {Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map ∘* Smash.map.{l} (Smash.swap.{l} X Y) (->*.id {Z})}
+              (join {X ->* Map* Y (Map* Z (Smash.{l} Y (Smash.{l} Z X)))}
+                    {assoc.left.{l} {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)} ((assoc.{l} Y Z X).map ∘* Smash.swap.{l} X (Smash.{l} Y Z) ∘* (assoc.{l} X Y Z).map)}
+                    {assoc.left.{l} {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)}
+                      (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map ∘* Smash.map.{l} (Smash.swap.{l} X Y) (->*.id {Z}))}
+                    {tr.{l} {X} {Y} {Map* Z (Smash.{l} Y (Smash.{l} Z X))}
+                      (trp.{l} X Z (Smash.{l} Y (Smash.{l} Z X))
+                        ∘* (Smash.adjunction.pointed.{l} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)} ∘* Smash.adjunction.{l} {Y} {Smash.{l} Z X} {Smash.{l} Y (Smash.{l} Z X)} ->*.id))}
+                    (route1.{l} X Y Z) (route2.{l} X Y Z))
+  \where {
+    \sfunc join {A : \Type} {a b c : A} (p : a = c) (q : b = c) : a = b => p *> inv q
+
+    \func left-inj.{l} {X Y Z T : Pointed.{l}} {g g' : Smash.{l} (Smash.{l} X Y) Z ->* T}
+                       (e : assoc.left.{l} {X} {Y} {Z} {T} g = assoc.left.{l} {X} {Y} {Z} {T} g') : g = g'
+      => inv (QEquiv.ret_f {assoc.left.{l} {X} {Y} {Z} {T}} g) *> pmap (QEquiv.ret {assoc.left.{l} {X} {Y} {Z} {T}}) e
+         *> QEquiv.ret_f {assoc.left.{l} {X} {Y} {Z} {T}} g'
+
+    \func route1.{l} (X Y Z : Pointed.{l})
+      : assoc.left.{l} {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)} ((assoc.{l} Y Z X).map ∘* Smash.swap.{l} X (Smash.{l} Y Z) ∘* (assoc.{l} X Y Z).map)
+        = tr.{l} {X} {Y} {Map* Z (Smash.{l} Y (Smash.{l} Z X))} (trp.{l} X Z (Smash.{l} Y (Smash.{l} Z X)) ∘* (Smash.adjunction.pointed.{l} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)} ∘* Smash.adjunction.{l} {Y} {Smash.{l} Z X} {Smash.{l} Y (Smash.{l} Z X)} ->*.id))
+      => comb1 {X} {Map* Y (Map* Z (Smash.{l} Y (Smash.{l} Z X)))} {Map* (Smash.{l} Y Z) (Smash.{l} Y (Smash.{l} Z X))} {Y} {Map* Z (Map* X (Smash.{l} Y (Smash.{l} Z X)))}
+               (\lam (g : Y ->* Map* Z (Map* X (Smash.{l} Y (Smash.{l} Z X)))) =>
+                 tr.{l} {X} {Y} {Map* Z (Smash.{l} Y (Smash.{l} Z X))} (trp.{l} X Z (Smash.{l} Y (Smash.{l} Z X)) ∘* g))
+               {assoc.left.{l} {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)} ((assoc.{l} Y Z X).map ∘* Smash.swap.{l} X (Smash.{l} Y Z) ∘* (assoc.{l} X Y Z).map)}
+               {assoc.right.{l} {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)} ((assoc.{l} Y Z X).map ∘* Smash.swap.{l} X (Smash.{l} Y Z))}
+               {Smash.adjunction.pointed.{l} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)}}
+               {Smash.adjunction.{l} {X} {Smash.{l} Y Z} {Smash.{l} Y (Smash.{l} Z X)} ((assoc.{l} Y Z X).map ∘* Smash.swap.{l} X (Smash.{l} Y Z))}
+               {tr.{l} {X} {Smash.{l} Y Z} {Smash.{l} Y (Smash.{l} Z X)} (Smash.adjunction.{l} {Smash.{l} Y Z} {X} {Smash.{l} Y (Smash.{l} Z X)} (assoc.{l} Y Z X).map)}
+               {Smash.adjunction.{l} {Y} {Z} {Map* X (Smash.{l} Y (Smash.{l} Z X))}
+                 (Smash.adjunction.{l} {Smash.{l} Y Z} {X} {Smash.{l} Y (Smash.{l} Z X)} (assoc.{l} Y Z X).map)}
+               {assoc.left.{l} {Y} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)} (assoc.{l} Y Z X).map}
+               {assoc.right.{l} {Y} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)} ->*.id}
+               {Smash.adjunction.pointed.{l} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)} ∘* Smash.adjunction.{l} {Y} {Smash.{l} Z X} {Smash.{l} Y (Smash.{l} Z X)} ->*.id}
+               (assoc.lift.{l} {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)} ((assoc.{l} Y Z X).map ∘* Smash.swap.{l} X (Smash.{l} Y Z)))
+               (assoc.right.eval.{l} {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)} ((assoc.{l} Y Z X).map ∘* Smash.swap.{l} X (Smash.{l} Y Z)))
+               (sw.{l} (assoc.{l} Y Z X).map)
+               (L.{l} (Smash.adjunction.{l} {Smash.{l} Y Z} {X} {Smash.{l} Y (Smash.{l} Z X)} (assoc.{l} Y Z X).map))
+               (assoc.left.eval.{l} {Y} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)} (assoc.{l} Y Z X).map) (assoc.eval.{l} Y Z X)
+               (assoc.right.eval.{l} {Y} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)} ->*.id)
+
+    \sfunc comb1 {A B C Yp R : Pointed} (Fn : (Yp ->* R) -> (A ->* B)) {lh rk : A ->* B} {AP : C ->* B} {v tH : A ->* C} {g1 g2 g3 g4 : Yp ->* R}
+                 (li : lh = rk) (re : rk = AP ∘* v) (s : v = tH) (l : AP ∘* tH = Fn g1) (le : g2 = g1) (ev : g2 = g3) (re2 : g3 = g4) : lh = Fn g4
+      => li *> re *> pmap (AP ∘*) s *> l *> pmap Fn (inv le *> ev *> re2)
+
+    \func route2.{l} (X Y Z : Pointed.{l})
+      : assoc.left.{l} {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)}
+          (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map ∘* Smash.map.{l} (Smash.swap.{l} X Y) (->*.id {Z}))
+        = tr.{l} {X} {Y} {Map* Z (Smash.{l} Y (Smash.{l} Z X))} (trp.{l} X Z (Smash.{l} Y (Smash.{l} Z X)) ∘* (Smash.adjunction.pointed.{l} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)} ∘* Smash.adjunction.{l} {Y} {Smash.{l} Z X} {Smash.{l} Y (Smash.{l} Z X)} ->*.id))
+      => comb2 {X} {Map* Y (Map* Z (Smash.{l} Y (Smash.{l} Z X)))} {Smash.{l} X Y} {Smash.{l} Y X} {Map* Z (Smash.{l} Y (Smash.{l} Z X))} {Y}
+               {Map* X (Map* Z (Smash.{l} Y (Smash.{l} X Z)))} {Map* X (Map* Z (Smash.{l} Y (Smash.{l} Z X)))}
+               (Smash.adjunction.{l} {X} {Y} {Map* Z (Smash.{l} Y (Smash.{l} Z X))}) (tr.{l} {X} {Y} {Map* Z (Smash.{l} Y (Smash.{l} Z X))})
+               {assoc.left.{l} {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)}
+                 (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map ∘* Smash.map.{l} (Smash.swap.{l} X Y) (->*.id {Z}))}
+               {Smash.adjunction.{l} {Smash.{l} X Y} {Z} {Smash.{l} Y (Smash.{l} Z X)}
+                 (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map ∘* Smash.map.{l} (Smash.swap.{l} X Y) (->*.id {Z}))}
+               {Map*.pre (->*.id {Z}) (Smash.{l} Y (Smash.{l} Z X))}
+               {Smash.adjunction.{l} {Smash.{l} Y X} {Z} {Smash.{l} Y (Smash.{l} Z X)} (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map)}
+               {Smash.swap.{l} X Y}
+               {Smash.adjunction.{l} {Y} {X} {Map* Z (Smash.{l} Y (Smash.{l} Z X))}
+                 (Smash.adjunction.{l} {Smash.{l} Y X} {Z} {Smash.{l} Y (Smash.{l} Z X)} (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map))}
+               {assoc.left.{l} {Y} {X} {Z} {Smash.{l} Y (Smash.{l} Z X)} (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map)}
+               {trp.{l} X Z (Smash.{l} Y (Smash.{l} Z X)) ∘* (Smash.adjunction.pointed.{l} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)} ∘* Smash.adjunction.{l} {Y} {Smash.{l} Z X} {Smash.{l} Y (Smash.{l} Z X)} ->*.id)}
+               {Map*.post X (Map*.post Z (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z)))}
+               {assoc.left.{l} {Y} {X} {Z} {Smash.{l} Y (Smash.{l} X Z)} (assoc.{l} Y X Z).map}
+               {assoc.right.{l} {Y} {X} {Z} {Smash.{l} Y (Smash.{l} X Z)} ->*.id}
+               {Smash.adjunction.pointed.{l} {X} {Z} {Smash.{l} Y (Smash.{l} X Z)} ∘* Smash.adjunction.{l} {Y} {Smash.{l} X Z} {Smash.{l} Y (Smash.{l} X Z)} ->*.id}
+               (assoc.left.eval.{l} {X} {Y} {Z} {Smash.{l} Y (Smash.{l} Z X)}
+                 (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map ∘* Smash.map.{l} (Smash.swap.{l} X Y) (->*.id {Z})))
+               (Smash.adjunction.pre.{l} {Smash.{l} X Y} {Smash.{l} Y X} {Z} {Z} {Smash.{l} Y (Smash.{l} Z X)}
+                 (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map) (Smash.swap.{l} X Y) ->*.id)
+               (Map*.pre.id {Z} {Smash.{l} Y (Smash.{l} Z X)})
+               (sw.{l} {X} {Y} {Map* Z (Smash.{l} Y (Smash.{l} Z X))}
+                 (Smash.adjunction.{l} {Smash.{l} Y X} {Z} {Smash.{l} Y (Smash.{l} Z X)} (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map)))
+               (assoc.left.eval.{l} {Y} {X} {Z} {Smash.{l} Y (Smash.{l} Z X)} (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* (assoc.{l} Y X Z).map))
+               (assoc.left.post.{l} {Y} {X} {Z} {Smash.{l} Y (Smash.{l} X Z)} {Smash.{l} Y (Smash.{l} Z X)}
+                 (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z)) (assoc.{l} Y X Z).map)
+               (assoc.eval.{l} Y X Z) (assoc.right.eval.{l} {Y} {X} {Z} {Smash.{l} Y (Smash.{l} X Z)} ->*.id) (tail.{l} X Y Z)
+
+    \sfunc comb2 {A B P1 P2 Q1 Yp R1 R2 : Pointed} (Fa : (P1 ->* Q1) -> (A ->* B)) (Ft : (Yp ->* R2) -> (A ->* B)) {lh : A ->* B} {w1 : P1 ->* Q1}
+                 {Pr : Q1 ->* Q1} {w : P2 ->* Q1} {sP : P1 ->* P2} {gw m0 res : Yp ->* R2} {PP : R1 ->* R2} {m1 m2 m3 : Yp ->* R1}
+                 (le : lh = Fa w1) (pre : w1 = (Pr ∘* w) ∘* sP) (pid : Pr = ->*.id) (sw : Fa (w ∘* sP) = Ft gw) (le2 : m0 = gw) (lp : m0 = PP ∘* m1)
+                 (ev : m1 = m2) (re : m2 = m3) (tl : PP ∘* m3 = res) : lh = Ft res
+      => le *> pmap Fa (pre *> pmap (\lam (P : Q1 ->* Q1) => (P ∘* w) ∘* sP) pid) *> sw *> pmap Ft (inv le2 *> lp *> pmap (PP ∘*) (ev *> re) *> tl)
+
+    \func tail.{l} (X Y Z : Pointed.{l})
+      : Map*.post X (Map*.post Z (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z)))
+          ∘* (Smash.adjunction.pointed.{l} {X} {Z} {Smash.{l} Y (Smash.{l} X Z)} ∘* Smash.adjunction.{l} {Y} {Smash.{l} X Z} {Smash.{l} Y (Smash.{l} X Z)} ->*.id)
+        = trp.{l} X Z (Smash.{l} Y (Smash.{l} Z X)) ∘* (Smash.adjunction.pointed.{l} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)} ∘* Smash.adjunction.{l} {Y} {Smash.{l} Z X} {Smash.{l} Y (Smash.{l} Z X)} ->*.id)
+      => comb3 {Y} {Map* (Smash.{l} X Z) (Smash.{l} Y (Smash.{l} X Z))} {Map* X (Map* Z (Smash.{l} Y (Smash.{l} X Z)))} {Map* X (Map* Z (Smash.{l} Y (Smash.{l} Z X)))}
+               {Map* (Smash.{l} X Z) (Smash.{l} Y (Smash.{l} Z X))} {Map* (Smash.{l} Z X) (Smash.{l} Y (Smash.{l} Z X))} {Map* Z (Map* X (Smash.{l} Y (Smash.{l} Z X)))}
+               (Smash.adjunction.{l} {Y} {Smash.{l} X Z} {Smash.{l} Y (Smash.{l} Z X)})
+               {Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z) ∘* ->*.id} {Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z)}
+               {Smash.adjunction.{l} {Y} {Smash.{l} X Z} {Smash.{l} Y (Smash.{l} X Z)} ->*.id}
+               {Smash.adjunction.pointed.{l} {X} {Z} {Smash.{l} Y (Smash.{l} X Z)}}
+               {Map*.post X (Map*.post Z (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z)))}
+               {Map*.post (Smash.{l} X Z) (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z))}
+               {Smash.adjunction.pointed.{l} {X} {Z} {Smash.{l} Y (Smash.{l} Z X)}}
+               {Smash.adjunction.{l} {Y} {Smash.{l} Z X} {Smash.{l} Y (Smash.{l} Z X)} ->*.id}
+               {Map*.pre (Smash.swap.{l} X Z) (Smash.{l} Y (Smash.{l} Z X))}
+               {Smash.adjunction.pointed.{l} {Z} {X} {Smash.{l} Y (Smash.{l} Z X)}}
+               {trp.{l} X Z (Smash.{l} Y (Smash.{l} Z X))}
+               (Smash.adjunction.pointed-post.{l} {X} {Z} {Smash.{l} Y (Smash.{l} X Z)} {Smash.{l} Y (Smash.{l} Z X)} (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z)))
+               (Smash.adjunction.post.{l} (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z)) ->*.id)
+               (->*.compose-id (Smash.map.{l} (->*.id {Y}) (Smash.swap.{l} X Z)))
+               (Smash.adjunction.pre.{l} {Y} {Y} {Smash.{l} X Z} {Smash.{l} Z X} {Smash.{l} Y (Smash.{l} Z X)} ->*.id ->*.id (Smash.swap.{l} X Z))
+               (swp.{l} X Z (Smash.{l} Y (Smash.{l} Z X)))
+
+    \sfunc comb3 {Yp M N Q R S V : Pointed} {D : \Type} (F : D -> (Yp ->* R)) {k1 k2 : D} {U : Yp ->* M} {AP : M ->* N} {PP : N ->* Q} {PK : M ->* R}
+                 {AP' : R ->* Q} {U' : Yp ->* S} {PS : S ->* R} {AZ : S ->* V} {TP : V ->* Q}
+                 (pp : AP' ∘* PK = PP ∘* AP) (post : F k1 = PK ∘* U) (ci : k1 = k2) (pre : F k2 = (PS ∘* U') ∘* ->*.id) (sw : AP' ∘* PS = TP ∘* AZ)
+      : PP ∘* (AP ∘* U) = TP ∘* (AZ ∘* U')
+      => ->*.compose-assoc PP AP U *> pmap (∘* U) (inv pp) *> inv (->*.compose-assoc AP' PK U)
+         *> pmap (AP' ∘*) (inv post *> pmap F ci *> pre *> ->*.compose-id (PS ∘* U'))
+         *> ->*.compose-assoc AP' PS U' *> pmap (∘* U') sw *> inv (->*.compose-assoc TP AZ U')
+
+    \func tr.{l} {X A W : Pointed.{l}} (G : A ->* Map* X W) : X ->* Map* A W
+      => SmashCocone.curry.{l} (SmashCocone.flip.{l} (SmashCocone.uncurry.{l} G))
+
+    \func trp.{l} (X A W : Pointed.{l}) : Map* A (Map* X W) ->* Map* X (Map* A W) => (tr.{l} {X} {A} {W}, idp)
+
+    \func sw.{l} {X A W : Pointed.{l}} (k : Smash.{l} A X ->* W)
+      : Smash.adjunction.{l} {X} {A} {W} (k ∘* Smash.swap.{l} X A) = tr.{l} (Smash.adjunction.{l} {A} {X} {W} k)
+      => pmap (SmashCocone.curry.{l} {X} {A} {W}) (Smash.swap.cocone.{l} k)
+         *> pmap (\lam (d : SmashCocone.{l} A X W) => SmashCocone.curry.{l} (SmashCocone.flip.{l} d))
+                 (inv (QEquiv.ret_f {SmashCocone.curryEquiv.{l} {A} {X} {W}} (Smash.restrict.{l} k)))
+      \where
+        \func first.{l} {X A W : Pointed.{l}} (k : Smash.{l} A X ->* W) (x : X) (a : A)
+          : pmap (\lam (F : X ->* Map* A W) => (F.1 x).1 a) (sw.{l} k) = idp
+          => pmap_*>-comm (\lam (F : X ->* Map* A W) => (F.1 x).1 a) (pmap (SmashCocone.curry.{l} {X} {A} {W}) (Smash.swap.cocone.{l} k))
+                          (pmap (\lam (d : SmashCocone.{l} A X W) => SmashCocone.curry.{l} (SmashCocone.flip.{l} d))
+                                (inv (QEquiv.ret_f {SmashCocone.curryEquiv.{l} {A} {X} {W}} (Smash.restrict.{l} k))))
+             *> pmap2 (*>) (swap-first.{l} k (x, a))
+                           (pmap_inv-comm (\lam (d : SmashCocone.{l} A X W) => d.1 (a, x)) (QEquiv.ret_f {SmashCocone.curryEquiv.{l} {A} {X} {W}} (Smash.restrict.{l} k)))
+
+    \func swp.{l} (X A W : Pointed.{l})
+      : Smash.adjunction.pointed.{l} {X} {A} {W} ∘* Map*.pre (Smash.swap.{l} X A) W = trp.{l} X A W ∘* Smash.adjunction.pointed.{l} {A} {X} {W}
+      => ->*.ext (\lam (k : Smash.{l} A X ->* W) => sw.{l} k) (mapLoop*.ext2 (\lam x a => sw.first.{l} (base {Map* (Smash.{l} A X) W}) x a))
+
+    \func swap-first.{l} {X Y Z : Pointed.{l}} (h : Smash.{l} Y X ->* Z) (t : \Sigma X Y)
+      : pmap (\lam (e : SmashCocone.{l} X Y Z) => e.1 t) (Smash.swap.cocone.{l} h) = idp
+      => ev4 (\lam (e : SmashCocone.{l} X Y Z) => e.1 t) (sA h) (sB h) (sC h) (sD h)
+         *> fin (Smash.restrict-post.first.{l} h (Smash.swap.{l} X Y) t) idp idp
+                (pmap_*>-comm (\lam (e : SmashCocone.{l} Y X Z) => e.1 (t.2, t.1))
+                              (inv (Smash.restrict-post.{l} h ->*.id)) (pmap Smash.restrict.{l} (->*.compose-id h))
+                 *> pmap (`*> idp) (pmap_inv-comm (\lam (e : SmashCocone.{l} Y X Z) => e.1 (t.2, t.1)) (Smash.restrict-post.{l} h ->*.id)
+                                     *> pmap inv (Smash.restrict-post.first.{l} h ->*.id (t.2, t.1))))
+      \where {
+        \func ev4 {S T : \Type} (F : S -> T) {s0 s1 s2 s3 s4 : S} (a : s0 = s1) (b : s1 = s2) (c : s2 = s3) (d : s3 = s4)
+          : pmap F (a *> b *> c *> d) = pmap F a *> pmap F b *> pmap F c *> pmap F d \elim s2, s3, s4, b, c, d
+          | _, _, _, idp, idp, idp => idp
+
+        \func fin {T : \Type} {t : T} {a b c d : t = t} (ha : a = idp) (hb : b = idp) (hc : c = idp) (hd : d = idp) : a *> b *> c *> d = idp
+          \elim ha, hb, hc, hd
+          | idp, idp, idp, idp => idp
+
+        \func sA.{l} {X Y Z : Pointed.{l}} (h : Smash.{l} Y X ->* Z) => Smash.restrict-post.{l} h (Smash.swap.{l} X Y)
+
+        \func sB.{l} {X Y Z : Pointed.{l}} (h : Smash.{l} Y X ->* Z)
+          => pmap (SmashCocone.post.{l} h) (QEquiv.f_sec {Smash.mapsOut.{l} {X} {Y} {Smash.{l} Y X}} (SmashCocone.flip.{l} (Smash.restrict.{l} (->*.id {Smash.{l} Y X}))))
+
+        \func sC.{l} {X Y Z : Pointed.{l}} (h : Smash.{l} Y X ->* Z) => SmashCocone.flip.post.{l} h (Smash.restrict.{l} (->*.id {Smash.{l} Y X}))
+
+        \func sD.{l} {X Y Z : Pointed.{l}} (h : Smash.{l} Y X ->* Z)
+          => pmap SmashCocone.flip.{l} (inv (Smash.restrict-post.{l} h ->*.id) *> pmap Smash.restrict.{l} (->*.compose-id h))
+      }
+
+    \func L.{l} {X Y Z W : Pointed.{l}} (H : Smash.{l} Y Z ->* Map* X W)
+      : Smash.adjunction.pointed.{l} {Y} {Z} {W} ∘* tr.{l} {X} {Smash.{l} Y Z} {W} H
+        = tr.{l} {X} {Y} {Map* Z W} (trp.{l} X Z W ∘* Smash.adjunction.{l} {Y} {Z} {Map* X W} H)
+      => ->*.ext (\lam x => Lp.{l} H x)
+                 (mapLoop*.ext2-base (\lam y z => pmap_*>-comm (\lam (G : Y ->* Map* Z W) => (G.1 y).1 z) (Lp.{l} H base)
+                                                    (tr.{l} {X} {Y} {Map* Z W} (trp.{l} X Z W ∘* Smash.adjunction.{l} {Y} {Z} {Map* X W} H)).2
+                                      *> pmap (`*> _) (pmap_*>-comm (\lam (G : Y ->* Map* Z W) => (G.1 y).1 z)
+                                                                    (Smash.adjunction.post.{l} (Map*.eval {X} {W} base) H) (Lp.ext.{l} H base)
+                                                       *> Smash.adjunction.post-first.{l} (Map*.eval {X} {W} base) H y z)
+                                      *> idp_*> _))
+      \where {
+        \func Lp.{l} {X Y Z W : Pointed.{l}} (H : Smash.{l} Y Z ->* Map* X W) (x : X)
+          : Smash.adjunction.{l} {Y} {Z} {W} (Map*.eval {X} {W} x ∘* H)
+            = (tr.{l} {X} {Y} {Map* Z W} (trp.{l} X Z W ∘* Smash.adjunction.{l} {Y} {Z} {Map* X W} H)).1 x
+          => Smash.adjunction.post.{l} (Map*.eval {X} {W} x) H *> Lp.ext.{l} H x
+          \where
+            \func ext.{l} {X Y Z W : Pointed.{l}} (H : Smash.{l} Y Z ->* Map* X W) (x : X)
+              : Map*.post Z (Map*.eval {X} {W} x) ∘* Smash.adjunction.{l} {Y} {Z} {Map* X W} H
+                = (tr.{l} {X} {Y} {Map* Z W} (trp.{l} X Z W ∘* Smash.adjunction.{l} {Y} {Z} {Map* X W} H)).1 x
+              => ->*.ext (\lam _ => idp) (idp_*> _)
+      }
+
+  }
+
+\func pentagon.{l} (W X Y Z : Pointed.{l})
+  : (assoc.{l} W X (Smash.{l} Y Z)).map ∘* (assoc.{l} (Smash.{l} W X) Y Z).map
+    = Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map ∘* Smash.map.{l} (assoc.{l} W X Y).map (->*.id {Z})
+  => hexagon.left-inj {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+       (triangle.adj-inj {W} {X} {Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))}
+         (comb {W} {Map* X (Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))))} {Map* X (Map* (Smash.{l} Y Z) (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))}
+               {Map* (Smash.{l} (Smash.{l} X Y) Z) (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))} {Map* (Smash.{l} X (Smash.{l} Y Z)) (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+               {Map* (Smash.{l} X Y) (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))}
+               {Smash.adjunction.{l} {W} {X} {Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))}
+                 (assoc.left.{l} {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                   ((assoc.{l} W X (Smash.{l} Y Z)).map ∘* (assoc.{l} (Smash.{l} W X) Y Z).map))}
+               {Smash.adjunction.{l} {W} {X} {Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))}
+                 (assoc.left.{l} {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                   (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map ∘* Smash.map.{l} (assoc.{l} W X Y).map (->*.id {Z})))}
+               {Map*.post X (Smash.adjunction.pointed.{l} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))})}
+               {Smash.adjunction.pointed.{l} {X} {Smash.{l} Y Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}}
+               {Smash.adjunction.pointed.{l} {X} {Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}}
+               {Smash.adjunction.pointed.{l} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}}
+               {Map*.pre {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} X (Smash.{l} Y Z)} (assoc.{l} X Y Z).map (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+               {Smash.adjunction.{l} {W} {Smash.{l} X (Smash.{l} Y Z)} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ->*.id}
+               (route1.{l} W X Y Z) (route2.{l} W X Y Z) (assoc.curried.{l} X Y Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))))
+  \where {
+    \sfunc comb {A M N R S Q2 : Pointed} {lhs1 lhs2 : A ->* M} {PA : N ->* M} {AX : S ->* N} {AQ : Q2 ->* M} {AP' : R ->* Q2} {PS : S ->* R} {u : A ->* S}
+                (r1 : lhs1 = PA ∘* (AX ∘* u)) (r2 : lhs2 = AQ ∘* (AP' ∘* ((PS ∘* u) ∘* ->*.id))) (cu : (AQ ∘* AP') ∘* PS = PA ∘* AX) : lhs1 = lhs2
+      => r1 *> inv (r2 *> pmap (\lam z => AQ ∘* (AP' ∘* z)) (->*.compose-id (PS ∘* u)) *> ->*.compose-assoc AQ AP' (PS ∘* u)
+                    *> ->*.compose-assoc (AQ ∘* AP') PS u *> pmap (∘* u) cu *> inv (->*.compose-assoc PA AX u))
+
+    \func route1.{l} (W X Y Z : Pointed.{l})
+      : Smash.adjunction.{l} {W} {X} {Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))}
+          (assoc.left.{l} {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ((assoc.{l} W X (Smash.{l} Y Z)).map ∘* (assoc.{l} (Smash.{l} W X) Y Z).map))
+        = Map*.post X (Smash.adjunction.pointed.{l} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))})
+            ∘* (Smash.adjunction.pointed.{l} {X} {Smash.{l} Y Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                  ∘* Smash.adjunction.{l} {W} {Smash.{l} X (Smash.{l} Y Z)} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ->*.id)
+      => comb1 {W} {Smash.{l} W X} {Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))} {Map* (Smash.{l} Y Z) (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+               {Map* X (Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))))} {Map* X (Map* (Smash.{l} Y Z) (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))}
+               (Smash.adjunction.{l} {W} {X} {Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))})
+               {assoc.left.{l} {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ((assoc.{l} W X (Smash.{l} Y Z)).map ∘* (assoc.{l} (Smash.{l} W X) Y Z).map)}
+               {assoc.right.{l} {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} (assoc.{l} W X (Smash.{l} Y Z)).map}
+               {Smash.adjunction.pointed.{l} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}}
+               {Smash.adjunction.{l} {Smash.{l} W X} {Smash.{l} Y Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} (assoc.{l} W X (Smash.{l} Y Z)).map}
+               {Map*.post X (Smash.adjunction.pointed.{l} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))})}
+               {Smash.adjunction.{l} {W} {X} {Map* (Smash.{l} Y Z) (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+                 (Smash.adjunction.{l} {Smash.{l} W X} {Smash.{l} Y Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} (assoc.{l} W X (Smash.{l} Y Z)).map)}
+               {assoc.left.{l} {W} {X} {Smash.{l} Y Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} (assoc.{l} W X (Smash.{l} Y Z)).map}
+               {assoc.right.{l} {W} {X} {Smash.{l} Y Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ->*.id}
+               {Smash.adjunction.pointed.{l} {X} {Smash.{l} Y Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 ∘* Smash.adjunction.{l} {W} {Smash.{l} X (Smash.{l} Y Z)} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ->*.id}
+               (assoc.lift.{l} {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} (assoc.{l} W X (Smash.{l} Y Z)).map)
+               (assoc.right.eval.{l} {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} (assoc.{l} W X (Smash.{l} Y Z)).map)
+               (Smash.adjunction.post.{l} {W} {X} {Map* (Smash.{l} Y Z) (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))} {Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))}
+                 (Smash.adjunction.pointed.{l} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))})
+                 (Smash.adjunction.{l} {Smash.{l} W X} {Smash.{l} Y Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} (assoc.{l} W X (Smash.{l} Y Z)).map))
+               (assoc.left.eval.{l} {W} {X} {Smash.{l} Y Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} (assoc.{l} W X (Smash.{l} Y Z)).map)
+               (assoc.eval.{l} W X (Smash.{l} Y Z))
+               (assoc.right.eval.{l} {W} {X} {Smash.{l} Y Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ->*.id)
+
+    \sfunc comb1 {A B C N M M' : Pointed} (Fa : (B ->* C) -> (A ->* M)) {lh rk : B ->* C} {AP : N ->* C} {v : B ->* N} {PA : M' ->* M} {fv g2 g3 g4 : A ->* M'}
+                 (li : lh = rk) (re : rk = AP ∘* v) (po : Fa (AP ∘* v) = PA ∘* fv) (le : g2 = fv) (ev : g2 = g3) (re2 : g3 = g4) : Fa lh = PA ∘* g4
+      => pmap Fa (li *> re) *> po *> pmap (PA ∘*) (inv le *> ev *> re2)
+
+    \func route2.{l} (W X Y Z : Pointed.{l})
+      : Smash.adjunction.{l} {W} {X} {Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))}
+          (assoc.left.{l} {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+            (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map ∘* Smash.map.{l} (assoc.{l} W X Y).map (->*.id {Z})))
+        = Smash.adjunction.pointed.{l} {X} {Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+            ∘* (Smash.adjunction.pointed.{l} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                  ∘* ((Map*.pre {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} X (Smash.{l} Y Z)} (assoc.{l} X Y Z).map (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))
+                        ∘* Smash.adjunction.{l} {W} {Smash.{l} X (Smash.{l} Y Z)} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ->*.id) ∘* ->*.id))
+      => comb2 {W} {Smash.{l} W X} {Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))} {Map* X (Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))))}
+               {Smash.{l} (Smash.{l} W X) Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))} {Smash.{l} W (Smash.{l} X Y)}
+               {Map* (Smash.{l} X Y) (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))}
+               {Map* (Smash.{l} X Y) (Map* Z (Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)))}
+               (Smash.adjunction.{l} {W} {X} {Map* Y (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))})
+               (Smash.adjunction.{l} {Smash.{l} W X} {Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))})
+               {assoc.left.{l} {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map ∘* Smash.map.{l} (assoc.{l} W X Y).map (->*.id {Z}))}
+               {Smash.adjunction.{l} {Smash.{l} (Smash.{l} W X) Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map ∘* Smash.map.{l} (assoc.{l} W X Y).map (->*.id {Z}))}
+               {Map*.pre (->*.id {Z}) (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+               {Smash.adjunction.{l} {Smash.{l} W (Smash.{l} X Y)} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map)}
+               {(assoc.{l} W X Y).map}
+               {assoc.left.{l} {W} {X} {Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+                 (Smash.adjunction.{l} {Smash.{l} W (Smash.{l} X Y)} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                   (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map) ∘* (assoc.{l} W X Y).map)}
+               {assoc.right.{l} {W} {X} {Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+                 (Smash.adjunction.{l} {Smash.{l} W (Smash.{l} X Y)} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                   (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map))}
+               {Smash.adjunction.pointed.{l} {X} {Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}}
+               {Smash.adjunction.{l} {W} {Smash.{l} X Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+                 (Smash.adjunction.{l} {Smash.{l} W (Smash.{l} X Y)} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                   (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map))}
+               {assoc.left.{l} {W} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map)}
+               {Smash.adjunction.pointed.{l} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 ∘* ((Map*.pre {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} X (Smash.{l} Y Z)} (assoc.{l} X Y Z).map (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))
+                       ∘* Smash.adjunction.{l} {W} {Smash.{l} X (Smash.{l} Y Z)} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ->*.id) ∘* ->*.id)}
+               {Map*.post (Smash.{l} X Y) (Map*.post Z (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map))}
+               {assoc.left.{l} {W} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)} (assoc.{l} W (Smash.{l} X Y) Z).map}
+               {assoc.right.{l} {W} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)} ->*.id}
+               {Smash.adjunction.pointed.{l} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)}
+                 ∘* Smash.adjunction.{l} {W} {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)} ->*.id}
+               (assoc.left.eval.{l} {Smash.{l} W X} {Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map ∘* Smash.map.{l} (assoc.{l} W X Y).map (->*.id {Z})))
+               (Smash.adjunction.pre.{l} {Smash.{l} (Smash.{l} W X) Y} {Smash.{l} W (Smash.{l} X Y)} {Z} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map) (assoc.{l} W X Y).map ->*.id)
+               (Map*.pre.id {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))})
+               (assoc.left.eval.{l} {W} {X} {Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+                 (Smash.adjunction.{l} {Smash.{l} W (Smash.{l} X Y)} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                   (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map) ∘* (assoc.{l} W X Y).map))
+               (assoc.lift.{l} {W} {X} {Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+                 (Smash.adjunction.{l} {Smash.{l} W (Smash.{l} X Y)} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                   (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map)))
+               (assoc.right.eval.{l} {W} {X} {Y} {Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+                 (Smash.adjunction.{l} {Smash.{l} W (Smash.{l} X Y)} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                   (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map)))
+               (assoc.left.eval.{l} {W} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* (assoc.{l} W (Smash.{l} X Y) Z).map))
+               (assoc.left.post.{l} {W} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map) (assoc.{l} W (Smash.{l} X Y) Z).map)
+               (assoc.eval.{l} W (Smash.{l} X Y) Z)
+               (assoc.right.eval.{l} {W} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)} ->*.id)
+               (tail.{l} W X Y Z)
+
+    \sfunc comb2 {A B C M Pq Q1 P2 M2 R1 : Pointed} (Fa : (B ->* C) -> (A ->* M)) (Fb : (Pq ->* Q1) -> (B ->* C)) {lh : B ->* C} {w1 : Pq ->* Q1}
+                 {Pr : Q1 ->* Q1} {w : P2 ->* Q1} {a : Pq ->* P2} {l1 r1 : A ->* M} {AQ : M2 ->* M} {aw m0 res : A ->* M2} {PP : R1 ->* M2} {m1 m2 m3 : A ->* R1}
+                 (le0 : lh = Fb w1) (pre0 : w1 = (Pr ∘* w) ∘* a) (pid : Pr = ->*.id) (le1 : l1 = Fa (Fb (w ∘* a))) (li1 : l1 = r1) (re1 : r1 = AQ ∘* aw)
+                 (le2 : m0 = aw) (lp : m0 = PP ∘* m1) (ev : m1 = m2) (re : m2 = m3) (tl : PP ∘* m3 = res) : Fa lh = AQ ∘* res
+      => pmap Fa (le0 *> pmap Fb (pre0 *> pmap (\lam (P : Q1 ->* Q1) => (P ∘* w) ∘* a) pid)) *> inv le1 *> li1 *> re1
+         *> pmap (AQ ∘*) (inv le2 *> lp *> pmap (PP ∘*) (ev *> re) *> tl)
+
+    \func tail.{l} (W X Y Z : Pointed.{l})
+      : Map*.post (Smash.{l} X Y) (Map*.post Z (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map))
+          ∘* (Smash.adjunction.pointed.{l} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)}
+                ∘* Smash.adjunction.{l} {W} {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)} ->*.id)
+        = Smash.adjunction.pointed.{l} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+            ∘* ((Map*.pre {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} X (Smash.{l} Y Z)} (assoc.{l} X Y Z).map (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))
+                  ∘* Smash.adjunction.{l} {W} {Smash.{l} X (Smash.{l} Y Z)} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ->*.id) ∘* ->*.id)
+      => comb4 {W} {Map* (Smash.{l} (Smash.{l} X Y) Z) (Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z))} {Map* (Smash.{l} X Y) (Map* Z (Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)))}
+               {Map* (Smash.{l} X Y) (Map* Z (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))))} {Map* (Smash.{l} (Smash.{l} X Y) Z) (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+               {Map* (Smash.{l} X (Smash.{l} Y Z)) (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+               (Smash.adjunction.{l} {W} {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))})
+               {Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map ∘* ->*.id} {Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map}
+               {Smash.adjunction.{l} {W} {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)} ->*.id}
+               {Smash.adjunction.pointed.{l} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)}}
+               {Map*.post (Smash.{l} X Y) (Map*.post Z (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map))}
+               {Map*.post (Smash.{l} (Smash.{l} X Y) Z) (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map)}
+               {Smash.adjunction.pointed.{l} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}}
+               {Smash.adjunction.{l} {W} {Smash.{l} X (Smash.{l} Y Z)} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))} ->*.id}
+               {Map*.pre {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} X (Smash.{l} Y Z)} (assoc.{l} X Y Z).map (Smash.{l} W (Smash.{l} X (Smash.{l} Y Z)))}
+               (Smash.adjunction.pointed-post.{l} {Smash.{l} X Y} {Z} {Smash.{l} W (Smash.{l} (Smash.{l} X Y) Z)} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map))
+               (Smash.adjunction.post.{l} (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map) ->*.id)
+               (->*.compose-id (Smash.map.{l} (->*.id {W}) (assoc.{l} X Y Z).map))
+               (Smash.adjunction.pre.{l} {W} {W} {Smash.{l} (Smash.{l} X Y) Z} {Smash.{l} X (Smash.{l} Y Z)} {Smash.{l} W (Smash.{l} X (Smash.{l} Y Z))}
+                 ->*.id ->*.id (assoc.{l} X Y Z).map)
+
+    \sfunc comb4 {Yp M N Q R S : Pointed} {D : \Type} (F : D -> (Yp ->* R)) {k1 k2 : D} {U : Yp ->* M} {AP : M ->* N} {PP : N ->* Q} {PK : M ->* R}
+                 {AP' : R ->* Q} {U' : Yp ->* S} {PS : S ->* R}
+                 (pp : AP' ∘* PK = PP ∘* AP) (post : F k1 = PK ∘* U) (ci : k1 = k2) (pre : F k2 = (PS ∘* U') ∘* ->*.id)
+      : PP ∘* (AP ∘* U) = AP' ∘* ((PS ∘* U') ∘* ->*.id)
+      => ->*.compose-assoc PP AP U *> pmap (∘* U) (inv pp) *> inv (->*.compose-assoc AP' PK U) *> pmap (AP' ∘*) (inv post *> pmap F ci *> pre)
   }

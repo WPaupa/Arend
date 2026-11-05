@@ -152,6 +152,23 @@
       : a = a'
       => pmap fromHom (loopExt {X} {Map* Y (Map* Z W)} {toHom a} {toHom a'} \lam x => ext2 {Y} {Z} {W} { ->*.happly a x} { ->*.happly a' x} (h x))
 
+    \func ext-base {X W : Pointed} {F : X ->* W} {a a' : F = base {Map* X W}}
+                   (h : \Pi (x : X) -> pmap (\lam (G : X ->* W) => G.1 x) a = pmap (\lam (G : X ->* W) => G.1 x) a') : a = a'
+      => inv (cancel a' a) *> pmap (a' *>) (ext {X} {W} {inv a' *> a} {idp}
+                                             (\lam x => pmap_*>-comm (\lam (G : X ->* W) => G.1 x) (inv a') a
+                                                        *> pmap2 (*>) (pmap_inv-comm (\lam (G : X ->* W) => G.1 x) a') (h x) *> inv_*> _))
+      \where
+        \func cancel {A : \Type} {b c : A} (a' a : b = c) : a' *> (inv a' *> a) = a \elim a'
+          | idp => idp_*> _ *> idp_*> a
+
+    \func ext2-base {X Y Z : Pointed} {F : X ->* Map* Y Z} {a a' : F = base {Map* X (Map* Y Z)}}
+                    (h : \Pi (x : X) (y : Y) -> pmap (\lam (G : X ->* Map* Y Z) => (G.1 x).1 y) a = pmap (\lam (G : X ->* Map* Y Z) => (G.1 x).1 y) a')
+      : a = a'
+      => inv (ext-base.cancel a' a) *> pmap (a' *>) (ext2 {X} {Y} {Z} {inv a' *> a} {idp}
+                                                      (\lam x y => pmap_*>-comm (\lam (G : X ->* Map* Y Z) => (G.1 x).1 y) (inv a') a
+                                                                   *> pmap2 (*>) (pmap_inv-comm (\lam (G : X ->* Map* Y Z) => (G.1 x).1 y) a') (h x y)
+                                                                   *> inv_*> _))
+
     \func squareToPath {A : \Type} {a0 a1 b0 b1 : A} (p : a0 = a1) (q : b0 = b1) {t : a0 = b0} {b : a1 = b1}
                        (s : Path (\lam j => p @ j = q @ j) t b) : t *> q = p *> b \elim p, q
       | idp, idp => s *> inv (idp_*> b)

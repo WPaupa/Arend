@@ -1,0 +1,110 @@
+\import Equiv
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func CofNull.{l} {X Y : Pointed.{l}} (f : X ->* Y) (T : Pointed.{l}) : \Type l => \Sigma (h : Y ->* T) (h ∘* f = base {Map* X T})
+  \where {
+    \func post.{l} {X Y T T' : Pointed.{l}} {f : X ->* Y} (k : T ->* T') (d : CofNull.{l} f T) : CofNull.{l} f T'
+      => (k ∘* d.1, inv (->*.compose-assoc k d.1 f) *> pmap (k ∘*) d.2 *> ->*.compose-zero k)
+
+    \func pre.{l} {X Y X' Y' T : Pointed.{l}} {u : X ->* Y} {u' : X' ->* Y'} (a : X ->* X') (b : Y ->* Y') (s : b ∘* u = u' ∘* a)
+                  (d : CofNull.{l} u' T) : CofNull.{l} u T
+      => (d.1 ∘* b, inv (->*.compose-assoc d.1 b u) *> pmap (d.1 ∘*) s *> ->*.compose-assoc d.1 u' a *> pmap (∘* a) d.2)
+      \where
+        \func ev.{l} {X Y X' Y' T : Pointed.{l}} {u : X ->* Y} {u' : X' ->* Y'} (a : X ->* X') (b : Y ->* Y') (s : b ∘* u = u' ∘* a)
+                     (d : CofNull.{l} u' T) (x : X)
+          : pmap (\lam (G : X ->* T) => G.1 x) (pre.{l} a b s d).2 = pmap d.1.1 (->*.happly s x) *> pmap (\lam (G : X' ->* T) => G.1 (a.1 x)) d.2
+          => mapsOut.pre.ev4 (\lam (G : X ->* T) => G.1 x) (inv (->*.compose-assoc d.1 b u)) (pmap (d.1 ∘*) s) (->*.compose-assoc d.1 u' a) (pmap (∘* a) d.2)
+             *> mapsOut.pre.fin2 (pmap_inv-comm (\lam (G : X ->* T) => G.1 x) (->*.compose-assoc d.1 b u)) idp
+
+    \func ext.{l} {X Y T : Pointed.{l}} {u : X ->* Y} {a1 a2 : Y ->* T} {p1 : a1 ∘* u = base {Map* X T}} {p2 : a2 ∘* u = base {Map* X T}}
+                  (e : a1 = a2) (c : p1 = pmap (∘* u) e *> p2) : ((a1, p1) : CofNull.{l} u T) = (a2, p2) \elim e
+      | idp => pmap (\lam q => ((a1, q) : CofNull.{l} u T)) (c *> idp_*> p2)
+
+    \func fromCocone.{l} {X Y T : Pointed.{l}} {u : X ->* Y} : QEquiv {CofCocone u T} {CofNull.{l} u T} \cowith
+      | f d => ((d.1, d.2), ->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4)
+      | ret e => (e.1.1, e.1.2, ->*.happly e.2, ->*.happly-base e.2)
+      | ret_f d => pmap (\lam c => ((d.1, d.2, d.3, c) : CofCocone u T))
+                        (->*.happly-base-ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4)
+      | f_sec e => pmap (\lam s => ((e.1, s) : CofNull.{l} u T)) (->*.ext-happly e.2)
+
+    \func fromCocone-post.{l} {X Y T T' : Pointed.{l}} {u : X ->* Y} (k : T ->* T') (d : CofCocone u T)
+      : fromCocone.{l} (CofCocone.post k d) = post.{l} k (fromCocone.{l} d)
+      => pmap (\lam s => ((k ∘* ((d.1, d.2) : Y ->* T), s) : CofNull.{l} u T'))
+              (mapLoop*.ext-base {X} {T'} {k ∘* ((d.1, d.2) : Y ->* T) ∘* u}
+                (\lam x => inv (idp_*> _)
+                           *> inv (pmap_*>-comm (\lam (G : X ->* T') => G.1 x) (inv (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u))
+                                                (pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4) *> ->*.compose-zero k)
+                                   *> pmap2 (*>) (pmap_inv-comm (\lam (G : X ->* T') => G.1 x) (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u))
+                                            (pmap_*>-comm (\lam (G : X ->* T') => G.1 x)
+                                                          (pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4))
+                                                          (->*.compose-zero k)))))
+
+    \sfunc mapsOut.{l} {X Y T : Pointed.{l}} {u : X ->* Y} : QEquiv {Cof.pointed u ->* T} {CofNull.{l} u T}
+      => transQEquiv Cof.mapsOut fromCocone.{l}
+      \where {
+        \func eval.{l} {X Y T : Pointed.{l}} {u : X ->* Y} (g : Cof.pointed u ->* T) : mapsOut.{l} g = fromCocone.{l} (Cof.restrict g)
+          => pmap (\lam (e : QEquiv {Cof.pointed u ->* T} {CofNull.{l} u T}) => e g) (\peval mapsOut.{l} {X} {Y} {T} {u})
+
+        \func post.{l} {X Y T T' : Pointed.{l}} {u : X ->* Y} (k : T ->* T') (g : Cof.pointed u ->* T)
+          : mapsOut.{l} (k ∘* g) = CofNull.post.{l} k (mapsOut.{l} g)
+          => eval.{l} (k ∘* g) *> pmap fromCocone.{l} (Cof.restrict-post k g) *> fromCocone-post.{l} k (Cof.restrict g)
+             *> pmap (CofNull.post.{l} k) (inv (eval.{l} g))
+
+        \func star {X Y T : Pointed} {u : X ->* Y} (g : Cof.pointed u ->* T) : ((\lam y => g.1 (pinl y), g.2) : Y ->* T) = g ∘* Cof.inc u
+          => pmap (\lam q => ((\lam y => g.1 (pinl y), q) : Y ->* T)) (inv (idp_*> g.2))
+
+        \func pre.{l} {X Y X' Y' T : Pointed.{l}} {u : X ->* Y} {u' : X' ->* Y'} (a : X ->* X') (b : Y ->* Y') (s : b ∘* u = u' ∘* a)
+                      (g : Cof.pointed u' ->* T)
+          : mapsOut.{l} (g ∘* Cof.map* {X} {Y} {X'} {Y'} {u} {u'} a b (->*.happly s)) = CofNull.pre.{l} a b s (mapsOut.{l} g)
+          => eval.{l} (g ∘* Cof.map* {X} {Y} {X'} {Y'} {u} {u'} a b (->*.happly s))
+             *> pmap (\lam q => ((((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* b, q) : CofNull.{l} u T))
+                     (mapLoop*.ext-base {X} {T} {(((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* b) ∘* u}
+                       (\lam x => GL g.1 (pmap (Cof.inc u').1 (->*.happly s x)) (ppglue (a.1 x)) (pmap (Cof.inc u').1 (->*.happly s base)) (ppglue (a.1 base))
+                                     (pmap (Cof.inc u').1 (pmap u'.1 a.2)) (ppglue base) (pmap (Cof.inc u').1 u'.2) (pmap (Cof.inc u').1 (pmap b.1 u.2))
+                                     (pmap (Cof.inc u').1 b.2) g.2 (natH (\lam x' => ppglue {X'} {Y'} {\Sigma} {u'.1} {\lam _ => ()} x') a.2)
+                                     (inv (dist3 (Cof.inc u').1 (->*.happly s base) (pmap u'.1 a.2) u'.2) *> pmap (pmap (Cof.inc u').1) (->*.happly-base s)
+                                      *> pmap_*>-comm (Cof.inc u').1 (pmap b.1 u.2) b.2)
+                                  *> inv (ev4 (\lam (G : X ->* T) => G.1 x) (inv (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) b u))
+                                              (pmap (((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘*) s) (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) u' a)
+                                              (pmap (∘* a) (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T}
+                                                                    (Cof.restrict g).3 (Cof.restrict g).4))
+                                          *> fin2 (pmap_inv-comm (\lam (G : X ->* T) => G.1 x) (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) b u)) idp)))
+             *> pmap (CofNull.pre.{l} a b s) (inv (eval.{l} g))
+          \where {
+            \func natH {A C : \Type} {F : A -> C} {c : C} (H : \Pi (x : A) -> F x = c) {x1 x2 : A} (p : x1 = x2) : H x1 = pmap F p *> H x2 \elim p
+              | idp => inv (idp_*> _)
+
+            \func dist3 {A B : \Type} (F : A -> B) {a0 a1 a2 a3 : A} (p : a0 = a1) (q : a1 = a2) (r : a2 = a3)
+              : pmap F (p *> (q *> r)) = pmap F p *> (pmap F q *> pmap F r) \elim a2, a3, q, r
+              | _, _, idp, idp => idp
+
+            \func ev4 {S T : \Type} (F : S -> T) {s0 s1 s2 s3 s4 : S} (a : s0 = s1) (b : s1 = s2) (c : s2 = s3) (d : s3 = s4)
+              : pmap F (a *> b *> c *> d) = pmap F a *> pmap F b *> pmap F c *> pmap F d \elim s2, s3, s4, b, c, d
+              | _, _, _, idp, idp, idp => idp
+
+            \func fin2 {A : \Type} {t0 t1 t2 : A} {e1 : t0 = t0} {x : t0 = t1} {e2 : t1 = t1} {y : t1 = t2} (h1 : e1 = idp) (h2 : e2 = idp)
+              : e1 *> x *> e2 *> y = x *> y \elim h1, h2
+              | idp, idp => idp_*> _ *> pmap (x *>) (idp_*> y)
+
+            \func GL {C T : \Type} (g : C -> T) {px qx pb qb q0 c y1 y0 : C} {t0 : T}
+                     (Hx : px = qx) (Qx : qx = c) (Hb : pb = qb) (Qb : qb = c) (A2 : qb = q0) (Q0 : q0 = c) (U : q0 = y0) (B1 : pb = y1) (B2 : y1 = y0)
+                     (g2 : g y0 = t0) (nat : Qb = A2 *> Q0) (hbc : Hb *> (A2 *> U) = B1 *> B2)
+              : pmap g (Hx *> Qx) *> inv (pmap g (Hb *> Qb)) *> pmap g B1 *> (pmap g B2 *> g2)
+                = pmap g Hx *> (pmap g Qx *> inv (pmap g Q0) *> pmap g U *> g2) \elim y0, t0, Qb, B1, B2, g2, nat, hbc
+              | _, _, _, _, idp, idp, idp, idp => GL2 g Qx Hx Q0 A2 Hb U
+              \where
+                \func GL2 {C T : \Type} (g : C -> T) {c qx : C} (Qx : qx = c) {px : C} (Hx : px = qx) {q0 : C} (Q0 : q0 = c) {qb : C} (A2 : qb = q0)
+                          {pb : C} (Hb : pb = qb) {y0 : C} (U : q0 = y0)
+                  : pmap g (Hx *> Qx) *> inv (pmap g (Hb *> (A2 *> Q0))) *> pmap g (Hb *> (A2 *> U)) *> (pmap g idp *> idp)
+                    = pmap g Hx *> (pmap g Qx *> inv (pmap g Q0) *> pmap g U *> idp) \elim Qx, Hx, Q0, A2, Hb, U
+                  | idp, idp, idp, idp, idp, idp => idp
+          }
+      }
+  }
