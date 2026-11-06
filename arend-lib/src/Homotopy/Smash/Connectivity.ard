@@ -1,6 +1,7 @@
 \import Arith.Nat
 \import Equiv
 \import Equiv.Sigma
+\import Homotopy.Cofiber (Cof)
 \import Homotopy.Connectivity
 \import Homotopy.Connectivity.Map
 \import Homotopy.Fibration
@@ -173,4 +174,311 @@
       : isNConnectedType (r Nat.+ s) (Join X (b = b')) \elim s
       | 0 => nconnected-join-left (b = b') cX
       | suc s => nconnected_join X (b = b') cX (nconnected-path cB b b')
+  }
+
+\lemma smash-map-nconnected.{u} {r s : Nat} {C A B : Pointed.{u}} (m : C ->* A) (cm : isNConnectedMap r m.1) (cB : isNConnectedType s B)
+  : isNConnectedMap (r Nat.+ s) (Smash.map.{u} m (->*.id {B})).1
+  => smash-map-nconnected.gen.{u} {r} {s} {C} {B} m.1 base m.2 cm cB
+  \where {
+    \lemma gen.{u} {r s : Nat} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (a0 : E) (q : m1 base = a0)
+                   (cm : isNConnectedMap r m1) (cB : isNConnectedType s B)
+      : isNConnectedMap (r Nat.+ s) (Smash.map.{u} {C} {\new Pointed E a0} {B} {B} (m1, q) (->*.id {B})).1 \elim a0, q
+      | _, idp => strict.{u} {r} {s} {C} {B} m1 cm cB
+
+    \lemma strict.{u} {r s : Nat} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (cm : isNConnectedMap r m1) (cB : isNConnectedType s B)
+      : isNConnectedMap (r Nat.+ s) (Smash.map.{u} {C} {Ap.{u} m1} {B} {B} (m1, idp) (->*.id {B})).1
+      => transport (isNConnectedMap (r Nat.+ s)) (path (\lam i x => HM.{u} {C} {B} m1 x @ i))
+                   (nconnected-map-comp-right (r Nat.+ s) (eq.{u} {C} {B} m1) (cmp-conn.{u} {r} {s} {C} {B} m1 cm cB))
+
+    \func Ap.{u} {C : Pointed.{u}} {E : \Type u} (m1 : C -> E) : Pointed.{u} => \new Pointed E (m1 base)
+
+    \func R.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) : \Type u => PushoutData {C} {E} {\Sigma C B} m1 (\lam c => (c, base {B}))
+
+    \func gl.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) : pinl (m1 base) = {R.{u} {C} {B} m1} pinr (base, base)
+      => ppglue base
+
+    \func r0.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (w : Wedge.{u} (Ap.{u} m1) B) : R.{u} {C} {B} m1
+      => PushoutData.rec pinl (\lam b => pinr (base, b)) (\lam _ => gl.{u} {C} {B} m1) w
+
+    \func P.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) : \Type u => Cof (r0.{u} {C} {B} m1)
+
+    \func hh.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (x : R.{u} {C} {B} m1) : \Sigma E B
+      => PushoutData.rec (\lam a => (a, base {B})) (\lam t => (m1 t.1, t.2)) (\lam _ => idp) x
+
+    \func al.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (w : Wedge.{u} (Ap.{u} m1) B)
+      : wedgeToProduct.{u} (Ap.{u} m1) B w = hh.{u} {C} {B} m1 (r0.{u} {C} {B} m1 w)
+      => PushoutData.drec (\lam w => wedgeToProduct.{u} (Ap.{u} m1) B w = hh.{u} {C} {B} m1 (r0.{u} {C} {B} m1 w)) (\lam _ => idp) (\lam _ => idp) (\lam _ => idp) w
+
+    \func cmp.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (z : P.{u} {C} {B} m1) : Cof (wedgeToProduct.{u} (Ap.{u} m1) B)
+      => congr (r0.{u} {C} {B} m1) (\lam _ => ()) (wedgeToProduct.{u} (Ap.{u} m1) B) (\lam _ => ()) (\lam w => w) (hh.{u} {C} {B} m1) (\lam t => t)
+               (al.{u} {C} {B} m1) (\lam _ => idp) z
+
+    \func Gam.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E)
+      : Path (\lam i => pinl (gl.{u} {C} {B} m1 @ i) = {P.{u} {C} {B} m1} pinr ()) (ppglue (pinl (m1 base))) (ppglue (pinr base))
+      => path (\lam i => ppglue (pglue () i))
+
+    \func Gg.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E)
+      : inv (pmap pinl (gl.{u} {C} {B} m1)) *> ppglue (pinl (m1 base)) = {pinl (pinr (base, base)) = {P.{u} {C} {B} m1} pinr ()} ppglue (pinr base)
+      => Lb-inv (Lb (pmap pinl (gl.{u} {C} {B} m1)) (Gam.{u} {C} {B} m1))
+
+    \func G.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (w : Wedge.{u} C B)
+      : pinl (pinr (wedgeToProduct.{u} C B w)) = {P.{u} {C} {B} m1} pinr ()
+      => PushoutData.drec (\lam w => pinl (pinr (wedgeToProduct.{u} C B w)) = {P.{u} {C} {B} m1} pinr ())
+                          (\lam c => inv (pmap pinl (ppglue c)) *> ppglue (pinl (m1 c))) (\lam b => ppglue (pinr b)) (\lam _ => Gg.{u} {C} {B} m1) w
+
+    \func e.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (x : Cof (wedgeToProduct.{u} C B)) : P.{u} {C} {B} m1
+      => PushoutData.rec (\lam t => pinl (pinr t)) (\lam _ => pinr ()) (G.{u} {C} {B} m1) x
+
+    \func k0.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (x : R.{u} {C} {B} m1) : Cof (wedgeToProduct.{u} C B)
+      => PushoutData.rec (\lam _ => pinr ()) pinl (\lam c => inv (ppglue (pinl c))) x
+
+    \func sC.{u} (C B : Pointed.{u})
+      : idp = {pinr () = {Cof (wedgeToProduct.{u} C B)} pinr ()} inv (ppglue (pinl base)) *> ppglue (pinr base)
+      => inv (inv_*> (ppglue (pinl base))) *> pmap (inv (ppglue (pinl base)) *>) (Smash.restrict.corner.{u} C B)
+
+    \func G'g.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E)
+      : Path (\lam i => k0.{u} {C} {B} m1 (gl.{u} {C} {B} m1 @ i) = pinr ()) idp (ppglue (pinr base))
+      => L2 (inv (ppglue (pinl base))) (sC.{u} C B)
+
+    \func G'.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (w : Wedge.{u} (Ap.{u} m1) B)
+      : k0.{u} {C} {B} m1 (r0.{u} {C} {B} m1 w) = pinr ()
+      => PushoutData.drec (\lam w => k0.{u} {C} {B} m1 (r0.{u} {C} {B} m1 w) = pinr ()) (\lam _ => idp) (\lam b => ppglue (pinr b))
+                          (\lam _ => G'g.{u} {C} {B} m1) w
+
+    \func e'.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (z : P.{u} {C} {B} m1) : Cof (wedgeToProduct.{u} C B)
+      => PushoutData.rec (k0.{u} {C} {B} m1) (\lam _ => pinr ()) (G'.{u} {C} {B} m1) z
+
+    \func RT1L.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (c : C)
+      : idp *> ppglue (pinl c) = pmap (e'.{u} {C} {B} m1) (inv (pmap pinl (ppglue c)) *> ppglue (pinl (m1 c)))
+      => idp_*> _ *> inv (inv_inv (ppglue (pinl c))) *> inv (pmap_inv-comm (e'.{u} {C} {B} m1) (pmap pinl (ppglue c)))
+         *> inv (pmap_*>-comm (e'.{u} {C} {B} m1) (inv (pmap pinl (ppglue c))) (ppglue (pinl (m1 c))))
+
+    \func RT1.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (x : Cof (wedgeToProduct.{u} C B)) : e'.{u} {C} {B} m1 (e.{u} {C} {B} m1 x) = x
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam x => e'.{u} {C} {B} m1 (e.{u} {C} {B} m1 x)} {\lam x => x} (\lam _ => idp) (\lam _ => idp)
+           (PushoutData.drec (\lam w => idp *> ppglue w = pmap (e'.{u} {C} {B} m1) (G.{u} {C} {B} m1 w)) (RT1L.{u} {C} {B} m1) (\lam _ => idp_*> _)
+                             (\lam _ => po-sq (pmap (idp *>) (Smash.restrict.corner.{u} C B)) (pmap (pmap (e'.{u} {C} {B} m1)) (Gg.{u} {C} {B} m1))
+                                              (RT1L.{u} {C} {B} m1 base) (idp_*> _) (cube1.{u} {C} {B} m1))) x
+
+    \func cube1.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E)
+      : RT1L.{u} {C} {B} m1 base *> pmap (pmap (e'.{u} {C} {B} m1)) (Gg.{u} {C} {B} m1)
+        = pmap (idp *>) (Smash.restrict.corner.{u} C B) *> idp_*> (ppglue (pinr base))
+      => pmap (RT1L.{u} {C} {B} m1 base *>)
+              (Lb-inv-nat (e'.{u} {C} {B} m1) (Lb (pmap pinl (gl.{u} {C} {B} m1)) (Gam.{u} {C} {B} m1))
+               *> pmap (\lam Z => pmap_*>-comm (e'.{u} {C} {B} m1) (inv (pmap pinl (gl.{u} {C} {B} m1))) (ppglue (pinl (m1 base)))
+                                  *> pmap (`*> idp) (pmap_inv-comm (e'.{u} {C} {B} m1) (pmap pinl (gl.{u} {C} {B} m1)))
+                                  *> Lb-inv {_} {_} {_} {_} {inv (ppglue (pinl base))} {idp} {ppglue (pinr base)} Z)
+                       (inv (Lb-nat (e'.{u} {C} {B} m1) (pmap pinl (gl.{u} {C} {B} m1)) (Gam.{u} {C} {B} m1))
+                        *> Lb-L2 (inv (ppglue (pinl base))) (sC.{u} C B)))
+         *> fin1 (Smash.restrict.corner.{u} C B) (pmap_inv-comm (e'.{u} {C} {B} m1) (pmap pinl (gl.{u} {C} {B} m1)))
+                 (pmap_*>-comm (e'.{u} {C} {B} m1) (inv (pmap pinl (gl.{u} {C} {B} m1))) (ppglue (pinl (m1 base))))
+
+    \func fin1 {T : \Type} {x y : T} {Pc Qc : x = y} (t : Pc = Qc) {V W : x = y} (k : V = inv (inv Pc)) (s : W = V)
+      : (idp_*> Pc *> inv (inv_inv Pc) *> inv k *> inv s)
+          *> (s *> k *> Lb-inv {_} {_} {_} {_} {inv Pc} {idp} {Qc} (inv (inv_*> Pc) *> pmap (inv Pc *>) t))
+        = pmap (idp *>) t *> idp_*> Qc
+      \elim y, Pc, Qc, t, V, W, k, s
+      | _, idp, _, idp, _, _, idp, idp => idp
+
+    \func Lb-nat {T T' : \Type} (F : T -> T') {u0 u1 w : T} (p : u0 = u1) {X0 : u0 = w} {X1 : u1 = w} (Xb : Path (\lam i => p @ i = w) X0 X1)
+      : Lb (pmap F p) (path (\lam i => pmap F (Xb @ i))) = pmap (pmap F) (Lb p Xb) *> pmap_*>-comm F p X1
+      \elim u1, w, p, X0, X1, Xb
+      | _, _, idp, idp, _, idp => idp
+
+    \func Lb-inv-nat {T T' : \Type} (F : T -> T') {u0 u1 w : T} {p : u0 = u1} {X0 : u0 = w} {X1 : u1 = w} (z : X0 = p *> X1)
+      : pmap (pmap F) (Lb-inv z)
+        = pmap_*>-comm F (inv p) X0 *> pmap (`*> pmap F X0) (pmap_inv-comm F p) *> Lb-inv (pmap (pmap F) z *> pmap_*>-comm F p X1)
+      \elim u1, w, p, X0, X1, z
+      | _, _, idp, _, idp, idp => idp
+
+    \func Lb-L2 {T : \Type} {u0 u1 w : T} (p : u0 = u1) {X0 : u0 = w} {X1 : u1 = w} (s : X0 = p *> X1) : Lb p (L2 p s) = s \elim u1, p
+      | _, idp => cancel-r s (idp_*> X1)
+
+    \func cancel-r {T : \Type} {a b c : T} (s : a = b) (t : b = c) : (s *> t) *> inv t = s \elim c, t
+      | _, idp => idp
+
+    \func s0.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (c : C)
+      : inv (ppglue (pinl (m1 c))) *> pmap pinl (ppglue c) = {pinr () = {P.{u} {C} {B} m1} pinl (pinr (c, base))} pmap (e.{u} {C} {B} m1) (inv (ppglue (pinl c)))
+      => inv (s0-lem (pmap pinl (ppglue c)) (ppglue (pinl (m1 c)))) *> inv (pmap_inv-comm (e.{u} {C} {B} m1) (ppglue (pinl c)))
+
+    \func s0-lem {T : \Type} {u v w : T} (q : u = v) (a : u = w) : inv (inv q *> a) = inv a *> q \elim v, w, q, a
+      | _, _, idp, idp => idp
+
+    \func hl0.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (x : R.{u} {C} {B} m1) : e.{u} {C} {B} m1 (k0.{u} {C} {B} m1 x) = pinl x
+      => PushoutData.drec (\lam x => e.{u} {C} {B} m1 (k0.{u} {C} {B} m1 x) = pinl x) (\lam a => inv (ppglue (pinl a))) (\lam _ => idp)
+                          (\lam c => sq2po (\lam x => e.{u} {C} {B} m1 (k0.{u} {C} {B} m1 x)) pinl (ppglue c) (s0.{u} {C} {B} m1 c)) x
+
+    \func RT2.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (z : P.{u} {C} {B} m1) : e.{u} {C} {B} m1 (e'.{u} {C} {B} m1 z) = z
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam z => e.{u} {C} {B} m1 (e'.{u} {C} {B} m1 z)} {\lam z => z} (hl0.{u} {C} {B} m1) (\lam _ => idp)
+           (PushoutData.drec (\lam w => hl0.{u} {C} {B} m1 (r0.{u} {C} {B} m1 w) *> ppglue w = pmap (e.{u} {C} {B} m1) (G'.{u} {C} {B} m1 w))
+                             (\lam a => inv_*> (ppglue (pinl a))) (\lam _ => idp_*> _)
+                             (\lam _ => po-sq-dep (pmap (e.{u} {C} {B} m1) (inv (ppglue (pinl base))))
+                                                  (path (\lam i => hl0.{u} {C} {B} m1 (gl.{u} {C} {B} m1 @ i) *> (Gam.{u} {C} {B} m1 @ i)))
+                                                  (path (\lam i => pmap (e.{u} {C} {B} m1) (G'g.{u} {C} {B} m1 @ i)))
+                                                  (inv_*> (ppglue (pinl (m1 base)))) (idp_*> _) (cube2.{u} {C} {B} m1))) z
+
+    \func cube2.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E)
+      : inv_*> (ppglue (pinl (m1 base)))
+          *> Lb (pmap (e.{u} {C} {B} m1) (inv (ppglue (pinl base)))) (path (\lam i => pmap (e.{u} {C} {B} m1) (G'g.{u} {C} {B} m1 @ i)))
+        = Lb (pmap (e.{u} {C} {B} m1) (inv (ppglue (pinl base)))) (path (\lam i => hl0.{u} {C} {B} m1 (gl.{u} {C} {B} m1 @ i) *> (Gam.{u} {C} {B} m1 @ i)))
+          *> pmap (pmap (e.{u} {C} {B} m1) (inv (ppglue (pinl base))) *>) (idp_*> (ppglue (pinr base)))
+      => pmap (inv_*> (ppglue (pinl (m1 base))) *>)
+              (Lb-nat (e.{u} {C} {B} m1) (inv (ppglue (pinl base))) (G'g.{u} {C} {B} m1)
+               *> pmap (`*> pmap_*>-comm (e.{u} {C} {B} m1) (inv (ppglue (pinl base))) (ppglue (pinr base)))
+                       (pmap (pmap (pmap (e.{u} {C} {B} m1))) (Lb-L2 (inv (ppglue (pinl base))) (sC.{u} C B)))
+               *> pmap (`*> pmap_*>-comm (e.{u} {C} {B} m1) (inv (ppglue (pinl base))) (ppglue (pinr base)))
+                       (pmap_*>-comm (pmap (e.{u} {C} {B} m1)) (inv (inv_*> (ppglue (pinl base)))) (pmap (inv (ppglue (pinl base)) *>) (Smash.restrict.corner.{u} C B))
+                        *> pmap2 (*>) (pmap_inv-comm (pmap (e.{u} {C} {B} m1)) (inv_*> (ppglue (pinl base))) *> pmap inv (invnat (e.{u} {C} {B} m1) (ppglue (pinl base))))
+                                      (natc (e.{u} {C} {B} m1) (inv (ppglue (pinl base))) (Smash.restrict.corner.{u} C B))))
+         *> fin2 (Lb (pmap pinl (gl.{u} {C} {B} m1)) (Gam.{u} {C} {B} m1)) (pmap_inv-comm (e.{u} {C} {B} m1) (ppglue (pinl base)))
+                 (pmap_*>-comm (e.{u} {C} {B} m1) (inv (ppglue (pinl base))) (ppglue (pinl base)))
+                 (pmap_*>-comm (e.{u} {C} {B} m1) (inv (ppglue (pinl base))) (ppglue (pinr base)))
+         *> inv (pmap (`*> pmap (pmap (e.{u} {C} {B} m1) (inv (ppglue (pinl base))) *>) (idp_*> (ppglue (pinr base))))
+                      (Lb-cat (\lam x => e.{u} {C} {B} m1 (k0.{u} {C} {B} m1 x)) pinl (gl.{u} {C} {B} m1)
+                              (path (\lam i => hl0.{u} {C} {B} m1 (gl.{u} {C} {B} m1 @ i))) (Gam.{u} {C} {B} m1)
+                       *> pmap (\lam t => pmap (inv (ppglue (pinl (m1 base))) *>) (Lb (pmap pinl (gl.{u} {C} {B} m1)) (Gam.{u} {C} {B} m1))
+                                          *> inv (*>-assoc (inv (ppglue (pinl (m1 base)))) (pmap pinl (gl.{u} {C} {B} m1)) (ppglue (pinr base)))
+                                          *> pmap (`*> ppglue (pinr base)) t
+                                          *> *>-assoc (pmap (e.{u} {C} {B} m1) (inv (ppglue (pinl base)))) idp (ppglue (pinr base)))
+                               (sqof-sq2po (\lam x => e.{u} {C} {B} m1 (k0.{u} {C} {B} m1 x)) pinl (gl.{u} {C} {B} m1) {inv (ppglue (pinl (m1 base)))} {idp}
+                                           (s0.{u} {C} {B} m1 base))))
+
+    \func fin2 {T : \Type} {v0 v1 w : T} {q : v0 = v1} {Pa : v0 = w} {Qp : v1 = w} (z : Pa = q *> Qp) {p : w = v1} (k : p = inv (inv q *> Pa))
+               {WP : w = w} (sP : WP = p *> (inv q *> Pa)) {WQ : w = w} (sQ : WQ = p *> Qp)
+      : inv_*> Pa *> ((inv (sP *> pmap (`*> (inv q *> Pa)) k *> inv_*> (inv q *> Pa)) *> (sP *> pmap (p *>) (Lb-inv z) *> inv sQ)) *> sQ)
+        = (pmap (inv Pa *>) z *> inv (*>-assoc (inv Pa) q Qp) *> pmap (`*> Qp) (inv (s0-lem q Pa) *> inv k) *> *>-assoc p idp Qp) *> pmap (p *>) (idp_*> Qp)
+      \elim v1, w, q, Pa, Qp, z, p, k, WP, sP, WQ, sQ
+      | _, _, idp, _, idp, idp, _, idp, _, idp, _, idp => idp
+
+    \func invnat {T T' : \Type} (F : T -> T') {x y : T} (a : x = y)
+      : pmap (pmap F) (inv_*> a) = pmap_*>-comm F (inv a) a *> pmap (`*> pmap F a) (pmap_inv-comm F a) *> inv_*> (pmap F a) \elim y, a
+      | _, idp => idp
+
+    \func natc {T T' : \Type} (F : T -> T') {a b c : T} (X : a = b) {r0 r1 : b = c} (t : r0 = r1)
+      : pmap (\lam r => pmap F (X *> r)) t = pmap_*>-comm F X r0 *> pmap (pmap F X *>) (pmap (pmap F) t) *> inv (pmap_*>-comm F X r1)
+      \elim c, r0, r1, t
+      | _, idp, _, idp => idp
+
+    \func sqof {Y T : \Type} (F G : Y -> T) {y y' : Y} (g : y = y') {a : F y = G y} {b : F y' = G y'} (H : Path (\lam i => F (g @ i) = G (g @ i)) a b)
+      : a *> pmap G g = pmap F g *> b \elim y', g
+      | _, idp => H *> inv (idp_*> b)
+
+    \func sqof-sq2po {Y T : \Type} (F G : Y -> T) {y y' : Y} (g : y = y') {a : F y = G y} {b : F y' = G y'} (s : a *> pmap G g = pmap F g *> b)
+      : sqof F G g (sq2po F G g s) = s \elim y', g
+      | _, idp => cancel-r s (idp_*> b)
+
+    \func Lb-cat {Y T : \Type} (F G : Y -> T) {y y' : Y} (g : y = y') {w : T} {a : F y = G y} {b : F y' = G y'}
+                 (H : Path (\lam i => F (g @ i) = G (g @ i)) a b) {k0 : G y = w} {k1 : G y' = w} (K : Path (\lam i => G (g @ i) = w) k0 k1)
+      : Lb (pmap F g) (path (\lam i => (H @ i) *> (K @ i)))
+        = pmap (a *>) (Lb (pmap G g) K) *> inv (*>-assoc a (pmap G g) k1) *> pmap (`*> k1) (sqof F G g H) *> *>-assoc (pmap F g) b k1
+      \elim y', g
+      | _, idp => Lb-cat0 H K
+
+    \func Lb-cat0 {T : \Type} {x z w : T} {a b : x = z} (H : a = b) {k0 k1 : z = w} (K : k0 = k1)
+      : Lb idp (path (\lam i => (H @ i) *> (K @ i))) = pmap (a *>) (Lb idp K) *> inv (*>-assoc a idp k1) *> pmap (`*> k1) (H *> inv (idp_*> b)) *> *>-assoc idp b k1
+      \elim z, w, a, b, H, k0, k1, K
+      | _, _, idp, _, idp, idp, _, idp => idp
+
+    \func eq.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) : QEquiv {Cof (wedgeToProduct.{u} C B)} {P.{u} {C} {B} m1} \cowith
+      | f => e.{u} {C} {B} m1
+      | ret => e'.{u} {C} {B} m1
+      | ret_f => RT1.{u} {C} {B} m1
+      | f_sec => RT2.{u} {C} {B} m1
+
+    \func M.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) => (Smash.map.{u} {C} {Ap.{u} m1} {B} {B} (m1, idp) (->*.id {B})).1
+
+    \func HML.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (c : C)
+      : idp *> pmap (M.{u} {C} {B} m1) (ppglue (pinl c))
+        = pmap (cmp.{u} {C} {B} m1) (inv (pmap pinl (ppglue c)) *> ppglue (pinl (m1 c))) *> inv (ppglue (pinl (m1 base)))
+      => lemM1 (ppglue (pinl (m1 c))) (inv (ppglue (pinl (m1 base)))) (pmap_inv-comm (cmp.{u} {C} {B} m1) (pmap pinl (ppglue c)))
+         *> inv (pmap (`*> inv (ppglue (pinl (m1 base)))) (pmap_*>-comm (cmp.{u} {C} {B} m1) (inv (pmap pinl (ppglue c))) (ppglue (pinl (m1 c)))))
+
+    \func HM.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (x : Cof (wedgeToProduct.{u} C B)) : cmp.{u} {C} {B} m1 (e.{u} {C} {B} m1 x) = M.{u} {C} {B} m1 x
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam x => cmp.{u} {C} {B} m1 (e.{u} {C} {B} m1 x)} {M.{u} {C} {B} m1} (\lam _ => idp)
+           (\lam _ => inv (ppglue (pinl (m1 base))))
+           (PushoutData.drec (\lam w => idp *> pmap (M.{u} {C} {B} m1) (ppglue w) = pmap (cmp.{u} {C} {B} m1) (G.{u} {C} {B} m1 w) *> inv (ppglue (pinl (m1 base))))
+                             (HML.{u} {C} {B} m1) (\lam b => lemM2 (ppglue (pinr b)) (inv (ppglue (pinl (m1 base)))))
+                             (\lam _ => po-sq (pmap (\lam r => idp *> pmap (M.{u} {C} {B} m1) r) (Smash.restrict.corner.{u} C B))
+                                              (pmap (\lam r => pmap (cmp.{u} {C} {B} m1) r *> inv (ppglue (pinl (m1 base)))) (Gg.{u} {C} {B} m1))
+                                              (HML.{u} {C} {B} m1 base) (lemM2 (ppglue (pinr base)) (inv (ppglue (pinl (m1 base)))))
+                                              (cubeM.{u} {C} {B} m1))) x
+
+    \func cubeM.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E)
+      : HML.{u} {C} {B} m1 base *> pmap (\lam r => pmap (cmp.{u} {C} {B} m1) r *> inv (ppglue (pinl (m1 base)))) (Gg.{u} {C} {B} m1)
+        = pmap (\lam r => idp *> pmap (M.{u} {C} {B} m1) r) (Smash.restrict.corner.{u} C B) *> lemM2 (ppglue (pinr base)) (inv (ppglue (pinl (m1 base))))
+      => pmap (HML.{u} {C} {B} m1 base *>)
+              (pmap (pmap (`*> inv (ppglue (pinl (m1 base)))))
+                    (Lb-inv-nat (cmp.{u} {C} {B} m1) (Lb (pmap pinl (gl.{u} {C} {B} m1)) (Gam.{u} {C} {B} m1))
+                     *> pmap (\lam Z => pmap_*>-comm (cmp.{u} {C} {B} m1) (inv (pmap pinl (gl.{u} {C} {B} m1))) (ppglue (pinl (m1 base)))
+                                        *> pmap (`*> (idp *> ppglue (pinl (m1 base)))) (pmap_inv-comm (cmp.{u} {C} {B} m1) (pmap pinl (gl.{u} {C} {B} m1)))
+                                        *> Lb-inv {_} {_} {_} {_} {idp} {idp *> ppglue (pinl (m1 base))} {idp *> ppglue (pinr base)} Z)
+                             (inv (Lb-nat (cmp.{u} {C} {B} m1) (pmap pinl (gl.{u} {C} {B} m1)) (Gam.{u} {C} {B} m1)))))
+         *> finM (Smash.restrict.corner.{u} (Ap.{u} m1) B) (pmap_inv-comm (cmp.{u} {C} {B} m1) (pmap pinl (gl.{u} {C} {B} m1)))
+                 (pmap_*>-comm (cmp.{u} {C} {B} m1) (inv (pmap pinl (gl.{u} {C} {B} m1))) (ppglue (pinl (m1 base))))
+
+    \func finM {T : \Type} {x y : T} {P0 Q0 : x = y} (t : P0 = Q0) {K : x = x} (k : K = idp) {W : x = y} (s : W = K *> (idp *> P0))
+      : (lemM1 P0 (inv P0) k *> inv (pmap (`*> inv P0) s))
+          *> pmap (`*> inv P0) (s *> pmap (`*> (idp *> P0)) k *> Lb-inv {_} {_} {_} {_} {idp} {idp *> P0} {idp *> Q0} (pmap (idp *>) t *> inv (idp_*> (idp *> Q0))))
+        = pmap (\lam r => idp *> (idp *> (r *> inv P0))) t *> lemM2 Q0 (inv P0)
+      \elim y, P0, Q0, t, K, k, W, s
+      | _, idp, _, idp, _, idp, _, idp => idp
+
+    \func lemM1 {T : \Type} {u v w : T} (a : u = v) (b : v = w) {K : u = u} (k : K = idp) : idp *> (idp *> (a *> b)) = (K *> (idp *> a)) *> b \elim v, w, a, b, k
+      | _, _, idp, idp, idp => idp
+
+    \func lemM2 {T : \Type} {u v w : T} (a : u = v) (b : v = w) : idp *> (idp *> (a *> b)) = (idp *> a) *> b \elim v, w, a, b
+      | _, _, idp, idp => idp
+
+    \func hhS.{u} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (x : R.{u} {C} {B} m1)
+      : smash-left.h.{u} {C} {Ap.{u} m1} {B} (m1, idp) (PushoutData.swap.map m1 (\lam c => (c, base {B})) x) = hh.{u} {C} {B} m1 x
+      => PushoutData.homotopy {_} {_} {_} {_} {_} {_} {\lam x => smash-left.h.{u} {C} {Ap.{u} m1} {B} (m1, idp) (PushoutData.swap.map m1 (\lam c => (c, base {B})) x)}
+                              {hh.{u} {C} {B} m1} (\lam _ => idp) (\lam _ => idp)
+                              (\lam c => inv (pmap_inv-comm (smash-left.h.{u} {C} {Ap.{u} m1} {B} (m1, idp)) (ppglue c))) x
+
+    \lemma hh-conn.{u} {r s : Nat} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (cm : isNConnectedMap r m1) (cB : isNConnectedType s B)
+      : isNConnectedMap (r Nat.+ s) (hh.{u} {C} {B} m1)
+      => transport (isNConnectedMap (r Nat.+ s)) (path (\lam i x => hhS.{u} {C} {B} m1 x @ i))
+                   (nconnected-map-comp-right (r Nat.+ s) (PushoutData.swap m1 (\lam c => (c, base {B})))
+                                              (smash-left.fibers.{u} {r} {s} {C} {Ap.{u} m1} {B} (m1, idp) cm cB))
+
+    \lemma cmp-conn.{u} {r s : Nat} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (cm : isNConnectedMap r m1) (cB : isNConnectedType s B)
+      : isNConnectedMap (r Nat.+ s) (cmp.{u} {C} {B} m1)
+      => cmp-conn'.{u} {r Nat.+ s} {C} {B} m1 (hh-conn.{u} {r} {s} {C} {B} m1 cm cB)
+
+    \lemma cmp-conn'.{u} {n : Nat} {C B : Pointed.{u}} {E : \Type u} (m1 : C -> E) (c : isNConnectedMap n (hh.{u} {C} {B} m1))
+      : isNConnectedMap n (cmp.{u} {C} {B} m1) \elim n
+      | 0 => congr-nconnected0 (r0.{u} {C} {B} m1) (\lam _ => ()) (wedgeToProduct.{u} (Ap.{u} m1) B) (\lam _ => ()) (\lam w => w) (hh.{u} {C} {B} m1) (\lam t => t)
+                               (al.{u} {C} {B} m1) (\lam _ => idp) c (nconnected-map-equiv 0 (inP idEquiv))
+      | suc n => congr-nconnected (r0.{u} {C} {B} m1) (\lam _ => ()) (wedgeToProduct.{u} (Ap.{u} m1) B) (\lam _ => ()) (\lam w => w) (hh.{u} {C} {B} m1) (\lam t => t)
+                                  (al.{u} {C} {B} m1) (\lam _ => idp) (nconnected-map-equiv n (inP idEquiv)) c (nconnected-map-equiv (suc n) (inP idEquiv))
+
+    \func Lb {T : \Type} {u0 u1 w : T} (p : u0 = u1) {X0 : u0 = w} {X1 : u1 = w} (Xb : Path (\lam i => p @ i = w) X0 X1) : X0 = p *> X1 \elim p
+      | idp => Xb *> inv (idp_*> X1)
+
+    \func Lb-inv {T : \Type} {u0 u1 w : T} {p : u0 = u1} {X0 : u0 = w} {X1 : u1 = w} (z : X0 = p *> X1) : inv p *> X0 = X1 \elim p
+      | idp => idp_*> X0 *> z *> idp_*> X1
+
+    \func L2 {T : \Type} {u0 u1 w : T} (p : u0 = u1) {X0 : u0 = w} {X1 : u1 = w} (s : X0 = p *> X1) : Path (\lam i => p @ i = w) X0 X1 \elim p
+      | idp => s *> idp_*> X1
+
+    \func sq2po {Y T : \Type} (F G : Y -> T) {y y' : Y} (p : y = y') {a : F y = G y} {b : F y' = G y'} (s : a *> pmap G p = pmap F p *> b)
+      : Path (\lam i => F (p @ i) = G (p @ i)) a b \elim p
+      | idp => s *> idp_*> b
+
+    \func po-sq {T : \Type} {x0 x1 y0 y1 : T} (X : x0 = x1) (Y : y0 = y1) (a : x0 = y0) (b : x1 = y1) (s : a *> Y = X *> b)
+      : Path (\lam i => X @ i = Y @ i) a b \elim X, Y
+      | idp, idp => s *> idp_*> b
+
+    \func po-sq-dep {T : \Type} {u0 u1 w : T} (p : u0 = u1) {X0 Y0 : u0 = w} {X1 Y1 : u1 = w}
+                    (Xb : Path (\lam i => p @ i = w) X0 X1) (Yb : Path (\lam i => p @ i = w) Y0 Y1) (x : X0 = Y0) (y : X1 = Y1)
+                    (s : x *> Lb p Yb = Lb p Xb *> pmap (p *>) y)
+      : Path (\lam i => Xb @ i = Yb @ i) x y \elim p
+      | idp => po-sq Xb Yb x y (po-sq-dep.conv x Yb Xb y s)
+      \where
+        \func conv {T : \Type} {u w : T} {X0 Y0 X1 Y1 : u = w} (x : X0 = Y0) (Yb : Y0 = Y1) (Xb : X0 = X1) (y : X1 = Y1)
+                   (s : x *> (Yb *> inv (idp_*> Y1)) = (Xb *> inv (idp_*> X1)) *> pmap (idp *>) y)
+          : x *> Yb = Xb *> y \elim y
+          | idp => conv' x Yb Xb (idp_*> X1) s
+
+    \func conv' {T : \Type} {a b : T} {z z' : T} (x : a = b) (Y : b = z) (X : a = z) (t : z' = z) (s : x *> (Y *> inv t) = X *> inv t) : x *> Y = X \elim z, t
+      | _, idp => s
   }

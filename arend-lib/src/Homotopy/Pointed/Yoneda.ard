@@ -1,5 +1,7 @@
 \import Equiv
+\import Equiv.Path (pmapIsEquiv)
 \import Homotopy.Pointed
+\import Logic
 \import Paths
 
 \open ->* (∘*)
@@ -43,11 +45,26 @@
                   (La : \Pi (T : Pointed.{l}) (k : P' ->* T) -> L T (k ∘* a) = phi T (L' T k))
                   (Rb : \Pi (T : Pointed.{l}) (k : Q' ->* T) -> R T (k ∘* b) = phi T (R' T k))
       : PointedEquiv.map {representFam L' R' m' Lp' Rp'} ∘* a = b ∘* PointedEquiv.map {representFam L R m Lp Rp}
-      => QEquiv.isInj {L Q'}
+      => refl (L Q')
            (La Q' _ *> pmap (phi Q') (eval (L' P') (L' Q') (R' P') (R' Q') (\lam k => m' k) (\lam k => m' k) (Lp' {Q'} {P'}) (Lp' {P'} {Q'}) (Rp' {Q'} {P'}) (Rp' {P'} {Q'}))
             *> inv (Rb Q' ->*.id) *> pmap (R Q') (inv (->*.compose-id b)) *> Rp b ->*.id
             *> pmap (m b) (inv (eval (L P) (L Q) (R P) (R Q) (\lam k => m k) (\lam k => m k) (Lp {Q} {P}) (Lp {P} {Q}) (Rp {Q} {P}) (Rp {P} {Q})))
             *> inv (Lp b _))
+
+    \func refl {A B : \Type} (e : QEquiv {A} {B}) {a a' : A} (c : e a = e a') : a = a'
+      => (IsEquiv.toQEquiv (pmapIsEquiv (inP e) {a} {a'})).ret c
+      \where {
+        \func comp {A B : \Type} (e : QEquiv {A} {B}) {a a' : A} (c : e a = e a') : pmap e (refl e c) = c
+          => (IsEquiv.toQEquiv (pmapIsEquiv (inP e) {a} {a'})).f_sec c
+
+        \func post {A B C : \Type} (e : QEquiv {A} {B}) (F : A -> C) (m : B -> C) (H : \Pi (g : A) -> F g = m (e g)) {a a' : A} (c : e a = e a')
+          : pmap F (refl e c) = (H a *> pmap m c) *> inv (H a')
+          => inv (cancel (pmap F (refl e c)) (H a'))
+             *> pmap (`*> inv (H a')) (homotopy-isNatural F (\lam g => m (e g)) H (refl e c) *> pmap (H a *>) (pmap (pmap m) (comp e c)))
+          \where
+            \func cancel {C : \Type} {x y z : C} (p : x = y) (q : y = z) : (p *> q) *> inv q = p \elim q
+              | idp => idp
+      }
 
     \sfunc retAt {A B : \Type} (e : QEquiv {A} {B}) (y : B) : A
       => e.ret y

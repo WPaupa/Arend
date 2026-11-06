@@ -1,0 +1,306 @@
+\import Equiv
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Assoc (hexagon)
+\import Homotopy.Smash.Suspension
+\import Homotopy.Suspension
+\import Logic
+\import Paths
+
+\open SuspLoopEquiv (toSusp, fromSusp, adjoint)
+\open ->* (∘*)
+\open flip (tr, tr-tr, D, Dsec, idc)
+
+\func flipSmash.{u} (X Y : Pointed.{u}) : flipSmash.Lm.{u} X Y = flip.{u} (Smash.{u} X Y) ∘* flipSmash.Rm.{u} X Y
+  => inv (Ei-E.{u} (Lm.{u} X Y))
+     *> pmap Ei.{u} (pmap E.{u} (inv (idc (Lm.{u} X Y))) *> EL.{u} ->*.id
+                     *> inv (Inter.{u} (flip.{u} (Smash.{u} X Y) ∘* Rm.{u} X Y)
+                             *> pmap (tr ∘*) (ER.{u} (flip.{u} (Smash.{u} X Y)) *> Dsec (tr ∘* D ->*.id))
+                             *> ->*.compose-assoc tr tr (D ->*.id) *> pmap (∘* D ->*.id) tr-tr *> idc (D ->*.id)))
+     *> Ei-E.{u} (flip.{u} (Smash.{u} X Y) ∘* Rm.{u} X Y)
+  \where {
+    \func Lm.{u} (X Y : Pointed.{u}) : Smash.{u} (Susp.pointed X) (Susp.pointed Y) ->* Susp.pointed (Susp.pointed (Smash.{u} X Y))
+      => ->*.compose {_} {Susp.pointed (Smash.{u} X (Susp.pointed Y))} {_} (Susp-Func (suspSmashRight.{u} X Y).map) (suspSmash.{u} X (Susp.pointed Y)).map
+
+    \func Rm.{u} (X Y : Pointed.{u}) : Smash.{u} (Susp.pointed X) (Susp.pointed Y) ->* Susp.pointed (Susp.pointed (Smash.{u} X Y))
+      => ->*.compose {_} {Susp.pointed (Smash.{u} (Susp.pointed X) Y)} {_} (Susp-Func (suspSmash.{u} X Y).map) (suspSmashRight.{u} (Susp.pointed X) Y).map
+
+    \func TH {Y T : Pointed} : Loop (Map* Y T) ->* Map* Y (Loop T) => (mapLoop*.toHom, idp)
+
+    \func TF {Y T : Pointed} : Map* Y (Loop T) ->* Loop (Map* Y T) => (mapLoop*.fromHom, idp)
+
+    \func FS {Y Z : Pointed} : Map* (Susp.pointed Y) Z ->* Map* Y (Loop Z) => (fromSusp, idp)
+
+    \func TS {Y Z : Pointed} : Map* Y (Loop Z) ->* Map* (Susp.pointed Y) Z => (toSusp, QEquiv.ret_f {adjoint Y Z} (->*.zero (Susp.pointed Y) Z))
+
+    \func thf {X Y W : Pointed} (f : X ->* Map* Y (Loop W)) : TH ∘* (TF ∘* f) = f
+      => ->*.ext (\lam _ => idp) (idp_*> f.2)
+
+    \func pext {X Y W : Pointed} {f g : X ->* Map* Y (Loop W)} (p : \Pi (x : X) -> f.1 x = g.1 x) : f = g
+      => inv (thf f) *> pmap (\lam (b : X ->* Loop (Map* Y W)) => TH ∘* b) (loopExt {X} {Map* Y W} {TF ∘* f} {TF ∘* g} (\lam x => pmap mapLoop*.fromHom (p x)))
+         *> thf g
+
+    \sfunc E.{u} {X Y T : Pointed.{u}} (F : Smash.{u} (Susp.pointed X) (Susp.pointed Y) ->* T) : Smash.{u} X Y ->* Loop (Loop T)
+      => QEquiv.ret {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}} (FS ∘* (TH ∘* fromSusp (Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T} F)))
+      \where
+        \func eval.{u} {X Y T : Pointed.{u}} (F : Smash.{u} (Susp.pointed X) (Susp.pointed Y) ->* T)
+          : E.{u} F = QEquiv.ret {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}} (FS ∘* (TH ∘* fromSusp (Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T} F)))
+          => \peval E.{u} F
+
+    \sfunc Ei.{u} {X Y T : Pointed.{u}} (h : Smash.{u} X Y ->* Loop (Loop T)) : Smash.{u} (Susp.pointed X) (Susp.pointed Y) ->* T
+      => QEquiv.ret {Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T}} (toSusp (TF ∘* (TS ∘* Smash.adjunction.{u} {X} {Y} {Loop (Loop T)} h)))
+      \where
+        \func eval.{u} {X Y T : Pointed.{u}} (h : Smash.{u} X Y ->* Loop (Loop T))
+          : Ei.{u} h = QEquiv.ret {Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T}} (toSusp (TF ∘* (TS ∘* Smash.adjunction.{u} {X} {Y} {Loop (Loop T)} h)))
+          => \peval Ei.{u} h
+
+    \func Ei-E.{u} {X Y T : Pointed.{u}} (F : Smash.{u} (Susp.pointed X) (Susp.pointed Y) ->* T) : Ei.{u} (E.{u} F) = F
+      => pmap Ei.{u} (E.eval.{u} F) *> Ei.eval.{u} _ *> pmap (\lam (G : X ->* Map* Y (Loop (Loop T))) => QEquiv.ret {Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T}} (toSusp (TF ∘* (TS ∘* G))))
+              (QEquiv.f_sec {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}} (FS ∘* (TH ∘* fromSusp (Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T} F))))
+         *> pmap (\lam (B : X ->* Loop (Map* (Susp.pointed Y) T)) => QEquiv.ret {Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T}} (toSusp B))
+                 (loopExt {X} {Map* (Susp.pointed Y) T}
+                          {TF ∘* (TS ∘* (FS ∘* (TH ∘* fromSusp (Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T} F))))}
+                          {fromSusp (Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T} F)}
+                          (\lam x => pmap mapLoop*.fromHom (QEquiv.ret_f {adjoint Y (Loop T)}
+                                                              (mapLoop*.toHom ((fromSusp (Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T} F)).1 x)))))
+         *> pmap (QEquiv.ret {Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T}})
+                 (QEquiv.ret_f {adjoint X (Map* (Susp.pointed Y) T)} (Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T} F))
+         *> QEquiv.ret_f {Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T}} F
+
+    \func E-Ei.{u} {X Y T : Pointed.{u}} (h : Smash.{u} X Y ->* Loop (Loop T)) : E.{u} (Ei.{u} h) = h
+      => pmap E.{u} (Ei.eval.{u} h) *> E.eval.{u} _ *> pmap (\lam (K : Susp.pointed X ->* Map* (Susp.pointed Y) T) => QEquiv.ret {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}} (FS ∘* (TH ∘* fromSusp K)))
+              (QEquiv.f_sec {Smash.adjunction.{u} {Susp.pointed X} {Susp.pointed Y} {T}} (toSusp (TF ∘* (TS ∘* Smash.adjunction.{u} {X} {Y} {Loop (Loop T)} h))))
+         *> pmap (\lam (B : X ->* Loop (Map* (Susp.pointed Y) T)) => QEquiv.ret {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}} (FS ∘* (TH ∘* B)))
+                 (QEquiv.f_sec {adjoint X (Map* (Susp.pointed Y) T)} (TF ∘* (TS ∘* Smash.adjunction.{u} {X} {Y} {Loop (Loop T)} h)))
+         *> pmap (QEquiv.ret {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}})
+                 (pext {X} {Y} {Loop T} {FS ∘* (TH ∘* (TF ∘* (TS ∘* Smash.adjunction.{u} {X} {Y} {Loop (Loop T)} h)))}
+                       {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)} h}
+                       (\lam x => QEquiv.f_sec {adjoint Y (Loop T)} ((Smash.adjunction.{u} {X} {Y} {Loop (Loop T)} h).1 x)))
+         *> QEquiv.ret_f {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}} h
+
+    \func E'.{u} {X Y T : Pointed.{u}} (F : Smash.{u} (Susp.pointed X) (Susp.pointed Y) ->* T) : Smash.{u} X Y ->* Loop (Loop T)
+      => E.{u} {Y} {X} {T} (F ∘* Smash.swap.{u} (Susp.pointed Y) (Susp.pointed X)) ∘* Smash.swap.{u} X Y
+
+    \func Ei'.{u} {X Y T : Pointed.{u}} (h : Smash.{u} X Y ->* Loop (Loop T)) : Smash.{u} (Susp.pointed X) (Susp.pointed Y) ->* T
+      => Ei.{u} {Y} {X} {T} (h ∘* Smash.swap.{u} Y X) ∘* Smash.swap.{u} (Susp.pointed X) (Susp.pointed Y)
+
+    \func unswap {A B D : Pointed} (f : B ->* D) (s : A ->* B) (s' : B ->* A) (iv : s ∘* s' = ->*.id) : (f ∘* s) ∘* s' = f
+      => inv (->*.compose-assoc f s s') *> pmap (f ∘*) iv *> ->*.compose-id f
+
+    \func comp.{u} {X Y T : Pointed.{u}} (F : Smash.{u} (Susp.pointed Y) (Susp.pointed X) ->* T)
+      : Smash.{u} Y X ->* Loop (Loop T) =>
+      E.{u} {Y} {X} {T} F
+
+    \func E'-Ei'.{u} {X Y T : Pointed.{u}} (h : Smash.{u} X Y ->* Loop (Loop T)) : E'.{u} (Ei'.{u} h) = h
+      => swapInv {Smash.{u} (Susp.pointed Y) (Susp.pointed X)} {Smash.{u} (Susp.pointed X) (Susp.pointed Y)} {Smash.{u} Y X} {Smash.{u} X Y} {T} {Loop (Loop T)}
+                 (E.{u} {Y} {X} {T}) (Ei.{u} {Y} {X} {T}) (E-Ei.{u} {Y} {X} {T}) (Smash.swap.{u} (Susp.pointed X) (Susp.pointed Y)) (Smash.swap.{u} (Susp.pointed Y) (Susp.pointed X))
+                 (Smash.swap.{u} Y X) (Smash.swap.{u} X Y) Smash.swap.invol.{u} Smash.swap.invol.{u} h
+
+    \sfunc swapInv {P P' Q Q' T W : Pointed} (EE : (P ->* T) -> Q ->* W) (EI : (Q ->* W) -> P ->* T) (ee : \Pi (h : Q ->* W) -> EE (EI h) = h)
+                   (s : P' ->* P) (s' : P ->* P') (r : Q ->* Q') (r' : Q' ->* Q) (iv : s ∘* s' = ->*.id) (iv' : r ∘* r' = ->*.id) (h : Q' ->* W)
+      : EE ((EI (h ∘* r) ∘* s) ∘* s') ∘* r' = h
+      => pmap (\lam (F : P ->* T) => EE F ∘* r') (unswap (EI (h ∘* r)) s s' iv)
+         *> pmap (\lam (g : Q ->* W) => g ∘* r') (ee (h ∘* r))
+         *> unswap h r r' iv'
+
+    \func K.{u} {X Y T : Pointed.{u}} (h : Smash.{u} X Y ->* Loop (Loop T)) : Susp.pointed X ->* Map* (Susp.pointed Y) T
+      => toSusp (TF ∘* (TS ∘* Smash.adjunction.{u} {X} {Y} {Loop (Loop T)} h))
+
+    \func Hh.{u} {X Y T : Pointed.{u}} (h : Smash.{u} X Y ->* Loop (Loop T)) (s : Susp X) (t : Susp Y)
+      : ((K.{u} h).1 s).1 t = ((K.{u} {Y} {X} {T} ((tr ∘* h) ∘* Smash.swap.{u} Y X)).1 t).1 s \elim s, t
+      | north, north => idp
+      | north, south => idp
+      | north, pglue y j => idp
+      | south, north => idp
+      | south, south => idp
+      | south, pglue y j => idp
+      | pglue x i, north => idp
+      | pglue x i, south => idp
+      | pglue x i, pglue y j => idp
+
+    \func Lh.{u} {X Y T : Pointed.{u}} (h : Smash.{u} X Y ->* Loop (Loop T)) (s : Susp X) : ((K.{u} h).1 s).2 = Hh.{u} h s north \elim s
+      | north => idp
+      | south => idp
+      | pglue x i => idp
+
+    \func Rh.{u} {X Y T : Pointed.{u}} (h : Smash.{u} X Y ->* Loop (Loop T)) (t : Susp Y)
+      : idp = Hh.{u} h north t *> ((K.{u} {Y} {X} {T} ((tr ∘* h) ∘* Smash.swap.{u} Y X)).1 t).2 \elim t
+      | north => idp
+      | south => idp
+      | pglue y j => idp
+
+    \func S.{u} {X Y T : Pointed.{u}} (h : Smash.{u} X Y ->* Loop (Loop T)) : Ei.{u} h = Ei'.{u} (tr ∘* h)
+      => Smash.ext (pmap Smash.restrict.{u} (Ei.eval.{u} h) *> QEquiv.f_sec {Smash.mapsOut.{u} {Susp.pointed X} {Susp.pointed Y} {T}} (SmashCocone.uncurry.{u} (K.{u} h))
+                    *> SmashCocone.ext {Susp.pointed X} {Susp.pointed Y} {T} {SmashCocone.uncurry.{u} (K.{u} h)}
+                                       {SmashCocone.flip.{u} (SmashCocone.uncurry.{u} (K.{u} {Y} {X} {T} ((tr ∘* h) ∘* Smash.swap.{u} Y X)))}
+                                       (\lam t => Hh.{u} h t.1 t.2) (Lh.{u} h) (Rh.{u} h) idp
+                    *> inv (Smash.swap.cocone.{u} (Ei.{u} {Y} {X} {T} ((tr ∘* h) ∘* Smash.swap.{u} Y X))
+                            *> pmap SmashCocone.flip.{u} (pmap Smash.restrict.{u} (Ei.eval.{u} {Y} {X} {T} ((tr ∘* h) ∘* Smash.swap.{u} Y X))
+                                                          *> QEquiv.f_sec {Smash.mapsOut.{u} {Susp.pointed Y} {Susp.pointed X} {T}}
+                                                                       (SmashCocone.uncurry.{u} (K.{u} {Y} {X} {T} ((tr ∘* h) ∘* Smash.swap.{u} Y X))))))
+
+    \func Inter.{u} {X Y T : Pointed.{u}} (F : Smash.{u} (Susp.pointed X) (Susp.pointed Y) ->* T) : E.{u} F = tr ∘* E'.{u} F
+      => inv (pmap (tr ∘*) (pmap E'.{u} (inv (Ei-E.{u} F) *> S.{u} (E.{u} F)) *> E'-Ei'.{u} (tr ∘* E.{u} F))
+              *> ->*.compose-assoc tr tr (E.{u} F) *> pmap (∘* E.{u} F) tr-tr *> idc (E.{u} F))
+
+    \func left-k.{u} {X Y T : Pointed.{u}} (k : Susp.pointed (Smash.{u} X Y) ->* T)
+      : fromSusp (Smash.adjunction.{u} {Susp.pointed X} {Y} {T} (k ∘* (suspSmash.{u} X Y).map)) = TF ∘* Smash.adjunction.{u} {X} {Y} {Loop T} (fromSusp k)
+      => inv (suspSmash.left.eval.{u} {X} {Y} {T} (k ∘* (suspSmash.{u} X Y).map))
+         *> suspSmash.left.post.{u} {X} {Y} {Susp.pointed (Smash.{u} X Y)} {T} k (suspSmash.{u} X Y).map
+         *> pmap (Loop-Func (Map*.post Y k) ∘*) (suspSmash.eval.{u} X Y)
+         *> inv (suspSmash.right.post.{u} {X} {Y} {Susp.pointed (Smash.{u} X Y)} {T} k ->*.id)
+         *> pmap (suspSmash.right.{u} {X} {Y} {T}) (->*.compose-id k)
+         *> suspSmash.right.eval.{u} {X} {Y} {T} k
+
+    \func TFl.{u} {X Y Z : Pointed.{u}} (A : Susp.pointed Y ->* Map* X Z)
+      : FS ∘* hexagon.tr.{u} {X} {Susp.pointed Y} {Z} A = hexagon.tr.{u} {X} {Y} {Loop Z} (TH ∘* fromSusp A)
+      => pext (\lam x => loopExt (\lam y => inv (suspSmashRight.conj-map (\lam (f : X ->* Z) => f.1 x) A.2 (pmap A.1 (pmerid base)) (pmap A.1 (pmerid y)))))
+
+    \func LemA.{u} {X Y Z : Pointed.{u}} (G : Susp.pointed (Smash.{u} X Y) ->* Z)
+      : FS ∘* Smash.adjunction.{u} {Y} {Susp.pointed X} {Z} ((G ∘* (suspSmash.{u} X Y).map) ∘* Smash.swap.{u} Y (Susp.pointed X))
+        = Smash.adjunction.{u} {Y} {X} {Loop Z} (fromSusp G ∘* Smash.swap.{u} Y X)
+      => pmap (FS ∘*) (hexagon.sw.{u} {Y} {Susp.pointed X} {Z} (G ∘* (suspSmash.{u} X Y).map))
+         *> TFl.{u} (Smash.adjunction.{u} {Susp.pointed X} {Y} {Z} (G ∘* (suspSmash.{u} X Y).map))
+         *> pmap (\lam (B : X ->* Loop (Map* Y Z)) => hexagon.tr.{u} {Y} {X} {Loop Z} (TH ∘* B)) (left-k.{u} G)
+         *> pmap (hexagon.tr.{u} {Y} {X} {Loop Z}) (thf (Smash.adjunction.{u} {X} {Y} {Loop Z} (fromSusp G)))
+         *> inv (hexagon.sw.{u} {Y} {X} {Loop Z} (fromSusp G))
+
+    \func LemB.{u} {X Y Z : Pointed.{u}} (G : Susp.pointed (Smash.{u} X Y) ->* Z)
+      : FS ∘* Smash.adjunction.{u} {X} {Susp.pointed Y} {Z} (G ∘* (suspSmashRight.{u} X Y).map) = Smash.adjunction.{u} {X} {Y} {Loop Z} (fromSusp G)
+      => pmap (\lam (F : Smash.{u} X (Susp.pointed Y) ->* Z) => FS ∘* Smash.adjunction.{u} {X} {Susp.pointed Y} {Z} F)
+              (->*.compose-assoc {Smash.{u} X (Susp.pointed Y)} {Smash.{u} (Susp.pointed Y) X} {Susp.pointed (Smash.{u} X Y)} {Z}
+                                 G (Susp-Func (Smash.swap.{u} Y X) ∘* (suspSmash.{u} Y X).map) (Smash.swap.{u} X (Susp.pointed Y))
+               *> pmap (\lam (g : Smash.{u} (Susp.pointed Y) X ->* Z) => g ∘* Smash.swap.{u} X (Susp.pointed Y))
+                       (->*.compose-assoc {Smash.{u} (Susp.pointed Y) X} {Susp.pointed (Smash.{u} Y X)} {Susp.pointed (Smash.{u} X Y)} {Z}
+                                          G (Susp-Func (Smash.swap.{u} Y X)) (suspSmash.{u} Y X).map))
+         *> pmap (FS ∘*) (hexagon.sw.{u} {X} {Susp.pointed Y} {Z} ((G ∘* Susp-Func (Smash.swap.{u} Y X)) ∘* (suspSmash.{u} Y X).map))
+         *> TFl.{u} (Smash.adjunction.{u} {Susp.pointed Y} {X} {Z} ((G ∘* Susp-Func (Smash.swap.{u} Y X)) ∘* (suspSmash.{u} Y X).map))
+         *> pmap (\lam (B : Y ->* Loop (Map* X Z)) => hexagon.tr.{u} {X} {Y} {Loop Z} (TH ∘* B)) (left-k.{u} (G ∘* Susp-Func (Smash.swap.{u} Y X)))
+         *> pmap (hexagon.tr.{u} {X} {Y} {Loop Z}) (thf (Smash.adjunction.{u} {Y} {X} {Loop Z} (fromSusp (G ∘* Susp-Func (Smash.swap.{u} Y X)))))
+         *> inv (hexagon.sw.{u} {X} {Y} {Loop Z} (fromSusp (G ∘* Susp-Func (Smash.swap.{u} Y X))))
+         *> pmap (Smash.adjunction.{u} {X} {Y} {Loop Z})
+                 (pmap (\lam (g : Smash.{u} Y X ->* Loop Z) => g ∘* Smash.swap.{u} X Y) (fromSusp.pre G (Smash.swap.{u} Y X))
+                  *> unswap (fromSusp G) (Smash.swap.{u} Y X) (Smash.swap.{u} X Y) Smash.swap.invol.{u})
+
+    \func EL.{u} {X Y T : Pointed.{u}} (k : Susp.pointed (Susp.pointed (Smash.{u} X Y)) ->* T)
+      : E.{u} (k ∘* Lm.{u} X Y) = D k
+      => pmap E.{u} (->*.compose-assoc {Smash.{u} (Susp.pointed X) (Susp.pointed Y)} {Susp.pointed (Smash.{u} X (Susp.pointed Y))}
+                                       {Susp.pointed (Susp.pointed (Smash.{u} X Y))} {T} k (Susp-Func (suspSmashRight.{u} X Y).map) (suspSmash.{u} X (Susp.pointed Y)).map)
+         *> E.eval.{u} (->*.compose {_} {Susp.pointed (Smash.{u} X (Susp.pointed Y))} {_} (kL.{u} k) (suspSmash.{u} X (Susp.pointed Y)).map)
+         *> pmap (\lam (B : X ->* Loop (Map* (Susp.pointed Y) T)) => QEquiv.ret {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}} (FS ∘* (TH ∘* B)))
+                 (left-k.{u} {X} {Susp.pointed Y} {T} (kL.{u} k))
+         *> pmap (\lam (B : X ->* Map* (Susp.pointed Y) (Loop T)) => QEquiv.ret {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}} (FS ∘* B))
+                 (thf (Smash.adjunction.{u} {X} {Susp.pointed Y} {Loop T} (fromSusp (kL.{u} k))))
+         *> pmap (\lam (G : Smash.{u} X (Susp.pointed Y) ->* Loop T) => QEquiv.ret {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}}
+                                                                              (FS ∘* Smash.adjunction.{u} {X} {Susp.pointed Y} {Loop T} G))
+                 (fromSusp.pre {Smash.{u} X (Susp.pointed Y)} {Susp.pointed (Smash.{u} X Y)} {T} k (suspSmashRight.{u} X Y).map)
+         *> pmap (QEquiv.ret {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}}) (LemB.{u} {X} {Y} {Loop T} (fromSusp k))
+         *> QEquiv.ret_f {Smash.adjunction.{u} {X} {Y} {Loop (Loop T)}} (D k)
+
+    \func kL.{u} {X Y T : Pointed.{u}} (k : Susp.pointed (Susp.pointed (Smash.{u} X Y)) ->* T) : Susp.pointed (Smash.{u} X (Susp.pointed Y)) ->* T
+      => ->*.compose {_} {Susp.pointed (Susp.pointed (Smash.{u} X Y))} {_} k (Susp-Func (suspSmashRight.{u} X Y).map)
+
+    \func kA.{u} {X Y T : Pointed.{u}} (k : Susp.pointed (Susp.pointed (Smash.{u} X Y)) ->* T) : Susp.pointed (Smash.{u} (Susp.pointed X) Y) ->* T
+      => ->*.compose {_} {Susp.pointed (Susp.pointed (Smash.{u} X Y))} {_} k (Susp-Func (suspSmash.{u} X Y).map)
+
+    \func kR.{u} {X Y T : Pointed.{u}} (k : Susp.pointed (Susp.pointed (Smash.{u} X Y)) ->* T) : Susp.pointed (Smash.{u} Y (Susp.pointed X)) ->* T
+      => ->*.compose {_} {Susp.pointed (Smash.{u} (Susp.pointed X) Y)} {_} (kA.{u} k) (Susp-Func (Smash.swap.{u} Y (Susp.pointed X)))
+
+    \func reR {A B C V W T : Pointed} (k : W ->* T) (a : V ->* W) (b : C ->* V) (c : B ->* C) (s : A ->* B) (s' : B ->* A) (iv : s ∘* s' = ->*.id)
+      : (k ∘* (a ∘* ((b ∘* c) ∘* s))) ∘* s' = ((k ∘* a) ∘* b) ∘* c
+      => pmap (∘* s') (->*.compose-assoc k a ((b ∘* c) ∘* s) *> ->*.compose-assoc (k ∘* a) (b ∘* c) s
+                       *> pmap (∘* s) (->*.compose-assoc (k ∘* a) b c))
+         *> unswap (((k ∘* a) ∘* b) ∘* c) s s' iv
+
+    \func ER.{u} {X Y T : Pointed.{u}} (k : Susp.pointed (Susp.pointed (Smash.{u} X Y)) ->* T)
+      : E'.{u} (k ∘* Rm.{u} X Y) = D k
+      => pmap (\lam (F : Smash.{u} (Susp.pointed Y) (Susp.pointed X) ->* T) => E.{u} {Y} {X} {T} F ∘* Smash.swap.{u} X Y)
+              (reR {Smash.{u} (Susp.pointed X) (Susp.pointed Y)} {Smash.{u} (Susp.pointed Y) (Susp.pointed X)} {Susp.pointed (Smash.{u} Y (Susp.pointed X))}
+                   {Susp.pointed (Smash.{u} (Susp.pointed X) Y)} {Susp.pointed (Susp.pointed (Smash.{u} X Y))} {T}
+                   k (Susp-Func (suspSmash.{u} X Y).map) (Susp-Func (Smash.swap.{u} Y (Susp.pointed X))) (suspSmash.{u} Y (Susp.pointed X)).map
+                   (Smash.swap.{u} (Susp.pointed X) (Susp.pointed Y)) (Smash.swap.{u} (Susp.pointed Y) (Susp.pointed X)) Smash.swap.invol.{u}
+)
+         *> pmap (\lam (g : Smash.{u} Y X ->* Loop (Loop T)) => g ∘* Smash.swap.{u} X Y)
+                 (E.eval.{u} {Y} {X} {T} (->*.compose {_} {Susp.pointed (Smash.{u} Y (Susp.pointed X))} {_} (kR.{u} k) (suspSmash.{u} Y (Susp.pointed X)).map)
+                  *> pmap (\lam (B : Y ->* Loop (Map* (Susp.pointed X) T)) => QEquiv.ret {Smash.adjunction.{u} {Y} {X} {Loop (Loop T)}} (FS ∘* (TH ∘* B)))
+                       (left-k.{u} {Y} {Susp.pointed X} {T} (kR.{u} k))
+                  *> pmap (\lam (B : Y ->* Map* (Susp.pointed X) (Loop T)) => QEquiv.ret {Smash.adjunction.{u} {Y} {X} {Loop (Loop T)}} (FS ∘* B))
+                          (thf (Smash.adjunction.{u} {Y} {Susp.pointed X} {Loop T} (fromSusp (kR.{u} k))))
+                  *> pmap (\lam (G : Smash.{u} Y (Susp.pointed X) ->* Loop T) => QEquiv.ret {Smash.adjunction.{u} {Y} {X} {Loop (Loop T)}}
+                                                                                       (FS ∘* Smash.adjunction.{u} {Y} {Susp.pointed X} {Loop T} G))
+                          (fromSusp.pre {Smash.{u} Y (Susp.pointed X)} {Smash.{u} (Susp.pointed X) Y} {T} (kA.{u} k) (Smash.swap.{u} Y (Susp.pointed X))
+                           *> pmap (\lam (g : Smash.{u} (Susp.pointed X) Y ->* Loop T) => g ∘* Smash.swap.{u} Y (Susp.pointed X))
+                                   (fromSusp.pre {Smash.{u} (Susp.pointed X) Y} {Susp.pointed (Smash.{u} X Y)} {T} k (suspSmash.{u} X Y).map))
+                  *> pmap (QEquiv.ret {Smash.adjunction.{u} {Y} {X} {Loop (Loop T)}}) (LemA.{u} {X} {Y} {Loop T} (fromSusp k))
+                  *> QEquiv.ret_f {Smash.adjunction.{u} {Y} {X} {Loop (Loop T)}} (D k ∘* Smash.swap.{u} Y X))
+         *> unswap (D k) (Smash.swap.{u} Y X) (Smash.swap.{u} X Y) Smash.swap.invol.{u}
+  }
+
+\func flip.{u} (W : Pointed.{u}) : Susp.pointed (Susp.pointed W) ->* Susp.pointed (Susp.pointed W)
+  => toSusp (toSusp (tr ∘* D (->*.id {Susp.pointed (Susp.pointed W)})))
+  \where {
+    \func tr {T : Pointed} : Loop (Loop T) ->* Loop (Loop T)
+      => (\lam P => path (\lam i => path (\lam j => P @ j @ i)), idp)
+
+    \func tr-tr {T : Pointed} : tr ∘* tr = ->*.id {Loop (Loop T)}
+      => ->*.ext (\lam _ => idp) idp
+
+    \func tr-nat {T T' : Pointed} (k : T ->* T') : Loop-Func (Loop-Func k) ∘* tr = tr ∘* Loop-Func (Loop-Func k)
+      => loopExt (\lam P => tr-nat.gen k.1 k.2 P)
+      \where {
+        \func gen {E E' : \Type} {b : E} (k : E -> E') {b' : E'} (e : k b = b') (P : idp {E} {b} = idp)
+          : loopMap (loopMap k e) (loopMap.idp-case k e) (path (\lam i => path (\lam j => P @ j @ i)))
+            = path (\lam i => path (\lam j => loopMap (loopMap k e) (loopMap.idp-case k e) P @ j @ i)) \elim b', e
+          | _, idp => idp_*> _ *> nat k (path (\lam i => path (\lam j => P @ j @ i))) *> idp_*> _
+                      *> pmap (\lam (Q : idp {E'} {k b} = idp) => path (\lam i => path (\lam j => Q @ j @ i))) (inv (idp_*> _) *> inv (nat k P) *> inv (idp_*> _))
+
+        \func nat {E E' : \Type} {b : E} (k : E -> E') (Q : idp {E} {b} = idp)
+          : pmap (\lam z => idp *> pmap k z) Q = idp *> pmap (pmap k) Q
+          => homotopy-isNatural (\lam z => idp *> pmap k z) (pmap k) (\lam z => idp_*> (pmap k z)) Q
+      }
+
+    \func D {W T : Pointed} (k : Susp.pointed (Susp.pointed W) ->* T) : W ->* Loop (Loop T)
+      => fromSusp (fromSusp k)
+
+    \func Dnat {W T T' : Pointed} (k : T ->* T') (g : Susp.pointed (Susp.pointed W) ->* T) : D (k ∘* g) = Loop-Func (Loop-Func k) ∘* D g
+      => pmap fromSusp (fromSusp.natural k g) *> fromSusp.natural (Loop-Func k) (fromSusp g)
+
+    \func Dpre {W W' T : Pointed} (k : Susp.pointed (Susp.pointed W') ->* T) (f : W ->* W') : D (k ∘* Susp-Func (Susp-Func f)) = D k ∘* f
+      => pmap fromSusp (fromSusp.pre k (Susp-Func f)) *> fromSusp.pre (fromSusp k) f
+
+    \func Dsec {W T : Pointed} (h : W ->* Loop (Loop T)) : D (toSusp (toSusp h)) = h
+      => pmap fromSusp (QEquiv.f_sec {adjoint (Susp.pointed W) T} (toSusp h)) *> QEquiv.f_sec {adjoint W (Loop T)} h
+
+    \func Dret {W T : Pointed} (k : Susp.pointed (Susp.pointed W) ->* T) : toSusp (toSusp (D k)) = k
+      => pmap toSusp (QEquiv.ret_f {adjoint W (Loop T)} (fromSusp k)) *> QEquiv.ret_f {adjoint (Susp.pointed W) T} k
+
+    \func Dinj {W T : Pointed} {k k' : Susp.pointed (Susp.pointed W) ->* T} (p : D k = D k') : k = k'
+      => inv (Dret k) *> pmap (\lam h => toSusp (toSusp h)) p *> Dret k'
+
+    \func idc {X Y : Pointed} (f : X ->* Y) : ->*.id ∘* f = f
+      => ->*.ext (\lam _ => idp) (idp_*> f.2)
+
+    \func char.{u} {W T : Pointed.{u}} (k : Susp.pointed (Susp.pointed W) ->* T) : D (k ∘* flip W) = tr ∘* D k
+      => Dnat k (flip W) *> pmap (Loop-Func (Loop-Func k) ∘*) (Dsec (tr ∘* D ->*.id))
+         *> ->*.compose-assoc (Loop-Func (Loop-Func k)) tr (D ->*.id) *> pmap (∘* D ->*.id) (tr-nat k)
+         *> inv (->*.compose-assoc tr (Loop-Func (Loop-Func k)) (D ->*.id)) *> pmap (tr ∘*) (inv (Dnat k ->*.id) *> pmap D (->*.compose-id k))
+
+    \func invol.{u} (W : Pointed.{u}) : flip W ∘* flip W = ->*.id
+      => Dinj (char (flip W) *> pmap (tr ∘*) (Dsec (tr ∘* D ->*.id)) *> ->*.compose-assoc tr tr (D ->*.id) *> pmap (∘* D ->*.id) tr-tr *> idc (D ->*.id))
+
+    \func equiv.{u} (W : Pointed.{u}) : PointedEquiv (Susp.pointed (Susp.pointed W)) (Susp.pointed (Susp.pointed W)) \cowith
+      | map => flip W
+      | map-isEquiv => inP \new QEquiv {
+        | ret => (flip W).1
+        | ret_f => ->*.happly (invol W)
+        | f_sec => ->*.happly (invol W)
+      }
+
+    \func natural.{u} {W W' : Pointed.{u}} (f : W ->* W') : flip W' ∘* Susp-Func (Susp-Func f) = Susp-Func (Susp-Func f) ∘* flip W
+      => Dinj (Dpre (flip W') f *> pmap (∘* f) (Dsec (tr ∘* D ->*.id)) *> inv (->*.compose-assoc tr (D ->*.id) f)
+               *> pmap (tr ∘*) (inv (Dpre ->*.id f) *> pmap D (idc (Susp-Func (Susp-Func f)) *> inv (->*.compose-id (Susp-Func (Susp-Func f)))))
+               *> inv (char (Susp-Func (Susp-Func f))))
+  }
