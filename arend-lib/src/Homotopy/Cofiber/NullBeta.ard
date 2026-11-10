@@ -1,0 +1,214 @@
+\import Homotopy.Cofiber
+\import Homotopy.Cofiber.Null
+\import Homotopy.Cofiber.NullCode
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Beta
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func post-cone.{l} {X Y T T' : Pointed.{l}} {u : X ->* Y} (k : T ->* T') (d : CofCocone u T) (x : X)
+  : cone.{l} (CofNull.fromCocone-post.{l} k d) x
+    = (inv (idp_*> _)
+       *> inv (pmap_*>-comm (\lam (G : X ->* T') => G.1 x) (inv (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u))
+                            (pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4) *> ->*.compose-zero k)
+               *> pmap2 (*>) (pmap_inv-comm (\lam (G : X ->* T') => G.1 x) (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u))
+                        (pmap_*>-comm (\lam (G : X ->* T') => G.1 x)
+                                      (pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4))
+                                      (->*.compose-zero k))))
+      *> inv (idp_*> _)
+  => cone.snd {X} {Y} {T'} {u} {k ∘* ((d.1, d.2) : Y ->* T)} _ x
+     *> pmap (`*> _) (ext-base-beta {X} {T'} {(k ∘* ((d.1, d.2) : Y ->* T)) ∘* u}
+                                    { ->*.ext {X} {T'} {(k ∘* ((d.1, d.2) : Y ->* T)) ∘* u} { ->*.zero X T'} (CofCocone.post k d).3 (CofCocone.post k d).4}
+                                    {inv (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u)
+                                     *> pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4) *> ->*.compose-zero k}
+                                    _ (post-cond k d) x)
+
+\func pre-cond.{l} {X Y X' Y' T : Pointed.{l}} {u : X ->* Y} {u' : X' ->* Y'} (a : X ->* X') (b : Y ->* Y') (s : b ∘* u = u' ∘* a)
+                   (g : Cof.pointed u' ->* T)
+  : (GL g.1 (pmap (Cof.inc u').1 (->*.happly s base)) (ppglue (a.1 base)) (pmap (Cof.inc u').1 (->*.happly s base)) (ppglue (a.1 base))
+        (pmap (Cof.inc u').1 (pmap u'.1 a.2)) (ppglue base) (pmap (Cof.inc u').1 u'.2) (pmap (Cof.inc u').1 (pmap b.1 u.2))
+        (pmap (Cof.inc u').1 b.2) g.2 (natH (\lam x' => ppglue {X'} {Y'} {\Sigma} {u'.1} {\lam _ => ()} x') a.2)
+        (inv (dist3 (Cof.inc u').1 (->*.happly s base) (pmap u'.1 a.2) u'.2) *> pmap (pmap (Cof.inc u').1) (->*.happly-base s)
+         *> pmap_*>-comm (Cof.inc u').1 (pmap b.1 u.2) b.2)
+     *> inv (ev4 (\lam (G : X ->* T) => G.1 base) (inv (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) b u))
+                 (pmap (((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘*) s) (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) u' a)
+                 (pmap (∘* a) (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4))
+             *> fin2 (pmap_inv-comm (\lam (G : X ->* T) => G.1 base) (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) b u)) idp))
+    *> ->*.happly-base (inv (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) b u)
+                        *> pmap (((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘*) s
+                        *> ->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) u' a
+                        *> pmap (∘* a) (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4))
+    = ->*.happly-base (->*.ext {X} {T} {(((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* b) ∘* u} { ->*.zero X T}
+                               (Cof.restrict (g ∘* Cof.map* {X} {Y} {X'} {Y'} {u} {u'} a b (->*.happly s))).3
+                               (Cof.restrict (g ∘* Cof.map* {X} {Y} {X'} {Y'} {u} {u'} a b (->*.happly s))).4)
+  => pmap (_ *>)
+          (mapLoop*.happly-base_*> (inv (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) b u))
+                                   (pmap (((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘*) s
+                                    *> ->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) u' a
+                                    *> pmap (∘* a) (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4))
+           *> pmap (\lam z => _ *> _ *> pmap (_ *>) z *> _)
+                   (mapLoop*.happly-base_*> (pmap (((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘*) s)
+                                            (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) u' a
+                                             *> pmap (∘* a) (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4))
+                    *> pmap (\lam z => _ *> _ *> pmap (_ *>) z *> _)
+                            (mapLoop*.happly-base_*> (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) u' a)
+                                                     (pmap (∘* a) (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4))
+                             *> pmap (\lam z => _ *> _ *> pmap (_ *>) z *> _)
+                                     (mapLoop*.happly-base_pre a (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4)
+                                      *> pmap (mapLoop*.preCoh a.2 (Cof.restrict g).3)
+                                              (->*.happly-base-ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4))
+                             *> pmap (\lam z => _ *> _ *> _ *> z)
+                                     (->*.happly-base-ext {X} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* (u' ∘* a)} {(((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u') ∘* a}
+                                       (\lam _ => idp) (idp_*> _ *> inv (pmap (`*> g.2) (pmap_*>-comm (\lam y => g.1 (pinl y)) (pmap u'.1 a.2) u'.2) *> *>-assoc _ _ _))))
+                    *> pmap (\lam z => _ *> _ *> _ *> z) (mapLoop*.happly-base_post ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) s))
+           *> pmap (\lam z => _ *> _ *> _ *> z)
+                   (hb-inv (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) b u)
+                    *> pmap (\lam z => _ *> pmap (_ *>) (inv z) *> _)
+                            (->*.happly-base-ext {X} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* (b ∘* u)} {(((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* b) ∘* u}
+                              (\lam _ => idp) (idp_*> _ *> inv (pmap (`*> g.2) (pmap_*>-comm (\lam y => g.1 (pinl y)) (pmap b.1 u.2) b.2) *> *>-assoc _ _ _)))))
+     *> praw g.1 (Cof.inc u').1 u'.1 a.2 (natH (\lam x' => ppglue {X'} {Y'} {\Sigma} {u'.1} {\lam _ => ()} x') a.2) u'.2 g.2 (pmap b.1 u.2) b.2
+             (->*.happly s base) (->*.happly-base s)
+             (preCoh-glue g.1 (Cof.inc u').1 u'.1 (\lam x' => ppglue {X'} {Y'} {\Sigma} {u'.1} {\lam _ => ()} x') a.2 u'.2 g.2)
+             (pmap_inv-comm (\lam (G : X ->* T) => G.1 base) (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) b u))
+             (pmap_*>-comm (\lam (G : X ->* T) => G.1 base) (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) u' a)
+                           (pmap (∘* a) (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4)))
+             (pmap_*>-comm (\lam (G : X ->* T) => G.1 base) (pmap (((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘*) s)
+                           (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) u' a
+                            *> pmap (∘* a) (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4)))
+             (pmap_*>-comm (\lam (G : X ->* T) => G.1 base) (inv (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) b u))
+                           (pmap (((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘*) s
+                            *> ->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) u' a
+                            *> pmap (∘* a) (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4)))
+             (ev4-split (\lam (G : X ->* T) => G.1 base) (inv (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) b u))
+                        (pmap (((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘*) s) (->*.compose-assoc ((\lam y => g.1 (pinl y), g.2) : Y' ->* T) u' a)
+                        (pmap (∘* a) (->*.ext {X'} {T} {((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* u'} { ->*.zero X' T} (Cof.restrict g).3 (Cof.restrict g).4)))
+     *> inv (->*.happly-base-ext {X} {T} {(((\lam y => g.1 (pinl y), g.2) : Y' ->* T) ∘* b) ∘* u} { ->*.zero X T}
+                                 (Cof.restrict (g ∘* Cof.map* {X} {Y} {X'} {Y'} {u} {u'} a b (->*.happly s))).3
+                                 (Cof.restrict (g ∘* Cof.map* {X} {Y} {X'} {Y'} {u} {u'} a b (->*.happly s))).4)
+  \where {
+    \open CofNull.mapsOut.pre
+
+    \func ev4-split {S W : \Type} (F : S -> W) {s0 s1 s2 s3 s4 : S} (a : s0 = s1) (b : s1 = s2) (c : s2 = s3) (d : s3 = s4)
+      : ev4 F a b c d = pmap_*>-comm F a (b *> c *> d) *> pmap (pmap F a *>) (pmap_*>-comm F b (c *> d) *> pmap (pmap F b *>) (pmap_*>-comm F c d))
+      \elim s2, s3, s4, b, c, d
+      | _, _, _, idp, idp, idp => idp
+
+    \func preCoh-glue {C T Y'E X'E : \Type} (gg : C -> T) (inl : Y'E -> C) (u'1 : X'E -> Y'E) {r : C} (glue : \Pi (x' : X'E) -> inl (u'1 x') = r)
+                      {xa x0' : X'E} (a2 : xa = x0') {y0' : Y'E} (u'2 : u'1 x0' = y0') {t0 : T} (g2 : gg (inl y0') = t0)
+      : mapLoop*.preCoh {X'E} {T} {xa} {x0'} a2 {\lam x' => gg (inl (u'1 x'))} {\lam _ => t0}
+          (\lam x' => pmap gg (glue x') *> inv (pmap gg (glue x0')) *> pmap (\lam y => gg (inl y)) u'2 *> g2) {t0}
+          {pmap (\lam y => gg (inl y)) u'2 *> g2} {idp} (Cof.restrict.cancel (pmap gg (glue x0')) (pmap (\lam y => gg (inl y)) u'2 *> g2))
+        = pmap (`*> (inv (pmap gg (glue x0')) *> pmap (\lam y => gg (inl y)) u'2 *> g2))
+               (pmap (pmap gg) (natH glue a2) *> pmap_*>-comm gg (pmap inl (pmap u'1 a2)) (glue x0'))
+          *> *>-assoc (pmap gg (pmap inl (pmap u'1 a2))) (pmap gg (glue x0')) (inv (pmap gg (glue x0')) *> pmap (\lam y => gg (inl y)) u'2 *> g2)
+          *> pmap (pmap (\lam x' => gg (inl (u'1 x'))) a2 *>) (Cof.restrict.cancel (pmap gg (glue x0')) (pmap (\lam y => gg (inl y)) u'2 *> g2))
+      \elim x0', a2
+      | _, idp => pg gg (glue xa) (pmap (\lam y => gg (inl y)) u'2 *> g2)
+      \where
+        \func pg {C T : \Type} (gg : C -> T) {c r : C} (G : c = r) {t : T} (W : gg c = t)
+          : idp *> (Cof.restrict.cancel (pmap gg G) W *> inv (idp_*> W))
+            = pmap (`*> (inv (pmap gg G) *> W)) (pmap (pmap gg) (inv (idp_*> G)) *> pmap_*>-comm gg idp G)
+              *> *>-assoc idp (pmap gg G) (inv (pmap gg G) *> W) *> pmap (idp *>) (Cof.restrict.cancel (pmap gg G) W) \elim r, G, t, W
+          | _, idp, _, idp => idp
+
+    \func praw {C T Y'E X'E : \Type} (gg : C -> T) (inl : Y'E -> C) (u'1 : X'E -> Y'E) {xa x0' : X'E} (a2 : xa = x0')
+               {r : C} {Ga : inl (u'1 xa) = r} {Gb : inl (u'1 x0') = r} (nat : Ga = pmap inl (pmap u'1 a2) *> Gb)
+               {y0' : Y'E} (u'2 : u'1 x0' = y0') {t0 : T} (g2 : gg (inl y0') = t0)
+               {ybu yb : Y'E} (Bu : ybu = yb) (b2 : yb = y0') (S0 : ybu = u'1 xa) (hbs : S0 *> (pmap u'1 a2 *> u'2) = Bu *> b2)
+               {PC : pmap gg Ga *> inv (pmap gg Gb) *> pmap (\lam y => gg (inl y)) u'2 *> g2
+                     = pmap (\lam x' => gg (inl (u'1 x'))) a2 *> (pmap (\lam y => gg (inl y)) u'2 *> g2)}
+               (pc : PC = pmap (`*> (inv (pmap gg Gb) *> pmap (\lam y => gg (inl y)) u'2 *> g2))
+                               (pmap (pmap gg) nat *> pmap_*>-comm gg (pmap inl (pmap u'1 a2)) Gb)
+                          *> *>-assoc (pmap gg (pmap inl (pmap u'1 a2))) (pmap gg Gb) (inv (pmap gg Gb) *> pmap (\lam y => gg (inl y)) u'2 *> g2)
+                          *> pmap (pmap (\lam x' => gg (inl (u'1 x'))) a2 *>) (Cof.restrict.cancel (pmap gg Gb) (pmap (\lam y => gg (inl y)) u'2 *> g2)))
+               {I1 : gg (inl ybu) = gg (inl ybu)} (pinv : I1 = idp)
+               {Vcd : gg (inl (u'1 xa)) = t0} (q3 : Vcd = idp *> (pmap gg Ga *> inv (pmap gg Gb) *> pmap (\lam y => gg (inl y)) u'2 *> g2))
+               {Vbcd : gg (inl ybu) = t0} (q2 : Vbcd = pmap (\lam y => gg (inl y)) S0 *> Vcd)
+               {Vabcd : gg (inl ybu) = t0} (q1 : Vabcd = I1 *> Vbcd)
+               {E4 : Vabcd = I1 *> (pmap (\lam y => gg (inl y)) S0 *> (idp *> (pmap gg Ga *> inv (pmap gg Gb) *> pmap (\lam y => gg (inl y)) u'2 *> g2)))}
+               (e4 : E4 = q1 *> pmap (I1 *>) (q2 *> pmap (pmap (\lam y => gg (inl y)) S0 *>) q3))
+      : (GL gg (pmap inl S0) Ga (pmap inl S0) Ga (pmap inl (pmap u'1 a2)) Gb (pmap inl u'2) (pmap inl Bu) (pmap inl b2) g2 nat
+            (inv (dist3 inl S0 (pmap u'1 a2) u'2) *> pmap (pmap inl) hbs *> pmap_*>-comm inl Bu b2)
+         *> inv (E4 *> fin2 pinv idp))
+        *> q1 *> idp
+        *> pmap (I1 *>)
+             (q2 *> idp
+              *> pmap (pmap (\lam y => gg (inl y)) S0 *>)
+                   (q3 *> idp *> pmap (idp *>) PC
+                    *> idp_*> (pmap (\lam x' => gg (inl (u'1 x'))) a2 *> pmap (\lam y => gg (inl y)) u'2 *> g2)
+                    *> inv (pmap (`*> g2) (pmap_*>-comm (\lam y => gg (inl y)) (pmap u'1 a2) u'2)
+                            *> *>-assoc (pmap (\lam y => gg (inl y)) (pmap u'1 a2)) (pmap (\lam y => gg (inl y)) u'2) g2))
+              *> inv (*>-assoc (pmap (\lam y => gg (inl y)) S0) (pmap (\lam y => gg (inl y)) (pmap u'1 a2 *> u'2)) g2)
+              *> pmap (`*> g2) (inv (pmap_*>-comm (\lam y => gg (inl y)) S0 (pmap u'1 a2 *> u'2)) *> pmap (pmap (\lam y => gg (inl y))) hbs))
+        *> pmap (`*> (pmap (\lam y => gg (inl y)) (Bu *> b2) *> g2)) pinv
+        *> pmap (idp *>) (inv (idp_*> (pmap (\lam y => gg (inl y)) Bu *> pmap (\lam y => gg (inl y)) b2 *> g2)
+                               *> inv (pmap (`*> g2) (pmap_*>-comm (\lam y => gg (inl y)) Bu b2)
+                                       *> *>-assoc (pmap (\lam y => gg (inl y)) Bu) (pmap (\lam y => gg (inl y)) b2) g2)))
+        *> idp_*> (idp *> (pmap (\lam y => gg (inl y)) Bu *> pmap (\lam y => gg (inl y)) b2 *> g2))
+        *> idp_*> (pmap (\lam y => gg (inl y)) Bu *> pmap (\lam y => gg (inl y)) b2 *> g2)
+        = Cof.restrict.cancel (pmap gg (pmap inl S0 *> Ga)) (pmap (\lam y => gg (inl y)) Bu *> (pmap gg (pmap inl b2) *> g2))
+      \elim x0', a2, r, Ga, Gb, nat, y0', u'2, t0, g2, ybu, yb, Bu, b2, S0, hbs, PC, pc, I1, pinv, Vcd, q3, Vbcd, q2, Vabcd, q1, E4, e4
+      | _, idp, _, _, idp, idp, _, idp, _, idp, _, _, idp, idp, _, idp, _, idp, _, idp, _, idp, _, idp, _, idp, _, idp => idp
+  }
+
+\func hb-inv {A B : Pointed} {f g : A ->* B} (s : f = g)
+  : ->*.happly-base (inv s)
+    = pmap (`*> f.2) (pmap_inv-comm (\lam (h : A ->* B) => h.1 base) s) *> pmap (inv (->*.happly s base) *>) (inv (->*.happly-base s))
+      *> lem (->*.happly s base) g.2 \elim s
+  | idp => lem2 f.2
+  \where {
+    \func lem {T : \Type} {x y z : T} (p : x = y) (q : y = z) : inv p *> (p *> q) = q \elim p
+      | idp => idp_*> _ *> idp_*> q
+
+    \func lem2 {T : \Type} {x y : T} (q : x = y) : idp_*> q = idp *> pmap (idp *>) (inv (idp_*> q)) *> lem idp q \elim q
+      | idp => idp
+  }
+
+\func raw {T E : \Type} (k : T -> E) {z w : T} (Q : z = w) {t0 : T} (h0 : w = t0) {A : z = t0} (c : A = Q *> h0) {e' : E} (k2 : k t0 = e')
+          {I0 : k z = k z} (pinv : I0 = idp) {V1 : k z = e'} (q1 : V1 = pmap k A *> k2) {V0 : k z = e'} (q0 : V0 = I0 *> V1)
+  : (inv (idp_*> (pmap k A *> k2)) *> inv (q0 *> pmap2 (*>) pinv q1))
+    *> q0 *> idp
+    *> pmap (I0 *>) (q1 *> idp *> pmap (pmap k A *>) (inv (idp_*> k2)) *> inv (*>-assoc (pmap k A) idp k2) *> pmap (`*> k2) (idp *> pmap (pmap k) c))
+    *> pmap (`*> (pmap k (Q *> h0) *> k2)) pinv
+    *> pmap (idp *>) (inv (idp_*> (pmap k Q *> (pmap k h0 *> k2))
+                          *> inv (pmap (`*> k2) (pmap_*>-comm k Q h0) *> *>-assoc (pmap k Q) (pmap k h0) k2)))
+    *> idp_*> (idp *> (pmap k Q *> (pmap k h0 *> k2))) *> idp_*> (pmap k Q *> (pmap k h0 *> k2))
+    = CofCocone.post.corner k c k2 \elim w, Q, t0, h0, A, c, e', k2, I0, pinv, V1, q1, V0, q0
+  | _, idp, _, idp, _, idp, _, idp, _, idp, _, idp, _, idp => idp
+
+\func post-cond.{l} {X Y T T' : Pointed.{l}} {u : X ->* Y} (k : T ->* T') (d : CofCocone u T)
+  : (inv (idp_*> _)
+     *> inv (pmap_*>-comm (\lam (G : X ->* T') => G.1 base) (inv (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u))
+                          (pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4) *> ->*.compose-zero k)
+             *> pmap2 (*>) (pmap_inv-comm (\lam (G : X ->* T') => G.1 base) (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u))
+                      (pmap_*>-comm (\lam (G : X ->* T') => G.1 base)
+                                    (pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4))
+                                    (->*.compose-zero k))))
+    *> ->*.happly-base (inv (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u)
+                        *> pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4) *> ->*.compose-zero k)
+    = ->*.happly-base (->*.ext {X} {T'} {(k ∘* ((d.1, d.2) : Y ->* T)) ∘* u} { ->*.zero X T'} (CofCocone.post k d).3 (CofCocone.post k d).4)
+  => pmap (_ *>) (mapLoop*.happly-base_*> (inv (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u))
+                                          (pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4) *> ->*.compose-zero k)
+                  *> pmap (\lam z => _ *> _ *> pmap (_ *>) z *> _)
+                          (mapLoop*.happly-base_*> (pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4))
+                                                                (->*.compose-zero k)
+                                        *> pmap (\lam z => _ *> _ *> pmap (_ *>) z *> _) (->*.happly-base-ext {X} {T'} {k ∘* ->*.zero X T} { ->*.zero X T'} (\lam _ => k.2) (inv (idp_*> k.2)))
+                                        *> pmap (_ *>) (pmap (_ *>) (pmap (_ *>)
+                                             (mapLoop*.happly-base_post k (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4)
+                                              *> pmap (\lam z => _ *> pmap (`*> k.2) (_ *> pmap (pmap k.1) z))
+                                                      (->*.happly-base-ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4)))))
+                  *> pmap (_ *>) (pmap (_ *>) (pmap (_ *>) (hb-inv (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u)
+                                                            *> pmap (\lam z => _ *> pmap (_ *>) (inv z) *> _)
+                                                                    (->*.happly-base-ext {X} {T'} {k ∘* (((d.1, d.2) : Y ->* T) ∘* u)} {(k ∘* ((d.1, d.2) : Y ->* T)) ∘* u}
+                                                                      (\lam _ => idp)
+                                                                      (idp_*> _ *> inv (pmap (`*> k.2) (pmap_*>-comm k.1 (pmap d.1 u.2) d.2) *> *>-assoc _ _ _)))))))
+     *> raw k.1 (pmap d.1 u.2) d.2 d.4 k.2 (pmap_inv-comm (\lam (G : X ->* T') => G.1 base) (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u))
+            (pmap_*>-comm (\lam (G : X ->* T') => G.1 base)
+                          (pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4)) (->*.compose-zero k))
+            (pmap_*>-comm (\lam (G : X ->* T') => G.1 base) (inv (->*.compose-assoc k ((d.1, d.2) : Y ->* T) u))
+                          (pmap (k ∘*) (->*.ext {X} {T} {((d.1, d.2) : Y ->* T) ∘* u} { ->*.zero X T} d.3 d.4) *> ->*.compose-zero k))
+     *> inv (->*.happly-base-ext {X} {T'} {(k ∘* ((d.1, d.2) : Y ->* T)) ∘* u} { ->*.zero X T'} (CofCocone.post k d).3 (CofCocone.post k d).4)

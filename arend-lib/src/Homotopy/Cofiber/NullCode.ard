@@ -1,0 +1,41 @@
+\import Homotopy.Cofiber.Null
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Paths
+
+\open ->* (∘*)
+
+\func cone.{u} {X Y M : Pointed.{u}} {v : X ->* Y} {d d' : CofNull.{u} v M} (P : d = d') (a : X)
+  : ->*.happly d.2 a = ->*.happly (pmap (\lam (n : CofNull.{u} v M) => n.1) P) (v.1 a) *> ->*.happly d'.2 a \elim P
+  | idp => inv (idp_*> (->*.happly d.2 a))
+  \where {
+    \func snd.{u} {X Y M : Pointed.{u}} {v : X ->* Y} {h : Y ->* M} {s s' : h ∘* v = base {Map* X M}} (E : s = s') (a : X)
+      : cone.{u} (pmap (\lam (q : h ∘* v = base {Map* X M}) => ((h, q) : CofNull.{u} v M)) E) a
+        = pmap (\lam (q : h ∘* v = base {Map* X M}) => ->*.happly q a) E *> inv (idp_*> (->*.happly s' a)) \elim E
+      | idp => inv (idp_*> _)
+
+    \func cat.{u} {X Y M : Pointed.{u}} {v : X ->* Y} {d d' d'' : CofNull.{u} v M} (P : d = d') (Q : d' = d'') (a : X)
+      : cone.{u} (P *> Q) a
+        = cone.{u} P a *> pmap (->*.happly (pmap (\lam (n : CofNull.{u} v M) => n.1) P) (v.1 a) *>) (cone.{u} Q a)
+          *> inv (*>-assoc _ _ _)
+          *> pmap (`*> ->*.happly d''.2 a) (inv (pmap_*>-comm (\lam (n : CofNull.{u} v M) => n.1.1 (v.1 a)) P Q)) \elim Q
+      | idp => inv (pmap (cone.{u} P a *>) (lem _ _))
+      \where
+        \func lem {A : \Type} {x y z : A} (p : x = y) (q : y = z)
+          : pmap (p *>) (inv (idp_*> q)) *> inv (*>-assoc p idp q) *> pmap (`*> q) idp = idp \elim q
+          | idp => idp
+
+    \func inverse.{u} {X Y M : Pointed.{u}} {v : X ->* Y} {d d' : CofNull.{u} v M} (P : d = d') (a : X)
+      : cone.{u} (inv P) a
+        = inv (pmap (->*.happly (pmap (\lam (n : CofNull.{u} v M) => n.1) (inv P)) (v.1 a) *>) (cone.{u} P a)
+               *> inv (*>-assoc _ _ _)
+               *> pmap (`*> ->*.happly d'.2 a)
+                       (inv (pmap_*>-comm (\lam (n : CofNull.{u} v M) => n.1.1 (v.1 a)) (inv P) P)
+                        *> pmap (pmap (\lam (n : CofNull.{u} v M) => n.1.1 (v.1 a))) (inv_*> P))
+               *> idp_*> _) \elim P
+      | idp => lem (->*.happly d.2 a)
+      \where
+        \func lem {A : \Type} {x y : A} (h : x = y)
+          : inv (idp_*> h) = inv (pmap (idp *>) (inv (idp_*> h)) *> inv (*>-assoc idp idp h) *> pmap (`*> h) idp *> idp_*> h) \elim h
+          | idp => idp
+  }

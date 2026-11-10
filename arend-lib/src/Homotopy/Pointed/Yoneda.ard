@@ -45,11 +45,28 @@
                   (La : \Pi (T : Pointed.{l}) (k : P' ->* T) -> L T (k ∘* a) = phi T (L' T k))
                   (Rb : \Pi (T : Pointed.{l}) (k : Q' ->* T) -> R T (k ∘* b) = phi T (R' T k))
       : PointedEquiv.map {representFam L' R' m' Lp' Rp'} ∘* a = b ∘* PointedEquiv.map {representFam L R m Lp Rp}
-      => refl (L Q')
-           (La Q' _ *> pmap (phi Q') (eval (L' P') (L' Q') (R' P') (R' Q') (\lam k => m' k) (\lam k => m' k) (Lp' {Q'} {P'}) (Lp' {P'} {Q'}) (Rp' {Q'} {P'}) (Rp' {P'} {Q'}))
-            *> inv (Rb Q' ->*.id) *> pmap (R Q') (inv (->*.compose-id b)) *> Rp b ->*.id
-            *> pmap (m b) (inv (eval (L P) (L Q) (R P) (R Q) (\lam k => m k) (\lam k => m k) (Lp {Q} {P}) (Lp {P} {Q}) (Rp {Q} {P}) (Rp {P} {Q})))
-            *> inv (Lp b _))
+      => gen L R m Lp Rp L' R' m' Lp' Rp' a b phi La Rb
+             (PointedEquiv.map {representFam L R m Lp Rp}) (eval (L P) (L Q) (R P) (R Q) (\lam k => m k) (\lam k => m k) (Lp {Q} {P}) (Lp {P} {Q}) (Rp {Q} {P}) (Rp {P} {Q}))
+             (PointedEquiv.map {representFam L' R' m' Lp' Rp'})
+             (eval (L' P') (L' Q') (R' P') (R' Q') (\lam k => m' k) (\lam k => m' k) (Lp' {Q'} {P'}) (Lp' {P'} {Q'}) (Rp' {Q'} {P'}) (Rp' {P'} {Q'}))
+      \where
+        \sfunc gen.{l} {P Q P' Q' : Pointed.{l}} {M M' : Pointed.{l} -> \Type l}
+                  (L : \Pi (T : Pointed.{l}) -> QEquiv {P ->* T} {M T}) (R : \Pi (T : Pointed.{l}) -> QEquiv {Q ->* T} {M T})
+                  (m : \Pi {T T' : Pointed.{l}} (k : T ->* T') -> M T -> M T')
+                  (Lp : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : P ->* T) -> L T' (k ∘* g) = m k (L T g))
+                  (Rp : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : Q ->* T) -> R T' (k ∘* g) = m k (R T g))
+                  (L' : \Pi (T : Pointed.{l}) -> QEquiv {P' ->* T} {M' T}) (R' : \Pi (T : Pointed.{l}) -> QEquiv {Q' ->* T} {M' T})
+                  (m' : \Pi {T T' : Pointed.{l}} (k : T ->* T') -> M' T -> M' T')
+                  (Lp' : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : P' ->* T) -> L' T' (k ∘* g) = m' k (L' T g))
+                  (Rp' : \Pi {T T' : Pointed.{l}} (k : T ->* T') (g : Q' ->* T) -> R' T' (k ∘* g) = m' k (R' T g))
+                  (a : P ->* P') (b : Q ->* Q') (phi : \Pi (T : Pointed.{l}) -> M' T -> M T)
+                  (La : \Pi (T : Pointed.{l}) (k : P' ->* T) -> L T (k ∘* a) = phi T (L' T k))
+                  (Rb : \Pi (T : Pointed.{l}) (k : Q' ->* T) -> R T (k ∘* b) = phi T (R' T k))
+                  (e : P ->* Q) (eE : L Q e = R Q ->*.id) (e' : P' ->* Q') (eE' : L' Q' e' = R' Q' ->*.id)
+          : e' ∘* a = b ∘* e
+          => refl (L Q')
+               (La Q' e' *> pmap (phi Q') eE' *> inv (Rb Q' ->*.id) *> pmap (R Q') (inv (->*.compose-id b)) *> Rp b ->*.id
+                *> pmap (m b) (inv eE) *> inv (Lp b e))
 
     \func refl {A B : \Type} (e : QEquiv {A} {B}) {a a' : A} (c : e a = e a') : a = a'
       => (IsEquiv.toQEquiv (pmapIsEquiv (inP e) {a} {a'})).ret c

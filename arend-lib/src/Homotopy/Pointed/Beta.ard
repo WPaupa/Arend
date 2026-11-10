@@ -1,0 +1,124 @@
+\import Homotopy.Loop
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Paths
+
+\open ->* (∘*)
+
+\func loopExt-beta {X W : Pointed} {f g : X ->* Loop W} (h : \Pi (x : X) -> f.1 x = g.1 x) (b : h base *> g.2 = f.2) (x : X)
+  : ->*.happly (loopExt h) x = h x
+  => pmap (\lam (p : f = g) => ->*.happly p x) (\peval loopExt h) *> pmap (\lam e => h x *> pmap (g.1 x *>) e) (defect g.2 (h base) b)
+  \where
+    \func defect {A : \Type} {a : A} {u : a = a} (r : u = idp) {v : a = a} (hb : v = u) {f2 : v = idp} (b : hb *> r = f2)
+      : inv r *> (inv hb *> f2 *> inv r) *> r = idp \elim u, r, v, hb, f2, b
+      | _, idp, _, idp, _, idp => idp
+
+\func ext-beta {X W : Pointed} {a a' : Loop (Map* X W)}
+               (h : \Pi (x : X) -> pmap (\lam (f : X ->* W) => f.1 x) a = pmap (\lam (f : X ->* W) => f.1 x) a')
+               (b : h base *> ->*.happly-base a' = ->*.happly-base a) (x : X)
+  : pmap (pmap (\lam (f : X ->* W) => f.1 x)) (mapLoop*.ext h) = h x
+  => pmap (pmap (pmap (\lam (f : X ->* W) => f.1 x))) (\peval mapLoop*.ext h)
+     *> loopExt-beta {X} {W} {mapLoop*.toHom a} {mapLoop*.toHom a'} h
+          (pmap (h base *>) (mapLoop*.toHom-witness a') *> b *> inv (mapLoop*.toHom-witness a)) x
+
+\func ext-base-beta {X W : Pointed} {F : X ->* W} {a a' : F = base {Map* X W}}
+                    (h : \Pi (x : X) -> pmap (\lam (G : X ->* W) => G.1 x) a = pmap (\lam (G : X ->* W) => G.1 x) a')
+                    (b : h base *> ->*.happly-base a' = ->*.happly-base a) (x : X)
+  : pmap (pmap (\lam (G : X ->* W) => G.1 x)) (mapLoop*.ext-base h) = h x \elim F, a'
+  | _, idp => rebase (\lam (G : X ->* W) => G.1 x) a _ (h x)
+                (ext-beta {X} {W} {inv idp *> a} {idp}
+                          (\lam x' => pmap_*>-comm (\lam (G : X ->* W) => G.1 x') (inv idp) a
+                                      *> pmap2 (*>) (pmap_inv-comm (\lam (G : X ->* W) => G.1 x') (idp {Map* X W} {base {Map* X W}})) (h x')
+                                      *> inv_*> (pmap (\lam (G : X ->* W) => G.1 x') (idp {Map* X W} {base {Map* X W}}))) (cond h b) x)
+  \where
+    \func cond {X W : Pointed} {a : base {Map* X W} = base {Map* X W}} (h : \Pi (x : X) -> pmap (\lam (G : X ->* W) => G.1 x) a = idp)
+               (b : h base = ->*.happly-base a)
+      : pmap_*>-comm (\lam (G : X ->* W) => G.1 base) idp a *> pmap (idp *>) (h base) = ->*.happly-base (idp *> a)
+      => pmap (pmap_*>-comm (\lam (G : X ->* W) => G.1 base) idp a *>) (pmap (pmap (idp *>)) b *> inv (idp_*> _))
+         *> inv (mapLoop*.happly-base_*> idp a)
+
+\func rebase {M W : \Type} (e : M -> W) {m : M} (a : m = m) (E : idp *> a = idp) (hx : pmap e a = idp)
+             (v : pmap (pmap e) E = pmap_*>-comm e idp a *> pmap (idp *>) hx)
+  : pmap (pmap e) (inv (mapLoop*.ext-base.cancel idp a) *> pmap (idp *>) E) = hx
+  => rebase1 e (inv (idp_*> a) *> E) (lem (idp_*> a) E) hx v
+  \where {
+    \func lem {A : \Type} {x y z : A} (p : x = y) (r : x = z) : p *> (inv p *> r) = r \elim p
+      | idp => idp_*> _ *> idp_*> r
+
+    \func rebase1 {M W : \Type} (e : M -> W) {m : M} {a : m = m} (E' : a = idp) {E : idp *> a = idp} (q : idp_*> a *> E' = E)
+                  (hx : pmap e a = idp) (v : pmap (pmap e) E = pmap_*>-comm e idp a *> pmap (idp *>) hx)
+      : pmap (pmap e) (inv (mapLoop*.ext-base.cancel idp a) *> pmap (idp *>) E) = hx \elim a, E', E, q
+      | _, idp, _, idp => v *> idp_*> _ *> idpL hx *> idp_*> hx
+
+    \func idpL {A : \Type} {x y : A} {p p' : x = y} (q : p = p') : pmap (idp *>) q *> idp_*> p' = idp_*> p *> q \elim q
+      | idp => idp_*> _
+  }
+
+\func ext2-beta {X Y Z : Pointed} {a a' : Loop (Map* X (Map* Y Z))}
+                (h : \Pi (x : X) (y : Y) -> pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a = pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a')
+                (bi : \Pi (x : X) -> h x base *> ->*.happly-base (->*.happly a' x) = ->*.happly-base (->*.happly a x))
+                (bo : \Pi (y : Y) -> h base y *> pmap (pmap (\lam (G : Y ->* Z) => G.1 y)) (->*.happly-base a')
+                                     = pmap (pmap (\lam (G : Y ->* Z) => G.1 y)) (->*.happly-base a))
+                (x : X) (y : Y)
+  : pmap (pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y)) (mapLoop*.ext2 h) = h x y
+  => pmap (pmap (pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y))) (\peval mapLoop*.ext2 h)
+     *> pmap (pmap (pmap (\lam (G : Y ->* Z) => G.1 y)))
+             (loopExt-beta {X} {Map* Y Z} {mapLoop*.toHom a} {mapLoop*.toHom a'} (inner h) (outer h bi bo) x)
+     *> inner.beta h bi x y
+  \where {
+    \func inner {X Y Z : Pointed} {a a' : Loop (Map* X (Map* Y Z))}
+                (h : \Pi (x : X) (y : Y) -> pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a = pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a')
+                (x : X) : ->*.happly a x = ->*.happly a' x
+      => pmap mapLoop*.fromHom (loopExt {Y} {Z} {mapLoop*.toHom (->*.happly a x)} {mapLoop*.toHom (->*.happly a' x)} (h x))
+      \where
+        \func beta {X Y Z : Pointed} {a a' : Loop (Map* X (Map* Y Z))}
+                   (h : \Pi (x : X) (y : Y) -> pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a = pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a')
+                   (bi : \Pi (x : X) -> h x base *> ->*.happly-base (->*.happly a' x) = ->*.happly-base (->*.happly a x)) (x : X) (y : Y)
+          : pmap (pmap (\lam (G : Y ->* Z) => G.1 y)) (inner h x) = h x y
+          => loopExt-beta {Y} {Z} {mapLoop*.toHom (->*.happly a x)} {mapLoop*.toHom (->*.happly a' x)} (h x)
+               (pmap (h x base *>) (mapLoop*.toHom-witness (->*.happly a' x)) *> bi x *> inv (mapLoop*.toHom-witness (->*.happly a x))) y
+
+    \func outer {X Y Z : Pointed} {a a' : Loop (Map* X (Map* Y Z))}
+                (h : \Pi (x : X) (y : Y) -> pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a = pmap (\lam (f : X ->* Map* Y Z) => (f.1 x).1 y) a')
+                (bi : \Pi (x : X) -> h x base *> ->*.happly-base (->*.happly a' x) = ->*.happly-base (->*.happly a x))
+                (bo : \Pi (y : Y) -> h base y *> pmap (pmap (\lam (G : Y ->* Z) => G.1 y)) (->*.happly-base a')
+                                     = pmap (pmap (\lam (G : Y ->* Z) => G.1 y)) (->*.happly-base a))
+      : inner h base *> (mapLoop*.toHom a').2 = (mapLoop*.toHom a).2
+      => pmap (pmap mapLoop*.fromHom)
+              (mapLoop*.ext-base {Y} {Loop Z} {mapLoop*.toHom (->*.happly a base)}
+                                 {pmap mapLoop*.toHom (inner h base *> (mapLoop*.toHom a').2)} {pmap mapLoop*.toHom (mapLoop*.toHom a).2}
+                (\lam y => pmap_*>-comm (pmap (\lam (G : Y ->* Z) => G.1 y)) (inner h base) (mapLoop*.toHom a').2
+                           *> pmap2 (*>) (inner.beta h bi base y) (pmap (pmap (pmap (\lam (G : Y ->* Z) => G.1 y))) (mapLoop*.toHom-witness a'))
+                           *> bo y *> inv (pmap (pmap (pmap (\lam (G : Y ->* Z) => G.1 y))) (mapLoop*.toHom-witness a))))
+  }
+
+\func ext2-base-beta {X Y Z : Pointed} {F : X ->* Map* Y Z} {a a' : F = base {Map* X (Map* Y Z)}}
+                     (h : \Pi (x : X) (y : Y) -> pmap (\lam (G : X ->* Map* Y Z) => (G.1 x).1 y) a = pmap (\lam (G : X ->* Map* Y Z) => (G.1 x).1 y) a')
+                     (bi : \Pi (x : X) -> h x base *> ->*.happly-base (->*.happly a' x) = ->*.happly-base (->*.happly a x))
+                     (bo : \Pi (y : Y) -> h base y *> pmap (pmap (\lam (G : Y ->* Z) => G.1 y)) (->*.happly-base a')
+                                          = pmap (pmap (\lam (G : Y ->* Z) => G.1 y)) (->*.happly-base a))
+                     (x : X) (y : Y)
+  : pmap (pmap (\lam (G : X ->* Map* Y Z) => (G.1 x).1 y)) (mapLoop*.ext2-base h) = h x y \elim F, a'
+  | _, idp => rebase (\lam (G : X ->* Map* Y Z) => (G.1 x).1 y) a _ (h x y)
+                (ext2-beta {X} {Y} {Z} {inv idp *> a} {idp}
+                           (\lam x' y' => pmap_*>-comm (\lam (G : X ->* Map* Y Z) => (G.1 x').1 y') (inv idp) a
+                                          *> pmap2 (*>) (pmap_inv-comm (\lam (G : X ->* Map* Y Z) => (G.1 x').1 y') (idp {Map* X (Map* Y Z)} {base {Map* X (Map* Y Z)}})) (h x' y')
+                                          *> inv_*> (pmap (\lam (G : X ->* Map* Y Z) => (G.1 x').1 y') (idp {Map* X (Map* Y Z)} {base {Map* X (Map* Y Z)}})))
+                           (\lam x' => pmap (pmap_*>-comm (\lam (G : X ->* Map* Y Z) => (G.1 x').1 base) idp a *>) (pmap (pmap (idp *>)) (bi x') *> inv (idp_*> _))
+                                       *> ki a x')
+                           (\lam y' => pmap (pmap_*>-comm (\lam (G : X ->* Map* Y Z) => (G.1 base).1 y') idp a *>) (pmap (pmap (idp *>)) (bo y') *> inv (idp_*> _))
+                                       *> inv (ko (\lam (G : X ->* Map* Y Z) => G.1 base) (\lam (G : Y ->* Z) => G.1 y') a (->*.happly-base a))
+                                       *> inv (pmap (pmap (pmap (\lam (G : Y ->* Z) => G.1 y'))) (mapLoop*.happly-base_*> idp a)))
+                           x y)
+  \where {
+    \func ki {X Y Z : Pointed} {m' : X ->* Map* Y Z} (c : base {Map* X (Map* Y Z)} = m') (x : X)
+      : pmap (`*> (m'.1 x).2) (pmap_*>-comm (\lam (f : X ->* Map* Y Z) => (f.1 x).1 base) idp c) *> *>-assoc idp _ _
+        *> pmap (idp *>) (->*.happly-base (->*.happly c x))
+        = ->*.happly-base (->*.happly (idp *> c) x) \elim m', c
+      | _, idp => idp
+
+    \func ko {M N W : \Type} (f : M -> N) (g : N -> W) {m m' : M} (a : m = m') {r : f m = f m'} (Q : pmap f a = r)
+      : pmap (pmap g) (pmap_*>-comm f idp a *> (idp *> pmap (idp *>) Q))
+        = pmap_*>-comm (\lam z => g (f z)) idp a *> (idp *> pmap (idp *>) (pmap (pmap g) Q)) *> inv (pmap_*>-comm g idp r) \elim m', a, r, Q
+      | _, idp, _, idp => idp
+  }
