@@ -1,0 +1,180 @@
+\import Equiv
+\import Equiv.Path (pmapIsEquiv)
+\import Homotopy.Cofiber
+\import Homotopy.Cofiber.Null
+\import Homotopy.Cofiber.Total
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pointed.Yoneda
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Cofiber
+\import Logic
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func qtrans {A B : \Type} (e : QEquiv {A} {B}) (f' : A -> B) (p : \Pi (a : A) -> e a = f' a) : QEquiv {A} {B} \cowith
+  | f => f'
+  | ret => e.ret
+  | ret_f a => pmap e.ret (inv (p a)) *> e.ret_f a
+  | f_sec b => inv (p (e.ret b)) *> e.f_sec b
+
+\module pext \where {
+  \func cong {A B : Pointed} {f g : A ->* B} {p p' : \Pi (x : A) -> f.1 x = g.1 x} {q : p base *> g.2 = f.2} {q' : p' base *> g.2 = f.2}
+             (t : \Pi (x : A) -> p x = p' x) (c : q = pmap (`*> g.2) (t base) *> q') : ->*.ext p q = ->*.ext p' q'
+    => cong.gen f.1 g.1 (path (\lam j => path (\lam i x => (t x @ j) @ i))) g.2 c
+    \where {
+      \func gen {A : Pointed} {E : \Type} (f1 g1 : A -> E) {P0 P1 : f1 = g1} (Th : P0 = P1) {e : E} (g2 : g1 base = e) {f2 : f1 base = e}
+                {q : pmap (__ base) P0 *> g2 = f2} {q' : pmap (__ base) P1 *> g2 = f2}
+                (c : q = pmap (\lam P => pmap (__ base) P *> g2) Th *> q')
+        : ->*.ext {A} {Pointed.make e} {f1, f2} {g1, g2} (\lam x => pmap (__ x) P0) q = ->*.ext {A} {Pointed.make e} {f1, f2} {g1, g2} (\lam x => pmap (__ x) P1) q'
+        \elim Th
+        | idp => pmap (->*.ext {A} {Pointed.make e} {f1, f2} {g1, g2} (\lam x => pmap (__ x) P0)) (c *> idp_*> q')
+
+      \func first {A B : Pointed} {f g : A ->* B} {p p' : \Pi (x : A) -> f.1 x = g.1 x} {q : p base *> g.2 = f.2} {q' : p' base *> g.2 = f.2}
+                  (t : \Pi (x : A) -> p x = p' x) (c : q = pmap (`*> g.2) (t base) *> q') (x : A)
+        : pmap (\lam (r : f = g) => ->*.happly r x) (cong t c) = t x
+        => gen-first f.1 g.1 (path (\lam j => path (\lam i x => (t x @ j) @ i))) g.2 c x
+
+      \func gen-first {A : Pointed} {E : \Type} (f1 g1 : A -> E) {P0 P1 : f1 = g1} (Th : P0 = P1) {e : E} (g2 : g1 base = e) {f2 : f1 base = e}
+                      {q : pmap (__ base) P0 *> g2 = f2} {q' : pmap (__ base) P1 *> g2 = f2}
+                      (c : q = pmap (\lam P => pmap (__ base) P *> g2) Th *> q') (x : A)
+        : pmap (\lam (r : (f1, f2) = {A ->* Pointed.make e} (g1, g2)) => ->*.happly r x) (gen f1 g1 Th g2 c)
+          = pmap (\lam P => pmap (__ x) P) Th \elim Th
+        | idp => idp
+    }
+
+  \func pre {A' A B : Pointed} (s : A' ->* A) {f g : A ->* B} (p : \Pi (x : A) -> f.1 x = g.1 x) (q : p base *> g.2 = f.2)
+    : pmap (`∘* s) (->*.ext p q) = ->*.ext {A'} {B} {f ∘* s} {g ∘* s} (\lam x => p (s.1 x)) (mapLoop*.preCoh s.2 p q)
+    => inv (->*.ext-happly (pmap (`∘* s) (->*.ext p q))) *> tail s p q
+    \where {
+      \func tail {A' A B : Pointed} (s : A' ->* A) {f g : A ->* B} (p : \Pi (x : A) -> f.1 x = g.1 x) (q : p base *> g.2 = f.2)
+        : ->*.ext {A'} {B} {f ∘* s} {g ∘* s} (\lam x => p (s.1 x)) (->*.happly-base (pmap (`∘* s) (->*.ext p q)))
+          = ->*.ext {A'} {B} {f ∘* s} {g ∘* s} (\lam x => p (s.1 x)) (mapLoop*.preCoh s.2 p q)
+        => pmap (->*.ext {A'} {B} {f ∘* s} {g ∘* s} (\lam x => p (s.1 x)))
+                (mapLoop*.happly-base_pre s (->*.ext p q) *> pmap (mapLoop*.preCoh s.2 p) (->*.happly-base-ext p q))
+
+      \func first {A' A B : Pointed} (s : A' ->* A) {f g : A ->* B} (p : \Pi (x : A) -> f.1 x = g.1 x) (q : p base *> g.2 = f.2) (x : A')
+        : pmap (\lam (r : f ∘* s = g ∘* s) => ->*.happly r x) (pre s p q) = idp
+        => pmap_*>-comm (\lam (r : f ∘* s = g ∘* s) => ->*.happly r x) (inv (->*.ext-happly (pmap (`∘* s) (->*.ext p q)))) (tail s p q)
+           *> pmap_inv-comm (\lam (r : f ∘* s = g ∘* s) => ->*.happly r x) (->*.ext-happly (pmap (`∘* s) (->*.ext p q)))
+           *> pmap inv (happly-first (pmap (`∘* s) (->*.ext p q)) x)
+    }
+
+  \func happly-first {A B : Pointed} {f g : A ->* B} (r : f = g) (x : A) : pmap (\lam (r' : f = g) => ->*.happly r' x) (->*.ext-happly r) = idp \elim r
+    | idp => idp-first f.1 f.2 x
+    \where
+      \func idp-first {A : Pointed} {E : \Type} (f1 : A -> E) {e : E} (f2 : f1 base = e) (x : A)
+        : pmap (\lam (r' : (f1, f2) = {A ->* Pointed.make e} (f1, f2)) => ->*.happly r' x) (->*.ext-happly.ext-idp f1 f2) = idp \elim f2
+        | idp => idp
+
+  \func two {A B : Pointed} {f g : A ->* B} {s s' : f = g} (t : \Pi (x : A) -> ->*.happly s x = ->*.happly s' x)
+            (c : ->*.happly-base s = pmap (`*> g.2) (t base) *> ->*.happly-base s') : s = s'
+    => inv (->*.ext-happly s) *> cong t c *> ->*.ext-happly s'
+    \where
+      \func first {A B : Pointed} {f g : A ->* B} {s s' : f = g} (t : \Pi (x : A) -> ->*.happly s x = ->*.happly s' x)
+                  (c : ->*.happly-base s = pmap (`*> g.2) (t base) *> ->*.happly-base s') (x : A)
+        : pmap (\lam (r : f = g) => ->*.happly r x) (two t c) = t x
+        => pmap_*>-comm (\lam (r : f = g) => ->*.happly r x) (inv (->*.ext-happly s)) (cong t c *> ->*.ext-happly s')
+           *> pmap2 (*>) (pmap_inv-comm (\lam (r : f = g) => ->*.happly r x) (->*.ext-happly s) *> pmap inv (happly-first s x))
+                    (pmap_*>-comm (\lam (r : f = g) => ->*.happly r x) (cong t c) (->*.ext-happly s')
+                     *> pmap2 (*>) (cong.first t c x) (happly-first s' x))
+           *> idp_*> (t x)
+}
+
+\func Psi.{u} {A X : Pointed.{u}} (f : A ->* X) (K T : Pointed.{u})
+  : QEquiv {Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T} {Cof.pointed f ->* Map* K T}
+  => qtrans (transQEquiv (cofSmashEquiv.L.{u} f K T) (symQEquiv (CofNull.mapsOut.{u} {A} {X} {Map* K T} {f})))
+            (\lam h => map.{u} h) (\lam h => path.{u} h)
+  \where {
+    \func hs.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T) : Smash.{u} X K ->* T
+      => (\lam z => h.1 (pinl z), h.2)
+
+    \func cr.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T)
+      : CofCocone (Smash.map.{u} f (->*.id {K})) T
+      => Cof.restrict {Smash.{u} A K} {Smash.{u} X K} {T} {Smash.map.{u} f (->*.id {K})} h
+
+    \func map.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T) : Cof.pointed f ->* Map* K T
+      => Cof.extend {A} {X} {Map* K T} {f} (Smash.adjunction.{u} {X} {K} {T} (hs.{u} h)) (\lam a => glue.{u} h a)
+
+    \func glue.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T) (a : A)
+      : (Smash.adjunction.{u} {X} {K} {T} (hs.{u} h)).1 (f.1 a) = base {Map* K T}
+      => ->*.ext {K} {T} {(Smash.adjunction.{u} {X} {K} {T} (hs.{u} h)).1 (f.1 a)} { ->*.zero K T}
+                 (\lam k => (cr.{u} h).3 (Smash.proj.1 (a, k))) (cb.{u} h a)
+
+    \func cb.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T) (a : A)
+      : (cr.{u} h).3 (Smash.proj.1 (a, base)) = (Smash.restrict.{u} (hs.{u} h)).2 (f.1 a)
+      => natH (cr.{u} h).3 ((Smash.restrict.{u} (->*.id {Smash.{u} A K})).2 a)
+         *> pmap (pmap (\lam t => h.1 (pinl ((Smash.map.{u} f (->*.id {K})).1 t))) ((Smash.restrict.{u} (->*.id {Smash.{u} A K})).2 a) *>)
+                 (cr.{u} h).4
+         *> pmap (`*> (pmap (\lam y => h.1 (pinl y)) (Smash.map.{u} f (->*.id {K})).2 *> h.2))
+                 (pmap (pmap (\lam y => h.1 (pinl y)))
+                       (pmap_*>-comm (Smash.map.{u} f (->*.id {K})).1 (ppglue (pinl a)) (inv (ppglue (pinl base)))
+                        *> pmap (_ *>) (pmap_inv-comm (Smash.map.{u} f (->*.id {K})).1 (ppglue (pinl base)))))
+         *> cbA (\lam y => h.1 (pinl y)) (ppglue (pinl base)) (ppglue (pinl (f.1 a))) (ppglue (pinl (f.1 base))) h.2
+
+    \func cbA {S W : \Type} (k : S -> W) {s0 r : S} (L0 : s0 = r) {s1 : S} (L1 : s1 = r) {s0' : S} (L0' : s0' = r) {w : W} (h2 : k s0 = w)
+      : pmap k ((idp *> (L1 *> inv L0)) *> inv (idp *> (L0' *> inv L0))) *> (pmap k (idp *> (L0' *> inv L0)) *> h2)
+        = pmap k L1 *> (inv (pmap k L0) *> h2) \elim r, L0, s1, L1, s0', L0'
+      | _, idp, _, idp, _, idp => idp
+
+    \func natH {A C : \Type} {F : A -> C} {c : C} (H : \Pi (x : A) -> F x = c) {x1 x2 : A} (p : x1 = x2) : H x1 = pmap F p *> H x2 \elim p
+      | idp => inv (idp_*> _)
+
+    \func path.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T)
+      : (CofNull.mapsOut.{u} {A} {X} {Map* K T} {f}).ret (cofSmashEquiv.L.{u} f K T h) = map.{u} h
+      => pmap (CofNull.mapsOut.{u} {A} {X} {Map* K T} {f}).ret (cmpL.{u} h) *> QEquiv.ret_f {CofNull.mapsOut.{u} {A} {X} {Map* K T} {f}} (map.{u} h)
+
+    \func cmpL.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T)
+      : cofSmashEquiv.L.{u} f K T h = CofNull.mapsOut.{u} {A} {X} {Map* K T} {f} (map.{u} h)
+      => cofSmashEquiv.L.eval.{u} f K T h
+         *> pmap (cofSmashEquiv.E.{u} f K T) (CofNull.mapsOut.eval.{u} h)
+         *> cofSmashEquiv.E.eval.{u} f K T (fc.{u} h)
+         *> CofNull.ext.{u} {A} {X} {Map* K T} {f} {Smash.adjunction.{u} {X} {K} {T} (hs.{u} h)} {Smash.adjunction.{u} {X} {K} {T} (hs.{u} h)}
+              {inv (cofSmashEquiv.pre'.{u} f (hs.{u} h)) *> pmap (Smash.adjunction.{u} {A} {K} {T}) (fc.{u} h).2}
+              {(fm.{u} h).2} idp
+              (mapLoop*.ext2-base {A} {K} {T} {Smash.adjunction.{u} {X} {K} {T} (hs.{u} h) ∘* f}
+                 {inv (cofSmashEquiv.pre'.{u} f (hs.{u} h)) *> pmap (Smash.adjunction.{u} {A} {K} {T}) (fc.{u} h).2} {(fm.{u} h).2}
+                 (\lam a k => cofSmashEquiv.E.post.pre'-ev.{u} f (hs.{u} h) {(fc.{u} h).2} a k *> inv (rhs.{u} h a k))
+               *> inv (idp_*> (fm.{u} h).2))
+         *> inv (CofNull.mapsOut.eval.{u} (map.{u} h))
+
+    \func fc.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T)
+      : CofNull.{u} (Smash.map.{u} f (->*.id {K})) T
+      => CofNull.fromCocone.{u} {Smash.{u} A K} {Smash.{u} X K} {T} {Smash.map.{u} f (->*.id {K})} (cr.{u} h)
+
+    \func fm.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T)
+      : CofNull.{u} f (Map* K T)
+      => CofNull.fromCocone.{u} {A} {X} {Map* K T} {f} (Cof.restrict {A} {X} {Map* K T} {f} (map.{u} h))
+
+    \func rhs.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T) (a : A) (k : K)
+      : pmap (\lam (G : A ->* Map* K T) => (G.1 a).1 k) (fm.{u} h).2 = (cr.{u} h).3 (Smash.proj.1 (a, k))
+      => cofSmashEquiv.E.post.ev4 (\lam (G : Map* K T) => G.1 k) (glue.{u} h a) (inv (glue.{u} h base))
+              (pmap (Smash.adjunction.{u} {X} {K} {T} (hs.{u} h)).1 f.2) (Smash.adjunction.{u} {X} {K} {T} (hs.{u} h)).2
+         *> pmap (\lam q => (cr.{u} h).3 (Smash.proj.1 (a, k)) *> q *> pmap (\lam x => h.1 (pinl (Smash.proj.1 (x, k)))) f.2
+                              *> (Smash.restrict.{u} (hs.{u} h)).3 k)
+                 (pmap_inv-comm (\lam (G : Map* K T) => G.1 k) (glue.{u} h base))
+         *> fin ((cr.{u} h).3 (Smash.proj.1 (a, k))) (pmap (\lam x => h.1 (pinl (Smash.proj.1 (x, k)))) f.2) ((Smash.restrict.{u} (hs.{u} h)).3 k) (cbR.{u} h k)
+
+    \func fin {T : \Type} {x y z w : T} (P : x = w) (M : y = z) (Z : z = w) {Y : y = w} (e : Y = M *> Z) : P *> inv Y *> M *> Z = P \elim Y, e
+      | _, idp => pmap (P *>) (inv_*> (M *> Z))
+
+    \func cbR.{u} {A X K T : Pointed.{u}} {f : A ->* X} (h : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T) (k : K)
+      : (cr.{u} h).3 (Smash.proj.1 (base, k)) = pmap (\lam x => h.1 (pinl (Smash.proj.1 (x, k)))) f.2 *> (Smash.restrict.{u} (hs.{u} h)).3 k
+      => natH (cr.{u} h).3 ((Smash.restrict.{u} (->*.id {Smash.{u} A K})).3 k)
+         *> pmap (pmap (\lam t => h.1 (pinl ((Smash.map.{u} f (->*.id {K})).1 t))) ((Smash.restrict.{u} (->*.id {Smash.{u} A K})).3 k) *>)
+                 (cr.{u} h).4
+         *> pmap (`*> (pmap (\lam y => h.1 (pinl y)) (Smash.map.{u} f (->*.id {K})).2 *> h.2))
+                 (pmap (pmap (\lam y => h.1 (pinl y)))
+                       (pmap_*>-comm (Smash.map.{u} f (->*.id {K})).1 (ppglue (pinr k)) (inv (ppglue (pinl base)))
+                        *> pmap (_ *>) (pmap_inv-comm (Smash.map.{u} f (->*.id {K})).1 (ppglue (pinl base)))))
+         *> cbB (\lam y => h.1 (pinl y)) (ppglue (pinl base)) (ppglue (pinr k)) (ppglue (pinl (f.1 base))) (pmap (\lam x => pinl (x, k)) f.2) h.2
+
+    \func cbB {S W : \Type} (k : S -> W) {s0 r : S} (L0 : s0 = r) {s1 : S} (R1 : s1 = r) {s0' : S} (L0' : s0' = r) {s2 : S} (Q : s2 = s1)
+              {w : W} (h2 : k s0 = w)
+      : pmap k ((Q *> (R1 *> inv L0)) *> inv (idp *> (L0' *> inv L0))) *> (pmap k (idp *> (L0' *> inv L0)) *> h2)
+        = pmap k Q *> (pmap k R1 *> (inv (pmap k L0) *> h2)) \elim r, L0, s1, R1, s0', L0', s2, Q
+      | _, idp, _, idp, _, idp, _, idp => pmap (idp *>) (inv (idp_*> (idp *> h2)))
+  }
