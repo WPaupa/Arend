@@ -1,0 +1,50 @@
+\import Paths
+
+\func vertical {D M : \Type} {B : M -> \Type} (t : D -> \Sigma (m : M) (B m)) {d d' : D} (P : d = d') {H : (t d).1 = (t d').1}
+               (q : pmap (\lam e => (t e).1) P = H) : transport B H (t d).2 = (t d').2 \elim q
+  | idp => snd t P
+  \where {
+    \func snd {D M : \Type} {B : M -> \Type} (t : D -> \Sigma (m : M) (B m)) {d d' : D} (P : d = d')
+      : transport B (pmap (\lam e => (t e).1) P) (t d).2 = (t d').2 \elim P
+      | idp => idp
+
+    \func cat {D M : \Type} {B : M -> \Type} (t : D -> \Sigma (m : M) (B m)) {d d' d'' : D} (P : d = d') (Q : d' = d'')
+              {H : (t d).1 = (t d').1} {H' : (t d').1 = (t d'').1}
+              (qP : pmap (\lam e => (t e).1) P = H) (qQ : pmap (\lam e => (t e).1) Q = H')
+      : vertical t (P *> Q) (pmap_*>-comm (\lam e => (t e).1) P Q *> pmap2 (*>) qP qQ)
+        = transport_*> B H H' (t d).2 *> pmap (transport B H') (vertical t P qP) *> vertical t Q qQ \elim qP, qQ
+      | idp, idp => gen t P Q
+      \where
+        \func gen {D M : \Type} {B : M -> \Type} (t : D -> \Sigma (m : M) (B m)) {d d' d'' : D} (P : d = d') (Q : d' = d'')
+          : vertical t (P *> Q) (pmap_*>-comm (\lam e => (t e).1) P Q)
+            = transport_*> B (pmap (\lam e => (t e).1) P) (pmap (\lam e => (t e).1) Q) (t d).2
+              *> pmap (transport B (pmap (\lam e => (t e).1) Q)) (snd t P) *> snd t Q \elim Q
+          | idp => inv (idp_*> _)
+
+    \func inverse {D M : \Type} {B : M -> \Type} (t : D -> \Sigma (m : M) (B m)) {d d' : D} (P : d = d') {H : (t d).1 = (t d').1}
+                  (qP : pmap (\lam e => (t e).1) P = H)
+      : vertical t (inv P) (pmap_inv-comm (\lam e => (t e).1) P *> pmap inv qP)
+        = pmap (transport B (inv H)) (inv (vertical t P qP)) *> transport_inv_id B H (t d).2 \elim P, qP
+      | idp, idp => idp
+
+    \func cong {D M : \Type} {B : M -> \Type} (t : D -> \Sigma (m : M) (B m)) {d d' : D} {P P' : d = d'} (E : P = P')
+               {H : (t d).1 = (t d').1} (q' : pmap (\lam e => (t e).1) P' = H)
+      : vertical t P (pmap (pmap (\lam e => (t e).1)) E *> q') = vertical t P' q' \elim E, q'
+      | idp, idp => idp
+
+    \func comp {D D' M : \Type} {B : M -> \Type} (t : D' -> \Sigma (m : M) (B m)) (F : D -> D') {d d' : D} (P : d = d')
+               {H : (t (F d)).1 = (t (F d')).1} (q : pmap (\lam e => (t (F e)).1) P = H)
+      : vertical t (pmap F P) q = vertical (\lam e => t (F e)) P q \elim P, q
+      | idp, idp => idp
+
+    \func map {D M M' : \Type} {B : M -> \Type} {B' : M' -> \Type} (t : D -> \Sigma (m : M) (B m))
+              (k : M -> M') (kappa : \Pi (m : M) -> B m -> B' (k m))
+              {d d' : D} (P : d = d') {H : (t d).1 = (t d').1} (qP : pmap (\lam e => (t e).1) P = H)
+      : vertical {D} {M'} {B'} (\lam e => ((k (t e).1, kappa (t e).1 (t e).2) : \Sigma (m' : M') (B' m'))) P (pmap (pmap k) qP)
+        = tmap {M} {M'} {B} {B'} k kappa H (t d).2 *> pmap (kappa (t d').1) (vertical t P qP) \elim P, qP
+      | idp, idp => idp
+      \where
+        \func tmap {M M' : \Type} {B : M -> \Type} {B' : M' -> \Type} (k : M -> M') (kappa : \Pi (m : M) -> B m -> B' (k m))
+                   {m m' : M} (H : m = m') (b : B m) : transport B' (pmap k H) (kappa m b) = kappa m' (transport B H b) \elim H
+          | idp => idp
+  }

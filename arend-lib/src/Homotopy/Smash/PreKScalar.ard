@@ -1,0 +1,165 @@
+\import Homotopy.Smash
+\import Homotopy.Smash.CoreScalar
+\import Homotopy.Smash.PostBeta
+\import Paths
+
+\func natE {M D E : \Type} (ev : M -> D -> E) {F F' : M} (R : F = F') {d d' : D} (c : d = d')
+  : pmap (\lam G => ev G d) R *> pmap (ev F') c = pmap (ev F) c *> pmap (\lam G => ev G d') R \elim R
+  | idp => idp_*> _
+
+\func natN {D E : \Type} {f f' : D -> E} (H : \Pi (b : D) -> f b = f' b) {d d' : D} (c : d = d')
+  : H d *> pmap f' c = pmap f c *> H d' \elim c
+  | idp => inv (idp_*> (H d))
+
+\func natEN {M D E : \Type} (ev : M -> D -> E) {F F' : M} (R : F = F') {d d' : D} (c : d = d')
+  : natE ev R c = natN (\lam b => pmap (\lam G => ev G b) R) c \elim R, c
+  | idp, idp => idp
+
+\func natEpmap {M M' D E : \Type} (phi : M -> M') (ev : M' -> D -> E) {F F' : M} (Q : F = F') {d d' : D} (c : d = d')
+  : natE ev (pmap phi Q) c = natE (\lam G b => ev (phi G) b) Q c \elim Q
+  | idp => idp
+
+\func natEcat {M D E : \Type} (ev : M -> D -> E) {F F' F'' : M} (R1 : F = F') (R2 : F' = F'') {d d' : D} (c : d = d')
+  : natE ev (R1 *> R2) c
+    = pmap (`*> pmap (ev F'') c) (pmap_*>-comm (\lam G => ev G d) R1 R2)
+      *> *>-assoc (pmap (\lam G => ev G d) R1) (pmap (\lam G => ev G d) R2) (pmap (ev F'') c)
+      *> pmap (pmap (\lam G => ev G d) R1 *>) (natE ev R2 c)
+      *> inv (*>-assoc (pmap (\lam G => ev G d) R1) (pmap (ev F') c) (pmap (\lam G => ev G d') R2))
+      *> pmap (`*> pmap (\lam G => ev G d') R2) (natE ev R1 c)
+      *> *>-assoc (pmap (ev F) c) (pmap (\lam G => ev G d') R1) (pmap (\lam G => ev G d') R2)
+      *> pmap (pmap (ev F) c *>) (inv (pmap_*>-comm (\lam G => ev G d') R1 R2)) \elim R1, R2, c
+  | idp, idp, idp => idp
+
+\func natEcatN {M M' D E : \Type} (phi : M' -> M) (ev : M -> D -> E) {F : M} {G G' : M'} (R1 : F = phi G) (Q : G = G') {d d' : D} (c : d = d')
+  : natE ev (R1 *> pmap phi Q) c
+    = pmap (`*> pmap (ev (phi G')) c) (pmap_*>-comm (\lam H => ev H d) R1 (pmap phi Q))
+      *> *>-assoc (pmap (\lam H => ev H d) R1) (pmap (\lam H => ev H d) (pmap phi Q)) (pmap (ev (phi G')) c)
+      *> pmap (pmap (\lam H => ev H d) R1 *>) (natE (\lam H b => ev (phi H) b) Q c)
+      *> inv (*>-assoc (pmap (\lam H => ev H d) R1) (pmap (ev (phi G)) c) (pmap (\lam H => ev H d') (pmap phi Q)))
+      *> pmap (`*> pmap (\lam H => ev H d') (pmap phi Q)) (natN (\lam b => pmap (\lam H => ev H b) R1) c)
+      *> *>-assoc (pmap (ev F) c) (pmap (\lam H => ev H d') R1) (pmap (\lam H => ev H d') (pmap phi Q))
+      *> pmap (pmap (ev F) c *>) (inv (pmap_*>-comm (\lam H => ev H d') R1 (pmap phi Q))) \elim R1, Q, c
+  | idp, idp, idp => idp
+
+\func pgl {E : \Type} {p1 q1 p0 q0 t : E} {e1 : p1 = q1} {A : q1 = q0} {B : p1 = p0} {e0 : p0 = q0} {C : q0 = t} {D : p0 = t}
+          {nat nat' : e1 *> A = B *> e0} (En : nat = nat') (n : e0 *> C = D)
+  : pg nat n = pg nat' n
+  => pmap (\lam z => pg z n) En
+
+\func pcP {T : \Type} {a a' b b' c c' t : T} (Px : a = b) (Px' : a' = b') (P0 : c = b) (P0' : c' = b') (G2 : b = t) (G2' : b' = t)
+          {es : a = a'} {ez : b = b'} (nx : es *> Px' = Px *> ez) (hb : ez *> G2' = G2)
+  : es *> (Px' *> inv P0' *> (P0' *> G2')) = Px *> inv P0 *> (P0 *> G2)
+  => inv (*>-assoc es Px' (inv P0' *> (P0' *> G2')))
+     *> pmap (`*> (inv P0' *> (P0' *> G2'))) nx
+     *> *>-assoc Px ez (inv P0' *> (P0' *> G2'))
+     *> pmap (Px *>) (pmap (ez *>) (nc.inverse.lem P0' G2') *> hb *> inv (nc.inverse.lem P0 G2))
+
+\func pc {S T : \Type} (G1 G1' : S -> T) {s s0 z : S} (cx : s = z) (c0 : s0 = z) {t : T} (G2 : G1 z = t) (G2' : G1' z = t)
+         {es : G1 s = G1' s} {ez : G1 z = G1' z} (nx : es *> pmap G1' cx = pmap G1 cx *> ez) (hb : ez *> G2' = G2)
+  : es *> (pmap G1' cx *> inv (pmap G1' c0) *> (pmap G1' c0 *> G2')) = pmap G1 cx *> inv (pmap G1 c0) *> (pmap G1 c0 *> G2)
+  => pcP (pmap G1 cx) (pmap G1' cx) (pmap G1 c0) (pmap G1' c0) G2 G2' nx hb
+  \where
+    \func id {S T : \Type} (G1 : S -> T) {s s0 z : S} (cx : s = z) (c0 : s0 = z) {t : T} (G2 : G1 z = t)
+      : pc G1 G1 cx c0 G2 G2 (idp_*> (pmap G1 cx)) (idp_*> G2) = idp *> idp_*> _ \elim cx, c0, G2
+      | idp, idp, idp => idp
+
+\func pg {E : \Type} {p1 q1 p0 q0 t : E} {e1 : p1 = q1} {A : q1 = q0} {B : p1 = p0} {e0 : p0 = q0} {C : q0 = t} {D : p0 = t}
+         (nat : e1 *> A = B *> e0) (n : e0 *> C = D)
+  : e1 *> (A *> C) = B *> D
+  => inv (*>-assoc e1 A C) *> pmap (`*> C) nat *> *>-assoc B e0 C *> pmap (B *>) n
+  \where
+    \func id {E : \Type} {p1 p0 t : E} (B : p1 = p0) (D : p0 = t)
+      : pg (idp_*> B) (idp *> idp_*> D) = idp *> idp_*> (B *> D) \elim B, D
+      | idp, idp => idp
+
+\func cEof {S T : \Type} (G : S -> T) {a o z : S} (gx : a = z) (g0 : o = z)
+  : pmap G (pmap (\lam s => s) gx *> inv (pmap (\lam s => s) g0) *> idp) = pmap G gx *> inv (pmap G g0)
+  => pmap_*>-comm G (pmap (\lam s => s) gx) (inv (pmap (\lam s => s) g0) *> idp) *> pmap (pmap G gx *>) (pmap_inv-comm G (pmap (\lam s => s) g0))
+
+\func KNP {T : \Type} {a a' b b' c c' t : T} (Pgx : a = b) (Pg0 : c = b) (Pgx' : a' = b') (Pg0' : c' = b') {PE : a = c} {PE' : a' = c'}
+          (cE : PE = Pgx *> inv Pg0) (cE' : PE' = Pgx' *> inv Pg0') (G2 : c = t) (G2' : c' = t) {e1 : a = a'} {eo : c = c'}
+          (np : e1 *> (Pgx' *> inv Pg0' *> G2') = Pgx *> inv Pg0 *> G2) (hb : eo *> G2' = G2)
+  : e1 *> PE' = PE *> eo \elim Pg0, Pg0', cE, cE', G2', hb
+  | idp, idp, idp, idp, idp, idp => np *> pmap (Pgx *>) (idp_*> _)
+
+\func KN {S T : \Type} (G1 G1' : S -> T) {s1 z o : S} (gx : s1 = z) (g0 : o = z) {t : T} (G2 : G1 o = t) (G2' : G1' o = t)
+         {e1 : G1 s1 = G1' s1} {eo : G1 o = G1' o}
+         (np : e1 *> (pmap G1' gx *> inv (pmap G1' g0) *> G2') = pmap G1 gx *> inv (pmap G1 g0) *> G2) (hb : eo *> G2' = G2)
+  : e1 *> pmap G1' (pmap (\lam s => s) gx *> inv (pmap (\lam s => s) g0) *> idp) = pmap G1 (pmap (\lam s => s) gx *> inv (pmap (\lam s => s) g0) *> idp) *> eo
+  => KNP (pmap G1 gx) (pmap G1 g0) (pmap G1' gx) (pmap G1' g0) (cEof G1 gx g0) (cEof G1' gx g0) G2 G2' np hb
+
+\func NXP {T : \Type} {a a' a1 a1' c c' : T} {PW : a = a1} {PW' : a' = a1'} {PE : a1 = c} {PE' : a1' = c'} {Pc : a = c} {Pc' : a' = c'}
+          (cW : Pc = PW *> PE) (cW' : Pc' = PW' *> PE') {es : a = a'} {e1 : a1 = a1'} {eo : c = c'}
+          (K : e1 *> PE' = PE *> eo) (nW : es *> PW' = PW *> e1)
+  : es *> Pc' = Pc *> eo
+  => pmap (es *>) cW' *> inv (*>-assoc es PW' PE') *> pmap (`*> PE') nW *> *>-assoc PW e1 PE'
+     *> pmap (PW *>) K *> inv (*>-assoc PW PE eo) *> pmap (`*> eo) (inv cW)
+
+\func NX {S T : \Type} (G1 G1' : S -> T) {s s1 z o : S} (Wx : s = s1) (gx : s1 = z) (g0 : o = z) {t : T} (G2 : G1 o = t) (G2' : G1' o = t)
+         {es : G1 s = G1' s} {e1 : G1 s1 = G1' s1} {eo : G1 o = G1' o}
+         (nW : es *> pmap G1' Wx = pmap G1 Wx *> e1)
+         (np : e1 *> (pmap G1' gx *> inv (pmap G1' g0) *> G2') = pmap G1 gx *> inv (pmap G1 g0) *> G2) (hb : eo *> G2' = G2)
+  : es *> pmap G1' (Wx *> (pmap (\lam s => s) gx *> inv (pmap (\lam s => s) g0) *> idp))
+    = pmap G1 (Wx *> (pmap (\lam s => s) gx *> inv (pmap (\lam s => s) g0) *> idp)) *> eo
+  => NXP (pmap_*>-comm G1 Wx (pmap (\lam s => s) gx *> inv (pmap (\lam s => s) g0) *> idp))
+         (pmap_*>-comm G1' Wx (pmap (\lam s => s) gx *> inv (pmap (\lam s => s) g0) *> idp))
+         (KN G1 G1' gx g0 G2 G2' np hb) nW
+  \where
+    \func id {S T : \Type} (G1 : S -> T) {s s1 z o : S} (Wx : s = s1) (gx : s1 = z) (g0 : o = z) {t : T} (G2 : G1 o = t)
+      : NX G1 G1 Wx gx g0 G2 G2 (idp_*> (pmap G1 Wx)) (idp *> idp_*> _) (idp_*> G2) = idp_*> _ \elim Wx, gx, g0, G2
+      | idp, idp, idp, idp => idp
+
+\func cv0 {S S' : \Type} (n : S -> S') {a o z : S} (G1 : a = z) (G0 : o = z)
+  : pmap n (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp)
+    = pmap (\lam s => s) (pmap n G1) *> inv (pmap (\lam s => s) (pmap n G0)) *> idp
+  => cEof n G1 G0
+
+\func NXc {S S' T : \Type} (n : S -> S') (k : S' -> T) {t : T} {s s1 z o : S} (Wx : s = s1) (gx : s1 = z) (g0 : o = z)
+          (G2 : k (n o) = t) {es : k (n s) = t} {e1 : k (n s1) = t} {eo : k (n o) = t}
+          (nW : es *> idp = pmap (\lam s => k (n s)) Wx *> e1)
+          (np : e1 *> (idp *> inv idp *> idp) = pmap (\lam s => k (n s)) gx *> inv (pmap (\lam s => k (n s)) g0) *> G2) (hb : eo *> idp = G2)
+  : NX (\lam s => k (n s)) (\lam _ => t) Wx gx g0 G2 idp nW np hb
+    = NXP {_} {_} {_} {_} {_} {_} {_} {_} {idp} {_} {idp}
+          (pmap (pmap k) (pmap_*>-comm n Wx (pmap (\lam s => s) gx *> inv (pmap (\lam s => s) g0) *> idp))
+           *> pmap_*>-comm k (pmap n Wx) (pmap n (pmap (\lam s => s) gx *> inv (pmap (\lam s => s) g0) *> idp)))
+          idp
+          (KNP (pmap k (pmap n gx)) (pmap k (pmap n g0)) idp idp
+               ((pmap (pmap k) (pmap_*>-comm n (pmap (\lam s => s) gx) (inv (pmap (\lam s => s) g0) *> idp))
+                 *> pmap_*>-comm k (pmap n gx) (pmap n (inv (pmap (\lam s => s) g0) *> idp)))
+                *> pmap (pmap k (pmap n gx) *>) (pmap (pmap k) (pmap_inv-comm n (pmap (\lam s => s) g0)) *> pmap_inv-comm k (pmap n g0)))
+               idp G2 idp np hb)
+          nW \elim Wx, gx, g0
+  | idp, idp, idp => idp
+
+\func cvV {S S' : \Type} (n : S -> S') {a' a o z : S} (Vx : a' = a) (G1 : a = z) (G0 : o = z)
+  : pmap n (Vx *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+    = pmap n Vx *> (pmap (\lam s => s) (pmap n G1) *> inv (pmap (\lam s => s) (pmap n G0)) *> idp)
+  => pmap_*>-comm n Vx (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp) *> pmap (pmap n Vx *>) (cv0 n G1 G0)
+
+\func cPn {S S' T : \Type} (n : S -> S') (k : S' -> T) {a c o z : S} (G1 : a = z) (G2 : c = z) (G0 : o = z) {t0 : T} (c2 : k (n o) = t0)
+  : cP G1 G2 G0 (\lam s => k (n s)) c2
+    = cP (pmap n G1) (pmap n G2) (pmap n G0) k c2
+      *> inv (pmap2 (\lam u v => pmap k u *> inv (pmap k v) *> (pmap k v *> c2)) (cvV n idp G1 G0) (cvV n idp G2 G0)) \elim G1, G2, G0, c2
+  | idp, idp, idp, idp => idp
+
+\func cRVn {S S' T : \Type} (n : S -> S') (k : S' -> T) {a' a c' c o z : S} (Vx : a' = a) (Vb : c' = c) (G1 : a = z) (G2 : c = z) (G0 : o = z)
+           {t0 : T} (c2 : k (n o) = t0)
+  : cRV Vx Vb G1 G2 G0 (\lam s => k (n s)) c2
+    = pmap2 (\lam u v => pmap k u *> inv (pmap k v) *> (pmap k v *> c2)) (cvV n Vx G1 G0) (cvV n Vb G2 G0)
+      *> cRV (pmap n Vx) (pmap n Vb) (pmap n G1) (pmap n G2) (pmap n G0) k c2 \elim Vx, Vb, G1, G2, G0, c2
+  | idp, idp, idp, idp, idp, idp => idp
+
+\func cRV {S T : \Type} {a' a c' c o z : S} (Vx : a' = a) (Vb : c' = c) (G1 : a = z) (G2 : c = z) (G0 : o = z) (h1 : S -> T) {t0 : T} (h2 : h1 o = t0)
+  => (Smash.restrict-post.lem h1 (Vx *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+                                 (Vb *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))
+                                 (Vb *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) h2
+      *> idp_*> (pmap h1 ((Vx *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+                          *> inv (Vb *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))
+                          *> (Vb *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))) *> h2))
+     *> (pmap (\lam w => pmap h1 ((Vx *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp)) *> w) *> h2)
+              (inv_*> (Vb *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)))
+     *> ((PAX Vx (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp) h1 h2
+          *> idp_*> (pmap h1 Vx *> (pmap h1 (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp) *> h2)))
+     *> pmap (pmap h1 Vx *>) (inv (Smash.restrict-post.lem h1 (pmap (\lam s => s) G1) (pmap (\lam s => s) G0) idp h2
+                                   *> idp_*> (pmap h1 (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp) *> h2))
+                              *> pmap (\lam e => pmap h1 G1 *> inv (pmap h1 G0) *> e) (idp *> idp_*> h2))))

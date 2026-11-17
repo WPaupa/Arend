@@ -1,0 +1,60 @@
+\import Equiv
+\import Equiv.Path (pmapIsEquiv)
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Beta
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pointed.Yoneda
+\import Homotopy.Smash
+\import Homotopy.Smash.OuterBeta
+\import Homotopy.Smash.PostBeta
+\import Homotopy.Smash.PushoutLeft
+\import Logic
+\import Paths
+
+\open ->* (∘*)
+
+\func smashExt2-comp.{u} {A B Z : Pointed.{u}} {F G : Smash.{u} A B ->* Z} {p q : F = G} (r : G = base {Map* (Smash.{u} A B) Z})
+                         (h : \Pi (a : A) (b : B) -> ->*.happly p (Smash.proj.1 (a, b)) = ->*.happly q (Smash.proj.1 (a, b)))
+                         (ei : \Pi (a : A) -> nc (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Z}).f p) a) (h a base)
+                                               = nc (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Z}).f q) a) idp)
+                         (eo : \Pi (b : B) -> ob (\lam (G : B ->* Z) => G.1 b) (pmap (Smash.adjunction.{u} {A} {B} {Z}).f p) (h base b)
+                                               = ob (\lam (G : B ->* Z) => G.1 b) (pmap (Smash.adjunction.{u} {A} {B} {Z}).f q) idp)
+                         (a : A) (b : B)
+  : pmap (\lam (s : F = G) => ->*.happly s (Smash.proj.1 (a, b))) (pushoutLeft.smashExt2.{u} r h) = h a b \elim r
+  | idp => smashExt2-beta.{u} idp h
+             (\lam a' => pmap (`*> _) (idp_*> (h a' base))
+                         *> nc.bi {B} {Z} {_} {_} { ->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Z}).f p) a'} { ->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Z}).f q) a'}
+                                  (h a' base) idp (ei a'))
+             (\lam b' => pmap (`*> _) (idp_*> (h base b'))
+                         *> ob.bi {A} {Map* B Z} {Z} (\lam (G : B ->* Z) => G.1 b') {_} {pmap (Smash.adjunction.{u} {A} {B} {Z}).f p} {pmap (Smash.adjunction.{u} {A} {B} {Z}).f q}
+                                  (h base b') idp (eo b')) a b
+
+\func smashExt2-beta.{u} {A B Z : Pointed.{u}} {F G : Smash.{u} A B ->* Z} {p q : F = G} (r : G = base {Map* (Smash.{u} A B) Z})
+                         (h : \Pi (a : A) (b : B) -> ->*.happly p (Smash.proj.1 (a, b)) = ->*.happly q (Smash.proj.1 (a, b)))
+                         (bi : \Pi (a : A) -> rh r h a base *> ->*.happly-base (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Z}).f (q *> r)) a)
+                                               = ->*.happly-base (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Z}).f (p *> r)) a))
+                         (bo : \Pi (b : B) -> rh r h base b *> pmap (pmap (\lam (G : B ->* Z) => G.1 b)) (->*.happly-base (pmap (Smash.adjunction.{u} {A} {B} {Z}).f (q *> r)))
+                                               = pmap (pmap (\lam (G : B ->* Z) => G.1 b)) (->*.happly-base (pmap (Smash.adjunction.{u} {A} {B} {Z}).f (p *> r))))
+                         (a : A) (b : B)
+  : pmap (\lam (s : F = G) => ->*.happly s (Smash.proj.1 (a, b))) (pushoutLeft.smashExt2.{u} r h) = h a b
+  => cancel (\lam (k : Smash.{u} A B ->* Z) => k.1 (Smash.proj.1 (a, b))) r _ (h a b)
+       (represent.refl.post (IsEquiv.toQEquiv (pmapIsEquiv (inP (Smash.adjunction.{u} {A} {B} {Z})) {F} {base {Map* (Smash.{u} A B) Z}}))
+                            (pmap (\lam (k : Smash.{u} A B ->* Z) => k.1 (Smash.proj.1 (a, b))))
+                            (pmap (\lam (G : A ->* Map* B Z) => (G.1 a).1 b)) (\lam _ => idp)
+                            (mapLoop*.ext2-base {A} {B} {Z} {Smash.adjunction.{u} {A} {B} {Z} F} (rh r h))
+        *> idp_*> _
+        *> ext2-base-beta {A} {B} {Z} {Smash.adjunction.{u} {A} {B} {Z} F} {pmap (Smash.adjunction.{u} {A} {B} {Z}).f (p *> r)}
+                          {pmap (Smash.adjunction.{u} {A} {B} {Z}).f (q *> r)} (rh r h) bi bo a b)
+  \where {
+    \func rh.{u} {A B Z : Pointed.{u}} {F G : Smash.{u} A B ->* Z} {p q : F = G} (r : G = base {Map* (Smash.{u} A B) Z})
+                 (h : \Pi (a : A) (b : B) -> ->*.happly p (Smash.proj.1 (a, b)) = ->*.happly q (Smash.proj.1 (a, b))) (a : A) (b : B)
+      : pmap (\lam (k : Smash.{u} A B ->* Z) => k.1 (Smash.proj.1 (a, b))) (p *> r) = pmap (\lam (k : Smash.{u} A B ->* Z) => k.1 (Smash.proj.1 (a, b))) (q *> r)
+      => pmap_*>-comm (\lam (k : Smash.{u} A B ->* Z) => k.1 (Smash.proj.1 (a, b))) p r
+         *> pmap (`*> ->*.happly r (Smash.proj.1 (a, b))) (h a b)
+         *> inv (pmap_*>-comm (\lam (k : Smash.{u} A B ->* Z) => k.1 (Smash.proj.1 (a, b))) q r)
+
+    \func cancel {M W : \Type} (e : M -> W) {x y z : M} {p q : x = y} (r : y = z) (s : p *> r = q *> r) (k : pmap e p = pmap e q)
+                 (c : pmap (pmap e) s = pmap_*>-comm e p r *> pmap (`*> pmap e r) k *> inv (pmap_*>-comm e q r))
+      : pmap (pmap e) (pushoutLeft.smashExt2.cancelR r s) = k \elim r
+      | idp => c *> idp_*> k
+  }

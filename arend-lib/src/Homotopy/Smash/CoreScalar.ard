@@ -1,0 +1,213 @@
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Smash
+\import Homotopy.Smash.Cofiber
+\import Homotopy.Smash.PostBeta
+\import Paths
+
+\func cN {A B : \Type} (k1 : A -> B) {a b c e : A} {e' : B} (P : a = c) (Pb : b = c) (g2 : b = e) (k2 : k1 e = e')
+  : (idp *> idp) *> (pmap k1 (P *> inv Pb *> g2) *> k2) = pmap k1 P *> inv (pmap k1 Pb) *> (pmap k1 g2 *> k2)
+  => *>-assoc idp idp (pmap k1 (P *> inv Pb *> g2) *> k2)
+     *> (pmap (idp *>) (idp_*> (pmap k1 (P *> inv Pb *> g2) *> k2))
+     *> (idp_*> (pmap k1 (P *> inv Pb *> g2) *> k2) *> inv (Smash.restrict-post.lem k1 P Pb g2 k2 *> idp_*> (pmap k1 (P *> inv Pb *> g2) *> k2))))
+
+\func pax0 {A E : \Type} {a c0 : A} (q : a = c0) (k : A -> E) {e : E} (k2 : k c0 = e)
+  : pmap k (idp *> q) *> k2 = idp *> (idp *> (pmap k q *> k2)) \elim e, k2
+  | _, idp => SmashCocone.pre.axis0 k q
+
+\func pax {B C E : \Type} (h : B -> C) {b0 : B} {c0 : C} (q : h b0 = c0) (k : C -> E) {e : E} (k2 : k c0 = e)
+  : SmashCocone.pre.axis h idp q k k2 = pax0 q k k2 \elim e, k2
+  | _, idp => idp
+
+\func cR {S T : \Type} {a c o z : S} (G1 : a = z) (G2 : c = z) (G0 : o = z) (h1 : S -> T) {t0 : T} (h2 : h1 o = t0)
+  => (Smash.restrict-post.lem h1 (idp *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+                                 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))
+                                 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) h2
+      *> idp_*> (pmap h1 ((idp *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+                          *> inv (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))
+                          *> (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))) *> h2))
+     *> (pmap (\lam w => pmap h1 ((idp *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp)) *> w) *> h2)
+              (inv_*> (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)))
+     *> ((pax0 (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp) h1 h2
+          *> idp_*> (idp *> (pmap h1 (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp) *> h2)))
+     *> pmap (idp *>) (inv (Smash.restrict-post.lem h1 (pmap (\lam s => s) G1) (pmap (\lam s => s) G0) idp h2
+                            *> idp_*> (pmap h1 (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp) *> h2))
+                       *> pmap (\lam e => pmap h1 G1 *> inv (pmap h1 G0) *> e) (idp *> idp_*> h2))))
+
+\func cP {S T : \Type} {a c o z : S} (G1 : a = z) (G2 : c = z) (G0 : o = z) (h1 : S -> T) {t0 : T} (h2 : h1 o = t0)
+  => *>-assoc idp idp (pmap h1 G1 *> inv (pmap h1 G0) *> h2)
+     *> (pmap (idp *>) (pmap (`*> (pmap h1 G1 *> inv (pmap h1 G0) *> h2)) (inv (idp {h1 a = h1 a} {idp}))
+                        *> idp {h1 a = t0} {idp *> (pmap h1 G1 *> inv (pmap h1 G0) *> h2)})
+     *> (*>-assoc idp idp (idp *> (pmap h1 G1 *> inv (pmap h1 G0) *> h2))
+     *> (pmap (idp *>) (idp_*> (idp *> (pmap h1 G1 *> inv (pmap h1 G0) *> h2)))
+     *> (idp_*> (idp *> (pmap h1 G1 *> inv (pmap h1 G0) *> h2)) *> inv (cR G1 G2 G0 h1 h2)))))
+
+\func PAX {C E : \Type} {c' b' c0 : C} (V : c' = b') (q : b' = c0) (k : C -> E) {e : E} (k2 : k c0 = e)
+  : pmap k (V *> q) *> k2 = idp *> (pmap k V *> (pmap k q *> k2)) \elim V
+  | idp => pax0 q k k2
+
+\func paxV {B C E : \Type} (h : B -> C) {b0 b1 : B} (a : b0 = b1) {c0 : C} (q : h b1 = c0) (k : C -> E) {e : E} (k2 : k c0 = e)
+  : SmashCocone.pre.axis h a q k k2 = PAX (pmap h a) q k k2 \elim b1, a
+  | _, idp => pax h q k k2
+
+\func pcc {E' T : \Type} {y0 x0 : E'} (v : y0 = x0) (f1 : E' -> T) {w : T} {f2 g2 : f1 x0 = w} (c : idp *> g2 = f2)
+  : mapLoop*.preCoh v (\lam e => idp {T} {f1 e}) c = idp_*> (pmap f1 v *> g2) *> pmap (pmap f1 v *>) (inv (idp_*> g2) *> c) \elim v, g2, c
+  | idp, idp, idp => idp
+
+\func cNo {A B : \Type} (k1 : A -> B) {a b c e : A} {e' : B} (P : a = c) (Pb : b = c) (g2 : b = e) (k2 : k1 e = e')
+          {Psi : k1 a = e'} (chi : Psi = pmap k1 (P *> inv Pb *> g2) *> k2)
+  => *>-assoc idp idp Psi
+     *> (pmap (idp *>) (idp_*> Psi *> inv (inv chi))
+     *> (idp_*> (pmap k1 (P *> inv Pb *> g2) *> k2) *> inv (Smash.restrict-post.lem k1 P Pb g2 k2 *> idp_*> (pmap k1 (P *> inv Pb *> g2) *> k2))))
+
+\func cPo {S T : \Type} {c' b' o z c : S} (V : c' = b') (R1 : b' = z) (G0 : o = z) (G2 : c = z) (h1 : S -> T) {t0 : T} (h2 : h1 o = t0)
+          {PsiF : h1 c' = t0} (chiF : PsiF = pmap h1 V *> (pmap h1 R1 *> inv (pmap h1 G0) *> h2))
+          {Psi0 : h1 c' = t0} (chi0 : Psi0 = idp *> PsiF)
+          {Psi1 : h1 b' = t0} (chi1 : Psi1 = idp *> (pmap h1 R1 *> inv (pmap h1 G0) *> h2))
+          {PsiW : h1 c' = t0} (chiW : PsiW = pmap h1 V *> (pmap h1 R1 *> inv (pmap h1 G0) *> h2))
+  => *>-assoc idp idp PsiF
+     *> (pmap (idp *>)
+          (pmap (`*> PsiF) (inv (idp {h1 c' = h1 c'} {idp}))
+           *> (inv chi0 *> (chi0 *> (pmap (idp *>) chiF
+           *> ((idp_*> (pmap h1 V *> (pmap h1 R1 *> inv (pmap h1 G0) *> h2))
+                *> pmap (pmap h1 V *>)
+                        (inv (idp_*> (pmap h1 R1 *> inv (pmap h1 G0) *> h2))
+                         *> (inv chi1 *> (chi1 *> (pmap (idp *>) idp
+                         *> ((idp_*> ((pmap h1 R1 *> inv (pmap h1 G0) *> h2) *> idp)
+                              *> pmap ((pmap h1 R1 *> inv (pmap h1 G0) *> h2) *>) (inv (idp_*> idp) *> (inv idp *> idp)))
+                             *> inv idp))))))
+               *> inv chiW)))))
+     *> (*>-assoc idp idp PsiW
+     *> (pmap (idp *>) (idp_*> PsiW *> inv (inv chiW))
+     *> (idp_*> (pmap h1 V *> (pmap h1 R1 *> inv (pmap h1 G0) *> h2))
+         *> inv ((Smash.restrict-post.lem h1 (V *> (pmap (\lam s => s) R1 *> inv (pmap (\lam s => s) G0) *> idp))
+                                            (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))
+                                            (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) h2
+                  *> idp_*> (pmap h1 ((V *> (pmap (\lam s => s) R1 *> inv (pmap (\lam s => s) G0) *> idp))
+                                      *> inv (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))
+                                      *> (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))) *> h2))
+                 *> (pmap (\lam w => pmap h1 ((V *> (pmap (\lam s => s) R1 *> inv (pmap (\lam s => s) G0) *> idp)) *> w) *> h2)
+                          (inv_*> (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)))
+                 *> ((PAX V (pmap (\lam s => s) R1 *> inv (pmap (\lam s => s) G0) *> idp) h1 h2
+                      *> idp_*> (pmap h1 V *> (pmap h1 (pmap (\lam s => s) R1 *> inv (pmap (\lam s => s) G0) *> idp) *> h2)))
+                 *> pmap (pmap h1 V *>)
+                         (inv (Smash.restrict-post.lem h1 (pmap (\lam s => s) R1) (pmap (\lam s => s) G0) idp h2
+                               *> idp_*> (pmap h1 (pmap (\lam s => s) R1 *> inv (pmap (\lam s => s) G0) *> idp) *> h2))
+                          *> pmap (\lam e => pmap h1 R1 *> inv (pmap h1 G0) *> e) (idp *> idp_*> h2)))))))))
+
+\func qev {W W' T : \Type} (E : W' -> T) (h1 : W -> W') {u v w : W} {w' : W'} (B : u = v) (g2 : v = w) (h2 : h1 w = w')
+  : pmap (pmap E) (idp_*> (pmap h1 B *> (pmap h1 g2 *> h2)) *> inv (pmap (`*> h2) (pmap_*>-comm h1 B g2) *> *>-assoc (pmap h1 B) (pmap h1 g2) h2))
+    = pmap_*>-comm E idp (pmap h1 B *> (pmap h1 g2 *> h2))
+      *> (idp_*> (pmap E (pmap h1 B *> (pmap h1 g2 *> h2)))
+      *> ((pmap_*>-comm E (pmap h1 B) (pmap h1 g2 *> h2) *> pmap (pmap E (pmap h1 B) *>) (pmap_*>-comm E (pmap h1 g2) h2))
+      *> inv (pmap_*>-comm E (pmap h1 (B *> g2)) h2 *> pmap (`*> pmap E h2) (pmap_*>-comm (\lam x => E (h1 x)) B g2)
+              *> *>-assoc (pmap E (pmap h1 B)) (pmap E (pmap h1 g2)) (pmap E h2)))) \elim B, g2, h2
+  | idp, idp, idp => idp
+
+\func catl {A : \Type} {y y' t : A} (u : y = y') (c' : y' = t) {c : y = t} (n : u *> c' = c)
+  : n = idp *> (*>-assoc u idp c' *> (pmap (u *>) (idp *> idp_*> c') *> n)) \elim t, c', c, n
+  | _, idp, _, idp => idp
+
+\func jj {A B : \Type} (k1 : A -> B) {y y' t : A} (U : y = y') (c : y' = t) {e : B} (k2 : k1 t = e)
+  : pmap k1 U *> (idp *> (pmap k1 c *> k2)) = idp *> (pmap k1 (U *> c) *> k2) \elim y, t, U, c, e, k2
+  | _, _, idp, idp, _, idp => idp
+
+\func postl {A B : \Type} (k1 : A -> B) {y t : A} (c : y = t) {e : B} (k2 : k1 t = e) {c1 : k1 y = e} (Ap : c1 = idp *> (pmap k1 c *> k2))
+  : idp *> idp_*> c1 = pmap (idp *>) Ap *> (jj k1 idp c k2 *> (pmap (\lam v => idp *> (pmap k1 v *> k2)) (idp *> idp_*> c) *> inv Ap))
+  \elim t, c, e, k2, c1, Ap
+  | _, idp, _, idp, _, idp => idp
+
+\func Zk {A : \Type} {t e : A} (k2 : t = e) : k2 = idp *> (idp *> (idp *> k2)) \elim k2
+  | idp => idp
+
+\func fdec {A : \Type} {t0 t1 t2 : A} {a b : t0 = t0} {c c' : t0 = t1} {d : t1 = t2} (ha : a = idp) (hb : b = idp) (hc : c = c')
+  : cofSmashEquiv.E.post.fin4 ha hb hc = pmap2 (*>) ha (pmap2 (*>) hb (pmap2 (*>) hc (idp {_} {d}))) *> (idp_*> _ *> idp_*> _) \elim ha, hb, hc
+  | idp, idp, idp => inv (idp_*> _)
+
+\func edec {S T : \Type} (F : S -> T) {s0 s1 s2 s3 s4 : S} (a : s0 = s1) (b : s1 = s2) (c : s2 = s3) (d : s3 = s4)
+  : cofSmashEquiv.E.post.ev4 F a b c d
+    = pmap_*>-comm F a (b *> c *> d) *> pmap (pmap F a *>) (pmap_*>-comm F b (c *> d) *> pmap (pmap F b *>) (pmap_*>-comm F c d))
+  \elim s2, s3, s4, b, c, d
+  | _, _, _, idp, idp, idp => idp
+
+\func il {A : \Type} {a0 a1 a2 a3 a4 : A} {uA vA : a0 = a1} {uB vB : a1 = a2} {uC vC : a2 = a3} {uD : a3 = a4}
+         {s z : a0 = a4} {r : a1 = a4} {r' : a2 = a4} (X1 : s = uA *> r) (X2 : r = uB *> r') (X3 : r' = uC *> uD)
+         (wA : uA = vA) (wB : uB = vB) (wC : uC = vC) (E : vA *> (vB *> (vC *> uD)) = z)
+  : (X1 *> pmap (uA *>) (X2 *> pmap (uB *>) X3)) *> (pmap2 (*>) wA (pmap2 (*>) wB (pmap2 (*>) wC idp)) *> E)
+    = (X1 *> pmap2 (*>) wA (X2 *> pmap2 (*>) wB (X3 *> pmap2 (*>) wC idp))) *> E \elim X1, X2, X3, wA, wB, wC, E
+  | idp, idp, idp, idp, idp, idp, idp => idp
+
+\func aS {S T T' : \Type} {a c o z : S} (G1 : a = z) (G2 : c = z) (G0 : o = z) (g1 : S -> T) {t0 : T} (g2 : g1 o = t0)
+         (k1 : T -> T') {t1 : T'} (k2 : k1 t0 = t1) {pi : g1 a = t0}
+         (np : pi = pmap g1 (idp *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+                    *> inv (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)))
+                    *> (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) *> g2))
+         {Psi2 : k1 (g1 a) = t1} (chi2 : Psi2 = pmap k1 pi *> k2) {u1 : k1 (g1 a) = k1 (g1 a)} (Y1 : u1 = inv idp)
+         {Psi1 : k1 (g1 a) = t1} (chi1 : Psi1 = u1 *> Psi2)
+  => pmap (`*> idp) (inv (idp_*> Psi1 *> (chi1 *> (pmap2 (*>) Y1 chi2 *> idp_*> (pmap k1 pi *> k2)))))
+     *> (*>-assoc (inv idp) Psi1 idp
+     *> (pmap (inv idp *>)
+          (pmap (`*> idp) chi1
+           *> (*>-assoc u1 Psi2 idp
+           *> (pmap (u1 *>)
+                 (pmap (`*> idp) chi2
+                  *> (*>-assoc (pmap k1 pi) k2 idp
+                  *> (pmap (pmap k1 pi *>) (Zk k2)
+                  *> (pmap (pmap k1 pi *>) (Smash.restrict-post.lem k1 idp idp idp k2)
+                      *> (jj k1 pi idp k2
+                      *> (pmap (\lam v => idp *> (pmap k1 v *> k2)) np
+                      *> inv (Smash.restrict-post.lem k1 (pmap g1 (idp *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp)))
+                                                         (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)))
+                                                         (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) *> g2) k2)))))))
+           *> (pmap (`*> (pmap (\lam s => k1 (g1 s)) (idp *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+                          *> inv (pmap (\lam s => k1 (g1 s)) (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)))
+                          *> (pmap k1 (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) *> g2) *> k2))) (inv (inv Y1))
+               *> (idp_*> (pmap (\lam s => k1 (g1 s)) (idp *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+                           *> inv (pmap (\lam s => k1 (g1 s)) (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)))
+                           *> (pmap k1 (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) *> g2) *> k2))
+                   *> pmap (\lam w => pmap (\lam s => k1 (g1 s)) (idp *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+                                      *> inv (pmap (\lam s => k1 (g1 s)) (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))) *> w)
+                           (inv (idp_*> (pmap (\lam s => k1 (g1 s)) (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) *> (pmap k1 g2 *> k2))
+                                 *> inv (pmap (`*> k2) (pmap_*>-comm k1 (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp))) g2)
+                                         *> *>-assoc (pmap k1 (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)))) (pmap k1 g2) k2))
+                            *> idp_*> (pmap (\lam s => k1 (g1 s)) (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) *> (pmap k1 g2 *> k2))))))))
+     *> (pmap (inv idp *>) (inv (cP G1 G2 G0 (\lam s => k1 (g1 s)) (pmap k1 g2 *> k2)))
+         *> nc.inverse.lem idp (pmap (\lam s => k1 (g1 s)) G1 *> inv (pmap (\lam s => k1 (g1 s)) G0) *> (pmap k1 g2 *> k2)))))
+
+\func bS {S T T' : \Type} {a c o z : S} (G1 : a = z) (G2 : c = z) (G0 : o = z) (g1 : S -> T) {t0 : T} (g2 : g1 o = t0)
+         (k1 : T -> T') {t1 : T'} (k2 : k1 t0 = t1) {pi : g1 a = t0}
+         (np : pi = pmap g1 (idp *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+                    *> inv (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)))
+                    *> (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) *> g2))
+  => pmap (`*> idp) (inv (idp_*> (idp *> (pmap k1 pi *> k2)) *> idp_*> (pmap k1 pi *> k2)))
+     *> (*>-assoc idp (inv idp *> (pmap k1 pi *> k2)) idp
+     *> (pmap (idp *>)
+          (*>-assoc (inv idp) (pmap k1 pi *> k2) idp
+           *> (pmap (inv idp *>)
+                 (*>-assoc (pmap k1 pi) k2 idp
+                  *> (pmap (pmap k1 pi *>) (inv (idp_*> k2))
+                  *> (inv (*>-assoc (pmap k1 pi) idp k2)
+                      *> pmap (`*> k2) (inv (pmap_*>-comm k1 pi idp)
+                                        *> pmap (pmap k1) (pmap (`*> idp) (inv (idp_*> pi))
+                                                           *> (*>-assoc (inv idp) pi idp
+                                                           *> (pmap (inv idp *>) np
+                                                           *> (pmap (inv idp *>) (inv (cP G1 G2 G0 g1 g2))
+                                                               *> nc.inverse.lem idp (pmap g1 G1 *> inv (pmap g1 G0) *> g2)))))))))
+           *> (pmap (inv idp *>) (inv (pmap (`*> (pmap k1 (pmap g1 G1 *> inv (pmap g1 G0) *> g2) *> k2)) (inv idp)
+                                       *> idp_*> (pmap k1 (pmap g1 G1 *> inv (pmap g1 G0) *> g2) *> k2)))
+               *> nc.inverse.lem idp (pmap k1 (pmap g1 G1 *> inv (pmap g1 G0) *> g2) *> k2))))
+     *> cN k1 (pmap g1 G1) (pmap g1 G0) g2 k2))
+
+\func iS {S T T' : \Type} {a c o z : S} (G1 : a = z) (G2 : c = z) (G0 : o = z) (g1 : S -> T) {t0 : T} (g2 : g1 o = t0)
+         (k1 : T -> T') {t1 : T'} (k2 : k1 t0 = t1) {pi : g1 a = t0}
+         (np : pi = pmap g1 (idp *> (pmap (\lam s => s) G1 *> inv (pmap (\lam s => s) G0) *> idp))
+                    *> inv (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)))
+                    *> (pmap g1 (idp *> (pmap (\lam s => s) G2 *> inv (pmap (\lam s => s) G0) *> idp)) *> g2))
+         {Psi2 : k1 (g1 a) = t1} (chi2 : Psi2 = pmap k1 pi *> k2) {u1 : k1 (g1 a) = k1 (g1 a)} (Y1 : u1 = inv idp)
+         {Psi1 : k1 (g1 a) = t1} (chi1 : Psi1 = u1 *> Psi2)
+  : aS G1 G2 G0 g1 g2 k1 k2 np chi2 Y1 chi1 = bS G1 G2 G0 g1 g2 k1 k2 np
+  \elim G1, G2, G0, t0, g2, t1, k2, np, chi2, Y1, chi1
+  | idp, idp, idp, _, idp, _, idp, idp, idp, idp, idp => idp
+
+\func ra {A : \Type} {s t u v w : A} (P : s = t) (B : t = u) (C : u = v) (R : v = w)
+  : (P *> (B *> C)) *> R = (P *> B) *> (C *> R) \elim B, C, R
+  | idp, idp, idp => idp

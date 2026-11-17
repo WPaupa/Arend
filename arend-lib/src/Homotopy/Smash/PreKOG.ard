@@ -1,0 +1,233 @@
+\import Homotopy.Cofiber.Null
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Smash
+\import Homotopy.Smash.CoreScalar
+\import Homotopy.Smash.PostBeta
+\import Homotopy.Smash.PreKGen
+\import Homotopy.Smash.PreKScalar
+\import Paths
+
+\func cPon {S S' T : \Type} (n : S -> S') (k : S' -> T) {c' b' o z c : S} (V : c' = b') (R1 : b' = z) (G0 : o = z) (G2 : c = z) {t0 : T} (h2 : k (n o) = t0)
+           {PsiF : k (n c') = t0} (chiF : PsiF = pmap (\lam s => k (n s)) V *> (pmap (\lam s => k (n s)) R1 *> inv (pmap (\lam s => k (n s)) G0) *> h2))
+           {Psi0 : k (n c') = t0} (chi0 : Psi0 = idp *> PsiF)
+           {Psi1 : k (n b') = t0} (chi1 : Psi1 = idp *> (pmap (\lam s => k (n s)) R1 *> inv (pmap (\lam s => k (n s)) G0) *> h2))
+           {PsiW : k (n c') = t0} (chiW : PsiW = pmap (\lam s => k (n s)) V *> (pmap (\lam s => k (n s)) R1 *> inv (pmap (\lam s => k (n s)) G0) *> h2))
+  : cPo V R1 G0 G2 (\lam s => k (n s)) h2 chiF chi0 chi1 chiW
+    = cPo (pmap n V) (pmap n R1) (pmap n G0) (pmap n G2) k h2 chiF chi0 chi1 chiW
+      *> inv (pmap2 (\lam u v => pmap k u *> inv (pmap k v) *> (pmap k v *> h2)) (cvV n V R1 G0) (cvV n idp G2 G0))
+  \elim V, R1, G0, G2, h2, chiF, chi0, chi1, chiW
+  | idp, idp, idp, idp, idp, idp, idp, idp, idp => idp
+
+\func aSK {S T A X0 D B0 : \Type} (jR : A -> S) (f1 : X0 -> A) {x0 : X0} {a0 : A} (w : f1 x0 = a0)
+          (jb j0 : D -> S) (g1 : B0 -> D) {b0 : B0} {d0 : D} (v : g1 b0 = d0)
+          {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z) (h1 : S -> T) {t0 : T} (h2 : h1 (j0 d0) = t0)
+          {Psni : j0 d0 = j0 (g1 b0)} (invN : Psni = inv (pmap j0 v *> Ec G0 G0))
+          {Psnx' : jR a0 = j0 (g1 b0)} (commN : Psnx' = (idp *> Ec GR G0) *> Psni)
+          {Psnx : jR (f1 x0) = j0 (g1 b0)} (chiNx : Psnx = pmap jR w *> Psnx')
+          {Psnb' : jb (g1 b0) = j0 (g1 b0)} (commNb : Psnb' = (pmap jb v *> Ec Gb G0) *> Psni)
+          {Psnb : jb (g1 b0) = j0 (g1 b0)} (chiNb : Psnb = idp *> Psnb')
+          {Psmi : j0 d0 = jb d0} (invM : Psmi = inv (idp *> Ec Gb G0))
+          {PsmE : jR (f1 x0) = jb d0} (commM : PsmE = (pmap jR w *> Ec GR G0) *> Psmi)
+          {Psmx : jR (f1 x0) = jb d0} (chiMx : Psmx = idp *> PsmE)
+          {PsmE0 : jb d0 = jb d0} (commM0 : PsmE0 = (idp *> Ec Gb G0) *> Psmi)
+          {Psm0 : jb (g1 b0) = jb d0} (chiM0 : Psm0 = pmap jb v *> PsmE0)
+          {sAt : jR (f1 x0) = jR (f1 x0)} (sqf : sAt = idp)
+          {es : h1 (jR (f1 x0)) = t0} {e1 : h1 (jR (f1 x0)) = t0} {eo : h1 (jb d0) = t0}
+          (nW : es *> idp = idp *> e1)
+          (np : e1 *> (idp *> inv idp *> idp) = pmap h1 (pmap jR w *> Ec GR G0) *> inv (pmap h1 (idp *> Ec Gb G0)) *> (pmap h1 (idp *> Ec Gb G0) *> h2))
+          (hb : eo *> idp = pmap h1 (idp *> Ec Gb G0) *> h2)
+          {uA : h1 (jR (f1 x0)) = h1 (jR (f1 x0))} (YA : uA = inv idp)
+          {Psi3 : h1 (jR (f1 x0)) = t0} (chiC : Psi3 = idp *> es)
+          {Psi2 : h1 (jR (f1 x0)) = t0} (chiB : Psi2 = pmap h1 sAt *> Psi3)
+          {Psi1 : h1 (jR (f1 x0)) = t0} (chiA : Psi1 = uA *> Psi2)
+          {PsiF : h1 (jR (f1 x0)) = t0}
+          (chiF : PsiF = pmap h1 (pmap jR w) *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (pmap j0 v *> Ec G0 G0)) *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+          {Psi0 : h1 (jR (f1 x0)) = t0} (chi0 : Psi0 = idp *> PsiF)
+          {PsiP : h1 (jR a0) = t0} (chiP : PsiP = idp *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (pmap j0 v *> Ec G0 G0)) *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+          {PsiW : h1 (jR (f1 x0)) = t0}
+          (chiW : PsiW = pmap h1 (pmap jR w) *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (pmap j0 v *> Ec G0 G0)) *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+  => pmap (`*> idp) (inv (idp_*> Psi1 *> (((chiA *> pmap (uA *>) (chiB *> pmap (pmap h1 sAt *>) chiC))
+                                           *> CofNull.mapsOut.pre.fin2 {_} {_} {_} {_} {uA} {pmap h1 sAt} {idp} {es} YA idp)
+                                          *> (pmap (`*> es) (pmap (pmap h1) sqf) *> idp_*> es))))
+     *> (*>-assoc (inv idp) Psi1 idp
+     *> (pmap (inv idp *>)
+          (pmap (`*> idp) chiA
+           *> (*>-assoc uA Psi2 idp
+           *> (pmap (uA *>)
+                 (pmap (`*> idp) chiB
+                  *> (*>-assoc (pmap h1 sAt) Psi3 idp
+                  *> (pmap (pmap h1 sAt *>)
+                        (pmap (`*> idp) chiC
+                         *> (*>-assoc idp es idp
+                         *> (pmap (idp *>) (MQ jR w jb j0 v GR Gb G0 h1 h2 invM commM chiMx commM0 chiM0 nW np hb)
+                         *> MF jR w jb j0 v GR Gb G0 h1 h2 chiM0)))
+                  *> MP jR f1 w jb j0 g1 v GR Gb G0 h1 h2 invN commN chiNx commNb chiNb invM commM chiMx commM0 chiM0 sqf)))
+           *> MA jR w jb j0 v GR Gb G0 h1 h2 chiNb YA)))
+     *> OI jR w jb j0 v GR Gb G0 h1 h2 invN commN chiNx commNb chiNb chiF chi0 chiP chiW))
+  \where {
+    \func MQ {S T A D : \Type} (jR : A -> S) {a1 a0 : A} (w : a1 = a0) (jb j0 : D -> S) {d1 d0 : D} (v : d1 = d0)
+             {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z) (h1 : S -> T) {t0 : T} (h2 : h1 (j0 d0) = t0)
+             {Psmi : j0 d0 = jb d0} (invM : Psmi = inv (idp *> Ec Gb G0))
+             {PsmE : jR a1 = jb d0} (commM : PsmE = (pmap jR w *> Ec GR G0) *> Psmi)
+             {Psmx : jR a1 = jb d0} (chiMx : Psmx = idp *> PsmE)
+             {PsmE0 : jb d0 = jb d0} (commM0 : PsmE0 = (idp *> Ec Gb G0) *> Psmi)
+             {Psm0 : jb d1 = jb d0} (chiM0 : Psm0 = pmap jb v *> PsmE0)
+             {es : h1 (jR a1) = t0} {e1 : h1 (jR a1) = t0} {eo : h1 (jb d0) = t0}
+             (nW : es *> idp = idp *> e1)
+             (np : e1 *> (idp *> inv idp *> idp) = pmap h1 (pmap jR w *> Ec GR G0) *> inv (pmap h1 (idp *> Ec Gb G0)) *> (pmap h1 (idp *> Ec Gb G0) *> h2))
+             (hb : eo *> idp = pmap h1 (idp *> Ec Gb G0) *> h2)
+      => pcP (pmap h1 Psmx) idp (pmap h1 Psm0) idp (pmap h1 (idp *> Ec Gb G0) *> h2) idp
+             (NXP {_} {_} {_} {_} {_} {_} {_} {_} {idp} {_} {idp}
+                  (pmap (pmap h1) chiMx *> pmap_*>-comm h1 idp PsmE) idp
+                  (KNP (pmap h1 (pmap jR w *> Ec GR G0)) (pmap h1 (idp *> Ec Gb G0)) idp idp
+                       ((pmap (pmap h1) commM *> pmap_*>-comm h1 (pmap jR w *> Ec GR G0) Psmi)
+                        *> pmap (pmap h1 (pmap jR w *> Ec GR G0) *>) (pmap (pmap h1) invM *> pmap_inv-comm h1 (idp *> Ec Gb G0)))
+                       idp (pmap h1 (idp *> Ec Gb G0) *> h2) idp np hb)
+                  nW)
+             hb
+
+    \func MF {S T A D : \Type} (jR : A -> S) {a1 a0 : A} (w : a1 = a0) (jb j0 : D -> S) {d1 d0 : D} (v : d1 = d0)
+             {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z) (h1 : S -> T) {t0 : T} (h2 : h1 (j0 d0) = t0)
+             {Psmx : jR a1 = jb d0} {PsmE0 : jb d0 = jb d0} {Psm0 : jb d1 = jb d0} (chiM0 : Psm0 = pmap jb v *> PsmE0)
+      => idp_*> (pmap h1 Psmx *> inv (pmap h1 Psm0) *> (pmap h1 Psm0 *> (pmap h1 (idp *> Ec Gb G0) *> h2)))
+         *> pmap (\lam w' => pmap h1 Psmx *> inv (pmap h1 Psm0) *> w')
+                 (inv (idp_*> (pmap h1 Psm0 *> (pmap h1 (idp *> Ec Gb G0) *> h2)))
+                  *> (idp_*> (pmap h1 Psm0 *> (pmap h1 (idp *> Ec Gb G0) *> h2))
+                      *> inv (pmap (`*> h2) (pmap_*>-comm h1 Psm0 (idp *> Ec Gb G0)) *> *>-assoc (pmap h1 Psm0) (pmap h1 (idp *> Ec Gb G0)) h2)))
+
+    \func MA {S T A D : \Type} (jR : A -> S) {a1 a0 : A} (w : a1 = a0) (jb j0 : D -> S) {d1 d0 : D} (v : d1 = d0)
+             {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z) (h1 : S -> T) {t0 : T} (h2 : h1 (j0 d0) = t0)
+             {Psnx : jR a1 = j0 d1} {Psnb' : jb d1 = j0 d1} {Psnb : jb d1 = j0 d1} (chiNb : Psnb = idp *> Psnb')
+             {uA : h1 (jR a1) = h1 (jR a1)} (YA : uA = inv idp)
+      => pmap (`*> (pmap h1 Psnx *> inv (pmap h1 Psnb) *> (pmap h1 (Psnb *> (pmap j0 v *> Ec G0 G0)) *> h2))) (inv (inv YA))
+         *> (idp_*> (pmap h1 Psnx *> inv (pmap h1 Psnb) *> (pmap h1 (Psnb *> (pmap j0 v *> Ec G0 G0)) *> h2))
+             *> pmap (\lam w' => pmap h1 Psnx *> inv (pmap h1 Psnb) *> w')
+                     (inv (idp_*> (pmap h1 Psnb *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2))
+                           *> inv (pmap (`*> h2) (pmap_*>-comm h1 Psnb (pmap j0 v *> Ec G0 G0))
+                                   *> *>-assoc (pmap h1 Psnb) (pmap h1 (pmap j0 v *> Ec G0 G0)) h2))
+                      *> idp_*> (pmap h1 Psnb *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2))))
+
+    \func LMC1 {S A D B0 : \Type} (jR : A -> S) {a1 a0 : A} (w : a1 = a0) (jb j0 : D -> S) (g1 : B0 -> D) {b0 : B0} {d0 : D} (v : g1 b0 = d0)
+               {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z)
+               {Psni : j0 d0 = j0 (g1 b0)} (invN : Psni = inv (pmap j0 v *> Ec G0 G0))
+               {Psnx' : jR a0 = j0 (g1 b0)} (commN : Psnx' = (idp *> Ec GR G0) *> Psni)
+               {Psnx : jR a1 = j0 (g1 b0)} (chiNx : Psnx = pmap jR w *> Psnx')
+               {Psnb' : jb (g1 b0) = j0 (g1 b0)} (commNb : Psnb' = (pmap jb v *> Ec Gb G0) *> Psni)
+               {Psnb : jb (g1 b0) = j0 (g1 b0)} (chiNb : Psnb = idp *> Psnb')
+      => pmap (\lam w' => (pmap jR (pmap (\lam a => a) w) *> Ec GR G0) *> w') (inv_*> (pmap jb (idp *> v) *> Ec Gb G0))
+         *> ((SmashCocone.pre.comp-axis jR (\lam a => a) w idp (Ec GR G0) *> idp_*> (pmap jR w *> (idp *> Ec GR G0)))
+         *> inv ((pmap2 (\lam u w' => pmap (\lam s => s) u *> inv (pmap (\lam s => s) w') *> (pmap (\lam s => s) w' *> (pmap j0 v *> Ec G0 G0)))
+                        (chiNx *> pmap (pmap jR w *>) (commN *> pmap ((idp *> Ec GR G0) *>) invN))
+                        (chiNb *> pmap (idp *>) (commNb *> pmap ((pmap jb v *> Ec Gb G0) *>) invN))
+                  *> cRV (pmap jR w) idp (idp *> Ec GR G0) (pmap jb v *> Ec Gb G0) (pmap j0 v *> Ec G0 G0) (\lam s => s) (pmap j0 v *> Ec G0 G0))
+                 *> pmap (pmap jR w *>) (pmap (\lam w' => (idp *> Ec GR G0) *> w') (inv_*> (pmap j0 v *> Ec G0 G0)))))
+
+    \func LMC2 {S A X0 D : \Type} (jR : A -> S) (f1 : X0 -> A) {x0 : X0} {a0 : A} (w : f1 x0 = a0) (jb j0 : D -> S) {d1 d0 : D} (v : d1 = d0)
+               {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z)
+               {Psmi : j0 d0 = jb d0} (invM : Psmi = inv (idp *> Ec Gb G0))
+               {PsmE : jR (f1 x0) = jb d0} (commM : PsmE = (pmap jR w *> Ec GR G0) *> Psmi)
+               {Psmx : jR (f1 x0) = jb d0} (chiMx : Psmx = idp *> PsmE)
+               {PsmE0 : jb d0 = jb d0} (commM0 : PsmE0 = (idp *> Ec Gb G0) *> Psmi)
+               {Psm0 : jb d1 = jb d0} (chiM0 : Psm0 = pmap jb v *> PsmE0)
+      => pmap (\lam w' => (pmap jR (idp *> w) *> Ec GR G0) *> w') (inv_*> (pmap jb (pmap (\lam b => b) v) *> Ec Gb G0))
+         *> ((SmashCocone.pre.comp-axis jR f1 (idp {X0} {x0}) w (Ec GR G0) *> idp_*> (idp *> (pmap jR w *> Ec GR G0)))
+         *> inv ((pmap2 (\lam u w' => pmap (\lam s => s) u *> inv (pmap (\lam s => s) w') *> (pmap (\lam s => s) w' *> (idp *> Ec Gb G0)))
+                        (chiMx *> pmap (idp *>) (commM *> pmap ((pmap jR w *> Ec GR G0) *>) invM))
+                        (chiM0 *> pmap (pmap jb v *>) (commM0 *> pmap ((idp *> Ec Gb G0) *>) invM))
+                  *> cRV idp (pmap jb v) (pmap jR w *> Ec GR G0) (idp *> Ec Gb G0) (idp *> Ec Gb G0) (\lam s => s) (idp *> Ec Gb G0))
+                 *> pmap (idp *>) (pmap (\lam w' => (pmap jR w *> Ec GR G0) *> w') (inv_*> (idp *> Ec Gb G0)))))
+
+    \func MP {S T A X0 D B0 : \Type} (jR : A -> S) (f1 : X0 -> A) {x0 : X0} {a0 : A} (w : f1 x0 = a0)
+             (jb j0 : D -> S) (g1 : B0 -> D) {b0 : B0} {d0 : D} (v : g1 b0 = d0)
+             {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z) (h1 : S -> T) {t0 : T} (h2 : h1 (j0 d0) = t0)
+             {Psni : j0 d0 = j0 (g1 b0)} (invN : Psni = inv (pmap j0 v *> Ec G0 G0))
+             {Psnx' : jR a0 = j0 (g1 b0)} (commN : Psnx' = (idp *> Ec GR G0) *> Psni)
+             {Psnx : jR (f1 x0) = j0 (g1 b0)} (chiNx : Psnx = pmap jR w *> Psnx')
+             {Psnb' : jb (g1 b0) = j0 (g1 b0)} (commNb : Psnb' = (pmap jb v *> Ec Gb G0) *> Psni)
+             {Psnb : jb (g1 b0) = j0 (g1 b0)} (chiNb : Psnb = idp *> Psnb')
+             {Psmi : j0 d0 = jb d0} (invM : Psmi = inv (idp *> Ec Gb G0))
+             {PsmE : jR (f1 x0) = jb d0} (commM : PsmE = (pmap jR w *> Ec GR G0) *> Psmi)
+             {Psmx : jR (f1 x0) = jb d0} (chiMx : Psmx = idp *> PsmE)
+             {PsmE0 : jb d0 = jb d0} (commM0 : PsmE0 = (idp *> Ec Gb G0) *> Psmi)
+             {Psm0 : jb (g1 b0) = jb d0} (chiM0 : Psm0 = pmap jb v *> PsmE0)
+             {sAt : jR (f1 x0) = jR (f1 x0)} (sqf : sAt = idp)
+      => pmap (pmap h1 sAt *>) (Smash.restrict-post.lem h1 Psmx Psm0 (Psm0 *> (idp *> Ec Gb G0)) h2)
+         *> (jj h1 sAt (Psmx *> inv Psm0 *> (Psm0 *> (idp *> Ec Gb G0))) h2
+         *> (pmap (\lam v' => idp *> (pmap h1 v' *> h2))
+                  (pmap (`*> (Psmx *> inv Psm0 *> (Psm0 *> (idp *> Ec Gb G0)))) (inv (inv sqf))
+                   *> (idp_*> (Psmx *> inv Psm0 *> (Psm0 *> (idp *> Ec Gb G0)))
+                       *> inv (inv (LMC1 jR w jb j0 g1 v GR Gb G0 invN commN chiNx commNb chiNb)
+                               *> (pmap (\lam (c : f1 x0 = a0) => (pmap jR c *> Ec GR G0) *> inv (pmap jb (idp *> v) *> Ec Gb G0) *> (pmap jb (idp *> v) *> Ec Gb G0))
+                                        (inv (inv idp *> idp_*> w))
+                                   *> (pmap (\lam (c : g1 b0 = d0) => (pmap jR (idp *> w) *> Ec GR G0) *> inv (pmap jb c *> Ec Gb G0) *> (pmap jb c *> Ec Gb G0))
+                                            (inv idp *> idp_*> v)
+                                   *> LMC2 jR f1 w jb j0 v GR Gb G0 invM commM chiMx commM0 chiM0)))))
+         *> inv (Smash.restrict-post.lem h1 Psnx Psnb (Psnb *> (pmap j0 v *> Ec G0 G0)) h2)))
+
+    \func OI {S T A D : \Type} (jR : A -> S) {a1 a0 : A} (w : a1 = a0) (jb j0 : D -> S) {d1 d0 : D} (v : d1 = d0)
+             {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z) (h1 : S -> T) {t0 : T} (h2 : h1 (j0 d0) = t0)
+             {Psni : j0 d0 = j0 d1} (invN : Psni = inv (pmap j0 v *> Ec G0 G0))
+             {Psnx' : jR a0 = j0 d1} (commN : Psnx' = (idp *> Ec GR G0) *> Psni)
+             {Psnx : jR a1 = j0 d1} (chiNx : Psnx = pmap jR w *> Psnx')
+             {Psnb' : jb d1 = j0 d1} (commNb : Psnb' = (pmap jb v *> Ec Gb G0) *> Psni)
+             {Psnb : jb d1 = j0 d1} (chiNb : Psnb = idp *> Psnb')
+             {PsiF : h1 (jR a1) = t0}
+             (chiF : PsiF = pmap h1 (pmap jR w) *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (pmap j0 v *> Ec G0 G0)) *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+             {Psi0 : h1 (jR a1) = t0} (chi0 : Psi0 = idp *> PsiF)
+             {PsiP : h1 (jR a0) = t0} (chiP : PsiP = idp *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (pmap j0 v *> Ec G0 G0)) *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+             {PsiW : h1 (jR a1) = t0}
+             (chiW : PsiW = pmap h1 (pmap jR w) *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (pmap j0 v *> Ec G0 G0)) *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+      => pmap (inv idp *>)
+              (inv (cPo (pmap jR w) (idp *> Ec GR G0) (pmap j0 v *> Ec G0 G0) (pmap jb v *> Ec Gb G0) h1 (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2) chiF chi0 chiP chiW
+                    *> inv (pmap2 (\lam u w' => pmap h1 u *> inv (pmap h1 w') *> (pmap h1 w' *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+                                  (chiNx *> pmap (pmap jR w *>) (commN *> pmap ((idp *> Ec GR G0) *>) invN))
+                                  (chiNb *> pmap (idp *>) (commNb *> pmap ((pmap jb v *> Ec Gb G0) *>) invN)))))
+         *> nc.inverse.lem idp PsiF
+  }
+
+\func bSK {S T A X0 D : \Type} (jR : A -> S) (f1 : X0 -> A) {x0 : X0} {a0 : A} (w : f1 x0 = a0)
+          (jb j0 : D -> S) {d1 d0 : D} (v : d1 = d0)
+          {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z) (h1 : S -> T) {t0 : T} (h2 : h1 (j0 d0) = t0)
+          {e1 : h1 (jR (f1 x0)) = t0}
+          (np : e1 *> (idp *> inv idp *> idp) = pmap h1 (pmap jR w *> Ec GR G0) *> inv (pmap h1 (idp *> Ec Gb G0)) *> (pmap h1 (idp *> Ec Gb G0) *> h2))
+          {PsiF : h1 (jR (f1 x0)) = t0}
+          (chiF : PsiF = pmap h1 (pmap jR w) *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (pmap j0 v *> Ec G0 G0)) *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+          {PsiFg : h1 (jR (f1 x0)) = t0} (chiFg : PsiFg = pmap h1 (pmap jR w) *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+          {Psi0g : h1 (jR (f1 x0)) = t0} (chi0g : Psi0g = idp *> PsiFg)
+          {PsiPg : h1 (jR a0) = t0} (chiPg : PsiPg = idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+          {PsiWg : h1 (jR (f1 x0)) = t0} (chiWg : PsiWg = pmap h1 (pmap jR w) *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+          {PsiB : h1 (jR (f1 x0)) = t0} (chiB1 : PsiB = pmap h1 (pmap jR w) *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+          {PsiB0 : h1 (jR (f1 x0)) = t0} (chiB0 : PsiB0 = idp *> PsiB) (QC : PsiB0 = PsiFg)
+          {Hfam : \Pi (a : A) -> h1 (jR a) = h1 (jR a)} (Sig : Hfam = (\lam a => idp))
+          {PsiA0 : h1 (jR (f1 x0)) = t0} (chiA0 : PsiA0 = Hfam (f1 x0) *> PsiB)
+          {PsiK : h1 (jR a0) = t0} (chiK : PsiK = idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+  => pmap (`*> idp) (inv (idp_*> (idp *> e1) *> idp_*> e1))
+     *> (*>-assoc idp (inv idp *> e1) idp
+     *> pmap (idp *>)
+          (*>-assoc (inv idp) e1 idp
+           *> (pmap (inv idp *>)
+                 (*>-assoc e1 idp idp
+                  *> (pmap (e1 *>) (idp {t0 = t0} {idp})
+                  *> (idp *> (idp *> (pmap (`*> idp) (inv (idp_*> e1))
+                     *> (*>-assoc (inv idp) e1 idp
+                     *> (pmap (inv idp *>) np
+                     *> (pmap (inv idp *>) (inv (cPo (pmap jR w) GR G0 Gb h1 h2 chiFg chi0g chiPg chiWg))
+                         *> nc.inverse.lem idp PsiFg)))))))))
+           *> (pmap (inv idp *>) (inv (pmap (`*> PsiB) (inv (idp {h1 (jR (f1 x0)) = h1 (jR (f1 x0))} {idp})) *> (inv chiB0 *> QC)))
+               *> nc.inverse.lem idp PsiB))
+     *> (pmap (`*> PsiB) (inv (pmap (__ (f1 x0)) Sig))
+         *> (inv chiA0 *> (chiA0 *> (pmap (Hfam (f1 x0) *>) chiB1
+             *> (mapLoop*.preCoh {A} {T} {f1 x0} {a0} w {\lam a => h1 (jR a)} {\lam a => h1 (jR a)} Hfam {t0} {_}
+                                 {pmap h1 GR *> inv (pmap h1 G0) *> h2}
+                   (pmap (`*> (pmap h1 GR *> inv (pmap h1 G0) *> h2)) (pmap (__ a0) Sig)
+                    *> OK jR GR Gb G0 v h1 h2 chiK)
+             *> inv chiF))))))
+  \where
+    \func OK {S T A D : \Type} (jR : A -> S) {a0 : A} {d1 d0 : D} {jb j0 : D -> S} {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z)
+             (v : d1 = d0) (h1 : S -> T) {t0 : T} (h2 : h1 (j0 d0) = t0)
+             {PsiK : h1 (jR a0) = t0} (chiK : PsiK = idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+      => *>-assoc idp idp (pmap h1 GR *> inv (pmap h1 G0) *> h2)
+         *> (pmap (idp *>) (idp *> inv chiK)
+         *> (*>-assoc idp idp PsiK
+         *> (pmap (idp *>) (idp_*> PsiK *> inv (inv chiK))
+         *> (idp_*> (idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2)) *> inv (cRV idp (pmap j0 v) GR G0 G0 h1 h2)))))

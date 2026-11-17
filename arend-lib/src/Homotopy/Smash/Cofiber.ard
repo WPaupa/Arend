@@ -12,6 +12,7 @@
 \import Homotopy.Pushout \hiding (PushoutPointed)
 \import Homotopy.Pushout.Grid
 \import Homotopy.Smash
+\import Homotopy.Smash.Code (V, Vc, ext0)
 \import Homotopy.Smash.Pushout
 \import Homotopy.Wedge
 \import Logic
@@ -495,34 +496,45 @@
           : pmap (\lam (h : Smash.{l} X Y ->* Z) => h.1 (Smash.proj.1 t)) (Smash.ext.{l} p) = pmap (\lam (d : SmashCocone.{l} X Y Z) => d.1 t) p
           => pmap (pmap (\lam (d : SmashCocone.{l} X Y Z) => d.1 t)) (QEquiv.f_sec {Smash.pathEquiv.{l} {X} {Y} {Z} {g} {g'}} p)
 
-        \func comp-first.{l} {X X' X'' Y Y' Y'' : Pointed.{l}} (f : X ->* X') (f' : X' ->* X'') (g : Y ->* Y') (g' : Y' ->* Y'') (t : \Sigma X Y)
+        \sfunc comp-first.{l} {X X' X'' Y Y' Y'' : Pointed.{l}} (f : X ->* X') (f' : X' ->* X'') (g : Y ->* Y') (g' : Y' ->* Y'') (t : \Sigma X Y)
           : pmap (\lam (h : Smash.{l} X Y ->* Smash.{l} X'' Y'') => h.1 (Smash.proj.1 t)) (Smash.map.comp.{l} f f' g g') = idp
-          => ext-first.{l} _ t
-             *> pmap_*>-comm (\lam (d : SmashCocone.{l} X Y (Smash.{l} X'' Y'')) => d.1 t)
-                             (QEquiv.f_sec {Smash.mapsOut.{l} {X} {Y} {Smash.{l} X'' Y''}}
-                                           (SmashCocone.pre.{l} (f' ->*.∘* f) (g' ->*.∘* g) (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))))
-                             (SmashCocone.pre.comp.{l} f f' g g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))
-                              *> inv (Smash.restrict-pre.{l} (Smash.map.{l} f' g') f g
-                                      *> pmap (SmashCocone.pre.{l} f g) (QEquiv.f_sec {Smash.mapsOut.{l} {X'} {Y'} {Smash.{l} X'' Y''}}
-                                                                           (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))))))
-             *> pmap2 (*>) idp
-                      (pmap_*>-comm (\lam (d : SmashCocone.{l} X Y (Smash.{l} X'' Y'')) => d.1 t)
-                                    (SmashCocone.pre.comp.{l} f f' g g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))
-                                    (inv (Smash.restrict-pre.{l} (Smash.map.{l} f' g') f g
-                                          *> pmap (SmashCocone.pre.{l} f g) (QEquiv.f_sec {Smash.mapsOut.{l} {X'} {Y'} {Smash.{l} X'' Y''}}
-                                                                               (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))))))
-                       *> pmap2 (*>) (SmashCocone.ext.first.{l} {X} {Y} {Smash.{l} X'' Y''}
-                                                                 {SmashCocone.pre.{l} (f' ->*.∘* f) (g' ->*.∘* g) (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))}
-                                                                 {SmashCocone.pre.{l} f g (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))}
-                                                                 (\lam _ => idp) _ _ _ t)
-                                (pmap_inv-comm (\lam (d : SmashCocone.{l} X Y (Smash.{l} X'' Y'')) => d.1 t)
-                                               (Smash.restrict-pre.{l} (Smash.map.{l} f' g') f g
-                                                *> pmap (SmashCocone.pre.{l} f g) (QEquiv.f_sec {Smash.mapsOut.{l} {X'} {Y'} {Smash.{l} X'' Y''}}
-                                                                                     (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))))
-                                 *> pmap inv (pmap_*>-comm (\lam (d : SmashCocone.{l} X Y (Smash.{l} X'' Y'')) => d.1 t) (Smash.restrict-pre.{l} (Smash.map.{l} f' g') f g)
-                                                           (pmap (SmashCocone.pre.{l} f g) (QEquiv.f_sec {Smash.mapsOut.{l} {X'} {Y'} {Smash.{l} X'' Y''}}
-                                                                                             (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))))
-                                              *> pmap (`*> idp) (Smash.restrict-pre.first.{l} (Smash.map.{l} f' g') f g t))))
+          => ext-first.{l} {X} {Y} {Smash.{l} X'' Y''} {Smash.map.{l} (f' ->*.∘* f) (g' ->*.∘* g)} {Smash.map.{l} f' g' ->*.∘* Smash.map.{l} f g}
+               (QEquiv.f_sec {Smash.mapsOut.{l} {X} {Y} {Smash.{l} X'' Y''}} (SmashCocone.pre.{l} (f' ->*.∘* f) (g' ->*.∘* g) (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))
+                 *> SmashCocone.pre.comp.{l} f f' g g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))
+                 *> inv (Smash.restrict-pre.{l} (Smash.map.{l} f' g') f g
+                         *> pmap (SmashCocone.pre.{l} f g) (QEquiv.f_sec {Smash.mapsOut.{l} {X'} {Y'} {Smash.{l} X'' Y''}}
+                                                              (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))))) t
+             *> V.catq.{l} {X} {Y} {Smash.{l} X'' Y''} {Smash.restrict.{l} (Smash.map.{l} (f' ->*.∘* f) (g' ->*.∘* g))}
+                           {Vc.ax.{l} (SmashCocone.pre.{l} (f' ->*.∘* f) (g' ->*.∘* g) (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))}
+                           {Vc.ax.{l} (Smash.restrict.{l} (Smash.map.{l} f' g' ->*.∘* Smash.map.{l} f g))}
+                           (QEquiv.f_sec {Smash.mapsOut.{l} {X} {Y} {Smash.{l} X'' Y''}} (SmashCocone.pre.{l} (f' ->*.∘* f) (g' ->*.∘* g) (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))))
+                           (SmashCocone.pre.comp.{l} f f' g g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))
+                             *> inv (Smash.restrict-pre.{l} (Smash.map.{l} f' g') f g
+                                     *> pmap (SmashCocone.pre.{l} f g) (QEquiv.f_sec {Smash.mapsOut.{l} {X'} {Y'} {Smash.{l} X'' Y''}}
+                                                                          (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))))))
+                           (\lam _ => idp)
+                           (V.catq.{l} {X} {Y} {Smash.{l} X'' Y''} {SmashCocone.pre.{l} (f' ->*.∘* f) (g' ->*.∘* g) (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))}
+                                       {Vc.ax.{l} (SmashCocone.pre.{l} f g (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))))}
+                                       {Vc.ax.{l} (Smash.restrict.{l} (Smash.map.{l} f' g' ->*.∘* Smash.map.{l} f g))}
+                                       (SmashCocone.pre.comp.{l} f f' g g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))
+                                       (inv (Smash.restrict-pre.{l} (Smash.map.{l} f' g') f g
+                                             *> pmap (SmashCocone.pre.{l} f g) (QEquiv.f_sec {Smash.mapsOut.{l} {X'} {Y'} {Smash.{l} X'' Y''}}
+                                                                                  (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))))))
+                                       (\lam t => SmashCocone.ext.first.{l} {X} {Y} {Smash.{l} X'' Y''}
+                                                                             {SmashCocone.pre.{l} (f' ->*.∘* f) (g' ->*.∘* g) (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))}
+                                                                             {SmashCocone.pre.{l} f g (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))}
+                                                                             (\lam _ => idp) _ _ _ t)
+                                       (\lam t => pmap_inv-comm (\lam (d : SmashCocone.{l} X Y (Smash.{l} X'' Y'')) => d.1 t)
+                                                                (Smash.restrict-pre.{l} (Smash.map.{l} f' g') f g
+                                                                 *> pmap (SmashCocone.pre.{l} f g) (QEquiv.f_sec {Smash.mapsOut.{l} {X'} {Y'} {Smash.{l} X'' Y''}}
+                                                                                                      (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))))
+                                          *> pmap inv (V.catq.{l} {X} {Y} {Smash.{l} X'' Y''} {Smash.restrict.{l} (Smash.map.{l} f' g' ->*.∘* Smash.map.{l} f g)}
+                                                                  {Vc.ax.{l} (SmashCocone.pre.{l} f g (Smash.restrict.{l} (Smash.map.{l} f' g')))}
+                                                                  {Vc.ax.{l} (SmashCocone.pre.{l} f g (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''}))))}
+                                                                  (Smash.restrict-pre.{l} (Smash.map.{l} f' g') f g)
+                                                                  (pmap (SmashCocone.pre.{l} f g) (QEquiv.f_sec {Smash.mapsOut.{l} {X'} {Y'} {Smash.{l} X'' Y''}}
+                                                                                                    (SmashCocone.pre.{l} f' g' (Smash.restrict.{l} (->*.id {Smash.{l} X'' Y''})))))
+                                                                  (Smash.restrict-pre.first.{l} (Smash.map.{l} f' g') f g) (\lam _ => idp) t))) t
       }
 
     \func natural.{l} {X Y X' Y' : Pointed.{l}} {f : X ->* Y} {f' : X' ->* Y'} (a : X ->* X') (b : Y ->* Y') (s : b ->*.∘* f = f' ->*.∘* a) (K : Pointed.{l})
@@ -715,20 +727,69 @@
              *> pmap (Smash.map.{l} (f ->*.∘* ->*.id {X})) (->*.compose-id g)
              *> Smash.map.comp.{l} (->*.id {X}) f g (->*.id {B'})
           \where {
-            \func first.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (x : X) (b : B)
+            \sfunc first.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (x : X) (b : B)
               : pmap (\lam (h : Smash.{l} X B ->* Smash.{l} Y B') => h.1 (Smash.proj.1 (x, b))) (squareK.{l} f g) = idp
-              => E.post.ev4 (\lam (h : Smash.{l} X B ->* Smash.{l} Y B') => h.1 (Smash.proj.1 (x, b)))
-                            (inv (Smash.map.comp.{l} f (->*.id {Y}) (->*.id {B}) g))
-                            (pmap (\lam (z : X ->* Y) => Smash.map.{l} z (g ->*.∘* ->*.id {B})) (inv (->*.compose-id f)))
-                            (pmap (Smash.map.{l} (f ->*.∘* ->*.id {X})) (->*.compose-id g)) (Smash.map.comp.{l} (->*.id {X}) f g (->*.id {B'}))
-                 *> four (pmap_inv-comm (\lam (h : Smash.{l} X B ->* Smash.{l} Y B') => h.1 (Smash.proj.1 (x, b))) (Smash.map.comp.{l} f (->*.id {Y}) (->*.id {B}) g)
-                          *> pmap inv (square.comp-first.{l} f (->*.id {Y}) (->*.id {B}) g (x, b)))
-                         (pmap_inv-comm (\lam (z : X ->* Y) => Smash.proj.1 (z.1 x, g.1 b)) (->*.compose-id f))
-                         idp (square.comp-first.{l} (->*.id {X}) f g (->*.id {B'}) (x, b))
+              => pmap (pmap (\lam (e : SmashCocone.{l} X B (Smash.{l} Y B')) => e.1 (x, b)))
+                      (E.post.ev4 Smash.restrict.{l} (inv (Smash.map.comp.{l} f (->*.id {Y}) (->*.id {B}) g))
+                                  (pmap (\lam (z : X ->* Y) => Smash.map.{l} z (g ->*.∘* ->*.id {B})) (inv (->*.compose-id f)))
+                                  (pmap (Smash.map.{l} (f ->*.∘* ->*.id {X})) (->*.compose-id g)) (Smash.map.comp.{l} (->*.id {X}) f g (->*.id {B'})))
+                 *> V.catq.{l} {X} {B} {Smash.{l} Y B'} {Smash.restrict.{l} (Smash.map.{l} (->*.id {Y}) g ->*.∘* Smash.map.{l} f (->*.id {B}))}
+                               {Vc.ax.{l} (Smash.restrict.{l} (Smash.map.{l} (->*.id {Y} ->*.∘* f) (g ->*.∘* ->*.id {B})))}
+                               {Vc.ax.{l} (Smash.restrict.{l} (Smash.map.{l} f (->*.id {B'}) ->*.∘* Smash.map.{l} (->*.id {X}) g))}
+                               (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (inv (Smash.map.comp.{l} f (->*.id {Y}) (->*.id {B}) g)))
+                               (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (pmap (\lam (z : X ->* Y) => Smash.map.{l} z (g ->*.∘* ->*.id {B})) (inv (->*.compose-id f)))
+                                 *> pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (pmap (Smash.map.{l} (f ->*.∘* ->*.id {X})) (->*.compose-id g))
+                                 *> pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (Smash.map.comp.{l} (->*.id {X}) f g (->*.id {B'})))
+                               (qa.{l} f g) (qbcd.{l} f g) (x, b)
+              \where {
+                \func qa.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (t : \Sigma X B)
+                  : pmap (\lam (e : SmashCocone.{l} X B (Smash.{l} Y B')) => e.1 t)
+                         (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (inv (Smash.map.comp.{l} f (->*.id {Y}) (->*.id {B}) g))) = idp
+                  => pmap (pmap (\lam (e : SmashCocone.{l} X B (Smash.{l} Y B')) => e.1 t))
+                          (pmap_inv-comm (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (Smash.map.comp.{l} f (->*.id {Y}) (->*.id {B}) g))
+                     *> (pmap_inv-comm (\lam (e : SmashCocone.{l} X B (Smash.{l} Y B')) => e.1 t)
+                                       (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (Smash.map.comp.{l} f (->*.id {Y}) (->*.id {B}) g))
+                         *> pmap inv (square.comp-first.{l} f (->*.id {Y}) (->*.id {B}) g t))
 
-            \func four {A : \Type} {t : A} {a b c d : t = t} (ha : a = idp) (hb : b = idp) (hc : c = idp) (hd : d = idp) : a *> b *> c *> d = idp
-              \elim ha, hb, hc, hd
-              | idp, idp, idp, idp => idp
+                \func Eb.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B')
+                  : pmap (\lam (z : X ->* Y) => Smash.map.{l} z (g ->*.∘* ->*.id {B})) (inv (->*.compose-id f))
+                    = pmap (\lam (c : f.1 base = base) => Smash.map.{l} (f.1, c) (g ->*.∘* ->*.id {B})) (inv (inv idp *> idp_*> f.2))
+                  => pmap (pmap (\lam (z : X ->* Y) => Smash.map.{l} z (g ->*.∘* ->*.id {B})))
+                          (pmap inv (ext0 f.1 {base} {idp *> f.2} {f.2} idp)
+                            *> inv (pmap_inv-comm (\lam (c : f.1 base = base) => ((f.1, c) : X ->* Y)) (inv idp *> idp_*> f.2)))
+
+                \func Ec.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B')
+                  : pmap (Smash.map.{l} (f ->*.∘* ->*.id {X})) (->*.compose-id g)
+                    = pmap (Smash.map.{l} (f ->*.∘* ->*.id {X})) (pmap (\lam (c : g.1 base = base) => ((g.1, c) : B ->* B')) (inv idp *> idp_*> g.2))
+                  => pmap (pmap (Smash.map.{l} (f ->*.∘* ->*.id {X}))) (ext0 g.1 {base} {idp *> g.2} {g.2} idp)
+
+                \func qb.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (t : \Sigma X B)
+                  : pmap (\lam (e : SmashCocone.{l} X B (Smash.{l} Y B')) => e.1 t)
+                         (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (pmap (\lam (z : X ->* Y) => Smash.map.{l} z (g ->*.∘* ->*.id {B})) (inv (->*.compose-id f)))) = idp
+                  => pmap (pmap (\lam (e : SmashCocone.{l} X B (Smash.{l} Y B')) => e.1 t)) (pmap (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'})) (Eb.{l} f g)) *> idp
+
+                \func qc.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (t : \Sigma X B)
+                  : pmap (\lam (e : SmashCocone.{l} X B (Smash.{l} Y B')) => e.1 t)
+                         (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (pmap (Smash.map.{l} (f ->*.∘* ->*.id {X})) (->*.compose-id g))) = idp
+                  => pmap (pmap (\lam (e : SmashCocone.{l} X B (Smash.{l} Y B')) => e.1 t)) (pmap (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'})) (Ec.{l} f g)) *> idp
+
+                \func qcd.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B')
+                  => V.catq.{l} {X} {B} {Smash.{l} Y B'} {Smash.restrict.{l} (Smash.map.{l} (f ->*.∘* ->*.id {X}) (g ->*.∘* ->*.id {B}))}
+                                {Vc.ax.{l} (Smash.restrict.{l} (Smash.map.{l} (f ->*.∘* ->*.id {X}) g))}
+                                {Vc.ax.{l} (Smash.restrict.{l} (Smash.map.{l} f (->*.id {B'}) ->*.∘* Smash.map.{l} (->*.id {X}) g))}
+                                (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (pmap (Smash.map.{l} (f ->*.∘* ->*.id {X})) (->*.compose-id g)))
+                                (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (Smash.map.comp.{l} (->*.id {X}) f g (->*.id {B'})))
+                                (qc.{l} f g) (square.comp-first.{l} (->*.id {X}) f g (->*.id {B'}))
+
+                \func qbcd.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B')
+                  => V.catq.{l} {X} {B} {Smash.{l} Y B'} {Smash.restrict.{l} (Smash.map.{l} (->*.id {Y} ->*.∘* f) (g ->*.∘* ->*.id {B}))}
+                                {Vc.ax.{l} (Smash.restrict.{l} (Smash.map.{l} (f ->*.∘* ->*.id {X}) (g ->*.∘* ->*.id {B})))}
+                                {Vc.ax.{l} (Smash.restrict.{l} (Smash.map.{l} f (->*.id {B'}) ->*.∘* Smash.map.{l} (->*.id {X}) g))}
+                                (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (pmap (\lam (z : X ->* Y) => Smash.map.{l} z (g ->*.∘* ->*.id {B})) (inv (->*.compose-id f))))
+                                (pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (pmap (Smash.map.{l} (f ->*.∘* ->*.id {X})) (->*.compose-id g))
+                                  *> pmap (Smash.restrict.{l} {X} {B} {Smash.{l} Y B'}) (Smash.map.comp.{l} (->*.id {X}) f g (->*.id {B'})))
+                                (qb.{l} f g) (qcd.{l} f g)
+              }
           }
       }
   }

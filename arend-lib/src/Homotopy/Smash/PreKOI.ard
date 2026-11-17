@@ -1,0 +1,96 @@
+\import Homotopy.Smash.PreKGen
+\import Homotopy.Smash.PreKOG
+\import Homotopy.Smash.PreKScalar
+\import Paths
+
+\func natEi {M D E : \Type} (ev : M -> D -> E) {F F' : M} (R : F = F') {d : D}
+  : natE ev R (idp {D} {d}) = inv (idp_*> (pmap (\lam G => ev G d) R)) \elim R
+  | idp => idp
+
+\func iSK {S T A X0 D B0 : \Type} (jR : A -> S) (f1 : X0 -> A) {x0 : X0} {a0 : A} (w : f1 x0 = a0)
+          (jb j0 : D -> S) (g1 : B0 -> D) {b0 : B0} {d0 : D} (v : g1 b0 = d0)
+          {z : S} (GR : jR a0 = z) (Gb : jb d0 = z) (G0 : j0 d0 = z) (h1 : S -> T) {t0 : T} (h2 : h1 (j0 d0) = t0)
+          {Psni : j0 d0 = j0 (g1 b0)} (invN : Psni = inv (pmap j0 v *> Ec G0 G0))
+          {Psnx' : jR a0 = j0 (g1 b0)} (commN : Psnx' = (idp *> Ec GR G0) *> Psni)
+          {Psnx : jR (f1 x0) = j0 (g1 b0)} (chiNx : Psnx = pmap jR w *> Psnx')
+          {Psnb' : jb (g1 b0) = j0 (g1 b0)} (commNb : Psnb' = (pmap jb v *> Ec Gb G0) *> Psni)
+          {Psnb : jb (g1 b0) = j0 (g1 b0)} (chiNb : Psnb = idp *> Psnb')
+          {Psmi : j0 d0 = jb d0} (invM : Psmi = inv (idp *> Ec Gb G0))
+          {PsmE : jR (f1 x0) = jb d0} (commM : PsmE = (pmap jR w *> Ec GR G0) *> Psmi)
+          {Psmx : jR (f1 x0) = jb d0} (chiMx : Psmx = idp *> PsmE)
+          {PsmE0 : jb d0 = jb d0} (commM0 : PsmE0 = (idp *> Ec Gb G0) *> Psmi)
+          {Psm0 : jb (g1 b0) = jb d0} (chiM0 : Psm0 = pmap jb v *> PsmE0)
+          {sAt : jR (f1 x0) = jR (f1 x0)} (sqf : sAt = idp)
+          {e1 : h1 (jR (f1 x0)) = t0} {eo : h1 (jb d0) = t0}
+          {nW : e1 *> idp = idp *> e1} (enW : nW = inv (idp_*> e1))
+          (np : e1 *> (idp *> inv idp *> idp) = pmap h1 (pmap jR w *> Ec GR G0) *> inv (pmap h1 (idp *> Ec Gb G0)) *> (pmap h1 (idp *> Ec Gb G0) *> h2))
+          (hb : eo *> idp = pmap h1 (idp *> Ec Gb G0) *> h2)
+          {uA : h1 (jR (f1 x0)) = h1 (jR (f1 x0))} (YA : uA = inv idp)
+          {Psi3 : h1 (jR (f1 x0)) = t0} (chiC : Psi3 = idp *> e1)
+          {Psi2 : h1 (jR (f1 x0)) = t0} (chiB : Psi2 = pmap h1 sAt *> Psi3)
+          {Psi1 : h1 (jR (f1 x0)) = t0} (chiA : Psi1 = uA *> Psi2)
+          {PsiF : h1 (jR (f1 x0)) = t0}
+          (chiF : PsiF = pmap h1 (pmap jR w) *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (pmap j0 v *> Ec G0 G0)) *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+          {Psi0 : h1 (jR (f1 x0)) = t0} (chi0 : Psi0 = idp *> PsiF)
+          {PsiP : h1 (jR a0) = t0} (chiP : PsiP = idp *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (pmap j0 v *> Ec G0 G0)) *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+          {PsiW : h1 (jR (f1 x0)) = t0}
+          (chiW : PsiW = pmap h1 (pmap jR w) *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (pmap j0 v *> Ec G0 G0)) *> (pmap h1 (pmap j0 v *> Ec G0 G0) *> h2)))
+          {PsiFg : h1 (jR (f1 x0)) = t0} (chiFg : PsiFg = pmap h1 (pmap jR w) *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+          {Psi0g : h1 (jR (f1 x0)) = t0} (chi0g : Psi0g = idp *> PsiFg)
+          {PsiPg : h1 (jR a0) = t0} (chiPg : PsiPg = idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+          {PsiWg : h1 (jR (f1 x0)) = t0} (chiWg : PsiWg = pmap h1 (pmap jR w) *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+          {PsiB : h1 (jR (f1 x0)) = t0} (chiB1 : PsiB = pmap h1 (pmap jR w) *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+          {PsiB0 : h1 (jR (f1 x0)) = t0} (chiB0 : PsiB0 = idp *> PsiB)
+          {QC : PsiB0 = PsiFg} (qe : QC = chiB0 *> (idp_*> PsiB *> (chiB1 *> inv (idp *> chiFg))))
+          {Hfam : \Pi (a : A) -> h1 (jR a) = h1 (jR a)} (Sig : Hfam = (\lam a => idp))
+          {PsiA0 : h1 (jR (f1 x0)) = t0} (chiA0 : PsiA0 = Hfam (f1 x0) *> PsiB)
+          {PsiK : h1 (jR a0) = t0} (chiK : PsiK = idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+  : aSK jR f1 w jb j0 g1 v GR Gb G0 h1 h2 invN commN chiNx commNb chiNb invM commM chiMx commM0 chiM0 sqf nW np hb YA chiC chiB chiA chiF chi0 chiP chiW
+    = bSK jR f1 w jb j0 v GR Gb G0 h1 h2 np chiF chiFg chi0g chiPg chiWg chiB1 chiB0 QC Sig chiA0 chiK \elim w, v, enW, Sig
+  | idp, idp, idp, idp => iSKc {S} {T} {A} {X0} {D} {B0} {jR (f1 x0)} {jb (g1 b0)} {j0 (g1 b0)} f1 {x0} g1 {b0} GR Gb G0 h1 h2
+                          invN commN chiNx commNb chiNb invM commM chiMx commM0 chiM0 sqf np hb YA chiC chiB chiA chiF chi0 chiP chiW
+                          chiFg chi0g chiPg chiWg chiB1 chiB0 qe chiA0 chiK
+
+\func iSKc {S T A X0 D B0 : \Type} {p c o : S} (f1 : X0 -> A) {x0 : X0} (g1 : B0 -> D) {b0 : B0}
+           {z : S} (GR : p = z) (Gb : c = z) (G0 : o = z) (h1 : S -> T) {t0 : T} (h2 : h1 o = t0)
+           {Psni : o = o} (invN : Psni = inv (idp *> Ec G0 G0))
+           {Psnx' : p = o} (commN : Psnx' = (idp *> Ec GR G0) *> Psni)
+           {Psnx : p = o} (chiNx : Psnx = idp *> Psnx')
+           {Psnb' : c = o} (commNb : Psnb' = (idp *> Ec Gb G0) *> Psni)
+           {Psnb : c = o} (chiNb : Psnb = idp *> Psnb')
+           {Psmi : o = c} (invM : Psmi = inv (idp *> Ec Gb G0))
+           {PsmE : p = c} (commM : PsmE = (idp *> Ec GR G0) *> Psmi)
+           {Psmx : p = c} (chiMx : Psmx = idp *> PsmE)
+           {PsmE0 : c = c} (commM0 : PsmE0 = (idp *> Ec Gb G0) *> Psmi)
+           {Psm0 : c = c} (chiM0 : Psm0 = idp *> PsmE0)
+           {sAt : p = p} (sqf : sAt = idp)
+           {e1 : h1 p = t0} {eo : h1 c = t0}
+           (np : e1 *> (idp *> inv idp *> idp) = pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (idp *> Ec Gb G0)) *> (pmap h1 (idp *> Ec Gb G0) *> h2))
+           (hb : eo *> idp = pmap h1 (idp *> Ec Gb G0) *> h2)
+           {uA : h1 p = h1 p} (YA : uA = inv idp)
+           {Psi3 : h1 p = t0} (chiC : Psi3 = idp *> e1)
+           {Psi2 : h1 p = t0} (chiB : Psi2 = pmap h1 sAt *> Psi3)
+           {Psi1 : h1 p = t0} (chiA : Psi1 = uA *> Psi2)
+           {PsiF : h1 p = t0}
+           (chiF : PsiF = idp *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (idp *> Ec G0 G0)) *> (pmap h1 (idp *> Ec G0 G0) *> h2)))
+           {Psi0 : h1 p = t0} (chi0 : Psi0 = idp *> PsiF)
+           {PsiP : h1 p = t0} (chiP : PsiP = idp *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (idp *> Ec G0 G0)) *> (pmap h1 (idp *> Ec G0 G0) *> h2)))
+           {PsiW : h1 p = t0}
+           (chiW : PsiW = idp *> (pmap h1 (idp *> Ec GR G0) *> inv (pmap h1 (idp *> Ec G0 G0)) *> (pmap h1 (idp *> Ec G0 G0) *> h2)))
+           {PsiFg : h1 p = t0} (chiFg : PsiFg = idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+           {Psi0g : h1 p = t0} (chi0g : Psi0g = idp *> PsiFg)
+           {PsiPg : h1 p = t0} (chiPg : PsiPg = idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+           {PsiWg : h1 p = t0} (chiWg : PsiWg = idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+           {PsiB : h1 p = t0} (chiB1 : PsiB = idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+           {PsiB0 : h1 p = t0} (chiB0 : PsiB0 = idp *> PsiB)
+           {QC : PsiB0 = PsiFg} (qe : QC = chiB0 *> (idp_*> PsiB *> (chiB1 *> inv (idp *> chiFg))))
+           {PsiA0 : h1 p = t0} (chiA0 : PsiA0 = idp *> PsiB)
+           {PsiK : h1 p = t0} (chiK : PsiK = idp *> (pmap h1 GR *> inv (pmap h1 G0) *> h2))
+  : aSK (\lam (_ : A) => p) f1 (idp {A} {f1 x0}) (\lam (_ : D) => c) (\lam (_ : D) => o) g1 (idp {D} {g1 b0}) GR Gb G0 h1 h2
+        invN commN chiNx commNb chiNb invM commM chiMx commM0 chiM0 sqf (inv (idp_*> e1)) np hb YA chiC chiB chiA chiF chi0 chiP chiW
+    = bSK (\lam (_ : A) => p) f1 (idp {A} {f1 x0}) (\lam (_ : D) => c) (\lam (_ : D) => o) (idp {D} {g1 b0}) GR Gb G0 h1 h2 np chiF
+          chiFg chi0g chiPg chiWg chiB1 chiB0 QC {\lam (_ : A) => idp} (idp {\Pi (a : A) -> h1 p = h1 p} {\lam (_ : A) => idp}) chiA0 chiK
+  \elim GR, Gb, G0, t0, h2, invN, commN, chiNx, commNb, chiNb, invM, commM, chiMx, commM0, chiM0, sqf, np, hb, YA, chiC, chiB, chiA,
+        chiF, chi0, chiP, chiW, chiFg, chi0g, chiPg, chiWg, chiB1, chiB0, qe, chiA0, chiK
+  | idp, idp, idp, _, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp,
+    idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp, idp => idp

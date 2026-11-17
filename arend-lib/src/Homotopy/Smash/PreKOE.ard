@@ -1,0 +1,138 @@
+\import Homotopy.Cofiber.Null
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Beta
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Cofiber
+\import Homotopy.Smash.CoreScalar
+\import Homotopy.Smash.OuterBeta
+\import Homotopy.Smash.PreKFin
+\import Homotopy.Smash.PreKOFb
+\import Homotopy.Smash.PreKOFin
+\import Homotopy.Smash.PreKOI
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func ebK.{u} {X Y B B' T : Pointed.{u}} (f : X ->* Y) (g : B ->* B') (h : Smash.{u} Y B' ->* T)
+              (q : h ∘* Smash.map.{u} f (->*.id {B'}) = base {Map* (Smash.{u} X B') T}) (y : B)
+  => taK.{u} f g h q y
+     *> iSK {Smash.{u} Y B'} {T} {Y} {X} {B'} {B}
+            (\lam (a : Y) => (pinl (a, g.1 y) : Smash.{u} Y B')) f.1 f.2
+            (\lam (b : B') => (pinl (f.1 base, b) : Smash.{u} Y B')) (\lam (b : B') => (pinl (base, b) : Smash.{u} Y B')) g.1 g.2
+            (ppglue (pinr (g.1 y))) (ppglue (pinl (f.1 base))) (ppglue (pinl base)) h.1 h.2
+            (pmap_inv-comm (Smash.map.{u} (->*.id {Y}) g).1 (pmap (\lam s => s) (ppglue (pinl base))))
+            (pmap_*>-comm (Smash.map.{u} (->*.id {Y}) g).1 (pmap (\lam s => s) (ppglue (pinr y))) (inv (pmap (\lam s => s) (ppglue (pinl base))) *> idp))
+            (pmap_*>-comm (Smash.map.{u} (->*.id {Y}) g).1 (pmap (\lam (x : Y) => (pinl (x, y) : Smash.{u} Y B)) f.2)
+                          (pmap (\lam s => s) (ppglue (pinr y)) *> inv (pmap (\lam s => s) (ppglue (pinl base))) *> idp))
+            (pmap_*>-comm (Smash.map.{u} (->*.id {Y}) g).1 (pmap (\lam s => s) (ppglue (pinl (f.1 base)))) (inv (pmap (\lam s => s) (ppglue (pinl base))) *> idp))
+            (pmap_*>-comm (Smash.map.{u} (->*.id {Y}) g).1 idp
+                          (pmap (\lam s => s) (ppglue (pinl (f.1 base))) *> inv (pmap (\lam s => s) (ppglue (pinl base))) *> idp))
+            (pmap_inv-comm (Smash.map.{u} f (->*.id {B'})).1 (pmap (\lam s => s) (ppglue (pinl base))))
+            (pmap_*>-comm (Smash.map.{u} f (->*.id {B'})).1 (pmap (\lam s => s) (ppglue (pinr (g.1 y)))) (inv (pmap (\lam s => s) (ppglue (pinl base))) *> idp))
+            (pmap_*>-comm (Smash.map.{u} f (->*.id {B'})).1 idp
+                          (pmap (\lam s => s) (ppglue (pinr (g.1 y))) *> inv (pmap (\lam s => s) (ppglue (pinl base))) *> idp))
+            (pmap_*>-comm (Smash.map.{u} f (->*.id {B'})).1 (pmap (\lam s => s) (ppglue (pinl base))) (inv (pmap (\lam s => s) (ppglue (pinl base))) *> idp))
+            (pmap_*>-comm (Smash.map.{u} f (->*.id {B'})).1 (pmap (\lam (b : B') => (pinl (base, b) : Smash.{u} X B')) g.2)
+                          (pmap (\lam s => s) (ppglue (pinl base)) *> inv (pmap (\lam s => s) (ppglue (pinl base))) *> idp))
+            (cofSmashEquiv.naturalK.squareK.first.{u} f g base y)
+            (natEi (\lam (F : Smash.{u} X B' ->* T) (s : Smash.{u} X B') => F.1 s) q {pinl (base, g.1 y)})
+            (ob (\lam (F : B' ->* T) => F.1 (g.1 y)) (pmap (Smash.adjunction.{u} {X} {B'} {T}) q) idp) (->*.happly-base q)
+            (pmap_inv-comm (\lam (s : Smash.{u} X B ->* T) => ((Smash.adjunction.{u} {X} {B} {T} s).1 base).1 y)
+                           (->*.compose-assoc h (Smash.map.{u} (->*.id {Y}) g) (Smash.map.{u} f (->*.id {B}))))
+            (pmap_*>-comm (\lam (s : Smash.{u} X B ->* T) => ((Smash.adjunction.{u} {X} {B} {T} s).1 base).1 y)
+                          (->*.compose-assoc h (Smash.map.{u} f (->*.id {B'})) (Smash.map.{u} (->*.id {X}) g))
+                          (pmap (`∘* Smash.map.{u} (->*.id {X}) g) q))
+            (pmap_*>-comm (\lam (s : Smash.{u} X B ->* T) => ((Smash.adjunction.{u} {X} {B} {T} s).1 base).1 y)
+                          (pmap (h ∘*) (cofSmashEquiv.naturalK.squareK.{u} f g))
+                          (->*.compose-assoc h (Smash.map.{u} f (->*.id {B'})) (Smash.map.{u} (->*.id {X}) g) *> pmap (`∘* Smash.map.{u} (->*.id {X}) g) q))
+            (pmap_*>-comm (\lam (s : Smash.{u} X B ->* T) => ((Smash.adjunction.{u} {X} {B} {T} s).1 base).1 y)
+                          (inv (->*.compose-assoc h (Smash.map.{u} (->*.id {Y}) g) (Smash.map.{u} f (->*.id {B}))))
+                          (pmap (h ∘*) (cofSmashEquiv.naturalK.squareK.{u} f g)
+                           *> ->*.compose-assoc h (Smash.map.{u} f (->*.id {B'})) (Smash.map.{u} (->*.id {X}) g)
+                           *> pmap (`∘* Smash.map.{u} (->*.id {X}) g) q))
+            (pmap_*>-comm (\lam (G : B ->* T) => G.1 y) (pmap (Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g)).1 f.2)
+                          (Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g)).2)
+            (pmap_*>-comm (\lam (G : B ->* T) => G.1 y)
+                          (->*.happly (pmap (`∘* Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g)) (Map*.pre.id {B} {T})) (f.1 base))
+                          (pmap (->*.id {Map* B T} ∘* Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g)).1 f.2
+                           *> (->*.id {Map* B T} ∘* Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g)).2))
+            (pmap_*>-comm (\lam (G : B ->* T) => G.1 y)
+                          (->*.happly (Map*.pre.id {B} {T}) ((Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g)).1 base))
+                          (pmap (->*.id {Map* B T}).1 (Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g)).2 *> (->*.id {Map* B T}).2))
+            (pmap_*>-comm (\lam (G : B ->* T) => G.1 y)
+                          (pmap (Map*.pre (->*.id {B}) T ∘* Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g)).1 f.2)
+                          (pmap (Map*.pre (->*.id {B}) T).1 (Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g)).2))
+            (pmap_*>-comm (\lam (G : B' ->* T) => G.1 (g.1 y)) (pmap (Smash.adjunction.{u} {Y} {B'} {T} h).1 f.2) (Smash.adjunction.{u} {Y} {B'} {T} h).2)
+            (pmap_*>-comm (\lam (G : B' ->* T) => G.1 (g.1 y))
+                          (->*.happly (pmap (`∘* Smash.adjunction.{u} {Y} {B'} {T} h) (Map*.pre.id {B'} {T})) (f.1 base))
+                          (pmap (->*.id {Map* B' T} ∘* Smash.adjunction.{u} {Y} {B'} {T} h).1 f.2 *> (->*.id {Map* B' T} ∘* Smash.adjunction.{u} {Y} {B'} {T} h).2))
+            (pmap_*>-comm (\lam (G : B' ->* T) => G.1 (g.1 y)) (->*.happly (Map*.pre.id {B'} {T}) ((Smash.adjunction.{u} {Y} {B'} {T} h).1 base))
+                          (pmap (->*.id {Map* B' T}).1 (Smash.adjunction.{u} {Y} {B'} {T} h).2 *> (->*.id {Map* B' T}).2))
+            (pmap_*>-comm (\lam (G : B' ->* T) => G.1 (g.1 y)) (pmap (Map*.pre (->*.id {B'}) T ∘* Smash.adjunction.{u} {Y} {B'} {T} h).1 f.2)
+                          (pmap (Map*.pre (->*.id {B'}) T).1 (Smash.adjunction.{u} {Y} {B'} {T} h).2))
+            (pmap_*>-comm (\lam (G : B ->* T) => G.1 y) (pmap (Map*.pre g T ∘* Smash.adjunction.{u} {Y} {B'} {T} h).1 f.2)
+                          (Map*.pre g T ∘* Smash.adjunction.{u} {Y} {B'} {T} h).2)
+            (pmap_*>-comm (\lam (G : B ->* T) => G.1 y)
+                          (->*.happly (->*.compose-assoc (Map*.pre g T) (Smash.adjunction.{u} {Y} {B'} {T} h) f) base)
+                          ((Map*.pre g T ∘* Smash.adjunction.{u} {Y} {B'} {T} h) ∘* f).2)
+            (qev (\lam (G : B ->* T) => G.1 y) (Map*.pre g T).1 (pmap (Smash.adjunction.{u} {Y} {B'} {T} h).1 f.2) (Smash.adjunction.{u} {Y} {B'} {T} h).2
+                 (Map*.pre g T).2)
+            (path (\lam i (a : Y) => cofSmashEquiv.naturalK.adjK.first.{u} g h a y @ i))
+            (pmap_*>-comm (\lam (G : B ->* T) => G.1 y)
+                          (->*.happly (pmap (\lam (F : Y ->* Map* B T) => F ∘* f) (cofSmashEquiv.naturalK.adjK.{u} g h)) base)
+                          ((Map*.pre g T ∘* Smash.adjunction.{u} {Y} {B'} {T} h) ∘* f).2)
+            (pmap_*>-comm (\lam (G : B ->* T) => G.1 y) idp (Map*.pre g T ∘* Smash.adjunction.{u} {Y} {B'} {T} h).2)
+     *> inv (tbK.{u} f g h q y)
+
+\func cbK.{u} {X Y B B' T : Pointed.{u}} (f : X ->* Y) (g : B ->* B') (h : Smash.{u} Y B' ->* T)
+              (q : h ∘* Smash.map.{u} f (->*.id {B'}) = base {Map* (Smash.{u} X B') T}) (y : B)
+  => ob.bi {X} {Map* B T} {T} (\lam (G : B ->* T) => G.1 y) {_}
+           {inv (cofSmashEquiv.pre'.{u} f (h ∘* Smash.map.{u} (->*.id {Y}) g))
+            *> pmap (Smash.adjunction.{u} {X} {B} {T})
+                    (inv (->*.compose-assoc h (Smash.map.{u} (->*.id {Y}) g) (Smash.map.{u} f (->*.id {B})))
+                     *> pmap (h ∘*) (cofSmashEquiv.naturalK.squareK.{u} f g)
+                     *> ->*.compose-assoc h (Smash.map.{u} f (->*.id {B'})) (Smash.map.{u} (->*.id {X}) g)
+                     *> pmap (`∘* Smash.map.{u} (->*.id {X}) g) q)}
+           {pmap (\lam (F : Y ->* Map* B T) => F ∘* f) (cofSmashEquiv.naturalK.adjK.{u} g h)
+            *> inv (->*.compose-assoc (Map*.pre g T) (Smash.adjunction.{u} {Y} {B'} {T} h) f)
+            *> pmap (Map*.pre g T ∘*) (inv (cofSmashEquiv.pre'.{u} f h) *> pmap (Smash.adjunction.{u} {X} {B'} {T}) q)
+            *> ->*.compose-zero (Map*.pre g T)}
+           (cofSmashEquiv.naturalK.preK.lhs.{u} f g T ((h, q) : CofNull.{u} (Smash.map.{u} f (->*.id {B'})) T) base y)
+           (cofSmashEquiv.naturalK.preK.rhs.{u} f g T ((h, q) : CofNull.{u} (Smash.map.{u} f (->*.id {B'})) T) base y)
+           (ebK.{u} f g h q y)
+
+\func preK-core-beta.{u} {X Y B B' T : Pointed.{u}} (f : X ->* Y) (g : B ->* B') (h : Smash.{u} Y B' ->* T)
+                         (q : h ∘* Smash.map.{u} f (->*.id {B'}) = base {Map* (Smash.{u} X B') T}) (x : X) (z : B)
+  : pmap (pmap (\lam (G : X ->* Map* B T) => (G.1 x).1 z))
+         (mapLoop*.ext2-base {X} {B} {T} {Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g) ∘* f}
+           {inv (cofSmashEquiv.pre'.{u} f (h ∘* Smash.map.{u} (->*.id {Y}) g))
+            *> pmap (Smash.adjunction.{u} {X} {B} {T})
+                    (inv (->*.compose-assoc h (Smash.map.{u} (->*.id {Y}) g) (Smash.map.{u} f (->*.id {B})))
+                     *> pmap (h ∘*) (cofSmashEquiv.naturalK.squareK.{u} f g)
+                     *> ->*.compose-assoc h (Smash.map.{u} f (->*.id {B'})) (Smash.map.{u} (->*.id {X}) g)
+                     *> pmap (`∘* Smash.map.{u} (->*.id {X}) g) q)}
+           {pmap (\lam (F : Y ->* Map* B T) => F ∘* f) (cofSmashEquiv.naturalK.adjK.{u} g h)
+            *> inv (->*.compose-assoc (Map*.pre g T) (Smash.adjunction.{u} {Y} {B'} {T} h) f)
+            *> pmap (Map*.pre g T ∘*) (inv (cofSmashEquiv.pre'.{u} f h) *> pmap (Smash.adjunction.{u} {X} {B'} {T}) q)
+            *> ->*.compose-zero (Map*.pre g T)}
+           (\lam x' z' => cofSmashEquiv.naturalK.preK.lhs.{u} f g T ((h, q) : CofNull.{u} (Smash.map.{u} f (->*.id {B'})) T) x' z'
+                          *> inv (cofSmashEquiv.naturalK.preK.rhs.{u} f g T ((h, q) : CofNull.{u} (Smash.map.{u} f (->*.id {B'})) T) x' z')))
+    = cofSmashEquiv.naturalK.preK.lhs.{u} f g T ((h, q) : CofNull.{u} (Smash.map.{u} f (->*.id {B'})) T) x z
+      *> inv (cofSmashEquiv.naturalK.preK.rhs.{u} f g T ((h, q) : CofNull.{u} (Smash.map.{u} f (->*.id {B'})) T) x z)
+  => ext2-base-beta {X} {B} {T} {Smash.adjunction.{u} {Y} {B} {T} (h ∘* Smash.map.{u} (->*.id {Y}) g) ∘* f}
+       {inv (cofSmashEquiv.pre'.{u} f (h ∘* Smash.map.{u} (->*.id {Y}) g))
+        *> pmap (Smash.adjunction.{u} {X} {B} {T})
+                (inv (->*.compose-assoc h (Smash.map.{u} (->*.id {Y}) g) (Smash.map.{u} f (->*.id {B})))
+                 *> pmap (h ∘*) (cofSmashEquiv.naturalK.squareK.{u} f g)
+                 *> ->*.compose-assoc h (Smash.map.{u} f (->*.id {B'})) (Smash.map.{u} (->*.id {X}) g)
+                 *> pmap (`∘* Smash.map.{u} (->*.id {X}) g) q)}
+       {pmap (\lam (F : Y ->* Map* B T) => F ∘* f) (cofSmashEquiv.naturalK.adjK.{u} g h)
+        *> inv (->*.compose-assoc (Map*.pre g T) (Smash.adjunction.{u} {Y} {B'} {T} h) f)
+        *> pmap (Map*.pre g T ∘*) (inv (cofSmashEquiv.pre'.{u} f h) *> pmap (Smash.adjunction.{u} {X} {B'} {T}) q)
+        *> ->*.compose-zero (Map*.pre g T)}
+       (\lam x' z' => cofSmashEquiv.naturalK.preK.lhs.{u} f g T ((h, q) : CofNull.{u} (Smash.map.{u} f (->*.id {B'})) T) x' z'
+                      *> inv (cofSmashEquiv.naturalK.preK.rhs.{u} f g T ((h, q) : CofNull.{u} (Smash.map.{u} f (->*.id {B'})) T) x' z'))
+       (cbi4.{u} f g h q) (cbK.{u} f g h q) x z

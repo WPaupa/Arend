@@ -1,0 +1,81 @@
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Cofiber
+\import Homotopy.Smash.CoreBeta
+\import Homotopy.Smash.LeftA
+\import Homotopy.Smash.LeftNull
+\import Homotopy.Smash.PostBeta
+\import Homotopy.Smash.PreKInner
+\import Homotopy.Smash.PushoutLeft
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func Hb.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
+  => (E4.{u} f g a *> cr.{u} f g a) *> pR.{u} f g a
+  \where {
+    \func Q1.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+      => pmap (Smash.map.{u} (->*.id {X}) (Cof.inc g) ∘*) (cofSmashEquiv.naturalK.squareK.{u} f g)
+
+    \func Q2.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+      => ->*.compose-assoc (Smash.map.{u} (->*.id {X}) (Cof.inc g)) (Smash.map.{u} f (->*.id {Y})) (Smash.map.{u} (->*.id {A}) g)
+
+    \func Q3.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+      => pmap (∘* Smash.map.{u} (->*.id {A}) g) (cofSmashEquiv.naturalK.squareK.{u} f (Cof.inc g))
+
+    \func As'.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+      => ->*.compose-assoc (Smash.map.{u} f (->*.id {Cof.pointed g})) (Smash.map.{u} (->*.id {A}) (Cof.inc g)) (Smash.map.{u} (->*.id {A}) g)
+
+    \func E4.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
+      => cofSmashEquiv.E.post.ev4 (Ha.ev.{u} f g a) (Q1.{u} f g) (Q2.{u} f g) (Q3.{u} f g) (inv (As'.{u} f g))
+
+    \func cr.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
+      => pushoutLeft.coh.cr {_} {_} {_} {_} {pmap (Ha.ev.{u} f g a) (Q1.{u} f g)} {pmap (Ha.ev.{u} f g a) (Q3.{u} f g)}
+                            (pmap_inv-comm (Ha.ev.{u} f g a) (As'.{u} f g))
+
+    \func pR.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
+      => pmap2 (*>) (pmap (pmap (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1) (cofSmashEquiv.naturalK.squareK.first.{u} f g a base))
+                    (cofSmashEquiv.naturalK.squareK.first.{u} f (Cof.inc g) a (g.1 base))
+  }
+
+\func sq.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
+  => pmap (nc (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a))
+          (*>-assoc (Hb.E4.{u} f g a) (Hb.cr.{u} f g a) (Hb.pR.{u} f g a))
+     *> nc.end (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a)
+               (Hb.E4.{u} f g a) (Hb.cr.{u} f g a *> Hb.pR.{u} f g a)
+     *> pmap (_ *>)
+          (pmap (nc (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a))
+                (edecE (Ha.ev.{u} f g a) (Hb.Q1.{u} f g) (Hb.Q2.{u} f g) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)))
+           *> ncatw.{u} (Hb.Q1.{u} f g) (Hb.Q2.{u} f g *> Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g)) a idp
+                        (pmap_*>-comm (Ha.ev.{u} f g a) (Hb.Q2.{u} f g) (Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g))
+                         *> pmap (pmap (Ha.ev.{u} f g a) (Hb.Q2.{u} f g) *>) (pmap_*>-comm (Ha.ev.{u} f g a) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g))))
+           *> pmap (_ *>) (pmap2 (*>)
+                (pmap (pmap (pmap (evA.{u} f g a) (Hb.Q1.{u} f g) *>))
+                      (ncatw.{u} (Hb.Q2.{u} f g) (Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g)) a idp
+                                 (pmap_*>-comm (Ha.ev.{u} f g a) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)))
+                       *> pmap (_ *>) (pmap2 (*>)
+                            (pmap (pmap (pmap (evA.{u} f g a) (Hb.Q2.{u} f g) *>))
+                                  (ncatw.{u} (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)) a idp idp
+                                   *> pmap (_ *>) (pmap2 (*>)
+                                        (pmap (pmap (pmap (evA.{u} f g a) (Hb.Q3.{u} f g) *>))
+                                              (nas0.{u} (\lam s => (Smash.map.{u} f (->*.id {Cof.pointed g})).1 ((Smash.map.{u} (->*.id {A}) (Cof.inc g)).1 ((Smash.map.{u} (->*.id {A}) g).1 s)))
+                                                        (idp_*> _ *> inv (pmap (`*> (Smash.map.{u} f (->*.id {Cof.pointed g})).2)
+                                                                               (pmap_*>-comm (Smash.map.{u} f (->*.id {Cof.pointed g})).1
+                                                                                             (pmap (Smash.map.{u} (->*.id {A}) (Cof.inc g)).1 (Smash.map.{u} (->*.id {A}) g).2)
+                                                                                             (Smash.map.{u} (->*.id {A}) (Cof.inc g)).2)
+                                                                          *> *>-assoc _ _ _)) a))
+                                        (npre2.{u} g (cofSmashEquiv.naturalK.squareK.{u} f (Cof.inc g)) a))))
+                            (nasF.{u} (\lam s => (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 ((Smash.map.{u} f (->*.id {Y})).1 ((Smash.map.{u} (->*.id {A}) g).1 s)))
+                                      (idp_*> _ *> inv (pmap (`*> (Smash.map.{u} (->*.id {X}) (Cof.inc g)).2)
+                                                             (pmap_*>-comm (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1
+                                                                           (pmap (Smash.map.{u} f (->*.id {Y})).1 (Smash.map.{u} (->*.id {A}) g).2)
+                                                                           (Smash.map.{u} f (->*.id {Y})).2)
+                                                        *> *>-assoc _ _ _)) a))))
+                (nposts.{u} (Smash.map.{u} (->*.id {X}) (Cof.inc g)) (cofSmashEquiv.naturalK.squareK.{u} f g) a
+                 *> pmap (_ *>) (pmap (_ *>) (pmap (`*> _) (pmap (pmap (\lam v => idp *> (pmap (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 v
+                                                                                            *> (Smash.map.{u} (->*.id {X}) (Cof.inc g)).2)))
+                                                                  (nS.{u} f g a)))))))
