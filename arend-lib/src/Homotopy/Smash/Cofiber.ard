@@ -20,6 +20,7 @@
 \import Paths
 
 \open PushoutData (ppglue, congr, rec, homotopy)
+\open ->* (∘*)
 \open SmashPushout (side, corner)
 
 \func cofSmash.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u})
@@ -271,10 +272,15 @@
                   {Map*.post K k ->*.∘* Smash.adjunction.{u} {Cof.pointed f} {K} {T} g} (Smash.adjunction.post.{u} k g))
             (CofNull.mapsOut.post.{u} (Map*.post K k) (Smash.adjunction.{u} {Cof.pointed f} {K} {T} g)) (R.eval.{u} f K T g)
 
-    \func pre'.{u} {X Y K T : Pointed.{u}} (f : X ->* Y) (g : Smash.{u} Y K ->* T)
+    \sfunc pre'.{u} {X Y K T : Pointed.{u}} (f : X ->* Y) (g : Smash.{u} Y K ->* T)
       : Smash.adjunction.{u} {X} {K} {T} (g ->*.∘* Smash.map.{u} f (->*.id {K})) = Smash.adjunction.{u} {Y} {K} {T} g ->*.∘* f
       => Smash.adjunction.pre.{u} g f ->*.id
          *> pmap (\lam (P : Map* K T ->* Map* K T) => (P ->*.∘* Smash.adjunction.{u} {Y} {K} {T} g) ->*.∘* f) (Map*.pre.id {K} {T})
+      \where
+        \func ev.{u} {X Y K T : Pointed.{u}} (f : X ->* Y) (g : Smash.{u} Y K ->* T)
+          : pre'.{u} f g = Smash.adjunction.pre.{u} g f ->*.id
+                           *> pmap (\lam (P : Map* K T ->* Map* K T) => (P ->*.∘* Smash.adjunction.{u} {Y} {K} {T} g) ->*.∘* f) (Map*.pre.id {K} {T})
+          => \peval pre'.{u} f g
 
     \func concatL {A : \Type} {a b c : A} (p : a = b) : QEquiv {b = c} {a = c} \cowith
       | f q => p *> q
@@ -347,7 +353,8 @@
 
             \func pre'-first.{u} {X Y K T : Pointed.{u}} (f : X ->* Y) (h : Smash.{u} Y K ->* T) (x : X) (z : K)
               : pmap (\lam (G : X ->* Map* K T) => (G.1 x).1 z) (pre'.{u} f h) = idp
-              => pmap_*>-comm (\lam (G : X ->* Map* K T) => (G.1 x).1 z) (Smash.adjunction.pre.{u} h f ->*.id)
+              => pmap (pmap (\lam (G : X ->* Map* K T) => (G.1 x).1 z)) (pre'.ev.{u} f h)
+                 *> pmap_*>-comm (\lam (G : X ->* Map* K T) => (G.1 x).1 z) (Smash.adjunction.pre.{u} h f ->*.id)
                               (pmap (\lam (P : Map* K T ->* Map* K T) => (P ->*.∘* Smash.adjunction.{u} {Y} {K} {T} h) ->*.∘* f) (Map*.pre.id {K} {T}))
                  *> pmap (`*> idp) (Smash.adjunction.pre-first.{u} h f ->*.id x z)
 
@@ -699,12 +706,37 @@
                               (CofNull.pre.{l} {Smash.{l} X B} {Smash.{l} Y B} {Smash.{l} X B'} {Smash.{l} Y B'} {T} {Smash.map.{l} f (->*.id {B})}
                                                {Smash.map.{l} f (->*.id {B'})} (Smash.map.{l} (->*.id {X}) g) (Smash.map.{l} (->*.id {Y}) g) (squareK.{l} f g) d).2)
                 = pmap (\lam (G : Smash.{l} X B' ->* T) => G.1 (Smash.proj.1 (x, g.1 b))) d.2
-              => E.post.pre'-ev.{l} f (CofNull.pre.{l} {Smash.{l} X B} {Smash.{l} Y B} {Smash.{l} X B'} {Smash.{l} Y B'} {T} {Smash.map.{l} f (->*.id {B})}
-                                                      {Smash.map.{l} f (->*.id {B'})} (Smash.map.{l} (->*.id {X}) g) (Smash.map.{l} (->*.id {Y}) g) (squareK.{l} f g) d).1 x b
-                 *> CofNull.pre.ev.{l} {Smash.{l} X B} {Smash.{l} Y B} {Smash.{l} X B'} {Smash.{l} Y B'} {T} {Smash.map.{l} f (->*.id {B})} {Smash.map.{l} f (->*.id {B'})}
-                                       (Smash.map.{l} (->*.id {X}) g) (Smash.map.{l} (->*.id {Y}) g) (squareK.{l} f g) d (Smash.proj.1 (x, b))
-                 *> pmap (`*> _) (pmap (pmap d.1.1) (squareK.first.{l} f g x b))
-                 *> idp_*> _
+              => lhsF.{l} f g T d.1 d.2 x b
+
+            \sfunc lhsF.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (T : Pointed.{l}) (h : Smash.{l} Y B' ->* T)
+                            (q : h ∘* Smash.map.{l} f (->*.id {B'}) = base {Map* (Smash.{l} X B') T}) (x : X) (b : B)
+              => (pmap_*>-comm (\lam (G : X ->* Map* B T) => (G.1 x).1 b) (inv (pre'.{l} f (h ∘* Smash.map.{l} (->*.id {Y}) g)))
+                               (pmap (Smash.adjunction.{l} {X} {B} {T})
+                                     (inv (->*.compose-assoc h (Smash.map.{l} (->*.id {Y}) g) (Smash.map.{l} f (->*.id {B})))
+                                      *> pmap (h ∘*) (squareK.{l} f g)
+                                      *> ->*.compose-assoc h (Smash.map.{l} f (->*.id {B'})) (Smash.map.{l} (->*.id {X}) g)
+                                      *> pmap (`∘* Smash.map.{l} (->*.id {X}) g) q))
+                  *> (pmap (`*> pmap (\lam (h' : Smash.{l} X B ->* T) => h'.1 (Smash.proj.1 (x, b)))
+                                     (inv (->*.compose-assoc h (Smash.map.{l} (->*.id {Y}) g) (Smash.map.{l} f (->*.id {B})))
+                                      *> pmap (h ∘*) (squareK.{l} f g)
+                                      *> ->*.compose-assoc h (Smash.map.{l} f (->*.id {B'})) (Smash.map.{l} (->*.id {X}) g)
+                                      *> pmap (`∘* Smash.map.{l} (->*.id {X}) g) q))
+                           (pmap_inv-comm (\lam (G : X ->* Map* B T) => (G.1 x).1 b) (pre'.{l} f (h ∘* Smash.map.{l} (->*.id {Y}) g))
+                            *> pmap inv (E.post.pre'-first.{l} f (h ∘* Smash.map.{l} (->*.id {Y}) g) x b))
+                  *> idp_*> (pmap (\lam (h' : Smash.{l} X B ->* T) => h'.1 (Smash.proj.1 (x, b)))
+                                  (inv (->*.compose-assoc h (Smash.map.{l} (->*.id {Y}) g) (Smash.map.{l} f (->*.id {B})))
+                                   *> pmap (h ∘*) (squareK.{l} f g)
+                                   *> ->*.compose-assoc h (Smash.map.{l} f (->*.id {B'})) (Smash.map.{l} (->*.id {X}) g)
+                                   *> pmap (`∘* Smash.map.{l} (->*.id {X}) g) q))))
+                 *> (CofNull.pre.ev.{l} {Smash.{l} X B} {Smash.{l} Y B} {Smash.{l} X B'} {Smash.{l} Y B'} {T} {Smash.map.{l} f (->*.id {B})} {Smash.map.{l} f (->*.id {B'})}
+                                       (Smash.map.{l} (->*.id {X}) g) (Smash.map.{l} (->*.id {Y}) g) (squareK.{l} f g)
+                                       ((h, q) : CofNull.{l} (Smash.map.{l} f (->*.id {B'})) T) (Smash.proj.1 (x, b))
+                 *> pmap (`*> _) (pmap (pmap h.1) (squareK.first.{l} f g x b))
+                 *> idp_*> _)
+              \where
+                \func ev.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (T : Pointed.{l}) (h : Smash.{l} Y B' ->* T)
+                             (q : h ∘* Smash.map.{l} f (->*.id {B'}) = base {Map* (Smash.{l} X B') T}) (x : X) (b : B)
+                  => \peval lhsF.{l} f g T h q x b
 
             \func rhs.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (T : Pointed.{l}) (d : CofNull.{l} (Smash.map.{l} f (->*.id {B'})) T) (x : X) (b : B)
               : pmap (\lam (G : X ->* Map* B T) => (G.1 x).1 b)
