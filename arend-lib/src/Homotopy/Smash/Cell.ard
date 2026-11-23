@@ -1,0 +1,145 @@
+\import Paths
+
+\func im {S T : \Type} (F : S -> T) {x y : S} {x' y' : T} (u : F x = x') (v : F y = y') (a : x = y) : x' = y'
+  => inv u *> pmap F a *> v
+  \where {
+    \func cat {S T : \Type} (F : S -> T) {x y z : S} {x' y' z' : T} (u : F x = x') (v : F y = y') (w : F z = z') (a : x = y) (b : y = z)
+      : im F u w (a *> b) = im F u v a *> im F v w b \elim z, b
+      | _, idp => lem (inv u) (pmap F a) v w
+      \where
+        \func lem {A : \Type} {p q r s t : A} (U : p = q) (P : q = r) (v : r = s) (w : r = t)
+          : U *> (P *> w) = (U *> (P *> v)) *> (inv v *> (idp *> w)) \elim v, w
+          | idp, idp => idp
+
+    \func inverse {S T : \Type} (F : S -> T) {x y : S} {x' y' : T} (u : F x = x') (v : F y = y') (a : x = y)
+      : im F v u (inv a) = inv (im F u v a) \elim y, a
+      | _, idp => lem u v
+      \where
+        \func lem {A : \Type} {p q r : A} (u : p = q) (v : p = r) : inv v *> (idp *> u) = inv (inv u *> (idp *> v)) \elim u, v
+          | idp, idp => idp
+
+    \func bd {S T : \Type} (F : S -> T) {x y : S} {x' y' x'' y'' : T} (u : F x = x') (v : F y = y') (cu : x' = x'') (cv : y' = y'') (a : x = y)
+      : im F (u *> cu) (v *> cv) a = inv cu *> im F u v a *> cv \elim x'', y'', cu, cv
+      | _, _, idp, idp => inv (idp_*> _)
+  }
+
+\func kn {S T : \Type} (F : S -> T) {x y z : S} {p p' : x = y} {q q' : y = z} (al : p = p') (be : q = q')
+  : pmap_*>-comm F p q *> pmap2 (*>) (pmap (pmap F) al) (pmap (pmap F) be) = pmap (pmap F) (pmap2 (*>) al be) *> pmap_*>-comm F p' q'
+  \elim p', q', al, be
+  | _, _, idp, idp => inv (idp_*> _)
+  \where
+    \func inverse {S T : \Type} (F : S -> T) {x y : S} {p p' : x = y} (al : p = p')
+      : pmap_inv-comm F p *> pmap inv (pmap (pmap F) al) = pmap (pmap F) (pmap inv al) *> pmap_inv-comm F p' \elim p', al
+      | _, idp => inv (idp_*> _)
+
+\func paste {A : \Type} {x0 x1 x2 z : A} {h : x0 = x1} {k : x1 = x2} {b0 : x0 = z} {b1 : x1 = z} {b2 : x2 = z}
+            (c : h *> b1 = b0) (d : k *> b2 = b1) : (h *> k) *> b2 = b0
+  => *>-assoc h k b2 *> pmap (h *>) d *> c
+
+\func ch {A : \Type} {x0 x1 z : A} {h h' : x0 = x1} {b0 b0' : x0 = z} {b1 b1' : x1 = z} (eh : h = h') (e1 : b1 = b1') (e0 : b0 = b0')
+          (c : h *> b1 = b0) : h' *> b1' = b0'
+  => pmap2 (*>) (inv eh) (inv e1) *> c *> e0
+  \where {
+    \func paste {A : \Type} {x0 x1 x2 z : A} {h h' : x0 = x1} {k k' : x1 = x2} {b0 b0' : x0 = z} {b1 b1' : x1 = z} {b2 b2' : x2 = z}
+                (eh : h = h') (ek : k = k') (e0 : b0 = b0') (e1 : b1 = b1') (e2 : b2 = b2') (c : h *> b1 = b0) (d : k *> b2 = b1)
+      : Homotopy.Smash.Cell.paste (ch eh e1 e0 c) (ch ek e2 e1 d) = ch (pmap2 (*>) eh ek) e2 e0 (Homotopy.Smash.Cell.paste c d)
+      \elim h', k', b0', b1', b2', eh, ek, e0, e1, e2
+      | _, _, _, _, _, idp, idp, idp, idp, idp => lem c d
+      \where
+        \func lem {A : \Type} {x0 x1 x2 z : A} {h : x0 = x1} {k : x1 = x2} {b0 : x0 = z} {b1 : x1 = z} {b2 : x2 = z}
+                  (c : h *> b1 = b0) (d : k *> b2 = b1)
+          : Homotopy.Smash.Cell.paste (idp *> c) (idp *> d) = idp *> Homotopy.Smash.Cell.paste c d \elim b0, b1, c, d
+          | _, _, idp, idp => inv (idp_*> _)
+
+    \func tinv {A : \Type} {x0 x1 z : A} {h h' : x0 = x1} {b0 b0' : x0 = z} {b1 b1' : x1 = z} (eh : h = h') (e1 : b1 = b1') (e0 : b0 = b0')
+               (c : h *> b1 = b0)
+      : Homotopy.Smash.Cell.tinv (ch eh e1 e0 c) = ch (pmap inv eh) e0 e1 (Homotopy.Smash.Cell.tinv c) \elim h', b0', b1', eh, e1, e0
+      | _, _, _, idp, idp, idp => lem c
+      \where
+        \func lem {A : \Type} {x0 x1 z : A} {h : x0 = x1} {b0 : x0 = z} {b1 : x1 = z} (c : h *> b1 = b0)
+          : Homotopy.Smash.Cell.tinv (idp *> c) = idp *> Homotopy.Smash.Cell.tinv c \elim b0, c
+          | _, idp => inv (idp_*> _)
+
+    \func chV {A : \Type} {x0 x1 z : A} {h h' : x0 = x1} {b0 b0' : x0 = z} {b1 b1' : x1 = z} (eh : h = h') (e1 : b1 = b1') (e0 : b0 = b0')
+              (c : h *> b1 = b0)
+      : ch (inv eh) (inv e1) (inv e0) (ch eh e1 e0 c) = c \elim h', b0', b1', eh, e1, e0
+      | _, _, _, idp, idp, idp => idp_*> _ *> idp_*> c
+
+    \func pl {A : \Type} {x0 x1 x2 z : A} {h h' : x0 = x1} {k : x1 = x2} {b0 b0' : x0 = z} {b1 : x1 = z} {b2 : x2 = z}
+             (eh : h = h') (e0 : b0 = b0') (c : h *> b1 = b0) (d : k *> b2 = b1)
+      : Homotopy.Smash.Cell.paste (ch eh idp e0 c) d = ch (pmap2 (*>) eh idp) idp e0 (Homotopy.Smash.Cell.paste c d) \elim h', b0', eh, e0
+      | _, _, idp, idp => pmap (\lam c' => Homotopy.Smash.Cell.paste c' d) (idp_*> c) *> inv (idp_*> _)
+
+    \func pre {A : \Type} {x0 x1 z : A} {h h' h'' : x0 = x1} {b0 b0' : x0 = z} {b1 b1' : x1 = z} (e : h'' = h') (eh : h = h') (e1 : b1 = b1')
+              (e0 : b0 = b0') (c : h *> b1 = b0)
+      : pmap (`*> b1') e *> ch eh e1 e0 c = ch (eh *> inv e) e1 e0 c \elim h', b0', b1', e, eh, e1, e0
+      | _, _, _, idp, idp, idp, idp => idp_*> _
+
+    \func cc {A : \Type} {x0 x1 z : A} {h h' h'' : x0 = x1} {b0 b0' b0'' : x0 = z} {b1 b1' b1'' : x1 = z}
+             (eh : h' = h'') (e1 : b1' = b1'') (e0 : b0' = b0'') (eh' : h = h') (e1' : b1 = b1') (e0' : b0 = b0') (c : h *> b1 = b0)
+      : ch eh e1 e0 (ch eh' e1' e0' c) = ch (eh' *> eh) (e1' *> e1) (e0' *> e0) c \elim h'', b0'', b1'', eh, e1, e0
+      | _, _, _, idp, idp, idp => idp_*> _
+
+    \func chI {A : \Type} {x0 x1 z : A} {h h' : x0 = x1} {b0 b0' : x0 = z} {b1 b1' : x1 = z} {eh : h = h'} {e1 : b1 = b1'} {e0 : b0 = b0'}
+              {c : h *> b1 = b0} {c' : h' *> b1' = b0'} (p : ch eh e1 e0 c = c')
+      : c = ch (inv eh) (inv e1) (inv e0) c'
+      => inv (chV eh e1 e0 c) *> pmap (ch (inv eh) (inv e1) (inv e0)) p
+
+    \func pe {A : \Type} {x0 x1 x2 z : A} {h h' : x0 = x1} {k k' : x1 = x2} {b0 : x0 = z} {b1 : x1 = z} {b2 : x2 = z}
+             (eX : h = h') (eY : k = k') (c : h' *> b1 = b0) (d : k' *> b2 = b1)
+      : Homotopy.Smash.Cell.paste (pmap (`*> b1) eX *> c) (pmap (`*> b2) eY *> d) = pmap (`*> b2) (pmap2 (*>) eX eY) *> Homotopy.Smash.Cell.paste c d
+      \elim h', k', eX, eY
+      | _, _, idp, idp => paste.lem c d
+
+    \func edge {A : \Type} {x0 x1 z : A} {h h' h'' : x0 = x1} {b0 b0' : x0 = z} {b1 b1' : x1 = z} (e : h = h') (eh : h' = h'') (e1 : b1 = b1') (e0 : b0 = b0')
+               (c : h' *> b1 = b0)
+      : ch (e *> eh) e1 e0 (pmap (`*> b1) e *> c) = ch eh e1 e0 c \elim h', h'', e, eh
+      | _, _, idp, idp => pmap (ch idp e1 e0) (idp_*> c)
+  }
+
+\func tinv {A : \Type} {x0 x1 z : A} {h : x0 = x1} {b0 : x0 = z} {b1 : x1 = z} (c : h *> b1 = b0) : inv h *> b0 = b1
+  => pmap (inv h *>) (inv c) *> inv (*>-assoc (inv h) h b1) *> pmap (`*> b1) (inv_*> h) *> idp_*> b1
+
+\func post {A B : \Type} (F : A -> B) {x0 x1 z : A} {z' : B} {h : x0 = x1} {b0 : x0 = z} {b1 : x1 = z} (c : h *> b1 = b0) (t : F z = z')
+  : pmap F h *> (pmap F b1 *> t) = pmap F b0 *> t
+  => inv (*>-assoc (pmap F h) (pmap F b1) t) *> pmap (`*> t) (inv (pmap_*>-comm F h b1)) *> pmap (\lam p => pmap F p *> t) c
+  \where {
+    \func bd {A B : \Type} (F : A -> B) {x0 x1 z : A} {z' : B} (h : x0 = x1) (b1 : x1 = z) (t : F z = z')
+      : idp *> (pmap F (h *> b1) *> t) = pmap F h *> (pmap F b1 *> t) \elim x1, z, z', h, b1, t
+      | _, _, _, idp, idp, idp => idp
+
+    \func phi {A B : \Type} (F : A -> B) {x0 x1 z : A} {z' : B} {h : x0 = x1} {b0 : x0 = z} {b1 : x1 = z} (c : h *> b1 = b0) (t : F z = z')
+      : pmap (\lam v => idp *> (pmap F v *> t)) c = bd F h b1 t *> post F c t *> inv (idp_*> (pmap F b0 *> t)) \elim b0, c
+      | _, idp => inv (lem F h b1 t)
+      \where
+        \func lem {A B : \Type} (F : A -> B) {x0 x1 z : A} {z' : B} (h : x0 = x1) (b1 : x1 = z) (t : F z = z')
+          : bd F h b1 t *> post F (idp {_} {h *> b1}) t *> inv (idp_*> (pmap F (h *> b1) *> t)) = idp \elim x1, z, z', h, b1, t
+          | _, _, _, idp, idp, idp => idp
+
+    \func tinv {A B : \Type} (F : A -> B) {x0 x1 z : A} {z' : B} {h : x0 = x1} {b0 : x0 = z} {b1 : x1 = z} (c : h *> b1 = b0) (t : F z = z')
+      : post F (Homotopy.Smash.Cell.tinv c) t = pmap (`*> (pmap F b0 *> t)) (pmap_inv-comm F h) *> Homotopy.Smash.Cell.tinv (post F c t) \elim b0, c
+      | _, idp => lem F h b1 t
+      \where
+        \func lem {A B : \Type} (F : A -> B) {x0 x1 z : A} {z' : B} (h : x0 = x1) (b1 : x1 = z) (t : F z = z')
+          : post F (Homotopy.Smash.Cell.tinv (idp {_} {h *> b1})) t
+            = pmap (`*> (pmap F (h *> b1) *> t)) (pmap_inv-comm F h) *> Homotopy.Smash.Cell.tinv (post F (idp {_} {h *> b1}) t)
+          \elim x1, z, z', h, b1, t
+          | _, _, _, idp, idp, idp => idp
+
+    \func edge {A B : \Type} (F : A -> B) {x0 x1 z : A} {z' : B} {h h' : x0 = x1} {b0 : x0 = z} {b1 : x1 = z} (e : h = h') (c : h' *> b1 = b0) (t : F z = z')
+      : post F (pmap (`*> b1) e *> c) t = pmap (`*> (pmap F b1 *> t)) (pmap (pmap F) e) *> post F c t \elim h', e
+      | _, idp => pmap (\lam c' => post F c' t) (idp_*> c) *> inv (idp_*> _)
+    \func paste {A B : \Type} (F : A -> B) {x0 x1 x2 z : A} {z' : B} {h : x0 = x1} {k : x1 = x2} {b0 : x0 = z} {b1 : x1 = z} {b2 : x2 = z}
+                (c : h *> b1 = b0) (d : k *> b2 = b1) (t : F z = z')
+      : post F (Homotopy.Smash.Cell.paste c d) t
+        = pmap (`*> (pmap F b2 *> t)) (pmap_*>-comm F h k) *> Homotopy.Smash.Cell.paste (post F c t) (post F d t)
+      \elim b0, b1, c, d
+      | _, _, idp, idp => lem F h k b2 t
+      \where
+        \func lem {A B : \Type} (F : A -> B) {x0 x1 x2 z : A} {z' : B} (h : x0 = x1) (k : x1 = x2) (b2 : x2 = z) (t : F z = z')
+          : post F (Homotopy.Smash.Cell.paste (idp {_} {h *> (k *> b2)}) (idp {_} {k *> b2})) t
+            = pmap (`*> (pmap F b2 *> t)) (pmap_*>-comm F h k)
+              *> Homotopy.Smash.Cell.paste (post F (idp {_} {h *> (k *> b2)}) t) (post F (idp {_} {k *> b2}) t)
+          \elim x1, x2, z, z', h, k, b2, t
+          | _, _, _, _, idp, idp, idp, idp => idp
+  }

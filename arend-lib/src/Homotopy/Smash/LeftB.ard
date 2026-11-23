@@ -7,6 +7,7 @@
 \import Homotopy.Smash.CoreBeta
 \import Homotopy.Smash.LeftA
 \import Homotopy.Smash.LeftNull
+\import Homotopy.Smash.LeftPost
 \import Homotopy.Smash.PostBeta
 \import Homotopy.Smash.PreKInner
 \import Homotopy.Smash.PushoutLeft
@@ -15,9 +16,14 @@
 \open ->* (∘*)
 \open PushoutData (ppglue)
 
-\func Hb.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
-  => (E4.{u} f g a *> cr.{u} f g a) *> pR.{u} f g a
+\sfunc Hb.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A) (b : B)
+  : pmap (Ha.ev.{u} f g a b) (pushoutLeft.coh.qq.{u} f g) = idp
+  => (E4.{u} f g a b *> cr.{u} f g a b) *> pR.{u} f g a b
   \where {
+    \func eval.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A) (b : B)
+      : Hb.{u} f g a b = (E4.{u} f g a b *> cr.{u} f g a b) *> pR.{u} f g a b
+      => \peval Hb.{u} f g a b
+
     \func Q1.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
       => pmap (Smash.map.{u} (->*.id {X}) (Cof.inc g) ∘*) (cofSmashEquiv.naturalK.squareK.{u} f g)
 
@@ -30,33 +36,35 @@
     \func As'.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
       => ->*.compose-assoc (Smash.map.{u} f (->*.id {Cof.pointed g})) (Smash.map.{u} (->*.id {A}) (Cof.inc g)) (Smash.map.{u} (->*.id {A}) g)
 
-    \func E4.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
-      => cofSmashEquiv.E.post.ev4 (Ha.ev.{u} f g a) (Q1.{u} f g) (Q2.{u} f g) (Q3.{u} f g) (inv (As'.{u} f g))
+    \func E4.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A) (b : B)
+      => cofSmashEquiv.E.post.ev4 (Ha.ev.{u} f g a b) (Q1.{u} f g) (Q2.{u} f g) (Q3.{u} f g) (inv (As'.{u} f g))
 
-    \func cr.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
-      => pushoutLeft.coh.cr {_} {_} {_} {_} {pmap (Ha.ev.{u} f g a) (Q1.{u} f g)} {pmap (Ha.ev.{u} f g a) (Q3.{u} f g)}
-                            (pmap_inv-comm (Ha.ev.{u} f g a) (As'.{u} f g))
+    \func cr.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A) (b : B)
+      => pushoutLeft.coh.cr {_} {_} {_} {_} {pmap (Ha.ev.{u} f g a b) (Q1.{u} f g)} {pmap (Ha.ev.{u} f g a b) (Q3.{u} f g)}
+                            (pmap_inv-comm (Ha.ev.{u} f g a b) (As'.{u} f g))
 
-    \func pR.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
-      => pmap2 (*>) (pmap (pmap (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1) (cofSmashEquiv.naturalK.squareK.first.{u} f g a base))
-                    (cofSmashEquiv.naturalK.squareK.first.{u} f (Cof.inc g) a (g.1 base))
+    \func pR.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A) (b : B)
+      => pmap2 (*>) (pmap (pmap (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1) (cofSmashEquiv.naturalK.squareK.first.{u} f g a b))
+                    (cofSmashEquiv.naturalK.squareK.first.{u} f (Cof.inc g) a (g.1 b))
   }
 
-\func sq.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
+\sfunc sq.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
   => pmap (nc (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a))
-          (*>-assoc (Hb.E4.{u} f g a) (Hb.cr.{u} f g a) (Hb.pR.{u} f g a))
+          (Hb.eval.{u} f g a base)
+     *> pmap (nc (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a))
+          (*>-assoc (Hb.E4.{u} f g a base) (Hb.cr.{u} f g a base) (Hb.pR.{u} f g a base))
      *> nc.end (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a)
-               (Hb.E4.{u} f g a) (Hb.cr.{u} f g a *> Hb.pR.{u} f g a)
+               (Hb.E4.{u} f g a base) (Hb.cr.{u} f g a base *> Hb.pR.{u} f g a base)
      *> pmap (_ *>)
           (pmap (nc (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a))
-                (edecE (Ha.ev.{u} f g a) (Hb.Q1.{u} f g) (Hb.Q2.{u} f g) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)))
+                (edecE (Ha.ev.{u} f g a base) (Hb.Q1.{u} f g) (Hb.Q2.{u} f g) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)))
            *> ncatw.{u} (Hb.Q1.{u} f g) (Hb.Q2.{u} f g *> Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g)) a idp
-                        (pmap_*>-comm (Ha.ev.{u} f g a) (Hb.Q2.{u} f g) (Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g))
-                         *> pmap (pmap (Ha.ev.{u} f g a) (Hb.Q2.{u} f g) *>) (pmap_*>-comm (Ha.ev.{u} f g a) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g))))
+                        (pmap_*>-comm (Ha.ev.{u} f g a base) (Hb.Q2.{u} f g) (Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g))
+                         *> pmap (pmap (Ha.ev.{u} f g a base) (Hb.Q2.{u} f g) *>) (pmap_*>-comm (Ha.ev.{u} f g a base) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g))))
            *> pmap (_ *>) (pmap2 (*>)
                 (pmap (pmap (pmap (evA.{u} f g a) (Hb.Q1.{u} f g) *>))
                       (ncatw.{u} (Hb.Q2.{u} f g) (Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g)) a idp
-                                 (pmap_*>-comm (Ha.ev.{u} f g a) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)))
+                                 (pmap_*>-comm (Ha.ev.{u} f g a base) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)))
                        *> pmap (_ *>) (pmap2 (*>)
                             (pmap (pmap (pmap (evA.{u} f g a) (Hb.Q2.{u} f g) *>))
                                   (ncatw.{u} (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)) a idp idp
@@ -76,6 +84,19 @@
                                                                            (Smash.map.{u} f (->*.id {Y})).2)
                                                         *> *>-assoc _ _ _)) a))))
                 (nposts.{u} (Smash.map.{u} (->*.id {X}) (Cof.inc g)) (cofSmashEquiv.naturalK.squareK.{u} f g) a
-                 *> pmap (_ *>) (pmap (_ *>) (pmap (`*> _) (pmap (pmap (\lam v => idp *> (pmap (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 v
-                                                                                            *> (Smash.map.{u} (->*.id {X}) (Cof.inc g)).2)))
-                                                                  (nS.{u} f g a)))))))
+                 *> pmap (_ *>) (pmap (_ *>) (pmap (`*> _) (postLSQ.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) a))))))
+
+\func fac {T : \Type} {x y z w v u : T} (P : x = y) (A1 : y = z) (A2 : z = w) (S : v = w) (Q : u = v)
+  : inv (inv P) *> ((A1 *> (A2 *> inv S)) *> inv Q) = (P *> (A1 *> A2)) *> inv (Q *> S)
+  \elim x, z, w, v, u, P, A1, A2, S, Q
+  | _, _, _, _, _, idp, idp, idp, idp, idp => idp
+
+\sfunc Hfac.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A) (b : B)
+  : inv (pushoutLeft.coh.convL.{u} f g (Smash.proj.1 (a, b))) *> pushoutLeft.coh.point.{u} f g a b *> pushoutLeft.coh.convR.{u} f g (Smash.proj.1 (a, b))
+    = Ha.{u} f g a b *> inv (Hb.{u} f g a b)
+  => fac (Ha.E4.{u} f g a b *> Ha.cl.{u} f g a b) (pL.{u} f g a b)
+         (pushoutLeft.coh.alg (pmap (\lam (c : Cof.pointed g) => (Smash.proj.{u} {X} {Cof.pointed g}).1 (f.1 a, c)) (->*.happly (Cof.inc-null g) b))
+                              ((Smash.restrict.{u} (->*.id {Smash.{u} X (Cof.pointed g)})).2 (f.1 a))
+                              ((Smash.restrict.{u} (->*.id {Smash.{u} X (Cof.pointed g)})).2 (f.1 base)))
+         (Hb.pR.{u} f g a b) (Hb.E4.{u} f g a b *> Hb.cr.{u} f g a b)
+     *> inv (pmap2 (\lam u v => u *> inv v) (Ha.eval.{u} f g a b) (Hb.eval.{u} f g a b))
