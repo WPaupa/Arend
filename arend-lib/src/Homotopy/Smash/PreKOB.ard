@@ -14,19 +14,6 @@
 \open ->* (∘*)
 \open PushoutData (ppglue)
 
-\func oAPuv.{u} {X X' Y Y' T : Pointed.{u}} (h : Smash.{u} X' Y' ->* T) (u : X ->* X') (v : Y ->* Y') (y : Y)
-  => ob.cat (\lam (G : Y ->* T) => G.1 y) (pmap SmashCocone.curry.{u} (Smash.restrict-pre.{u} h u v))
-            (SmashCocone.curry.pre.{u} u v (Smash.restrict.{u} h))
-            (Smash.restrict-pre.first.{u} h u v (base, y)) (SmashCocone.curry.pre-first.{u} u v (Smash.restrict.{u} h) base y)
-     *> pmap (_ *>) (pmap2 (*>)
-          (pmap (pmap (_ *>))
-            (ocq.{u} u.1 v.1 (Smash.restrict.{u} h) u.2 v.2 y
-             *> pmap (idp_*> _ *>) (pmap_inv-comm (pmap (\lam (G : Y ->* T) => G.1 y)) (apre.Wq.{u} u.1 v.1 (Smash.restrict.{u} h) u.2 v.2)
-                                    *> pmap inv (Wqe.{u} u.1 v.1 (Smash.restrict.{u} h) u.2 v.2 y))))
-          (ocurry.{u} {X} {Y} {T} {Smash.restrict.{u} (h ∘* Smash.map.{u} u v)} {Vc.ax.{u} (SmashCocone.pre.{u} u v (Smash.restrict.{u} h))}
-                      (Smash.restrict-pre.{u} h u v) (Smash.restrict-pre.first.{u} h u v) y
-           *> pmap (\lam w => idp_*> _ *> inv w) (rrpUV.{u} h u v y)))
-
 \func oK.{u} {Y B B' T : Pointed.{u}} (g : B ->* B') (h : Smash.{u} Y B' ->* T) (y : B)
   => ob.cat (\lam (G : B ->* T) => G.1 y) (Smash.adjunction.pre.{u} h (->*.id {Y}) g) (->*.compose-id (Map*.pre g T ∘* Smash.adjunction.{u} {Y} {B'} {T} h))
             (Smash.adjunction.pre-first.{u} h (->*.id {Y}) g base y) idp

@@ -1,0 +1,55 @@
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.LeftBoundary
+\import Homotopy.Smash.LeftInner
+\import Homotopy.Smash.LeftPost
+\import Homotopy.Smash.LeftPreSq
+\import Homotopy.Smash.LeftScalar
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func XiQ.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+  => Xi (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 (\lam (y : Y) => (pinl (f.1 base, y) : Smash.{u} X Y)) (->*.id {Y}).2
+        (ppglue (pinl (f.1 base))) (ppglue (pinl base)) (Smash.map.{u} (->*.id {X}) (Cof.inc g)).2
+
+\func XiK.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+  => Xi (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (\lam (c : Cof.pointed g) => (pinl (base, c) : Smash.{u} A (Cof.pointed g))) (Cof.inc g).2
+        (ppglue (pinl base)) (ppglue (pinl base)) (Smash.map.{u} f (->*.id {Cof.pointed g})).2
+
+\sfunc qc1.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
+  : Q1c.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) a
+    = cQ1g g.1 (Cof.inc g).1
+           (\lam (c : Cof.pointed g) => (pinl (f.1 a, c) : Smash.{u} X (Cof.pointed g)))
+           (\lam (c : Cof.pointed g) => (pinl (f.1 base, c) : Smash.{u} X (Cof.pointed g)))
+           (\lam (c : Cof.pointed g) => (pinl (base, c) : Smash.{u} X (Cof.pointed g)))
+           g.2 (ppglue (pinl (f.1 a))) (ppglue (pinl (f.1 base))) (ppglue (pinl base))
+  => (\peval Q1c.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) a) *> idp
+
+\sfunc qc2.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
+  : Q2c.{u} f g a
+    = cQ2g (Cof.inc g).1
+           (\lam (c : Cof.pointed g) => (pinl (f.1 a, c) : Smash.{u} X (Cof.pointed g)))
+           (\lam (c : Cof.pointed g) => (pinl (f.1 base, c) : Smash.{u} X (Cof.pointed g)))
+           g.2 (ppglue (pinl (f.1 a))) (ppglue (pinl (f.1 base))) (ppglue (pinl base))
+  => (\peval Q2c.{u} f g a) *> pmap (AsT2 (JQ.{u} f g a) (JB.{u} f g) (WI.{u} g (f.1 a)) (WI.{u} g (f.1 base)) (Smash.map.{u} (->*.id {X}) (Cof.inc g)).2) (XiQ.{u} f g)
+
+\sfunc qc3.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
+  : Q3c.{u} f g a
+    = cQ3g (Cof.inc g).1
+           (\lam (c : Cof.pointed g) => (pinl (f.1 a, c) : Smash.{u} X (Cof.pointed g)))
+           (\lam (c : Cof.pointed g) => (pinl (f.1 base, c) : Smash.{u} X (Cof.pointed g)))
+           (\lam (c : Cof.pointed g) => (pinl (base, c) : Smash.{u} X (Cof.pointed g)))
+           g.2 (ppglue (pinl (f.1 a))) (ppglue (pinl (f.1 base))) (ppglue (pinl base))
+  => (\peval Q3c.{u} f g a) *> idp
+
+\sfunc qc4.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A)
+  : Q4c.{u} f g a
+    = cQ4g (Cof.inc g).1
+           (\lam (c : Cof.pointed g) => (pinl (f.1 a, c) : Smash.{u} X (Cof.pointed g)))
+           (\lam (c : Cof.pointed g) => (pinl (f.1 base, c) : Smash.{u} X (Cof.pointed g)))
+           g.2 (ppglue (pinl (f.1 a))) (ppglue (pinl (f.1 base))) (ppglue (pinl base))
+  => (\peval Q4c.{u} f g a) *> pmap (AsT3 (JQ.{u} f g a) (JB.{u} f g) (WF.{u} f g a) (WF.{u} f g base) (Smash.map.{u} f (->*.id {Cof.pointed g})).2) (XiK.{u} f g)

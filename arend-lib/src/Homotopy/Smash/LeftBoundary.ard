@@ -1,0 +1,122 @@
+\import Homotopy.Smash
+\import Homotopy.Smash.Cell
+\import Homotopy.Smash.CoreScalar (jj)
+\import Homotopy.Smash.LeftPost (Ew, eBc)
+\import Homotopy.Smash.PostBeta (nc)
+\import Homotopy.Smash.PreKScalar (cEof)
+\import Paths
+
+\func chR {A : \Type} {x0 x1 z : A} {h h' : x0 = x1} {b0 b0' : x0 = z} {b1 b1' : x1 = z} (eh : h = h') (e1 : b1' = b1) (e0 : b0' = b0)
+          (c : h *> b1 = b0)
+  : ch (inv eh) e1 e0 (ch eh (inv e1) (inv e0) c) = c \elim h', b0', b1', eh, e1, e0
+  | _, _, _, idp, idp, idp => idp_*> _ *> idp_*> c
+
+\func shl {A B : \Type} (k : A -> B) {x0 x1 z : A} {z' : B} (h : x0 = x1) (b1 : x1 = z) {b0 : x0 = z} (t : k z = z')
+          {B1 : k x1 = z'} {B0 : k x0 = z'} (A1 : B1 = idp *> (pmap k b1 *> t)) (A0 : B0 = idp *> (pmap k b0 *> t))
+          (X : pmap k h *> (pmap k b1 *> t) = pmap k b0 *> t)
+  : ch idp (A1 *> idp_*> (pmap k b1 *> t)) (A0 *> idp_*> (pmap k b0 *> t))
+       (pmap (pmap k h *>) A1 *> (jj k h b1 t *> ((post.bd k h b1 t *> (X *> inv (idp_*> (pmap k b0 *> t)))) *> inv A0))) = X
+  \elim x1, z, z', h, b1, t, B1, B0, A1, A0
+  | _, _, _, idp, idp, idp, _, _, idp, idp => lem X
+  \where
+    \func lem {A : \Type} {y : A} {c : y = y} (X : idp = c)
+      : ch idp (idp *> idp_*> idp) (idp *> idp_*> c) (idp *> (idp *> ((idp *> (X *> inv (idp_*> c))) *> idp))) = X \elim X
+      | idp => idp
+
+\func P2E {S T : \Type} (G1 : S -> T) {p pb o z : S} {t : T} (gx : p = z) (gb : pb = z) (g0 : o = z) (G2 : G1 o = t)
+  : pmap G1 gx *> inv (pmap G1 g0) *> G2 = pmap G1 (idp *> Ew gx g0) *> inv (pmap G1 (idp *> Ew gb g0)) *> (pmap G1 (idp *> Ew gb g0) *> G2)
+  \elim gx, gb, g0, G2
+  | idp, idp, idp, idp => idp
+
+\func AsT {T : \Type} {P PB O Z T1 : T} (W1 : P = Z) (W2 : PB = Z) (W0 : O = Z) (t : Z = T1) {c2 : O = T1} (xi : W0 *> t = c2)
+  : idp *> (pmap (\lam s => s) W1 *> inv (pmap (\lam s => s) W0) *> (pmap (\lam s => s) W0 *> t))
+    = pmap (\lam s => s) (idp *> Ew W1 W0) *> inv (pmap (\lam s => s) (idp *> Ew W2 W0)) *> (pmap (\lam s => s) (idp *> Ew W2 W0) *> c2)
+  \elim P, PB, O, T1, W1, W2, W0, t, c2, xi
+  | _, _, _, _, idp, idp, idp, idp, _, idp => idp
+
+\func NAsg {S1 S2 T : \Type} (n : S1 -> S2) (k : S2 -> T) {p pb o z : S1} (gx : p = z) (gb : pb = z) (g0 : o = z) {t1 : T} (t : k (n z) = t1)
+  => idp_*> (pmap (\lam s => k (n s)) (idp *> Ew gx g0) *> inv (pmap (\lam s => k (n s)) (idp *> Ew gb g0))
+             *> (pmap (\lam s => k (n s)) (idp *> Ew gb g0) *> (pmap k (pmap n g0) *> t)))
+     *> pmap (\lam (w : k (n pb) = t1) => pmap (\lam s => k (n s)) (idp *> Ew gx g0) *> inv (pmap (\lam s => k (n s)) (idp *> Ew gb g0)) *> w)
+             (inv (idp_*> (pmap (\lam s => k (n s)) (idp *> Ew gb g0) *> (pmap k (pmap n g0) *> t)))
+              *> (idp_*> (pmap (\lam s => k (n s)) (idp *> Ew gb g0) *> (pmap k (pmap n g0) *> t))
+              *> inv (pmap (`*> t) (pmap_*>-comm k (pmap n (idp *> Ew gb g0)) (pmap n g0))
+                      *> *>-assoc (pmap k (pmap n (idp *> Ew gb g0))) (pmap k (pmap n g0)) t)))
+
+\func preB {S T : \Type} (G : S -> T) {s s1 zz o sb : S} (W : s = s1) (gx : s1 = zz) (g0 : o = zz) (c0 : sb = o) {t0 : T} (t : G o = t0)
+  : pmap G (W *> Ew gx g0) *> inv (pmap G c0) *> (pmap G c0 *> t) = pmap G W *> (pmap G gx *> inv (pmap G g0) *> t)
+  => pmap (pmap G (W *> Ew gx g0) *>) (nc.inverse.lem (pmap G c0) t)
+     *> pmap (`*> t) (pmap_*>-comm G W (Ew gx g0) *> pmap (pmap G W *>) (cEof G gx g0))
+     *> *>-assoc (pmap G W) (pmap G gx *> inv (pmap G g0)) t
+     *> pmap (pmap G W *>) (*>-assoc (pmap G gx) (inv (pmap G g0)) t)
+
+\func AsT2 {T : \Type} {S SB P O Z T1 : T} (J1 : S = P) (JB : SB = O) (W1 : P = Z) (W0 : O = Z) (t : Z = T1) {c2 : O = T1} (xi : W0 *> t = c2)
+  : idp *> (J1 *> (pmap (\lam s => s) W1 *> inv (pmap (\lam s => s) W0) *> (pmap (\lam s => s) W0 *> t)))
+    = pmap (\lam s => s) (J1 *> Ew W1 W0) *> inv (pmap (\lam s => s) (JB *> Ew W0 W0)) *> (pmap (\lam s => s) (JB *> Ew W0 W0) *> c2)
+  \elim S, SB, P, O, T1, J1, JB, W1, W0, t, c2, xi
+  | _, _, _, _, _, idp, idp, idp, idp, idp, _, idp => idp
+
+\func AsT3 {T : \Type} {S SB P O Z T1 : T} (J1 : S = P) (JB : SB = O) (W1 : P = Z) (W0 : O = Z) (t : Z = T1) {c2 : O = T1} (xi : W0 *> t = c2)
+  : idp *> (pmap (\lam s => s) (J1 *> Ew W1 W0) *> inv (pmap (\lam s => s) (JB *> Ew W0 W0)) *> (pmap (\lam s => s) (JB *> Ew W0 W0) *> c2))
+    = J1 *> (pmap (\lam s => s) W1 *> inv (pmap (\lam s => s) W0) *> (pmap (\lam s => s) W0 *> t))
+  \elim S, SB, P, O, T1, J1, JB, W1, W0, t, c2, xi
+  | _, _, _, _, _, idp, idp, idp, idp, idp, _, idp => idp
+
+\func qS {S1 S2 T : \Type} (n : S1 -> S2) (k : S2 -> T) {sb o z : S1} (VB : sb = o) (g0 : o = z) {t1 : T} (t : k (n z) = t1)
+  => idp_*> (pmap (\lam s => k (n s)) (VB *> Ew g0 g0) *> (pmap k (pmap n g0) *> t))
+     *> inv (pmap (`*> t) (pmap_*>-comm k (pmap n (VB *> Ew g0 g0)) (pmap n g0))
+             *> *>-assoc (pmap k (pmap n (VB *> Ew g0 g0))) (pmap k (pmap n g0)) t)
+
+\func NQg {S1 S2 T : \Type} (n : S1 -> S2) (k : S2 -> T) {s sb p o z : S1} (VX : s = p) (VB : sb = o) (gx : p = z) (g0 : o = z) {t1 : T} (t : k (n z) = t1)
+  => idp_*> (pmap (\lam s => k (n s)) (VX *> Ew gx g0) *> inv (pmap (\lam s => k (n s)) (VB *> Ew g0 g0))
+             *> (pmap (\lam s => k (n s)) (VB *> Ew g0 g0) *> (pmap k (pmap n g0) *> t)))
+     *> pmap (\lam (w : k (n sb) = t1) => pmap (\lam s => k (n s)) (VX *> Ew gx g0) *> inv (pmap (\lam s => k (n s)) (VB *> Ew g0 g0)) *> w)
+             (inv (idp_*> (pmap (\lam s => k (n s)) (VB *> Ew g0 g0) *> (pmap k (pmap n g0) *> t))) *> qS n k VB g0 t)
+
+\func NKg {S1 S2 T : \Type} (n : S1 -> S2) (k : S2 -> T) {s sb p o z : S1} (VX : s = p) (VB : sb = o) (gx : p = z) (g0 : o = z) {t1 : T} (t : k (n z) = t1)
+  => idp_*> (pmap (\lam s => k (n s)) (VX *> Ew gx g0) *> inv (pmap (\lam s => k (n s)) (VB *> Ew g0 g0))
+             *> (pmap k (pmap n (VB *> Ew g0 g0) *> pmap n g0) *> t))
+     *> pmap (\lam (w : k (n sb) = t1) => pmap (\lam s => k (n s)) (VX *> Ew gx g0) *> inv (pmap (\lam s => k (n s)) (VB *> Ew g0 g0)) *> w)
+             (inv (qS n k VB g0 t) *> idp_*> (pmap (\lam s => k (n s)) (VB *> Ew g0 g0) *> (pmap k (pmap n g0) *> t)))
+
+\func eAx {S1 S2 T : \Type} (n : S1 -> S2) (k : S2 -> T) {s sb p o z : S1} (VX : s = p) (VB : sb = o) (gx : p = z) (g0 : o = z) {t1 : T} (t : k (n z) = t1)
+          {W1 : k (n p) = k (n z)} {W0 : k (n o) = k (n z)} (e1 : pmap (\lam s => k (n s)) gx = W1) (e0 : pmap (\lam s => k (n s)) g0 = W0)
+          {c2 : k (n o) = t1} (ec : pmap k (pmap n g0) *> t = c2)
+  => (Smash.restrict-post.lem k (pmap n (VX *> Ew gx g0)) (pmap n (VB *> Ew g0 g0)) (pmap n (VB *> Ew g0 g0) *> pmap n g0) t
+      *> idp_*> (pmap k (pmap n (VX *> Ew gx g0) *> inv (pmap n (VB *> Ew g0 g0)) *> (pmap n (VB *> Ew g0 g0) *> pmap n g0)) *> t))
+     *> eBc n k VX VB gx g0 g0 (pmap n g0) t e1 e0 e0 ec
+
+\func ePr {S1 S2 T : \Type} (n : S1 -> S2) (k : S2 -> T) {s sb p o z : S1} (VX : s = p) (VB : sb = o) (gx : p = z) (g0 : o = z) {t1 : T} (t : k (n z) = t1)
+          {W1 : k (n p) = k (n z)} {W0 : k (n o) = k (n z)} (e1 : pmap (\lam s => k (n s)) gx = W1) (e0 : pmap (\lam s => k (n s)) g0 = W0)
+  => preB (\lam s => k (n s)) VX gx g0 (VB *> Ew g0 g0) (pmap k (pmap n g0) *> t)
+     *> pmap (pmap (\lam s => k (n s)) VX *>) (pmap2 (\lam u v => pmap (\lam s => s) u *> inv (pmap (\lam s => s) v) *> (pmap (\lam s => s) v *> t)) e1 e0)
+
+\func AsQ {S1 S2 T : \Type} (n : S1 -> S2) (k : S2 -> T) {s sb p o z : S1} (VX : s = p) (VB : sb = o) (gx : p = z) (g0 : o = z) {t1 : T} (t : k (n z) = t1)
+          {W1 : k (n p) = k (n z)} {W0 : k (n o) = k (n z)} (e1 : pmap (\lam s => k (n s)) gx = W1) (e0 : pmap (\lam s => k (n s)) g0 = W0)
+          {c2 : k (n o) = t1} (ec : pmap k (pmap n g0) *> t = c2)
+  : ch idp (ePr n k VX VB gx g0 t e1 e0) (eAx n k VX VB gx g0 t e1 e0 ec) (NQg n k VX VB gx g0 t)
+    = AsT2 (pmap (\lam s => k (n s)) VX) (pmap (\lam s => k (n s)) VB) W1 W0 t (inv (pmap (`*> t) e0) *> ec)
+  \elim s, sb, p, o, VX, VB, gx, g0, t1, t, W1, W0, e1, e0, c2, ec
+  | _, _, _, _, idp, idp, idp, idp, _, idp, _, _, idp, idp, _, idp => idp
+
+\func AsK {S1 S2 T : \Type} (n : S1 -> S2) (k : S2 -> T) {s sb p o z : S1} (VX : s = p) (VB : sb = o) (gx : p = z) (g0 : o = z) {t1 : T} (t : k (n z) = t1)
+          {W1 : k (n p) = k (n z)} {W0 : k (n o) = k (n z)} (e1 : pmap (\lam s => k (n s)) gx = W1) (e0 : pmap (\lam s => k (n s)) g0 = W0)
+          {c2 : k (n o) = t1} (ec : pmap k (pmap n g0) *> t = c2)
+  : ch idp (eAx n k VX VB gx g0 t e1 e0 ec) (ePr n k VX VB gx g0 t e1 e0) (NKg n k VX VB gx g0 t)
+    = AsT3 (pmap (\lam s => k (n s)) VX) (pmap (\lam s => k (n s)) VB) W1 W0 t (inv (pmap (`*> t) e0) *> ec)
+  \elim s, sb, p, o, VX, VB, gx, g0, t1, t, W1, W0, e1, e0, c2, ec
+  | _, _, _, _, idp, idp, idp, idp, _, idp, _, _, idp, idp, _, idp => idp
+
+\func AsG {S1 S2 T : \Type} (n : S1 -> S2) (k : S2 -> T) {p pb o z : S1} (gx : p = z) (gb : pb = z) (g0 : o = z) {t1 : T} (t : k (n z) = t1)
+          {W1 : k (n p) = k (n z)} {W2 : k (n pb) = k (n z)} {W0 : k (n o) = k (n z)}
+          (e1 : pmap (\lam s => k (n s)) gx = W1) (e2 : pmap (\lam s => k (n s)) gb = W2) (e0 : pmap (\lam s => k (n s)) g0 = W0)
+          {c2 : k (n o) = t1} (ec : pmap k (pmap n g0) *> t = c2)
+  : ch idp (inv (inv (pmap2 (\lam u v => pmap (\lam s => s) u *> inv (pmap (\lam s => s) v) *> (pmap (\lam s => s) v *> t)) e1 e0)
+                 *> P2E (\lam s => k (n s)) gx gb g0 (pmap k (pmap n g0) *> t)))
+       ((Smash.restrict-post.lem k (pmap n (idp *> Ew gx g0)) (pmap n (idp *> Ew gb g0)) (pmap n (idp *> Ew gb g0) *> pmap n g0) t
+         *> idp_*> (pmap k (pmap n (idp *> Ew gx g0) *> inv (pmap n (idp *> Ew gb g0)) *> (pmap n (idp *> Ew gb g0) *> pmap n g0)) *> t))
+        *> eBc n k idp idp gx gb g0 (pmap n g0) t e1 e2 e0 ec)
+       (NAsg n k gx gb g0 t)
+    = AsT W1 W2 W0 t (inv (pmap (`*> t) e0) *> ec)
+  \elim p, pb, o, gx, gb, g0, t1, t, W1, W2, W0, e1, e2, e0, c2, ec
+  | _, _, _, idp, idp, idp, _, idp, _, _, _, idp, idp, idp, _, idp => idp

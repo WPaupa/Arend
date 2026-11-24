@@ -1,0 +1,152 @@
+\import Homotopy.Smash
+\import Homotopy.Smash.Cell
+\import Homotopy.Smash.CoreScalar (Zk)
+\import Homotopy.Smash.LeftBoundary
+\import Homotopy.Smash.LeftEdge (KPg)
+\import Homotopy.Smash.LeftNull (pM, ZR)
+\import Homotopy.Smash.LeftPost
+\import Homotopy.Smash.PostBeta
+\import Homotopy.Smash.PreKScalar
+\import Paths
+
+\func Xi {S T C : \Type} (k : S -> T) (j : C -> S) {c c' : C} (u : c = c') {o z : S} (G1 : j c' = z) (G0 : o = z) {t1 : T} (t : k o = t1)
+  : inv (pmap (`*> t) (cvV k (pmap j u) G1 G0)) *> nP k j u G1 G0 t = *>-assoc (pmap (\lam y => k (j y)) u) (Ew (pmap k G1) (pmap k G0)) t
+  \elim c', u, z, G1, G0, t1, t
+  | _, idp, _, idp, idp, _, idp => idp
+
+\func Cz {S T : \Type} (k : S -> T) {e : S} {t : T} (k2 : k e = t)
+  : ch idp (Smash.restrict-post.lem k (idp {S} {e}) idp idp k2 *> idp_*> (pmap k (idp {S} {e}) *> k2)) idp
+       (pmap (inv k2 *>) (inv (Zk k2)) *> nc.inverse.lem k2 idp)
+    = ch idp (Smash.restrict-post.lem (\lam x => x) (idp {T} {k e}) idp idp k2 *> idp_*> (pmap (\lam x => x) (idp {T} {k e}) *> k2)) idp
+         (pmap (inv k2 *>) (inv (Zk k2)) *> nc.inverse.lem k2 idp)
+  \elim t, k2
+  | _, idp => idp
+
+\func LMrg {B' Y'' T : \Type} (j1 jb j0 : Y'' -> T) (g1 : B' -> Y'') {b0 b1 : B'} (a : b0 = b1) {b2 : Y''} (a' : g1 b1 = b2) {w : T}
+           (X1 : j1 b2 = w) (Xb : jb b2 = w) (X0 : j0 b2 = w)
+  => Lsh j1 jb (pmap g1 a *> a') X1 Xb
+     *> (Lca j1 g1 a a' X1
+     *> inv (cRV (pmap (\lam b => j1 (g1 b)) a) (pmap (\lam b => jb (g1 b)) a) (pmap j1 a' *> X1) (pmap jb a' *> Xb) (pmap j0 a' *> X0)
+                 (\lam s => s) (pmap j0 a' *> X0)
+             *> Lsb j1 j0 g1 a a' X1 X0))
+
+\func LMtg {B' Y'' T : \Type} (K1 Kb K0 : Y'' -> T) (g1 : B' -> Y'') {b0 b1 : B'} (a : b0 = b1) {b2 : Y''} (a' : g1 b1 = b2) {w0 w : T}
+           (P1 : K1 b2 = w0) (Pb : Kb b2 = w0) (P0 : K0 b2 = w0) (t : w0 = w)
+  => Lsh K1 Kb (pmap g1 a *> a') (P1 *> t) (Pb *> t)
+     *> (Lca K1 g1 a a' (P1 *> t)
+     *> inv (cRV (pmap (\lam b => K1 (g1 b)) a) (pmap (\lam b => Kb (g1 b)) a) (pmap K1 a' *> P1) (pmap Kb a' *> Pb) (pmap K0 a' *> P0)
+                 (\lam s => s) (pmap K0 a' *> (P0 *> t))
+             *> (xiM (pmap (\lam b => K1 (g1 b)) a) (pmap K1 a') P1 (pmap K0 a') P0 t *> Lsb K1 K0 g1 a a' (P1 *> t) (P0 *> t))))
+
+\func LStg {B Y T : \Type} (K1 Kb K0 K0' : Y -> T) (g1 : B -> Y) {b0 : B} {y0 : Y} (gp : g1 b0 = y0) {w0 w : T}
+           (P1 : K1 y0 = w0) (Pb : Kb y0 = w0) (P0 : K0 y0 = w0) (P0' : K0' y0 = w0) (t : w0 = w)
+  => inv (LMtg K1 Kb K0 g1 (idp {B} {b0}) gp P1 Pb P0 t)
+     *> (idp
+     *> (pmap (\lam (v : g1 b0 = y0) => (pmap K1 v *> (P1 *> t)) *> (inv (pmap Kb v *> (Pb *> t)) *> (pmap Kb v *> (Pb *> t))))
+              (inv idp *> idp_*> gp)
+     *> LMtg K1 Kb K0' (\lam y => y) gp (idp {Y} {y0}) P1 Pb P0' t))
+
+\func Ix {T : \Type} {p o z : T} (G : p = z) (G0 : o = z) => idp *> Ew G G0
+
+\func Wg {T : \Type} {s p o z : T} (V : s = p) (G : p = z) (G0 : o = z)
+  => V *> (pmap (\lam s => s) (Ix G G0) *> inv (pmap (\lam s => s) (Ix G0 G0)) *> idp)
+
+\func Wb {T : \Type} {s p o o' z : T} (V : s = p) (G : p = z) (Gb : o' = z) (G0 : o = z)
+  => V *> (pmap (\lam s => s) (Ix G G0) *> inv (pmap (\lam s => s) (Ix Gb G0)) *> idp)
+
+\func NP2Tg {Y C T : \Type} (inc : Y -> C) (jx j0 : C -> T) {y1 y0 : Y} (gp : y1 = y0) {H : inc y1 = inc y0} (hb : H *> idp = pmap inc gp)
+            {z : T} (Gx : jx (inc y0) = z) (G0 : j0 (inc y0) = z)
+  => paste {_} {_} {_} {_} {_} {inv idp} {pmap jx H *> Ew Gx G0} {_} {_} {idp}
+           (tinv (idp_*> _ *> inv (LMrg jx j0 j0 inc gp (idp {C} {inc y0}) (Ew Gx G0) (Ew G0 G0) (Ew G0 G0))))
+           (paste {_} {_} {_} {_} {_} {pmap jx H} {Ew Gx G0} {_} {_} {idp}
+                  (pM jx j0 (pmap inc gp) idp H hb (Ew Gx G0) (Ew G0 G0)) (ZR (Ew Gx G0) (idp *> Ew G0 G0)))
+
+\func NTg {Y C T : \Type} (inc : Y -> C) (jx jb : C -> T) {y1 y0 : Y} (gp : y1 = y0) {H : inc y1 = inc y0} (hb : H *> idp = pmap inc gp)
+          {z : T} {o : T} (Gx : jx (inc y0) = z) (Gb : jb (inc y0) = z) (G0 : o = z)
+  => paste {_} {_} {_} {_} {_} {inv idp} {pmap jx H *> Ew (Ix Gx G0) (Ix Gb G0)} {_} {_} {idp *> Ix Gb G0}
+           (tinv (idp_*> _ *> inv (LMtg jx jb jb inc gp (idp {C} {inc y0}) (Ew (Ix Gx G0) (Ix Gb G0)) (Ew (Ix Gb G0) (Ix Gb G0))
+                                        (Ew (Ix Gb G0) (Ix Gb G0)) (Ix Gb G0))))
+           (paste {_} {_} {_} {_} {_} {pmap jx H} {Ew (Ix Gx G0) (Ix Gb G0)} {_} {_} {idp *> Ix Gb G0}
+                  (pM jx jb (pmap inc gp) idp H hb (Ew (Ix Gx G0) (Ix Gb G0) *> Ix Gb G0) (Ew (Ix Gb G0) (Ix Gb G0) *> Ix Gb G0))
+                  (pmap (Ew (Ix Gx G0) (Ix Gb G0) *>) (idp_*> (Ix Gb G0))
+                   *> ZR (Ew (Ix Gx G0) (Ix Gb G0) *> Ix Gb G0) (idp *> (Ew (Ix Gb G0) (Ix Gb G0) *> Ix Gb G0))))
+
+\func Czg {T : \Type} {p t : T} (k2 : p = t)
+  => ch idp (Smash.restrict-post.lem (\lam x => x) (idp {T} {p}) idp idp k2 *> idp_*> (pmap (\lam x => x) (idp {T} {p}) *> k2)) idp
+        (pmap (inv k2 *>) (inv (Zk k2)) *> nc.inverse.lem k2 idp)
+
+\func CPg {B Y C T : \Type} (g1 : B -> Y) (inc : Y -> C) (jfa jfb j0 : C -> T) {b0 : B} {y0 : Y} (gp : g1 b0 = y0)
+          {H : inc (g1 b0) = inc y0} (hb : H *> idp = pmap inc gp) {z : T} (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : j0 (inc y0) = z)
+  => paste (AsT (Wg (pmap (\lam y => jfa (inc y)) gp) Gfa G0) (Wg (pmap (\lam y => jfb (inc y)) gp) Gfb G0) (Wg (pmap (\lam y => j0 (inc y)) gp) G0 G0)
+                (Ix G0 G0) (*>-assoc (pmap (\lam y => j0 (inc y)) gp) (Ew (Ix G0 G0) (Ix G0 G0)) (Ix G0 G0)))
+           (paste (NP2Tg inc jfa j0 gp hb Gfa G0)
+                  (paste (Czg (Ix Gfb G0)) (tinv (NTg inc jfa jfb gp hb Gfa Gfb G0))))
+
+\func CQg {B Y C T : \Type} (g1 : B -> Y) (inc : Y -> C) (jfa jfb j0 : C -> T) {b0 : B} {y0 : Y} (gp : g1 b0 = y0)
+          {z : T} (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : j0 (inc y0) = z)
+  => paste (cQ1g g1 inc jfa jfb j0 gp Gfa Gfb G0) (paste (cQ2g inc jfa jfb gp Gfa Gfb G0) (paste (cQ3g inc jfa jfb j0 gp Gfa Gfb G0) (cQ4g inc jfa jfb gp Gfa Gfb G0)))
+
+\func cQ1g {B Y C T : \Type} (g1 : B -> Y) (inc : Y -> C) (jfa jfb j0 : C -> T) {b0 : B} {y0 : Y} (gp : g1 b0 = y0)
+           {z : T} (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : j0 (inc y0) = z)
+  => idp_*> _ *> inv (LStg (\lam y => jfa (inc y)) (\lam y => jfb (inc y)) (\lam y => j0 (inc y)) (\lam y => jfb (inc y)) g1 gp
+                           (Ew (Ix Gfa G0) (Ix G0 G0)) (Ew (Ix Gfb G0) (Ix G0 G0)) (Ew (Ix G0 G0) (Ix G0 G0)) (Ew (Ix Gfb G0) (Ix G0 G0)) (Ix G0 G0))
+
+\func cQ2g {Y C T : \Type} (inc : Y -> C) (jfa jfb : C -> T) {y1 y0 : Y} (gp : y1 = y0) {o z : T}
+           (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : o = z)
+  => AsT2 (pmap (\lam y => jfa (inc y)) gp) (pmap (\lam y => jfb (inc y)) gp) (Wb idp Gfa G0 G0) (Wb idp Gfb G0 G0) (Ix G0 G0)
+          (*>-assoc idp (Ew (Ix Gfb G0) (Ix G0 G0)) (Ix G0 G0))
+
+\func cQ3g {Y C T : \Type} (inc : Y -> C) (jfa jfb j0 : C -> T) {y1 y0 : Y} (gp : y1 = y0)
+           {z : T} (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : j0 (inc y0) = z)
+  => pg (idp_*> (pmap (\lam y => jfa (inc y)) gp))
+        (idp_*> _ *> inv (inv (LMrg jfa jfb j0 inc (idp {Y} {y0}) (idp {C} {inc y0}) (Ew Gfa G0) (Ew Gfb G0) (Ew G0 G0))
+                          *> (idp *> (idp *> LMrg jfa jfb jfb (\lam c => c) (idp {C} {inc y0}) (idp {C} {inc y0})
+                                                     (Ew Gfa G0) (Ew Gfb G0) (Ew Gfb G0)))))
+
+\func cQ4g {Y C T : \Type} (inc : Y -> C) (jfa jfb : C -> T) {y1 y0 : Y} (gp : y1 = y0) {o z : T}
+           (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : o = z)
+  => AsT3 (pmap (\lam y => jfa (inc y)) gp) (pmap (\lam y => jfb (inc y)) gp) (Wb idp Gfa Gfb G0) (Wb idp Gfb Gfb G0) (Ix Gfb G0)
+          (*>-assoc idp (Ew (Ix Gfb G0) (Ix Gfb G0)) (Ix Gfb G0))
+
+\func cp4 {A : \Type} {x0 x1 x2 x3 x4 z : A} {h1 : x0 = x1} {h2 : x1 = x2} {h3 : x2 = x3} {h4 : x3 = x4}
+          {b0 : x0 = z} {b1 : x1 = z} {b2 : x2 = z} {b3 : x3 = z} {b4 : x4 = z}
+          {c1 c1' : h1 *> b1 = b0} {c2 c2' : h2 *> b2 = b1} {c3 c3' : h3 *> b3 = b2} {c4 c4' : h4 *> b4 = b3}
+          (e1 : c1 = c1') (e2 : c2 = c2') (e3 : c3 = c3') (e4 : c4 = c4')
+  : ch idp idp idp (paste c1 (paste c2 (paste c3 c4))) = ch idp idp idp (paste c1' (paste c2' (paste c3' c4')))
+  \elim e1, e2, e3, e4
+  | idp, idp, idp, idp => idp
+
+\func Ty {A : \Type} (_ : A) : \Type => A
+
+\sfunc cat3 {A : \Type} {a b c d : A} (p : a = b) (q : b = c) (r : d = c) : a = d => p *> q *> inv r
+
+\func TTs {B Y C T : \Type} (g1 : B -> Y) (inc : Y -> C) (jfa jfb j0 : C -> T) {b0 : B} {y0 : Y} (gp : g1 b0 = y0)
+          {H : inc (g1 b0) = inc y0} (hb : H *> idp = pmap inc gp) {z : T} (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : j0 (inc y0) = z)
+  => TTL g1 inc jfa jfb j0 gp hb Gfa Gfb G0 = TTR g1 inc jfa jfb j0 gp Gfa Gfb G0
+
+\func TTL {B Y C T : \Type} (g1 : B -> Y) (inc : Y -> C) (jfa jfb j0 : C -> T) {b0 : B} {y0 : Y} (gp : g1 b0 = y0)
+          {H : inc (g1 b0) = inc y0} (hb : H *> idp = pmap inc gp) {z : T} (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : j0 (inc y0) = z)
+  => ch (KPg (pmap jfa H) (Ew Gfa G0) (Ew Gfb G0)) idp idp (CPg g1 inc jfa jfb j0 gp hb Gfa Gfb G0)
+
+\func TTR {B Y C T : \Type} (g1 : B -> Y) (inc : Y -> C) (jfa jfb j0 : C -> T) {b0 : B} {y0 : Y} (gp : g1 b0 = y0)
+          {z : T} (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : j0 (inc y0) = z)
+  => ch idp idp idp (CQg g1 inc jfa jfb j0 gp Gfa Gfb G0)
+
+\func TTg {B Y C T : \Type} (g1 : B -> Y) (inc : Y -> C) (jfa jfb j0 : C -> T) {b0 : B} {y0 : Y} (gp : g1 b0 = y0)
+          {H : inc (g1 b0) = inc y0} (hb : H *> idp = pmap inc gp) {z : T} (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : j0 (inc y0) = z)
+  : TTs g1 inc jfa jfb j0 gp hb Gfa Gfb G0 \elim y0, gp, H, hb
+  | _, idp, _, idp => TT2 {T} {jfa (inc (g1 b0))} {jfb (inc (g1 b0))} {j0 (inc (g1 b0))} Gfa Gfb G0
+
+\func TT2 {T : \Type} {Pfa Pfb P0 z : T} (Gfa : Pfa = z) (Gfb : Pfb = z) (G0 : P0 = z)
+  : TTs {T} {T} {T} {T} (\lam x => x) (\lam x => x) (\lam _ => Pfa) (\lam _ => Pfb) (\lam _ => P0) {Pfa} {Pfa} idp {idp} idp Gfa Gfb G0
+  \elim Pfa, Pfb, P0, Gfa, Gfb, G0
+  | _, _, _, idp, idp, idp => idp
+
+\sfunc sQg {B Y C T : \Type} (g1 : B -> Y) (inc : Y -> C) (jfa jfb j0 : C -> T) {b0 : B} {y0 : Y} (gp : g1 b0 = y0)
+           {z : T} (Gfa : jfa (inc y0) = z) (Gfb : jfb (inc y0) = z) (G0 : j0 (inc y0) = z)
+           {c1 : Ty (cQ1g g1 inc jfa jfb j0 gp Gfa Gfb G0)} {c2 : Ty (cQ2g inc jfa jfb gp Gfa Gfb G0)}
+           {c3 : Ty (cQ3g inc jfa jfb j0 gp Gfa Gfb G0)} {c4 : Ty (cQ4g inc jfa jfb gp Gfa Gfb G0)}
+           (e1 : c1 = cQ1g g1 inc jfa jfb j0 gp Gfa Gfb G0) (e2 : c2 = cQ2g inc jfa jfb gp Gfa Gfb G0)
+           (e3 : c3 = cQ3g inc jfa jfb j0 gp Gfa Gfb G0) (e4 : c4 = cQ4g inc jfa jfb gp Gfa Gfb G0)
+  : ch idp idp idp (paste c1 (paste c2 (paste c3 c4))) = TTR g1 inc jfa jfb j0 gp Gfa Gfb G0
+  => cp4 e1 e2 e3 e4
