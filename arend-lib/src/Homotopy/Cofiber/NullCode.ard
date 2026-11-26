@@ -5,6 +5,178 @@
 
 \open ->* (∘*)
 
+\func code {M N : \Type} {t : M -> N} {z : N} (d d' : \Sigma (m : M) (t m = z)) : \Type
+  => \Sigma (I : d.1 = d'.1) (d.2 = pmap t I *> d'.2)
+  \where {
+    \func ext {M N : \Type} {t : M -> N} {z : N} {m m' : M} {p : t m = z} {p' : t m' = z} (I : m = m') (c : p = pmap t I *> p')
+      : ((m, p) : \Sigma (m : M) (t m = z)) = (m', p') \elim I
+      | idp => pmap (\lam q => ((m, q) : \Sigma (m : M) (t m = z))) (c *> idp_*> p')
+
+    \func enc {M N : \Type} {t : M -> N} {z : N} {d d' : \Sigma (m : M) (t m = z)} (P : d = d') : code d d' \elim P
+      | idp => (idp, inv (idp_*> d.2))
+
+    \func dec {M N : \Type} {t : M -> N} {z : N} {d d' : \Sigma (m : M) (t m = z)} (c : code d d') : d = d'
+      => ext {M} {N} {t} {z} {d.1} {d'.1} {d.2} {d'.2} c.1 c.2
+
+    \func dec-enc {M N : \Type} {t : M -> N} {z : N} {d d' : \Sigma (m : M) (t m = z)} (P : d = d') : dec (enc P) = P \elim P
+      | idp => pmap (pmap (\lam q => ((d.1, q) : \Sigma (m : M) (t m = z)))) (inv_*> (idp_*> _))
+
+    \func enc-ext {M N : \Type} {t : M -> N} {z : N} {m m' : M} {p : t m = z} {p' : t m' = z} (I : m = m') (c : p = pmap t I *> p')
+      : enc (ext I c) = (I, c) \elim I
+      | idp => enc-pm (c *> idp_*> p') *> pmap (\lam x => ((idp, x) : code {M} {N} {t} {z} (m, p) (m, p'))) (cancel c (idp_*> p'))
+      \where {
+        \func enc-pm {M N : \Type} {t : M -> N} {z : N} {m : M} {p q : t m = z} (E : p = q)
+          : enc (pmap (\lam q => ((m, q) : \Sigma (m : M) (t m = z))) E) = (idp, E *> inv (idp_*> q)) \elim E
+          | idp => pmap (\lam x => ((idp, x) : code {M} {N} {t} {z} (m, p) (m, p))) (inv (idp_*> _))
+
+        \func cancel {A : \Type} {x y z : A} (c : x = y) (e : y = z) : (c *> e) *> inv e = c \elim e
+          | idp => idp
+      }
+
+    \func fm {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} {z' : N'} (a : M -> M') (b : N -> N')
+             (al : \Pi (m : M) -> t' (a m) = b (t m)) (be : b z = z') (d : \Sigma (m : M) (t m = z)) : \Sigma (m' : M') (t' m' = z')
+      => (a d.1, al d.1 *> pmap b d.2 *> be)
+
+    \func nat {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} {z' : N'} (a : M -> M') (b : N -> N')
+              (al : \Pi (m : M) -> t' (a m) = b (t m)) (be : b z = z') {m m' : M} (I : m = m') (p' : t m' = z)
+      : al m *> pmap b (pmap t I *> p') *> be = pmap t' (pmap a I) *> (al m' *> pmap b p' *> be) \elim I
+      | idp => pmap (\lam q => al m *> pmap b q *> be) (idp_*> p') *> inv (idp_*> _)
+
+    \func act {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} {z' : N'} (a : M -> M') (b : N -> N')
+              (al : \Pi (m : M) -> t' (a m) = b (t m)) (be : b z = z') {m m' : M} {p : t m = z} {p' : t m' = z} (I : m = m') (c : p = pmap t I *> p')
+      : al m *> pmap b p *> be = pmap t' (pmap a I) *> (al m' *> pmap b p' *> be)
+      => pmap (\lam q => al m *> pmap b q *> be) c *> nat t t' a b al be I p'
+
+    \func fm-ext {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} {z' : N'} (a : M -> M') (b : N -> N')
+                 (al : \Pi (m : M) -> t' (a m) = b (t m)) (be : b z = z') {m m' : M} {p : t m = z} {p' : t m' = z} (I : m = m') (c : p = pmap t I *> p')
+      : pmap (fm t t' a b al be) (ext I c) = ext {M'} {N'} {t'} {z'} (pmap a I) (act t t' a b al be I c) \elim I
+      | idp => lem t t' a b al be c
+      \where
+        \func lem {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} {z' : N'} (a : M -> M') (b : N -> N')
+                  (al : \Pi (m : M) -> t' (a m) = b (t m)) (be : b z = z') {m : M} {p p' : t m = z} (c : p = idp *> p')
+          : pmap (fm t t' a b al be) (ext {M} {N} {t} {z} {m} {m} {p} {p'} idp c) = ext {M'} {N'} {t'} {z'} idp (act t t' a b al be idp c) \elim c
+          | idp => lem2 t t' a b al m be p'
+          \where
+            \func lem2 {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} {z' : N'} (a : M -> M') (b : N -> N')
+                       (al : \Pi (m : M) -> t' (a m) = b (t m)) (m : M) (be : b z = z') (p' : t m = z)
+              : pmap (fm t t' a b al be) (ext {M} {N} {t} {z} {m} {m} {idp *> p'} {p'} idp idp)
+                = ext {M'} {N'} {t'} {z'} idp (act t t' a b al be idp idp) \elim z, be, p'
+              | _, be, idp => inv (pmap (pmap (\lam q => ((a m, q) : \Sigma (m' : M') (t' m' = z')))) (cl (idp_*> (al m *> idp *> be))))
+
+            \func cl {A : \Type} {x y : A} (e : y = x) : (idp *> (idp *> inv e)) *> e = idp \elim e
+              | idp => idp
+
+    \func cat {M N : \Type} {t : M -> N} {z : N} {d d' d'' : \Sigma (m : M) (t m = z)} (c : code d d') (e : code d' d'') : code d d''
+      => (c.1 *> e.1, c.2 *> pmap (pmap t c.1 *>) e.2 *> inv (*>-assoc _ _ _) *> pmap (`*> d''.2) (inv (pmap_*>-comm t c.1 e.1)))
+
+    \func ext-cat {M N : \Type} {t : M -> N} {z : N} {m m' m'' : M} {p : t m = z} {p' : t m' = z} {p'' : t m'' = z}
+                  (I : m = m') (c : p = pmap t I *> p') (J : m' = m'') (e : p' = pmap t J *> p'')
+      : ext I c *> ext J e = dec (cat {M} {N} {t} {z} {m, p} {m', p'} {m'', p''} (I, c) (J, e)) \elim I, J
+      | idp, idp => lem c e
+      \where
+        \func lem {M N : \Type} {t : M -> N} {z : N} {m : M} {p p' p'' : t m = z} (c : p = idp *> p') (e : p' = idp *> p'')
+          : ext {M} {N} {t} {z} {m} {m} {p} {p'} idp c *> ext {M} {N} {t} {z} {m} {m} {p'} {p''} idp e
+            = dec (cat {M} {N} {t} {z} {m, p} {m, p'} {m, p''} (idp, c) (idp, e)) \elim c, e
+          | idp, idp => lem2 p''
+          \where
+            \func lem2 {M N : \Type} {t : M -> N} {z : N} {m : M} (p'' : t m = z)
+              : ext {M} {N} {t} {z} {m} {m} {idp *> (idp *> p'')} {idp *> p''} idp idp *> ext {M} {N} {t} {z} {m} {m} {idp *> p''} {p''} idp idp
+                = dec (cat {M} {N} {t} {z} {m, idp *> (idp *> p'')} {m, idp *> p''} {m, p''} (idp, idp) (idp, idp)) \elim z, p''
+              | _, idp => idp
+
+    \func inverse {M N : \Type} {t : M -> N} {z : N} {d d' : \Sigma (m : M) (t m = z)} (c : code d d') : code d' d
+      => (inv c.1, ic {M} {N} {t} {z} {d.1} {d'.1} {d.2} {d'.2} c.1 c.2)
+      \where
+        \func ic {M N : \Type} {t : M -> N} {z : N} {m m' : M} {p : t m = z} {p' : t m' = z} (I : m = m') (c : p = pmap t I *> p')
+          : p' = pmap t (inv I) *> p \elim I
+          | idp => inv (c *> idp_*> p') *> inv (idp_*> p)
+
+    \func ext-inv {M N : \Type} {t : M -> N} {z : N} {m m' : M} {p : t m = z} {p' : t m' = z} (I : m = m') (c : p = pmap t I *> p')
+      : inv (ext I c) = dec (inverse {M} {N} {t} {z} {m, p} {m', p'} (I, c)) \elim I
+      | idp => lem c
+      \where
+        \func lem {M N : \Type} {t : M -> N} {z : N} {m : M} {p p' : t m = z} (c : p = idp *> p')
+          : inv (ext {M} {N} {t} {z} {m} {m} {p} {p'} idp c) = dec (inverse {M} {N} {t} {z} {m, p} {m, p'} (idp, c)) \elim c
+          | idp => lem2 p'
+          \where
+            \func lem2 {M N : \Type} {t : M -> N} {z : N} {m : M} (p' : t m = z)
+              : inv (ext {M} {N} {t} {z} {m} {m} {idp *> p'} {p'} idp idp) = dec (inverse {M} {N} {t} {z} {m, idp *> p'} {m, p'} (idp, idp)) \elim z, p'
+              | _, idp => idp
+
+    \func enc-pmap {A M N : \Type} {t : M -> N} {z : N} (F : A -> \Sigma (m : M) (t m = z)) {x x' : A} (P : x = x')
+      : enc (pmap F P) = (pmap (\lam y => (F y).1) P, pn F P)
+      => pmap (\lam (c : code (F x) (F x')) => c) (gen F P)
+      \where {
+        \func pn {A M N : \Type} {t : M -> N} {z : N} (F : A -> \Sigma (m : M) (t m = z)) {x x' : A} (P : x = x')
+          : (F x).2 = pmap t (pmap (\lam y => (F y).1) P) *> (F x').2 \elim P
+          | idp => inv (idp_*> _)
+
+        \func gen {A M N : \Type} {t : M -> N} {z : N} (F : A -> \Sigma (m : M) (t m = z)) {x x' : A} (P : x = x')
+          : enc (pmap F P) = (pmap (\lam y => (F y).1) P, pn F P) \elim P
+          | idp => idp
+      }
+
+    \func fm3 {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} (a : M -> M') (b : N -> N') {c1 c2 : M -> N'}
+              (a1 : \Pi (m : M) -> t' (a m) = c1 m) (a2 : \Pi (m : M) -> c1 m = c2 m) (a3 : \Pi (m : M) -> c2 m = b (t m))
+              (d : \Sigma (m : M) (t m = z)) : \Sigma (m' : M') (t' m' = b z)
+      => (a d.1, a1 d.1 *> a2 d.1 *> a3 d.1 *> pmap b d.2)
+
+    \func act3 {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} (a : M -> M') (b : N -> N') {c1 c2 : M -> N'}
+               (a1 : \Pi (m : M) -> t' (a m) = c1 m) (a2 : \Pi (m : M) -> c1 m = c2 m) (a3 : \Pi (m : M) -> c2 m = b (t m))
+               {m m' : M} {p : t m = z} {p' : t m' = z} (I : m = m') (c : p = pmap t I *> p')
+      : a1 m *> a2 m *> a3 m *> pmap b p = pmap t' (pmap a I) *> (a1 m' *> a2 m' *> a3 m' *> pmap b p')
+      => pmap (\lam q => a1 m *> a2 m *> a3 m *> pmap b q) c *> nat3 t t' a b a1 a2 a3 I p'
+      \where
+        \func nat3 {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} (a : M -> M') (b : N -> N') {c1 c2 : M -> N'}
+                   (a1 : \Pi (m : M) -> t' (a m) = c1 m) (a2 : \Pi (m : M) -> c1 m = c2 m) (a3 : \Pi (m : M) -> c2 m = b (t m))
+                   {m m' : M} (I : m = m') (p' : t m' = z)
+          : a1 m *> a2 m *> a3 m *> pmap b (pmap t I *> p') = pmap t' (pmap a I) *> (a1 m' *> a2 m' *> a3 m' *> pmap b p') \elim I
+          | idp => pmap (\lam q => a1 m *> a2 m *> a3 m *> pmap b q) (idp_*> p') *> inv (idp_*> _)
+
+    \func fm3-ext {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} (a : M -> M') (b : N -> N') {c1 c2 : M -> N'}
+                  (a1 : \Pi (m : M) -> t' (a m) = c1 m) (a2 : \Pi (m : M) -> c1 m = c2 m) (a3 : \Pi (m : M) -> c2 m = b (t m))
+                  {m m' : M} {p : t m = z} {p' : t m' = z} (I : m = m') (c : p = pmap t I *> p')
+      : pmap (fm3 t t' a b a1 a2 a3) (ext I c) = ext {M'} {N'} {t'} {b z} (pmap a I) (act3 t t' a b a1 a2 a3 I c) \elim I
+      | idp => lem t t' a b a1 a2 a3 c
+      \where
+        \func lem {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} (a : M -> M') (b : N -> N') {c1 c2 : M -> N'}
+                  (a1 : \Pi (m : M) -> t' (a m) = c1 m) (a2 : \Pi (m : M) -> c1 m = c2 m) (a3 : \Pi (m : M) -> c2 m = b (t m))
+                  {m : M} {p p' : t m = z} (c : p = idp *> p')
+          : pmap (fm3 t t' a b a1 a2 a3) (ext {M} {N} {t} {z} {m} {m} {p} {p'} idp c) = ext {M'} {N'} {t'} {b z} idp (act3 t t' a b a1 a2 a3 idp c) \elim c
+          | idp => lem2 t t' a b a1 a2 a3 m p'
+          \where
+            \func lem2 {M N M' N' : \Type} (t : M -> N) (t' : M' -> N') {z : N} (a : M -> M') (b : N -> N') {c1 c2 : M -> N'}
+                       (a1 : \Pi (m : M) -> t' (a m) = c1 m) (a2 : \Pi (m : M) -> c1 m = c2 m) (a3 : \Pi (m : M) -> c2 m = b (t m))
+                       (m : M) (p' : t m = z)
+              : pmap (fm3 t t' a b a1 a2 a3) (ext {M} {N} {t} {z} {m} {m} {idp *> p'} {p'} idp idp)
+                = ext {M'} {N'} {t'} {b z} idp (act3 t t' a b a1 a2 a3 idp idp) \elim z, p'
+              | _, idp => inv (pmap (pmap (\lam q => ((a m, q) : \Sigma (m' : M') (t' m' = b (t m))))) (cl (idp_*> (a1 m *> a2 m *> a3 m))))
+
+    \func post.{l} {X Y T T' : Pointed.{l}} {u : X ->* Y} (k : T ->* T') {a1 a2 : Y ->* T} {p1 : a1 ∘* u = base {Map* X T}} {p2 : a2 ∘* u = base {Map* X T}}
+                   (e : a1 = a2) (c : p1 = pmap (∘* u) e *> p2)
+      : pmap (CofNull.post.{l} {X} {Y} {T} {T'} {u} k) (CofNull.ext.{l} e c)
+        = CofNull.ext.{l} (pmap (k ∘*) e)
+                          (act (\lam (h : Y ->* T) => h ∘* u) (\lam (h : Y ->* T') => h ∘* u) (k ∘*) (k ∘*) (\lam h => inv (->*.compose-assoc k h u)) (->*.compose-zero k) e c)
+      => pmap (pmap (CofNull.post.{l} {X} {Y} {T} {T'} {u} k)) (null.{l} e c)
+         *> fm-ext (\lam (h : Y ->* T) => h ∘* u) (\lam (h : Y ->* T') => h ∘* u) (k ∘*) (k ∘*) (\lam h => inv (->*.compose-assoc k h u)) (->*.compose-zero k) e c
+         *> inv (null.{l} (pmap (k ∘*) e) _)
+
+    \func pre.{l} {X Y X' Y' T : Pointed.{l}} {u : X ->* Y} {u' : X' ->* Y'} (a : X ->* X') (b : Y ->* Y') (s : b ∘* u = u' ∘* a)
+                  {a1 a2 : Y' ->* T} {p1 : a1 ∘* u' = base {Map* X' T}} {p2 : a2 ∘* u' = base {Map* X' T}} (e : a1 = a2) (c : p1 = pmap (∘* u') e *> p2)
+      : pmap (CofNull.pre.{l} {X} {Y} {X'} {Y'} {T} {u} {u'} a b s) (CofNull.ext.{l} e c)
+        = CofNull.ext.{l} (pmap (∘* b) e)
+                          (act3 (\lam (h : Y' ->* T) => h ∘* u') (\lam (h : Y ->* T) => h ∘* u) (∘* b) (∘* a)
+                                (\lam h => inv (->*.compose-assoc h b u)) (\lam h => pmap (h ∘*) s) (\lam h => ->*.compose-assoc h u' a) e c)
+      => pmap (pmap (CofNull.pre.{l} {X} {Y} {X'} {Y'} {T} {u} {u'} a b s)) (null.{l} e c)
+         *> fm3-ext (\lam (h : Y' ->* T) => h ∘* u') (\lam (h : Y ->* T) => h ∘* u) (∘* b) (∘* a)
+                    (\lam h => inv (->*.compose-assoc h b u)) (\lam h => pmap (h ∘*) s) (\lam h => ->*.compose-assoc h u' a) e c
+         *> inv (null.{l} (pmap (∘* b) e) _)
+
+    \func null.{l} {X Y T : Pointed.{l}} {u : X ->* Y} {a1 a2 : Y ->* T} {p1 : a1 ∘* u = base {Map* X T}} {p2 : a2 ∘* u = base {Map* X T}}
+                   (e : a1 = a2) (c : p1 = pmap (∘* u) e *> p2) : CofNull.ext.{l} e c = ext {Y ->* T} {X ->* T} {\lam h => h ∘* u} e c \elim e
+      | idp => idp
+  }
+
 \func cone.{u} {X Y M : Pointed.{u}} {v : X ->* Y} {d d' : CofNull.{u} v M} (P : d = d') (a : X)
   : ->*.happly d.2 a = ->*.happly (pmap (\lam (n : CofNull.{u} v M) => n.1) P) (v.1 a) *> ->*.happly d'.2 a \elim P
   | idp => inv (idp_*> (->*.happly d.2 a))

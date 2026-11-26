@@ -1,0 +1,57 @@
+\import Homotopy.Cofiber.NullCode
+\import Paths
+
+\func coneE {M N W : \Type} {t : M -> N} {z : N} (E : N -> W) {d d' : \Sigma (m : M) (t m = z)} (P : d = d')
+  : pmap E d.2 = pmap (\lam m => E (t m)) (pmap (\lam (e : \Sigma (m : M) (t m = z)) => e.1) P) *> pmap E d'.2 \elim P
+  | idp => inv (idp_*> _)
+  \where {
+    \func ext {M N W : \Type} {t : M -> N} {z : N} (E : N -> W) {m m' : M} {p : t m = z} {p' : t m' = z} (I : m = m') (c : p = pmap t I *> p')
+      : coneE E (code.ext I c)
+        = pmap (pmap E) c *> pmap_*>-comm E (pmap t I) p' *> pmap (`*> pmap E p') (pp1 t E I *> inv (pmap (pmap (\lam m => E (t m))) (p1 I c))) \elim I
+      | idp => lem E c
+      \where {
+        \func p1 {M N : \Type} {t : M -> N} {z : N} {m m' : M} {p : t m = z} {p' : t m' = z} (I : m = m') (c : p = pmap t I *> p')
+          : pmap (\lam (e : \Sigma (m : M) (t m = z)) => e.1) (code.ext I c) = I \elim I
+          | idp => idp
+
+        \func pp1 {A B C : \Type} (F : A -> B) (G : B -> C) {a a' : A} (X : a = a') : pmap G (pmap F X) = pmap (\lam a => G (F a)) X \elim X
+          | idp => idp
+
+        \func lem {M N W : \Type} {t : M -> N} {z : N} (E : N -> W) {m : M} {p p' : t m = z} (c : p = idp *> p')
+          : coneE E (code.ext {M} {N} {t} {z} {m} {m} {p} {p'} idp c)
+            = pmap (pmap E) c *> pmap_*>-comm E idp p' *> pmap (`*> pmap E p') (idp *> inv idp) \elim c
+          | idp => lem2 E p'
+
+        \func lem2 {M N W : \Type} {t : M -> N} {m : M} {z : N} (E : N -> W) (p' : t m = z)
+          : coneE E (code.ext {M} {N} {t} {z} {m} {m} {idp *> p'} {p'} idp idp)
+            = pmap (pmap E) idp *> pmap_*>-comm E idp p' *> pmap (`*> pmap E p') (idp *> inv idp) \elim z, p'
+          | _, idp => idp
+      }
+
+    \func cat {M N W : \Type} {t : M -> N} {z : N} (E : N -> W) {d d' d'' : \Sigma (m : M) (t m = z)} (P : d = d') (Q : d' = d'')
+      : coneE E (P *> Q)
+        = coneE E P *> pmap (_ *>) (coneE E Q) *> inv (*>-assoc _ _ _)
+          *> pmap (`*> pmap E d''.2)
+                  (inv (pmap_*>-comm (\lam m => E (t m)) (pmap (\lam (e : \Sigma (m : M) (t m = z)) => e.1) P) (pmap (\lam (e : \Sigma (m : M) (t m = z)) => e.1) Q))
+                   *> pmap (pmap (\lam m => E (t m))) (inv (pmap_*>-comm (\lam (e : \Sigma (m : M) (t m = z)) => e.1) P Q))) \elim Q
+      | idp => lem (coneE E P)
+      \where
+        \func lem {W : \Type} {x y z : W} {a : x = y} {q : y = z} {b : x = z} (c : b = a *> q)
+          : c = c *> pmap (a *>) (inv (idp_*> q)) *> inv (*>-assoc a idp q) *> pmap (`*> q) idp \elim z, q, c
+          | _, idp, idp => idp
+
+    \func inverse {M N W : \Type} {t : M -> N} {z : N} (E : N -> W) {d d' : \Sigma (m : M) (t m = z)} (P : d = d')
+      : coneE E (inv P)
+        = inv (pmap (pmap (\lam m => E (t m)) (pmap (\lam (e : \Sigma (m : M) (t m = z)) => e.1) (inv P)) *>) (coneE E P)
+               *> inv (*>-assoc _ _ _)
+               *> pmap (`*> pmap E d'.2)
+                       (inv (pmap_*>-comm (\lam m => E (t m)) (pmap (\lam (e : \Sigma (m : M) (t m = z)) => e.1) (inv P)) (pmap (\lam (e : \Sigma (m : M) (t m = z)) => e.1) P))
+                        *> pmap (pmap (\lam m => E (t m))) (inv (pmap_*>-comm (\lam (e : \Sigma (m : M) (t m = z)) => e.1) (inv P) P)
+                                                            *> pmap (pmap (\lam (e : \Sigma (m : M) (t m = z)) => e.1)) (inv_*> P)))
+               *> idp_*> _) \elim P
+      | idp => lem (pmap E d.2)
+      \where
+        \func lem {W : \Type} {x y : W} (h : x = y)
+          : inv (idp_*> h) = inv (pmap (idp *>) (inv (idp_*> h)) *> inv (*>-assoc idp idp h) *> pmap (`*> h) (idp *> idp) *> idp_*> h) \elim h
+          | idp => idp
+  }

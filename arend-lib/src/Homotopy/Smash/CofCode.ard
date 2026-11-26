@@ -1,0 +1,35 @@
+\import Homotopy.Cofiber.Null
+\import Homotopy.Cofiber.NullCode
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Smash
+\import Homotopy.Smash.Cofiber
+\import Paths
+
+\open ->* (∘*)
+
+\func Ef.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K T : Pointed.{u}) (d : CofNull.{u} (Smash.map.{u} f (->*.id {K})) T) : CofNull.{u} f (Map* K T)
+  => (Smash.adjunction.{u} {Y} {K} {T} d.1, inv (cofSmashEquiv.pre'.{u} f d.1) *> pmap (Smash.adjunction.{u} {X} {K} {T}) d.2)
+  \where {
+    \func eval.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K T : Pointed.{u}) (d : CofNull.{u} (Smash.map.{u} f (->*.id {K})) T)
+      : cofSmashEquiv.E.{u} f K T d = Ef.{u} f K T d
+      => cofSmashEquiv.E.eval.{u} f K T d
+
+    \func ext.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K T : Pointed.{u}) {g g' : Smash.{u} Y K ->* T}
+                  {p : g ∘* Smash.map.{u} f (->*.id {K}) = base {Map* (Smash.{u} X K) T}} {p' : g' ∘* Smash.map.{u} f (->*.id {K}) = base {Map* (Smash.{u} X K) T}}
+                  (e : g = g') (c : p = pmap (∘* Smash.map.{u} f (->*.id {K})) e *> p')
+      : pmap (Ef.{u} f K T) (CofNull.ext.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} {g} {g'} {p} {p'} e c)
+        = CofNull.ext.{u} (pmap (Smash.adjunction.{u} {Y} {K} {T}) e)
+                          (code.act (\lam (h : Smash.{u} Y K ->* T) => h ∘* Smash.map.{u} f (->*.id {K})) (\lam (h : Y ->* Map* K T) => h ∘* f)
+                                    (Smash.adjunction.{u} {Y} {K} {T}) (Smash.adjunction.{u} {X} {K} {T})
+                                    (\lam h => inv (cofSmashEquiv.pre'.{u} f h)) idp e c)
+      => pmap (pmap (Ef.{u} f K T)) (code.null.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} {g} {g'} {p} {p'} e c)
+         *> code.fm-ext (\lam (h : Smash.{u} Y K ->* T) => h ∘* Smash.map.{u} f (->*.id {K})) (\lam (h : Y ->* Map* K T) => h ∘* f)
+                        (Smash.adjunction.{u} {Y} {K} {T}) (Smash.adjunction.{u} {X} {K} {T})
+                        (\lam h => inv (cofSmashEquiv.pre'.{u} f h)) idp e c
+         *> inv (code.null.{u} {X} {Y} {Map* K T} {f} (pmap (Smash.adjunction.{u} {Y} {K} {T}) e) _)
+
+    \func path.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K T : Pointed.{u}) {d d' : CofNull.{u} (Smash.map.{u} f (->*.id {K})) T} (P : d = d')
+      : pmap (cofSmashEquiv.E.{u} f K T) P = eval.{u} f K T d *> pmap (Ef.{u} f K T) P *> inv (eval.{u} f K T d') \elim P
+      | idp => inv (pmap (eval.{u} f K T d *>) (idp_*> _) *> *>_inv (eval.{u} f K T d))
+  }

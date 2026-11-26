@@ -1,0 +1,268 @@
+\import Homotopy.Cofiber
+\import Homotopy.Cofiber.Null
+\import Homotopy.Cofiber.NullCode
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Smash
+\import Homotopy.Smash.CofCode
+\import Homotopy.Smash.Cofiber
+\import Homotopy.Smash.LeftFib
+\import Paths
+
+\open ->* (∘*)
+
+\sfunc fcr.{u} {X Y T : Pointed.{u}} {u : X ->* Y} (k : Cof.pointed u ->* T) : CofNull.{u} u T
+  => CofNull.fromCocone.{u} {X} {Y} {T} {u} (Cof.restrict {X} {Y} {T} {u} k)
+
+\sfunc me.{u} {X Y T : Pointed.{u}} {u : X ->* Y} (k : Cof.pointed u ->* T) : CofNull.mapsOut.{u} {X} {Y} {T} {u} k = fcr.{u} {X} {Y} {T} {u} k
+  => CofNull.mapsOut.eval.{u} {X} {Y} {T} {u} k *> inv (\peval fcr.{u} {X} {Y} {T} {u} k)
+
+\func Lev.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K T : Pointed.{u}) (k : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T)
+  : cofSmashEquiv.L.{u} f K T k = Ef.{u} f K T (fcr.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} k)
+  => cofSmashEquiv.L.eval.{u} f K T k
+     *> cofSmashEquiv.E.eval.{u} f K T (CofNull.mapsOut.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} k)
+     *> pmap (Ef.{u} f K T) (me.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} k)
+
+\func Rev.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K T : Pointed.{u}) (k : Smash.{u} (Cof.pointed f) K ->* T)
+  : cofSmashEquiv.R.{u} f K T k = fcr.{u} {X} {Y} {Map* K T} {f} (Smash.adjunction.{u} {Cof.pointed f} {K} {T} k)
+  => cofSmashEquiv.R.eval.{u} f K T k *> me.{u} {X} {Y} {Map* K T} {f} (Smash.adjunction.{u} {Cof.pointed f} {K} {T} k)
+
+\sfunc cj {A : \Type} {a b c d : A} (p : b = a) (X : b = c) (q : c = d) : a = d => inv p *> X *> q
+
+\sfunc laG {D1 D1' D2 D2' : \Type} (E1 Ef1 : D1 -> D1') (E2 Ef2 : D2 -> D2') (pre : D2 -> D1) (Post : D2' -> D1')
+          (Ee1 : \Pi (d : D1) -> E1 d = Ef1 d) (Ee2 : \Pi (d : D2) -> E2 d = Ef2 d) (core : \Pi (d : D2) -> Ef1 (pre d) = Post (Ef2 d))
+          {w : D2} {w' : D1} (mp : w' = pre w) {z' : D1} (me1 : w' = z') {z : D2} (me2 : w = z)
+          {Lk' : D1'} (l1 : Lk' = E1 w') {Lk : D2'} (l2 : Lk = E2 w)
+          (v1 : Lk' = Ef1 z') (h1 : v1 = l1 *> Ee1 w' *> pmap Ef1 me1) (v2 : Lk = Ef2 z) (h2 : v2 = l2 *> Ee2 w *> pmap Ef2 me2)
+  : cj v1
+       (cofSmashEquiv.j5 Post {Lk'} {E1 w'} {E1 (pre w)} {Lk} {E2 w} l1 (pmap E1 mp)
+                         (cofSmashEquiv.E.post.j3 Post {E1 (pre w)} {Ef1 (pre w)} {Ef2 w} {E2 w} (Ee1 (pre w)) (core w) (Ee2 w)) l2)
+       (pmap Post v2)
+    = pmap Ef1 (inv me1 *> mp *> pmap pre me2) *> core z
+  => pmap2 (\lam (a : Lk' = Ef1 z') (b : Lk = Ef2 z) =>
+              cj a (cofSmashEquiv.j5 Post {Lk'} {E1 w'} {E1 (pre w)} {Lk} {E2 w} l1 (pmap E1 mp)
+                                     (cofSmashEquiv.E.post.j3 Post {E1 (pre w)} {Ef1 (pre w)} {Ef2 w} {E2 w} (Ee1 (pre w)) (core w) (Ee2 w)) l2)
+                   (pmap Post b)) h1 h2
+     *> (\peval cj (l1 *> Ee1 w' *> pmap Ef1 me1)
+                   (cofSmashEquiv.j5 Post {Lk'} {E1 w'} {E1 (pre w)} {Lk} {E2 w} l1 (pmap E1 mp)
+                                     (cofSmashEquiv.E.post.j3 Post {E1 (pre w)} {Ef1 (pre w)} {Ef2 w} {E2 w} (Ee1 (pre w)) (core w) (Ee2 w)) l2)
+                   (pmap Post (l2 *> Ee2 w *> pmap Ef2 me2)))
+     *> pmap (\lam (Z : Lk' = Post Lk) => inv (l1 *> Ee1 w' *> pmap Ef1 me1) *> Z *> pmap Post (l2 *> Ee2 w *> pmap Ef2 me2))
+          ((\peval cofSmashEquiv.j5 Post {Lk'} {E1 w'} {E1 (pre w)} {Lk} {E2 w} l1 (pmap E1 mp)
+                                    (cofSmashEquiv.E.post.j3 Post {E1 (pre w)} {Ef1 (pre w)} {Ef2 w} {E2 w} (Ee1 (pre w)) (core w) (Ee2 w)) l2)
+           *> pmap (\lam (Z : E1 (pre w) = Post (E2 w)) => l1 *> pmap E1 mp *> Z *> pmap Post (inv l2))
+                   (\peval cofSmashEquiv.E.post.j3 Post {E1 (pre w)} {Ef1 (pre w)} {Ef2 w} {E2 w} (Ee1 (pre w)) (core w) (Ee2 w)))
+     *> raw E1 Ef1 E2 Ef2 pre Post Ee1 Ee2 core mp me1 me2 l1 l2
+  \where {
+    \func raw {D1 D1' D2 D2' : \Type} (E1 Ef1 : D1 -> D1') (E2 Ef2 : D2 -> D2') (pre : D2 -> D1) (Post : D2' -> D1')
+              (Ee1 : \Pi (d : D1) -> E1 d = Ef1 d) (Ee2 : \Pi (d : D2) -> E2 d = Ef2 d) (core : \Pi (d : D2) -> Ef1 (pre d) = Post (Ef2 d))
+              {w : D2} {w' : D1} (mp : w' = pre w) {z' : D1} (me1 : w' = z') {z : D2} (me2 : w = z)
+              {Lk' : D1'} (l1 : Lk' = E1 w') {Lk : D2'} (l2 : Lk = E2 w)
+      : inv (l1 *> Ee1 w' *> pmap Ef1 me1)
+        *> (l1 *> pmap E1 mp *> (Ee1 (pre w) *> core w *> pmap Post (inv (Ee2 w))) *> pmap Post (inv l2))
+        *> pmap Post (l2 *> Ee2 w *> pmap Ef2 me2)
+        = pmap Ef1 (inv me1 *> mp *> pmap pre me2) *> core z \elim mp, me1, me2, l1, l2
+      | idp, idp, idp, idp, idp => lem Post (Ee2 w) (core w) (Ee1 (pre w))
+
+    \func lem {A B : \Type} (P : A -> B) {x y : A} (q : x = y) {v : B} (c : v = P y) {u : B} (p : u = v)
+      : inv (idp *> p) *> (idp *> (idp *> (p *> (c *> pmap P (inv q))))) *> pmap P (idp *> q) = idp *> c \elim q, c, p
+      | idp, idp, idp => idp
+  }
+
+\func laT.{u} {X Y B B' : Pointed.{u}} (f : X ->* Y) (g : B ->* B') (T : Pointed.{u}) (k : Cof.pointed (Smash.map.{u} f (->*.id {B'})) ->* T)
+  : cj (Lev.{u} f B T (k ∘* Cof.map* {Smash.{u} X B} {Smash.{u} Y B} {Smash.{u} X B'} {Smash.{u} Y B'} {Smash.map.{u} f (->*.id {B})} {Smash.map.{u} f (->*.id {B'})}
+                                     (Smash.map.{u} (->*.id {X}) g) (Smash.map.{u} (->*.id {Y}) g) (->*.happly (cofSmashEquiv.naturalK.squareK.{u} f g))))
+       (cofSmashEquiv.naturalK.La.{u} f g T k)
+       (pmap (CofNull.post.{u} {X} {Y} {Map* B' T} {Map* B T} {f} (Map*.pre g T)) (Lev.{u} f B' T k))
+    = pmap (Ef.{u} f B T)
+           (inv (me.{u} {Smash.{u} X B} {Smash.{u} Y B} {T} {Smash.map.{u} f (->*.id {B})}
+                  (k ∘* Cof.map* {Smash.{u} X B} {Smash.{u} Y B} {Smash.{u} X B'} {Smash.{u} Y B'} {Smash.map.{u} f (->*.id {B})} {Smash.map.{u} f (->*.id {B'})}
+                                 (Smash.map.{u} (->*.id {X}) g) (Smash.map.{u} (->*.id {Y}) g) (->*.happly (cofSmashEquiv.naturalK.squareK.{u} f g))))
+            *> CofNull.mapsOut.pre.{u} (Smash.map.{u} (->*.id {X}) g) (Smash.map.{u} (->*.id {Y}) g) (cofSmashEquiv.naturalK.squareK.{u} f g) k
+            *> pmap (CofNull.pre.{u} {Smash.{u} X B} {Smash.{u} Y B} {Smash.{u} X B'} {Smash.{u} Y B'} {T} {Smash.map.{u} f (->*.id {B})}
+                                     {Smash.map.{u} f (->*.id {B'})} (Smash.map.{u} (->*.id {X}) g) (Smash.map.{u} (->*.id {Y}) g) (cofSmashEquiv.naturalK.squareK.{u} f g))
+                    (me.{u} {Smash.{u} X B'} {Smash.{u} Y B'} {T} {Smash.map.{u} f (->*.id {B'})} k))
+      *> cofSmashEquiv.naturalK.preK.core.{u} f g T (fcr.{u} {Smash.{u} X B'} {Smash.{u} Y B'} {T} {Smash.map.{u} f (->*.id {B'})} k)
+  => laG (cofSmashEquiv.E.{u} f B T) (Ef.{u} f B T) (cofSmashEquiv.E.{u} f B' T) (Ef.{u} f B' T)
+         (CofNull.pre.{u} {Smash.{u} X B} {Smash.{u} Y B} {Smash.{u} X B'} {Smash.{u} Y B'} {T} {Smash.map.{u} f (->*.id {B})}
+                          {Smash.map.{u} f (->*.id {B'})} (Smash.map.{u} (->*.id {X}) g) (Smash.map.{u} (->*.id {Y}) g) (cofSmashEquiv.naturalK.squareK.{u} f g))
+         (CofNull.post.{u} {X} {Y} {Map* B' T} {Map* B T} {f} (Map*.pre g T))
+         (cofSmashEquiv.E.eval.{u} f B T) (cofSmashEquiv.E.eval.{u} f B' T)
+         (cofSmashEquiv.naturalK.preK.core.{u} f g T)
+         (CofNull.mapsOut.pre.{u} (Smash.map.{u} (->*.id {X}) g) (Smash.map.{u} (->*.id {Y}) g) (cofSmashEquiv.naturalK.squareK.{u} f g) k)
+         (me.{u} {Smash.{u} X B} {Smash.{u} Y B} {T} {Smash.map.{u} f (->*.id {B})}
+           (k ∘* Cof.map* {Smash.{u} X B} {Smash.{u} Y B} {Smash.{u} X B'} {Smash.{u} Y B'} {Smash.map.{u} f (->*.id {B})} {Smash.map.{u} f (->*.id {B'})}
+                          (Smash.map.{u} (->*.id {X}) g) (Smash.map.{u} (->*.id {Y}) g) (->*.happly (cofSmashEquiv.naturalK.squareK.{u} f g))))
+         (me.{u} {Smash.{u} X B'} {Smash.{u} Y B'} {T} {Smash.map.{u} f (->*.id {B'})} k)
+         (cofSmashEquiv.L.eval.{u} f B T
+           (k ∘* Cof.map* {Smash.{u} X B} {Smash.{u} Y B} {Smash.{u} X B'} {Smash.{u} Y B'} {Smash.map.{u} f (->*.id {B})} {Smash.map.{u} f (->*.id {B'})}
+                          (Smash.map.{u} (->*.id {X}) g) (Smash.map.{u} (->*.id {Y}) g) (->*.happly (cofSmashEquiv.naturalK.squareK.{u} f g))))
+         (cofSmashEquiv.L.eval.{u} f B' T k) (Lev.{u} f B T (k ∘* Cof.map* {Smash.{u} X B} {Smash.{u} Y B} {Smash.{u} X B'} {Smash.{u} Y B'} {Smash.map.{u} f (->*.id {B})} {Smash.map.{u} f (->*.id {B'})}
+                                       (Smash.map.{u} (->*.id {X}) g) (Smash.map.{u} (->*.id {Y}) g) (->*.happly (cofSmashEquiv.naturalK.squareK.{u} f g))))
+         idp (Lev.{u} f B' T k) idp
+
+\sfunc rbG {M1 D1 M2 D2 : \Type} {x' x'' : M1} {x : M2} {Ra' : D1} {Ra : D2} (mO1 F1 : M1 -> D1) (mO2 F2 : M2 -> D2) (Post : D2 -> D1)
+           (me1 : \Pi (m : M1) -> mO1 m = F1 m) (me2 : \Pi (m : M2) -> mO2 m = F2 m)
+           (P : x' = x'') (q : mO1 x'' = Post (mO2 x)) (l1 : Ra' = mO1 x') (l2 : Ra = mO2 x)
+           (v1 : Ra' = F1 x') (h1 : v1 = l1 *> me1 x') (v2 : Ra = F2 x) (h2 : v2 = l2 *> me2 x)
+  : cj v1 (cofSmashEquiv.j5 Post {Ra'} {mO1 x'} {mO1 x''} {Ra} {mO2 x} l1 (pmap mO1 P) q l2) (pmap Post v2)
+    = pmap F1 P *> (inv (me1 x'') *> q *> pmap Post (me2 x))
+  => pmap2 (\lam (a : Ra' = F1 x') (b : Ra = F2 x) => cj a (cofSmashEquiv.j5 Post {Ra'} {mO1 x'} {mO1 x''} {Ra} {mO2 x} l1 (pmap mO1 P) q l2) (pmap Post b)) h1 h2
+     *> (\peval cj (l1 *> me1 x') (cofSmashEquiv.j5 Post {Ra'} {mO1 x'} {mO1 x''} {Ra} {mO2 x} l1 (pmap mO1 P) q l2) (pmap Post (l2 *> me2 x)))
+     *> pmap (\lam (Z : Ra' = Post Ra) => inv (l1 *> me1 x') *> Z *> pmap Post (l2 *> me2 x))
+             (\peval cofSmashEquiv.j5 Post {Ra'} {mO1 x'} {mO1 x''} {Ra} {mO2 x} l1 (pmap mO1 P) q l2)
+     *> raw mO1 F1 mO2 F2 Post me1 me2 P q l1 l2
+  \where {
+    \func raw {M1 D1 M2 D2 : \Type} (mO1 F1 : M1 -> D1) (mO2 F2 : M2 -> D2) (Post : D2 -> D1)
+              (me1 : \Pi (m : M1) -> mO1 m = F1 m) (me2 : \Pi (m : M2) -> mO2 m = F2 m)
+              {x' x'' : M1} (P : x' = x'') {x : M2} (q : mO1 x'' = Post (mO2 x)) {Ra' : D1} (l1 : Ra' = mO1 x') {Ra : D2} (l2 : Ra = mO2 x)
+      : inv (l1 *> me1 x') *> (l1 *> pmap mO1 P *> q *> pmap Post (inv l2)) *> pmap Post (l2 *> me2 x)
+        = pmap F1 P *> (inv (me1 x'') *> q *> pmap Post (me2 x)) \elim P, l1, l2
+      | idp, idp, idp => lem Post (me2 x) q (me1 x')
+
+    \func lem {B D : \Type} (P : D -> B) {y y' : D} (c : y = y') {v : B} (q : v = P y) {u : B} (a : v = u)
+      : inv (idp *> a) *> (idp *> (idp *> q)) *> pmap P (idp *> c) = idp *> (inv a *> q *> pmap P c) \elim c, q, a
+      | idp, idp, idp => idp
+  }
+
+\func rbT.{u} {X Y B B' : Pointed.{u}} (f : X ->* Y) (g : B ->* B') (T : Pointed.{u}) (k : Smash.{u} (Cof.pointed f) B' ->* T)
+  : cj (Rev.{u} f B T (k ∘* Smash.map.{u} (->*.id {Cof.pointed f}) g))
+       (cofSmashEquiv.naturalK.Rb.{u} f g T k)
+       (pmap (CofNull.post.{u} {X} {Y} {Map* B' T} {Map* B T} {f} (Map*.pre g T)) (Rev.{u} f B' T k))
+    = pmap (fcr.{u} {X} {Y} {Map* B T} {f}) (cofSmashEquiv.naturalK.adjK.{u} {Cof.pointed f} {B} {B'} {T} g k)
+      *> (inv (me.{u} {X} {Y} {Map* B T} {f} (Map*.pre g T ∘* Smash.adjunction.{u} {Cof.pointed f} {B'} {T} k))
+          *> CofNull.mapsOut.post.{u} {X} {Y} {Map* B' T} {Map* B T} {f} (Map*.pre g T) (Smash.adjunction.{u} {Cof.pointed f} {B'} {T} k)
+          *> pmap (CofNull.post.{u} {X} {Y} {Map* B' T} {Map* B T} {f} (Map*.pre g T)) (me.{u} {X} {Y} {Map* B' T} {f} (Smash.adjunction.{u} {Cof.pointed f} {B'} {T} k)))
+  => rbG (CofNull.mapsOut.{u} {X} {Y} {Map* B T} {f}) (fcr.{u} {X} {Y} {Map* B T} {f})
+         (CofNull.mapsOut.{u} {X} {Y} {Map* B' T} {f}) (fcr.{u} {X} {Y} {Map* B' T} {f})
+         (CofNull.post.{u} {X} {Y} {Map* B' T} {Map* B T} {f} (Map*.pre g T))
+         (me.{u} {X} {Y} {Map* B T} {f}) (me.{u} {X} {Y} {Map* B' T} {f})
+         (cofSmashEquiv.naturalK.adjK.{u} {Cof.pointed f} {B} {B'} {T} g k)
+         (CofNull.mapsOut.post.{u} {X} {Y} {Map* B' T} {Map* B T} {f} (Map*.pre g T) (Smash.adjunction.{u} {Cof.pointed f} {B'} {T} k))
+         (cofSmashEquiv.R.eval.{u} f B T (k ∘* Smash.map.{u} (->*.id {Cof.pointed f}) g)) (cofSmashEquiv.R.eval.{u} f B' T k)
+         (Rev.{u} f B T (k ∘* Smash.map.{u} (->*.id {Cof.pointed f}) g)) idp (Rev.{u} f B' T k) idp
+
+\func rpT.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) {T T' : Pointed.{u}} (k : T ->* T') (g : Smash.{u} (Cof.pointed f) K ->* T)
+  : cj (Rev.{u} f K T' (k ∘* g))
+       (cofSmashEquiv.Rp.{u} f K k g)
+       (pmap (CofNull.post.{u} {X} {Y} {Map* K T} {Map* K T'} {f} (Map*.post K k)) (Rev.{u} f K T g))
+    = pmap (fcr.{u} {X} {Y} {Map* K T'} {f}) (Smash.adjunction.post.{u} {Cof.pointed f} {K} {T} {T'} k g)
+      *> (inv (me.{u} {X} {Y} {Map* K T'} {f} (Map*.post K k ∘* Smash.adjunction.{u} {Cof.pointed f} {K} {T} g))
+          *> CofNull.mapsOut.post.{u} {X} {Y} {Map* K T} {Map* K T'} {f} (Map*.post K k) (Smash.adjunction.{u} {Cof.pointed f} {K} {T} g)
+          *> pmap (CofNull.post.{u} {X} {Y} {Map* K T} {Map* K T'} {f} (Map*.post K k)) (me.{u} {X} {Y} {Map* K T} {f} (Smash.adjunction.{u} {Cof.pointed f} {K} {T} g)))
+  => rbG (CofNull.mapsOut.{u} {X} {Y} {Map* K T'} {f}) (fcr.{u} {X} {Y} {Map* K T'} {f})
+         (CofNull.mapsOut.{u} {X} {Y} {Map* K T} {f}) (fcr.{u} {X} {Y} {Map* K T} {f})
+         (CofNull.post.{u} {X} {Y} {Map* K T} {Map* K T'} {f} (Map*.post K k))
+         (me.{u} {X} {Y} {Map* K T'} {f}) (me.{u} {X} {Y} {Map* K T} {f})
+         (Smash.adjunction.post.{u} {Cof.pointed f} {K} {T} {T'} k g)
+         (CofNull.mapsOut.post.{u} {X} {Y} {Map* K T} {Map* K T'} {f} (Map*.post K k) (Smash.adjunction.{u} {Cof.pointed f} {K} {T} g))
+         (cofSmashEquiv.R.eval.{u} f K T' (k ∘* g)) (cofSmashEquiv.R.eval.{u} f K T g)
+         (Rev.{u} f K T' (k ∘* g)) idp (Rev.{u} f K T g) idp
+
+\sfunc lpG {D1 D1' D2 D2' : \Type} (E1 Ef1 : D1 -> D1') (E2 Ef2 : D2 -> D2') (pre : D2 -> D1) (Post : D2' -> D1')
+           (Ee1 : \Pi (d : D1) -> E1 d = Ef1 d) (Ee2 : \Pi (d : D2) -> E2 d = Ef2 d) (core : \Pi (d : D2) -> Ef1 (pre d) = Post (Ef2 d))
+           {w : D2} {w' : D1} (mp : w' = pre w) {z' : D1} (me1 : w' = z') {z : D2} (me2 : w = z)
+           {Lk' : D1'} (l1 : Lk' = E1 w') {Lk : D2'} (l2 : Lk = E2 w)
+           (v1 : Lk' = Ef1 z') (h1 : v1 = l1 *> Ee1 w' *> pmap Ef1 me1) (v2 : Lk = Ef2 z) (h2 : v2 = l2 *> Ee2 w *> pmap Ef2 me2)
+           (e3 : E1 (pre w) = Ef1 (pre w)) (h3 : e3 = Ee1 (pre w)) (c : Ef1 (pre w) = Post (Ef2 w)) (h4 : c = core w)
+  : cj v1
+       (cofSmashEquiv.j5 Post {Lk'} {E1 w'} {E1 (pre w)} {Lk} {E2 w} l1 (pmap E1 mp)
+                         (cofSmashEquiv.E.post.j3 Post {E1 (pre w)} {Ef1 (pre w)} {Ef2 w} {E2 w} e3 c (Ee2 w)) l2)
+       (pmap Post v2)
+    = pmap Ef1 (inv me1 *> mp *> pmap pre me2) *> core z
+  => pmap2 (\lam (a : E1 (pre w) = Ef1 (pre w)) (b : Ef1 (pre w) = Post (Ef2 w)) =>
+              cj v1 (cofSmashEquiv.j5 Post {Lk'} {E1 w'} {E1 (pre w)} {Lk} {E2 w} l1 (pmap E1 mp)
+                                      (cofSmashEquiv.E.post.j3 Post {E1 (pre w)} {Ef1 (pre w)} {Ef2 w} {E2 w} a b (Ee2 w)) l2)
+                 (pmap Post v2)) h3 h4
+     *> laG E1 Ef1 E2 Ef2 pre Post Ee1 Ee2 core mp me1 me2 l1 l2 v1 h1 v2 h2
+
+\func lpT.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u}) {T T' : Pointed.{u}} (k : T ->* T') (g : Cof.pointed (Smash.map.{u} f (->*.id {K})) ->* T)
+  : cj (Lev.{u} f K T' (k ∘* g))
+       (cofSmashEquiv.Lp.{u} f K k g)
+       (pmap (CofNull.post.{u} {X} {Y} {Map* K T} {Map* K T'} {f} (Map*.post K k)) (Lev.{u} f K T g))
+    = pmap (Ef.{u} f K T')
+           (inv (me.{u} {Smash.{u} X K} {Smash.{u} Y K} {T'} {Smash.map.{u} f (->*.id {K})} (k ∘* g))
+            *> CofNull.mapsOut.post.{u} k g
+            *> pmap (CofNull.post.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {T'} {Smash.map.{u} f (->*.id {K})} k)
+                    (me.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} g))
+      *> cofSmashEquiv.E.post.core.{u} f k (fcr.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} g).1
+                                           (fcr.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} g).2
+  => lpG (cofSmashEquiv.E.{u} f K T') (Ef.{u} f K T') (cofSmashEquiv.E.{u} f K T) (Ef.{u} f K T)
+         (CofNull.post.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {T'} {Smash.map.{u} f (->*.id {K})} k)
+         (CofNull.post.{u} {X} {Y} {Map* K T} {Map* K T'} {f} (Map*.post K k))
+         (cofSmashEquiv.E.eval.{u} f K T') (cofSmashEquiv.E.eval.{u} f K T)
+         (\lam (d : CofNull.{u} (Smash.map.{u} f (->*.id {K})) T) => cofSmashEquiv.E.post.core.{u} f k d.1 d.2)
+         (CofNull.mapsOut.post.{u} k g)
+         (me.{u} {Smash.{u} X K} {Smash.{u} Y K} {T'} {Smash.map.{u} f (->*.id {K})} (k ∘* g))
+         (me.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} g)
+         (cofSmashEquiv.L.eval.{u} f K T' (k ∘* g)) (cofSmashEquiv.L.eval.{u} f K T g)
+         (Lev.{u} f K T' (k ∘* g)) idp (Lev.{u} f K T g) idp
+         (cofSmashEquiv.E.eval'.{u} f K T' (k ∘* (CofNull.mapsOut.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} g).1)
+            (inv (->*.compose-assoc k (CofNull.mapsOut.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} g).1 (Smash.map.{u} f (->*.id {K})))
+             *> pmap (k ∘*) (CofNull.mapsOut.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} g).2 *> ->*.compose-zero k))
+         idp
+         (cofSmashEquiv.E.post.core.{u} f k (CofNull.mapsOut.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} g).1
+                                            (CofNull.mapsOut.{u} {Smash.{u} X K} {Smash.{u} Y K} {T} {Smash.map.{u} f (->*.id {K})} g).2)
+         idp
+
+\sfunc unG {A D : \Type} (R G : A -> D) (v : \Pi (x : A) -> R x = G x) {x y : A} (p : x = y)
+           (v1 : R x = G x) (h1 : v1 = v x) (v2 : R y = G y) (h2 : v2 = v y)
+  : cj v1 (pmap R p) v2 = pmap G p
+  => pmap2 (\lam (a : R x = G x) (b : R y = G y) => cj a (pmap R p) b) h1 h2 *> (\peval cj (v x) (pmap R p) (v y)) *> raw R G v p
+  \where {
+    \func raw {A D : \Type} (R G : A -> D) (v : \Pi (x : A) -> R x = G x) {x y : A} (p : x = y)
+      : inv (v x) *> pmap R p *> v y = pmap G p \elim p
+      | idp => lem (v x)
+
+    \func lem {D : \Type} {a b : D} (q : a = b) : inv q *> idp *> q = idp \elim q
+      | idp => idp
+  }
+
+\func unT.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K T : Pointed.{u}) (b : Smash.{u} (Cof.pointed f) K ->* T)
+  : cj (Rev.{u} f K T b) (pmap (cofSmashEquiv.R.{u} f K T) (inv (->*.compose-id b))) (Rev.{u} f K T (b ∘* ->*.id))
+    = pmap (\lam (h : Smash.{u} (Cof.pointed f) K ->* T) => fcr.{u} {X} {Y} {Map* K T} {f} (Smash.adjunction.{u} {Cof.pointed f} {K} {T} h)) (inv (->*.compose-id b))
+  => unG (cofSmashEquiv.R.{u} f K T)
+         (\lam (h : Smash.{u} (Cof.pointed f) K ->* T) => fcr.{u} {X} {Y} {Map* K T} {f} (Smash.adjunction.{u} {Cof.pointed f} {K} {T} h))
+         (Rev.{u} f K T) (inv (->*.compose-id b)) (Rev.{u} f K T b) idp (Rev.{u} f K T (b ∘* ->*.id)) idp
+
+\sfunc ekG {D D' : \Type} (E Ef : D -> D') (Ee : \Pi (d : D) -> E d = Ef d) {w t z : D} {Lc Rm Ro Rf : D'}
+           (l : Lc = E w) (Z : w = t) (X : Ef t = Rm) (r : Ro = Rm) (mc : w = z) (mm : Rm = Rf)
+           (v1 : Lc = Ef z) (h1 : v1 = l *> Ee w *> pmap Ef mc) (v2 : Ro = Rf) (h2 : v2 = r *> mm)
+  : cj v1 (l *> pmap E Z *> Ee t *> X *> inv r) v2 = pmap Ef (inv mc *> Z) *> (X *> mm)
+  => pmap2 (\lam (a : Lc = Ef z) (b : Ro = Rf) => cj a (l *> pmap E Z *> Ee t *> X *> inv r) b) h1 h2
+     *> (\peval cj (l *> Ee w *> pmap Ef mc) (l *> pmap E Z *> Ee t *> X *> inv r) (r *> mm)) *> raw E Ef Ee l Z X r mc mm
+  \where {
+    \func raw {D D' : \Type} (E Ef : D -> D') (Ee : \Pi (d : D) -> E d = Ef d) {w t z : D} {Lc Rm Ro Rf : D'}
+              (l : Lc = E w) (Z : w = t) (X : Ef t = Rm) (r : Ro = Rm) (mc : w = z) (mm : Rm = Rf)
+      : inv (l *> Ee w *> pmap Ef mc) *> (l *> pmap E Z *> Ee t *> X *> inv r) *> (r *> mm) = pmap Ef (inv mc *> Z) *> (X *> mm)
+        \elim l, Z, r, mc
+      | idp, idp, idp, idp => lem mm X (Ee w)
+
+    \func lem {D' : \Type} {c d : D'} (mm : c = d) {b : D'} (X : b = c) {a : D'} (q : a = b)
+      : inv (idp *> q) *> (idp *> (idp *> (q *> X))) *> (idp *> mm) = idp *> (X *> mm) \elim mm, X, q
+      | idp, idp, idp => idp
+  }
+
+\func ekT.{u} {X Y : Pointed.{u}} (f : X ->* Y) (K : Pointed.{u})
+  : cj (Lev.{u} f K (Smash.{u} (Cof.pointed f) K) (cK.{u} f K)) (eK.{u} f K) (Rev.{u} f K (Smash.{u} (Cof.pointed f) K) ->*.id)
+    = pmap (Ef.{u} f K (Smash.{u} (Cof.pointed f) K))
+           (inv (me.{u} {Smash.{u} X K} {Smash.{u} Y K} {Smash.{u} (Cof.pointed f) K} {Smash.map.{u} f (->*.id {K})} (cK.{u} f K)) *> zeta.{u} f K)
+      *> (CofNull.ext.{u} {X} {Y} {Map* K (Smash.{u} (Cof.pointed f) K)} {f}
+                          {Smash.adjunction.{u} {Y} {K} {Smash.{u} (Cof.pointed f) K} (qK.{u} f K)} {(dK.{u} f K).1}
+                          {inv (cofSmashEquiv.pre'.{u} {X} {Y} {K} {Smash.{u} (Cof.pointed f) K} f (qK.{u} f K))
+                           *> pmap (Smash.adjunction.{u} {X} {K} {Smash.{u} (Cof.pointed f) K}) (rK.{u} f K)}
+                          {(dK.{u} f K).2} (aK.{u} f K) (coneK.{u} f K)
+          *> me.{u} {X} {Y} {Map* K (Smash.{u} (Cof.pointed f) K)} {f} (Smash.adjunction.{u} {Cof.pointed f} {K} {Smash.{u} (Cof.pointed f) K} ->*.id))
+  => pmap (\lam e => cj (Lev.{u} f K (Smash.{u} (Cof.pointed f) K) (cK.{u} f K)) e (Rev.{u} f K (Smash.{u} (Cof.pointed f) K) ->*.id)) (\peval eK.{u} f K)
+     *> ekG (cofSmashEquiv.E.{u} f K (Smash.{u} (Cof.pointed f) K)) (Ef.{u} f K (Smash.{u} (Cof.pointed f) K))
+            (cofSmashEquiv.E.eval.{u} f K (Smash.{u} (Cof.pointed f) K))
+            (cofSmashEquiv.L.eval.{u} f K (Smash.{u} (Cof.pointed f) K) (cK.{u} f K)) (zeta.{u} f K)
+            (CofNull.ext.{u} {X} {Y} {Map* K (Smash.{u} (Cof.pointed f) K)} {f}
+                             {Smash.adjunction.{u} {Y} {K} {Smash.{u} (Cof.pointed f) K} (qK.{u} f K)} {(dK.{u} f K).1}
+                             {inv (cofSmashEquiv.pre'.{u} {X} {Y} {K} {Smash.{u} (Cof.pointed f) K} f (qK.{u} f K))
+                              *> pmap (Smash.adjunction.{u} {X} {K} {Smash.{u} (Cof.pointed f) K}) (rK.{u} f K)}
+                             {(dK.{u} f K).2} (aK.{u} f K) (coneK.{u} f K))
+            (cofSmashEquiv.R.eval.{u} f K (Smash.{u} (Cof.pointed f) K) ->*.id)
+            (me.{u} {Smash.{u} X K} {Smash.{u} Y K} {Smash.{u} (Cof.pointed f) K} {Smash.map.{u} f (->*.id {K})} (cK.{u} f K))
+            (me.{u} {X} {Y} {Map* K (Smash.{u} (Cof.pointed f) K)} {f} (Smash.adjunction.{u} {Cof.pointed f} {K} {Smash.{u} (Cof.pointed f) K} ->*.id))
+            (Lev.{u} f K (Smash.{u} (Cof.pointed f) K) (cK.{u} f K)) idp (Rev.{u} f K (Smash.{u} (Cof.pointed f) K) ->*.id) idp
