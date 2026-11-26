@@ -1,0 +1,37 @@
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Smash
+\import Homotopy.Smash.LeftCoh
+\import Homotopy.Smash.LeftEi
+\import Homotopy.Smash.LeftEo
+\import Homotopy.Smash.PushoutLeft
+\import Paths
+
+\open ->* (∘*)
+
+\func hH.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A) (b : B)
+  => inv (pushoutLeft.coh.convL.{u} f g (Smash.proj.1 (a, b))) *> pushoutLeft.coh.point.{u} f g a b *> pushoutLeft.coh.convR.{u} f g (Smash.proj.1 (a, b))
+
+\sfunc cohE.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A) (b : B)
+  : pmap (\lam (s : Smash.map.{u} (->*.id {X}) (Cof.inc g) ∘* (Smash.map.{u} (->*.id {X}) g ∘* Smash.map.{u} f (->*.id {B}))
+                    = Smash.map.{u} f (->*.id {Cof.pointed g}) ∘* (Smash.map.{u} (->*.id {A}) (Cof.inc g) ∘* Smash.map.{u} (->*.id {A}) g)) =>
+                ->*.happly s (Smash.proj.1 (a, b)))
+         (pushoutLeft.smashExt2.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}
+                                    {Smash.map.{u} (->*.id {X}) (Cof.inc g) ∘* (Smash.map.{u} (->*.id {X}) g ∘* Smash.map.{u} f (->*.id {B}))}
+                                    {Smash.map.{u} f (->*.id {Cof.pointed g}) ∘* (Smash.map.{u} (->*.id {A}) (Cof.inc g) ∘* Smash.map.{u} (->*.id {A}) g)}
+                                    {pushoutLeft.coh.pp.{u} f g} {pushoutLeft.coh.qq.{u} f g} (pushoutLeft.coh.rr.{u} f g) (hH.{u} f g))
+    = hH.{u} f g a b
+  => smashExt2-comp.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}
+                        {Smash.map.{u} (->*.id {X}) (Cof.inc g) ∘* (Smash.map.{u} (->*.id {X}) g ∘* Smash.map.{u} f (->*.id {B}))}
+                        {Smash.map.{u} f (->*.id {Cof.pointed g}) ∘* (Smash.map.{u} (->*.id {A}) (Cof.inc g) ∘* Smash.map.{u} (->*.id {A}) g)}
+                        {pushoutLeft.coh.pp.{u} f g} {pushoutLeft.coh.qq.{u} f g} (pushoutLeft.coh.rr.{u} f g) (hH.{u} f g)
+                        (ei.{u} f g) (eo.{u} f g) a b
+
+\sfunc coh-product.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (a : A) (b : B)
+  : pushoutLeft.coh.{u} f g (Smash.proj.1 (a, b)) = pushoutLeft.coh.point.{u} f g a b
+  => pmap (\lam s => pushoutLeft.coh.convL.{u} f g (Smash.proj.1 (a, b)) *> s *> inv (pushoutLeft.coh.convR.{u} f g (Smash.proj.1 (a, b))))
+          (cohE.{u} f g a b)
+     *> cv (pushoutLeft.coh.convL.{u} f g (Smash.proj.1 (a, b))) (pushoutLeft.coh.point.{u} f g a b) (pushoutLeft.coh.convR.{u} f g (Smash.proj.1 (a, b)))
+  \where
+    \func cv {T : \Type} {x y z w : T} (l : x = y) (m : x = z) (r : z = w) : l *> (inv l *> m *> r) *> inv r = m \elim l, m, r
+      | idp, idp, idp => idp

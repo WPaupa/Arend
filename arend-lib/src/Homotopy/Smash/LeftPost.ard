@@ -657,14 +657,16 @@
   => nS.{l} f g x
 
 \func phiS.{l} {X Y B B' T : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (k : Smash.{l} Y B' ->* T) (x : X)
-  => pmap (pmap (\lam v => idp *> (pmap k.1 v *> k.2))) (nS'.{l} f g x)
-     *> post.phi k.1 {_} {_} {_} {_} {evS.{l} f g x} {bS0.{l} f g x} {bS1.{l} f g x}
-                 (pmap (`*> bS1.{l} f g x) (inv (inv (cofSmashEquiv.naturalK.squareK.first.{l} f g x base)))
-                  *> (idp_*> (bS1.{l} f g x) *> inv (LSs.{l} f g x))) k.2
-     *> pmap (\lam Z => post.bd k.1 (evS.{l} f g x) (bS1.{l} f g x) k.2 *> Z *> inv (idp_*> _))
-             (post.edge k.1 {_} {_} {_} {_} {evS.{l} f g x} {idp} {bS0.{l} f g x} {bS1.{l} f g x}
-                        (inv (inv (cofSmashEquiv.naturalK.squareK.first.{l} f g x base))) (idp_*> (bS1.{l} f g x) *> inv (LSs.{l} f g x)) k.2
-              *> pmap (_ *>) (cS.{l} f g k x))
+  => phiG k.1 {_} {_} {_} {_} {evS.{l} f g x} {idp} {bS0.{l} f g x} {bS1.{l} f g x}
+          (inv (inv (cofSmashEquiv.naturalK.squareK.first.{l} f g x base))) (idp_*> (bS1.{l} f g x) *> inv (LSs.{l} f g x)) k.2
+          (nS'.{l} f g x) (cS.{l} f g k x)
+
+\func phiG {A B : \Type} (F : A -> B) {x0 x1 z : A} {z' : B} {h h' : x0 = x1} {b0 : x0 = z} {b1 : x1 = z} (e : h = h') (c : h' *> b1 = b0) (t : F z = z')
+           {M : h *> b1 = b0} (N : M = pmap (`*> b1) e *> c) {W : pmap F h' *> (pmap F b1 *> t) = pmap F b0 *> t} (C : post F c t = W)
+  : pmap (\lam v => idp *> (pmap F v *> t)) M
+    = post.bd F h b1 t *> (pmap (`*> (pmap F b1 *> t)) (pmap (pmap F) e) *> W) *> inv (idp_*> (pmap F b0 *> t))
+  => pmap (pmap (\lam v => idp *> (pmap F v *> t))) N *> post.phi F (pmap (`*> b1) e *> c) t
+     *> pmap (\lam Z => post.bd F h b1 t *> Z *> inv (idp_*> (pmap F b0 *> t))) (post.edge F e c t *> pmap (_ *>) C)
 
 \func cS0.{l} {X Y B B' T : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (k : Smash.{l} Y B' ->* T) (x : X)
   => postC k.1 k.2 (eBL.{l} (->*.id {X}) f g (->*.id {B'}) k x) (eBL.{l} f (->*.id {Y}) (->*.id {B}) g k x) (LSs.{l} f g x)

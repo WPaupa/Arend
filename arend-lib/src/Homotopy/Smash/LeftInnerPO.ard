@@ -1,0 +1,96 @@
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Cell
+\import Homotopy.Smash.Cofiber
+\import Homotopy.Smash.CoreScalar (Zk)
+\import Homotopy.Smash.LeftA
+\import Homotopy.Smash.LeftAO
+\import Homotopy.Smash.LeftEdgeO
+\import Homotopy.Smash.LeftInner (eK)
+\import Homotopy.Smash.LeftInnerP (edgeOf, lhsOf)
+\import Homotopy.Smash.LeftNorm (Wc, WG, xiA)
+\import Homotopy.Smash.LeftNormO
+\import Homotopy.Smash.LeftPostO
+\import Homotopy.Smash.LeftScalar (Ty)
+\import Homotopy.Smash.OuterBeta
+\import Homotopy.Smash.PostBeta
+\import Homotopy.Smash.PushoutLeft
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func oNcz0.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => pmap (inv (pmap (evB.{u} f g b) (Ha.cz.{u} f g)) *>) (inv (Zk (Smash.map.{u} f (->*.id {Cof.pointed g})).2))
+     *> nc.inverse.lem (pmap (evB.{u} f g b) (Ha.cz.{u} f g)) idp
+
+\func oNPc.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => paste (oNAs.{u} f g b) (paste (lhsOf (oP2N.{u} f g b))
+       (paste (pmap (`*> _) (inv (inv (pmap_inv-comm (evB.{u} f g b) (Ha.cz.{u} f g)))) *> oNcz0.{u} f g b) (oNP4.{u} f g b)))
+
+\sfunc oNPo.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B) : Ty (oNPc.{u} f g b) => oNPc.{u} f g b
+
+\func oE0.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => pmap (pmap (\lam s => (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 ((Smash.map.{u} (->*.id {X}) g).1 s)) (pmap (\lam (a : X) => (pinl (a, b) : Smash.{u} X B)) f.2) *>)
+          (inv (Pco.{u} (->*.id {X}) (->*.id {X}) g (Cof.inc g) b))
+     *> P2Eo (\lam s => (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 ((Smash.map.{u} (->*.id {X}) g).1 s))
+             (pmap (\lam (a : X) => (pinl (a, b) : Smash.{u} X B)) f.2) (ppglue (pinr b)) (ppglue (pinl (f.1 base))) (ppglue (pinl base))
+             (Smash.map.{u} (->*.id {X}) (Cof.inc g) ∘* Smash.map.{u} (->*.id {X}) g).2
+
+\func oc'.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => *>-assoc (pmap (\lam s => (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 ((Smash.map.{u} (->*.id {X}) g).1 s)) (pmap (\lam (a : X) => (pinl (a, b) : Smash.{u} X B)) f.2))
+              (inv idp *> hWo.{u} {X} g b) idp
+     *> pmap (pmap (\lam s => (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 ((Smash.map.{u} (->*.id {X}) g).1 s)) (pmap (\lam (a : X) => (pinl (a, b) : Smash.{u} X B)) f.2) *>)
+            (oNP2T.{u} {X} g b)
+
+\func oP2Nf.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => pmap (ch (inv (oEo.{u} g b f.2)) (idp {_} {idp {Smash.{u} X (Cof.pointed g)} {base {Smash.{u} X (Cof.pointed g)}}}) (oeP1.{u} f g b)) (oP2N.{u} f g b)
+     *> ch.chV (oEo.{u} g b f.2) (idp {_} {idp {Smash.{u} X (Cof.pointed g)} {base {Smash.{u} X (Cof.pointed g)}}}) (oE0.{u} f g b) (oc'.{u} f g b)
+
+\func oPST.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => inv (ch.paste idp _ (oeV0.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) b) (oeP1.{u} f g b) (oeV4.{u} f g b) (oNAs.{u} f g b) _)
+     *> pmap2 (\lam c d => paste c d) (oAsN.{u} f g b)
+          (inv (ch.paste (inv (oEo.{u} g b f.2)) _ (oeP1.{u} f g b) idp (oeV4.{u} f g b) _ _)
+           *> pmap2 (\lam c d => paste c d) (oP2Nf.{u} f g b)
+                (inv (ch.paste (inv (inv (pmap_inv-comm (evB.{u} f g b) (Ha.cz.{u} f g)))) (idp *> inv (oEHP.{u} f g b))
+                               idp (oeP3.{u} f g b) (oeV4.{u} f g b)
+                               (pmap (`*> _) (inv (inv (pmap_inv-comm (evB.{u} f g b) (Ha.cz.{u} f g)))) *> oNcz0.{u} f g b) (oNP4.{u} f g b))
+                 *> pmap2 (\lam c d => paste c d)
+                          (ch.edge (inv (inv (pmap_inv-comm (evB.{u} f g b) (Ha.cz.{u} f g)))) idp (oeP3.{u} f g b) idp (oNcz0.{u} f g b))
+                          (oP4N.{u} f g b)))
+
+\func oetaS.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B) => edgeOf (oPST.{u} f g b)
+
+\sfunc oetaO.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B) : Ty (oetaS.{u} f g b) => oetaS.{u} f g b
+
+\func oPSR.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => paste (AsTo (pmap (\lam s => (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 ((Smash.map.{u} (->*.id {X}) g).1 s)) (pmap (\lam (a : X) => (pinl (a, b) : Smash.{u} X B)) f.2))
+                 (Wc (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 (idp {Smash.{u} X Y} {pinl (base, g.1 b)}) (ppglue (pinr (g.1 b))) (ppglue (pinl base)))
+                 (WG.{u} g (f.1 base)) (WG.{u} g (base {X})) (Smash.map.{u} (->*.id {X}) (Cof.inc g)).2 (xiA.{u} X g))
+           (paste (oc'.{u} f g b) (paste (ch idp (oeP3.{u} f g b) idp (oNcz0.{u} f g b)) (tinv (oNT.{u} f g b))))
+
+\sfunc oPSTo.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : ch (oetaO.{u} f g b) (oeV4.{u} f g b) (oeV0.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) b) (oNPo.{u} f g b) = oPSR.{u} f g b
+  => pmap2 (\lam e c => ch e (oeV4.{u} f g b) (oeV0.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) b) c) (\peval oetaO.{u} f g b) (\peval oNPo.{u} f g b)
+     *> oPST.{u} f g b
+
+\sfunc ospO.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : ob (\lam (G : B ->* Smash.{u} X (Cof.pointed g)) => G.1 b) (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.pp.{u} f g))
+       (Ha.{u} f g base b)
+    = pmap (`*> _) (inv (Ha.cl.{u} f g base b *> Ra.{u} f g base b)) *> oNPo.{u} f g b
+  => osp.{u} f g b *> pmap (_ *>) (inv (\peval oNPo.{u} f g b))
+
+\sfunc oE10Po.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : Ha.cl.{u} f g base b *> Ra.{u} f g base b = oetaO.{u} f g b *> kPo.{u} f g b
+  => E10Po.{u} f g b *> pmap (`*> kPo.{u} f g b) (inv (\peval oetaO.{u} f g b))
+
+\func oppN.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => pmap (ch idp (oeV4.{u} f g b) (oeV0.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) b)) (ospO.{u} f g b)
+     *> eK (Ha.cl.{u} f g base b *> Ra.{u} f g base b) (oetaO.{u} f g b) (kPo.{u} f g b) (oE10Po.{u} f g b)
+           (oeV4.{u} f g b) (oeV0.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) b) _
+     *> pmap (ch (kPo.{u} f g b) idp idp)
+             (ch.edge (inv (Ha.cl.{u} f g base b *> Ra.{u} f g base b)) (oetaO.{u} f g b)
+                      (oeV4.{u} f g b) (oeV0.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) b) (oNPo.{u} f g b)
+              *> oPSTo.{u} f g b)

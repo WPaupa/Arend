@@ -44,12 +44,15 @@
        (inv (pushoutLeft.coh.convL.{u} f g (Smash.proj.1 (a, base))) *> pushoutLeft.coh.point.{u} f g a base
         *> pushoutLeft.coh.convR.{u} f g (Smash.proj.1 (a, base)))
     = nc (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a) idp
-  => pmap (nc (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.pp.{u} f g)) a)) (Hfac.{u} f g a base)
-     *> nc.end (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.pp.{u} f g)) a)
-               (Ha.{u} f g a base) (inv (Hb.{u} f g a base))
-     *> pmap (_ *>) (ei'.{u} f g a
-                     *> pmap (nc (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a))
-                             (inv (idp_*> (Hb.{u} f g a base)))
-                     *> nc.end (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a)
-                               idp (Hb.{u} f g a base))
-     *> cnc (Hb.{u} f g a base) _
+  => eiG (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.pp.{u} f g)) a)
+         (->*.happly (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g)) a)
+         (Ha.{u} f g a base) (Hb.{u} f g a base) (Hfac.{u} f g a base) (ei'.{u} f g a)
+
+\func eiG {K T : Pointed} {F F' : K ->* T} (s s' : F = F') {Z : F.1 base = F'.1 base}
+          {H : pmap (\lam (G : K ->* T) => G.1 base) s = pmap (\lam (G : K ->* T) => G.1 base) s'}
+          (Ha : pmap (\lam (G : K ->* T) => G.1 base) s = Z) (Hb : pmap (\lam (G : K ->* T) => G.1 base) s' = Z)
+          (fac : H = Ha *> inv Hb) (e' : nc s Ha = nc s' Hb)
+  : nc s H = nc s' idp
+  => pmap (nc s) fac *> nc.end s Ha (inv Hb)
+     *> pmap (_ *>) (e' *> pmap (nc s') (inv (idp_*> Hb)) *> nc.end s' idp Hb)
+     *> cnc Hb _

@@ -1,0 +1,124 @@
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Cell
+\import Homotopy.Smash.Code
+\import Homotopy.Smash.Cofiber
+\import Homotopy.Smash.LeftPost
+\import Homotopy.Smash.LeftPostO
+\import Homotopy.Smash.OuterBeta
+\import Homotopy.Smash.PostBeta
+\import Homotopy.Smash.PreKOuter
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func yLo1 {B C S T : \Type} (F : S -> T) (jR : B -> S) (jb : C -> S) {cr er : B} {c0 c1 : cr = er} (th : c0 = c1) {c e : C} (u : c = e) {o z : S} {z' : T}
+           (G1 : jR er = z) (Gb : jb e = z) (G0 : o = z) (t : F o = z')
+  : im (\lam p => pmap F p *> t) (wb0g F jR jb c0 u G1 Gb G0 t) (wb0g F jR jb c1 u G1 Gb G0 t)
+       (pmap (\lam v => (pmap jR v *> Ew G1 G0) *> (inv (pmap jb u *> Ew Gb G0) *> (pmap jb u *> Ew Gb G0))) th)
+    = pmap (\lam v => (pmap (\lam b => F (jR b)) v *> (Ew (pmap F G1) (pmap F G0) *> t))
+                      *> (inv (pmap (\lam c => F (jb c)) u *> (Ew (pmap F Gb) (pmap F G0) *> t)) *> (pmap (\lam c => F (jb c)) u *> (Ew (pmap F Gb) (pmap F G0) *> t)))) th
+  \elim c1, th
+  | _, idp => imI (\lam p => pmap F p *> t) (wb0g F jR jb c0 u G1 Gb G0 t)
+
+\func yLo2 {B C S T : \Type} (F : S -> T) (jR : B -> S) (jb : C -> S) {cr er : B} (ur : cr = er) {c e : C} {c0 c1 : c = e} (th : c0 = c1) {o z : S} {z' : T}
+           (G1 : jR er = z) (Gb : jb e = z) (G0 : o = z) (t : F o = z')
+  : im (\lam p => pmap F p *> t) (wb0g F jR jb ur c0 G1 Gb G0 t) (wb0g F jR jb ur c1 G1 Gb G0 t)
+       (pmap (\lam v => (pmap jR ur *> Ew G1 G0) *> (inv (pmap jb v *> Ew Gb G0) *> (pmap jb v *> Ew Gb G0))) th)
+    = pmap (\lam v => (pmap (\lam b => F (jR b)) ur *> (Ew (pmap F G1) (pmap F G0) *> t))
+                      *> (inv (pmap (\lam c => F (jb c)) v *> (Ew (pmap F Gb) (pmap F G0) *> t)) *> (pmap (\lam c => F (jb c)) v *> (Ew (pmap F Gb) (pmap F G0) *> t)))) th
+  \elim c1, th
+  | _, idp => imI (\lam p => pmap F p *> t) (wb0g F jR jb ur c0 G1 Gb G0 t)
+
+\func RSs.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (y : B)
+  => inv (RMs.{l} f (->*.id {Y}) (->*.id {B}) g y)
+     *> (pmap (\lam (b : Ax.{l} {X} {B} {Smash.{l} Y B'} (Smash.restrict.{l} (Smash.map.{l} (->*.id {Y}) g ∘* Smash.map.{l} f (->*.id {B}))).1) => b.2 y)
+              (pmap (\lam (c : f.1 base = base) => Vc.ax.{l} (Smash.restrict.{l} (Smash.map.{l} (f.1, c) (g ∘* ->*.id {B})))) (inv (inv idp *> idp_*> f.2)))
+     *> (pmap (\lam (b : Ax.{l} {X} {B} {Smash.{l} Y B'} (Smash.restrict.{l} (Smash.map.{l} (->*.id {Y}) g ∘* Smash.map.{l} f (->*.id {B}))).1) => b.2 y)
+              (pmap (\lam (c : g.1 base = base) => Vc.ax.{l} (Smash.restrict.{l} (Smash.map.{l} (f ∘* ->*.id {X}) (g.1, c)))) (inv idp *> idp_*> g.2))
+     *> RMs.{l} (->*.id {X}) f g (->*.id {B'}) y))
+
+\func bS0o.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (y : B)
+  => pmap (\lam (G : B ->* Smash.{l} Y B') => G.1 y) (Smash.adjunction.{l} {X} {B} {Smash.{l} Y B'} (Smash.map.{l} (->*.id {Y}) g ∘* Smash.map.{l} f (->*.id {B}))).2
+
+\func bS1o.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (y : B)
+  => pmap (\lam (G : B ->* Smash.{l} Y B') => G.1 y) (Smash.adjunction.{l} {X} {B} {Smash.{l} Y B'} (Smash.map.{l} f (->*.id {B'}) ∘* Smash.map.{l} (->*.id {X}) g)).2
+
+\func evSo.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (y : B)
+  => pmap (\lam (s : Smash.{l} X B ->* Smash.{l} Y B') => ((Smash.adjunction.{l} {X} {B} {Smash.{l} Y B'} s).1 base).1 y)
+          (cofSmashEquiv.naturalK.squareK.{l} f g)
+
+\sfunc onS'.{l} {X Y B B' : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (y : B)
+  : ob (\lam (G : B ->* Smash.{l} Y B') => G.1 y) (pmap (Smash.adjunction.{l} {X} {B} {Smash.{l} Y B'}) (cofSmashEquiv.naturalK.squareK.{l} f g)) idp
+    = pmap (`*> bS1o.{l} f g y) (inv (inv (cofSmashEquiv.naturalK.squareK.first.{l} f g base y))) *> (idp_*> (bS1o.{l} f g y) *> inv (RSs.{l} f g y))
+  => oS.{l} f g y
+
+\func RSt.{l} {X Y B B' T : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (k : Smash.{l} Y B' ->* T) (y : B)
+  => inv (RMt.{l} f (->*.id {Y}) (->*.id {B}) g k y)
+     *> (pmap (\lam (v : f.1 base = base) => (pmap (\lam (x : Y) => k.1 (pinl (x, g.1 y))) v *> (Ew (pmap k.1 (ppglue (pinr (g.1 y)))) (pmap k.1 (ppglue (pinl base))) *> k.2))
+                                            *> (inv (pmap (\lam (c : B') => k.1 (pinl (f.1 base, c))) (idp *> g.2)
+                                                     *> (Ew (pmap k.1 (ppglue (pinl (f.1 base)))) (pmap k.1 (ppglue (pinl base))) *> k.2))
+                                                *> (pmap (\lam (c : B') => k.1 (pinl (f.1 base, c))) (idp *> g.2)
+                                                    *> (Ew (pmap k.1 (ppglue (pinl (f.1 base)))) (pmap k.1 (ppglue (pinl base))) *> k.2))))
+              (inv (inv idp *> idp_*> f.2))
+     *> (pmap (\lam (v : g.1 base = base) => (pmap (\lam (x : Y) => k.1 (pinl (x, g.1 y))) (idp *> f.2)
+                                               *> (Ew (pmap k.1 (ppglue (pinr (g.1 y)))) (pmap k.1 (ppglue (pinl base))) *> k.2))
+                                              *> (inv (pmap (\lam (c : B') => k.1 (pinl (f.1 base, c))) v
+                                                       *> (Ew (pmap k.1 (ppglue (pinl (f.1 base)))) (pmap k.1 (ppglue (pinl base))) *> k.2))
+                                                  *> (pmap (\lam (c : B') => k.1 (pinl (f.1 base, c))) v
+                                                      *> (Ew (pmap k.1 (ppglue (pinl (f.1 base)))) (pmap k.1 (ppglue (pinl base))) *> k.2))))
+              (inv idp *> idp_*> g.2)
+     *> RMt.{l} (->*.id {X}) f g (->*.id {B'}) k y))
+
+\sfunc rsqP.{l} {X Y B B' T : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (k : Smash.{l} Y B' ->* T) (y : B)
+  : im (\lam p => pmap k.1 p *> k.2) (eBR.{l} f (->*.id {Y}) (->*.id {B}) g k y) (eBR.{l} (->*.id {X}) f g (->*.id {B'}) k y) (RSs.{l} f g y)
+    = RSt.{l} f g k y
+  => im.cat (\lam p => pmap k.1 p *> k.2) (eBR.{l} f (->*.id {Y}) (->*.id {B}) g k y) (eAR.{l} f (->*.id {Y}) (->*.id {B}) g k y)
+            (eBR.{l} (->*.id {X}) f g (->*.id {B'}) k y) (inv (RMs.{l} f (->*.id {Y}) (->*.id {B}) g y)) _
+     *> pmap2 (*>)
+          (im.inverse (\lam p => pmap k.1 p *> k.2) (eAR.{l} f (->*.id {Y}) (->*.id {B}) g k y) (eBR.{l} f (->*.id {Y}) (->*.id {B}) g k y)
+                      (RMs.{l} f (->*.id {Y}) (->*.id {B}) g y)
+           *> pmap inv (rmP.{l} f (->*.id {Y}) (->*.id {B}) g k y))
+          (im.cat (\lam p => pmap k.1 p *> k.2) (eAR.{l} f (->*.id {Y}) (->*.id {B}) g k y)
+                  (wb0g k.1 (\lam (x : Y) => (pinl (x, g.1 y) : Smash.{l} Y B')) (\lam (c : B') => (pinl (f.1 base, c) : Smash.{l} Y B'))
+                        (idp *> f.2) (idp *> g.2) (ppglue (pinr (g.1 y))) (ppglue (pinl (f.1 base))) (ppglue (pinl base)) k.2)
+                  (eBR.{l} (->*.id {X}) f g (->*.id {B'}) k y) _ _
+           *> pmap2 (*>)
+                (yLo1 k.1 (\lam (x : Y) => (pinl (x, g.1 y) : Smash.{l} Y B')) (\lam (c : B') => (pinl (f.1 base, c) : Smash.{l} Y B'))
+                      (inv (inv idp *> idp_*> f.2)) (idp *> g.2) (ppglue (pinr (g.1 y))) (ppglue (pinl (f.1 base))) (ppglue (pinl base)) k.2)
+                (im.cat (\lam p => pmap k.1 p *> k.2)
+                        (wb0g k.1 (\lam (x : Y) => (pinl (x, g.1 y) : Smash.{l} Y B')) (\lam (c : B') => (pinl (f.1 base, c) : Smash.{l} Y B'))
+                              (idp *> f.2) (idp *> g.2) (ppglue (pinr (g.1 y))) (ppglue (pinl (f.1 base))) (ppglue (pinl base)) k.2)
+                        (eAR.{l} (->*.id {X}) f g (->*.id {B'}) k y) (eBR.{l} (->*.id {X}) f g (->*.id {B'}) k y) _ (RMs.{l} (->*.id {X}) f g (->*.id {B'}) y)
+                 *> pmap2 (*>)
+                      (yLo2 k.1 (\lam (x : Y) => (pinl (x, g.1 y) : Smash.{l} Y B')) (\lam (c : B') => (pinl (f.1 base, c) : Smash.{l} Y B'))
+                            (idp *> f.2) (inv idp *> idp_*> g.2) (ppglue (pinr (g.1 y))) (ppglue (pinl (f.1 base))) (ppglue (pinl base)) k.2)
+                      (rmP.{l} (->*.id {X}) f g (->*.id {B'}) k y)))
+
+\func ocS.{l} {X Y B B' T : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (k : Smash.{l} Y B' ->* T) (y : B)
+  => ch.chI {_} {_} {_} {_} {_} {_} {_} {_} {_} {_}
+            {idp {_} {idp {T} {k.1 ((Smash.map.{l} f (->*.id {B'}) ∘* Smash.map.{l} (->*.id {X}) g).1 (pinl (base, y) : Smash.{l} X B))}}}
+            (postC k.1 k.2 (eBR.{l} (->*.id {X}) f g (->*.id {B'}) k y) (eBR.{l} f (->*.id {Y}) (->*.id {B}) g k y) (RSs.{l} f g y)
+             *> pmap (\lam L => idp_*> _ *> inv L) (rsqP.{l} f g k y))
+
+\func ophiS.{l} {X Y B B' T : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (k : Smash.{l} Y B' ->* T) (y : B)
+  => phiG k.1 {_} {_} {_} {_} {evSo.{l} f g y} {idp} {bS0o.{l} f g y} {bS1o.{l} f g y}
+          (inv (inv (cofSmashEquiv.naturalK.squareK.first.{l} f g base y))) (idp_*> (bS1o.{l} f g y) *> inv (RSs.{l} f g y)) k.2
+          (onS'.{l} f g y) (ocS.{l} f g k y)
+
+\func oPS.{l} {X Y B B' T : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (k : Smash.{l} Y B' ->* T) (y : B)
+  => post.bd k.1 (evSo.{l} f g y) (bS1o.{l} f g y) k.2
+     *> ((pmap (`*> (pmap k.1 (bS1o.{l} f g y) *> k.2)) (pmap (pmap k.1) (inv (inv (cofSmashEquiv.naturalK.squareK.first.{l} f g base y))))
+          *> ch (inv idp) (inv (eBR.{l} (->*.id {X}) f g (->*.id {B'}) k y)) (inv (eBR.{l} f (->*.id {Y}) (->*.id {B}) g k y))
+                (idp_*> _ *> inv (RSt.{l} f g k y)))
+       *> inv (idp_*> (pmap k.1 (bS0o.{l} f g y) *> k.2)))
+
+\sfunc opostLSQ.{l} {X Y B B' T : Pointed.{l}} (f : X ->* Y) (g : B ->* B') (k : Smash.{l} Y B' ->* T) (y : B)
+  : pmap (\lam v => idp *> (pmap k.1 v *> k.2))
+         (ob (\lam (G : B ->* Smash.{l} Y B') => G.1 y) (pmap (Smash.adjunction.{l} {X} {B} {Smash.{l} Y B'}) (cofSmashEquiv.naturalK.squareK.{l} f g)) idp)
+    = oPS.{l} f g k y
+  => ophiS.{l} f g k y

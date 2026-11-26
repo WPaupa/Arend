@@ -1,0 +1,112 @@
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pointed.Mapping
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Cofiber
+\import Homotopy.Smash.LeftA
+\import Homotopy.Smash.LeftAO
+\import Homotopy.Smash.LeftB
+\import Homotopy.Smash.LeftNullO
+\import Homotopy.Smash.LeftSqO
+\import Homotopy.Smash.OuterBeta
+\import Homotopy.Smash.PostBeta
+\import Homotopy.Smash.PreKOuter
+\import Homotopy.Smash.PushoutLeft
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\sfunc osq.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => sqG (\lam (G : B ->* Smash.{u} X (Cof.pointed g)) => G.1 b) (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (pushoutLeft.coh.qq.{u} f g))
+         (Hb.eval.{u} f g base b)
+         (osqD.{u} f g b)
+         (osqR.{u} f g b)
+
+\sfunc osqD.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : Hb.E4.{u} f g base b
+    = pmap (pmap (\lam (G : A ->* Map* B (Smash.{u} X (Cof.pointed g))) => (G.1 base).1 b))
+           (pmap (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)})) (qqE.{u} f g))
+      *> (pmap_*>-comm (Ha.ev.{u} f g base b) (Hb.Q1.{u} f g) (Hb.Q2.{u} f g *> Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g))
+          *> pmap (pmap (Ha.ev.{u} f g base b) (Hb.Q1.{u} f g) *>)
+                  (pmap_*>-comm (Ha.ev.{u} f g base b) (Hb.Q2.{u} f g) (Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g))
+                   *> pmap (pmap (Ha.ev.{u} f g base b) (Hb.Q2.{u} f g) *>) (pmap_*>-comm (Ha.ev.{u} f g base b) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)))))
+  => edecE (Ha.ev.{u} f g base b) (Hb.Q1.{u} f g) (Hb.Q2.{u} f g) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)) *> inv (idp_*> _)
+
+\sfunc osqR.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => obJ (\lam (G : B ->* Smash.{u} X (Cof.pointed g)) => G.1 b)
+         (pmap (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)})) (qqE.{u} f g))
+         (pmap_*>-comm (Ha.ev.{u} f g base b) (Hb.Q1.{u} f g) (Hb.Q2.{u} f g *> Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g))
+          *> pmap (pmap (Ha.ev.{u} f g base b) (Hb.Q1.{u} f g) *>)
+                  (pmap_*>-comm (Ha.ev.{u} f g base b) (Hb.Q2.{u} f g) (Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g))
+                   *> pmap (pmap (Ha.ev.{u} f g base b) (Hb.Q2.{u} f g) *>) (pmap_*>-comm (Ha.ev.{u} f g base b) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)))))
+         (osq1.{u} f g b)
+
+\func qqE.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+  : pushoutLeft.coh.qq.{u} f g = Hb.Q1.{u} f g *> Hb.Q2.{u} f g *> Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g)
+  => idp
+
+\func obJ {X W : Pointed} {T : \Type} (E : W -> T) {F F' : X ->* W} {s s' : F = F'} (es : s = s')
+          {k : E (F.1 base) = E (F'.1 base)} (w : pmap (\lam (G : X ->* W) => E (G.1 base)) s' = k) {Z : k *> pmap E F'.2 = pmap E F.2} (R : ob E s' w = Z)
+  : ob E s (pmap (pmap (\lam (G : X ->* W) => E (G.1 base))) es *> w) = Z \elim es
+  | idp => pmap (ob E s) (idp_*> w) *> R
+
+\sfunc osqA.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : ob (\lam (G : B ->* Smash.{u} X (Cof.pointed g)) => G.1 b) (pmap (Smash.adjunction.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}) (inv (Hb.As'.{u} f g))) idp
+    = rhsOf (oasA.{u} (Smash.map.{u} f (->*.id {Cof.pointed g})) (Smash.map.{u} (->*.id {A}) (Cof.inc g)) (Smash.map.{u} (->*.id {A}) g) b)
+  => oasA.{u} (Smash.map.{u} f (->*.id {Cof.pointed g})) (Smash.map.{u} (->*.id {A}) (Cof.inc g)) (Smash.map.{u} (->*.id {A}) g) b
+
+\func osq1.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => ocatw1.{u} (Hb.Q1.{u} f g) (Hb.Q2.{u} f g *> Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g)) b
+               (pmap_*>-comm (Ha.ev.{u} f g base b) (Hb.Q2.{u} f g) (Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g))
+                *> pmap (pmap (Ha.ev.{u} f g base b) (Hb.Q2.{u} f g) *>) (pmap_*>-comm (Ha.ev.{u} f g base b) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g))))
+     *> pmap (_ *>) (pmap2 (*>) (pmap (pmap (pmap (evB.{u} f g b) (Hb.Q1.{u} f g) *>)) (osq2.{u} f g b)) (osq4.{u} f g b))
+
+\func osq2.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => ocatw1.{u} (Hb.Q2.{u} f g) (Hb.Q3.{u} f g *> inv (Hb.As'.{u} f g)) b
+               (pmap_*>-comm (Ha.ev.{u} f g base b) (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)))
+     *> pmap (_ *>) (pmap2 (*>) (pmap (pmap (pmap (evB.{u} f g b) (Hb.Q2.{u} f g) *>)) (osq3.{u} f g b))
+                                (oasFA.{u} (Smash.map.{u} (->*.id {X}) (Cof.inc g)) (Smash.map.{u} f (->*.id {Y})) (Smash.map.{u} (->*.id {A}) g) b))
+
+\func osq3.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => ocatw1.{u} (Hb.Q3.{u} f g) (inv (Hb.As'.{u} f g)) b idp
+     *> pmap (_ *>) (pmap2 (*>) (pmap (pmap (pmap (evB.{u} f g b) (Hb.Q3.{u} f g) *>))
+                                      (osqA.{u} f g b))
+                                (opre2.{u} g (cofSmashEquiv.naturalK.squareK.{u} f (Cof.inc g)) b))
+
+\func osq4.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => oposts.{u} (Smash.map.{u} (->*.id {X}) (Cof.inc g)) (cofSmashEquiv.naturalK.squareK.{u} f g) b
+     *> pmap (_ *>) (pmap (_ *>) (pmap (`*> _) (opostLSQ.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) b)))
+
+\func rhsOf {A : \Type} {a b : A} (_ : a = b) : A => b
+
+\sfunc ocatw1.{u} {X K T : Pointed.{u}} {h h' h'' : Smash.{u} X K ->* T} (Q1 : h = h') (Q2 : h' = h'') (y : K)
+              {h2 : h'.1 (pinl (base, y)) = h''.1 (pinl (base, y))}
+              (w2 : pmap (\lam (s : Smash.{u} X K ->* T) => ((Smash.adjunction.{u} {X} {K} {T} s).1 base).1 y) Q2 = h2)
+  : ob (\lam (G : K ->* T) => G.1 y) (pmap (Smash.adjunction.{u} {X} {K} {T}) (Q1 *> Q2))
+       (pmap_*>-comm (\lam (s : Smash.{u} X K ->* T) => ((Smash.adjunction.{u} {X} {K} {T} s).1 base).1 y) Q1 Q2
+        *> pmap (pmap (\lam (s : Smash.{u} X K ->* T) => ((Smash.adjunction.{u} {X} {K} {T} s).1 base).1 y) Q1 *>) w2)
+    = *>-assoc (pmap (\lam (s : Smash.{u} X K ->* T) => ((Smash.adjunction.{u} {X} {K} {T} s).1 base).1 y) Q1) h2
+               (pmap (\lam (G : K ->* T) => G.1 y) (Smash.adjunction.{u} {X} {K} {T} h'').2)
+      *> (pmap (pmap (\lam (s : Smash.{u} X K ->* T) => ((Smash.adjunction.{u} {X} {K} {T} s).1 base).1 y) Q1 *>)
+               (ob (\lam (G : K ->* T) => G.1 y) (pmap (Smash.adjunction.{u} {X} {K} {T}) Q2) w2)
+      *> ob (\lam (G : K ->* T) => G.1 y) (pmap (Smash.adjunction.{u} {X} {K} {T}) Q1) idp)
+  => ocatw.{u} Q1 Q2 y idp w2
+
+\sfunc oasA.{u} {X K P Q Z : Pointed.{u}} (F : Q ->* Z) (G : P ->* Q) (H : Smash.{u} X K ->* P) (y : K)
+  : ob (\lam (G' : K ->* Z) => G'.1 y) (pmap (Smash.adjunction.{u} {X} {K} {Z}) (inv (->*.compose-assoc F G H))) idp
+    = rhsOf (oas0.{u} (\lam s => F.1 (G.1 (H.1 s))) (idp_*> _ *> inv (pmap (`*> F.2) (pmap_*>-comm F.1 (pmap G.1 H.2) G.2) *> *>-assoc _ _ _)) y)
+  => oas0.{u} (\lam s => F.1 (G.1 (H.1 s))) (idp_*> _ *> inv (pmap (`*> F.2) (pmap_*>-comm F.1 (pmap G.1 H.2) G.2) *> *>-assoc _ _ _)) y
+
+\sfunc oasFA.{u} {X K P Q Z : Pointed.{u}} (F : Q ->* Z) (G : P ->* Q) (H : Smash.{u} X K ->* P) (y : K)
+  : ob (\lam (G' : K ->* Z) => G'.1 y) (pmap (Smash.adjunction.{u} {X} {K} {Z}) (->*.compose-assoc F G H)) idp
+    = rhsOf (oasF.{u} (\lam s => F.1 (G.1 (H.1 s))) (idp_*> _ *> inv (pmap (`*> F.2) (pmap_*>-comm F.1 (pmap G.1 H.2) G.2) *> *>-assoc _ _ _)) y)
+  => oasF.{u} (\lam s => F.1 (G.1 (H.1 s))) (idp_*> _ *> inv (pmap (`*> F.2) (pmap_*>-comm F.1 (pmap G.1 H.2) G.2) *> *>-assoc _ _ _)) y
+
+\func sqG {X W : Pointed} {T : \Type} (E : W -> T) {F F' : X ->* W} (s : F = F')
+          {k1 k2 k3 : E (F.1 base) = E (F'.1 base)} {E4 : pmap (\lam (G : X ->* W) => E (G.1 base)) s = k1} {cr : k1 = k2} {pR : k2 = k3}
+          {w0 : pmap (\lam (G : X ->* W) => E (G.1 base)) s = k3} (Hv : w0 = (E4 *> cr) *> pR)
+          {E4' : pmap (\lam (G : X ->* W) => E (G.1 base)) s = k1} (dE : E4 = E4') {Z : k1 *> pmap E F'.2 = pmap E F.2} (R : ob E s E4' = Z)
+  : ob E s w0 = pmap (`*> pmap E F'.2) (inv (cr *> pR)) *> Z
+  => pmap (ob E s) Hv *> pmap (ob E s) (*>-assoc E4 cr pR) *> ob.end E s E4 (cr *> pR) *> pmap (_ *>) (pmap (ob E s) dE *> R)

@@ -1,0 +1,233 @@
+\import Homotopy.Smash.Cell
+\import Homotopy.Smash.LeftBoundary (AsT2, AsT3)
+\import Homotopy.Smash.LeftEdgeO (KPo)
+\import Homotopy.Smash.LeftNormO (AsTo)
+\import Homotopy.Smash.LeftNullO (pMo, ZRo)
+\import Homotopy.Smash.LeftPost (Ew, xiM, Lca, nP)
+\import Homotopy.Smash.LeftPostO (Rsh, Rsb)
+\import Homotopy.Smash.LeftScalar (Ix, Wg, Wb, Czg, Ty, cp4)
+\import Homotopy.Smash.PreKScalar (cRV, natN, pg, cv0)
+\import Paths
+
+\func gRMt {B B' C S : \Type} (jR : B' -> S) (jb j0 : C -> S) (g1 : B -> B') {b0 b1 : B} (a : b0 = b1) {b2 : B'} (a' : g1 b1 = b2)
+           {ce c2 : C} (u : ce = c2) {v0 : S} {c3 : C} (V2 : v0 = jb c3) (a0 : c3 = c2) {o z w : S}
+           (KR : jR b2 = z) (KLb : jb c2 = z) (KLc : j0 c2 = z) (KL0 : o = z) (t : o = w)
+  => Rsh jR jb (pmap g1 a *> a') u (Ew KR KL0 *> t) (Ew KLb KL0 *> t)
+     *> (Lca jR g1 a a' (Ew KR KL0 *> t)
+     *> inv (cRV (pmap (\lam x => jR (g1 x)) a) V2 (pmap jR a' *> Ew KR KL0) (pmap jb a0 *> Ew KLb KL0) (pmap j0 a0 *> Ew KLc KL0)
+                 (\lam s => s) (pmap j0 a0 *> (Ew KLc KL0 *> t))
+             *> (xiM (pmap (\lam x => jR (g1 x)) a) (pmap jR a') (Ew KR KL0) (pmap j0 a0) (Ew KLc KL0) t
+             *> Rsb jR j0 g1 a a' a0 (Ew KR KL0 *> t) (Ew KLc KL0 *> t))))
+
+\func gRMr {B B' C S : \Type} (jR : B' -> S) (jb j0 : C -> S) (g1 : B -> B') {b0 b1 : B} (a : b0 = b1) {b2 : B'} (a' : g1 b1 = b2)
+           {ce c2 : C} (u : ce = c2) {v0 : S} {c3 : C} (V2 : v0 = jb c3) (a0 : c3 = c2) {w : S} (XR : jR b2 = w) (XLb : jb c2 = w) (XLc : j0 c2 = w)
+  => Rsh jR jb (pmap g1 a *> a') u XR XLb
+     *> (Lca jR g1 a a' XR
+     *> inv (cRV (pmap (\lam x => jR (g1 x)) a) V2 (pmap jR a' *> XR) (pmap jb a0 *> XLb) (pmap j0 a0 *> XLc) (\lam s => s) (pmap j0 a0 *> XLc)
+             *> Rsb jR j0 g1 a a' a0 XR XLc))
+
+\func preCx {X C T : \Type} (J2 : X -> C -> T) {xb : X} {cb : C} {pt : T} (GL : \Pi (x : X) -> J2 x cb = pt) (GR : \Pi (c : C) -> J2 xb c = pt)
+            (cr : GL xb = GR cb) {x0 : X} (a : x0 = xb)
+  : idp *> Ew (GL x0) (GL xb) = pmap (\lam x => J2 x cb) a *> Ew (GR cb) (GL xb) \elim x0, a
+  | _, idp => pmap (idp *>) (pmap (\lam q => Ew q (GL xb)) cr)
+
+\func oKz {S T : \Type} (F : S -> T) {p z : S} {z' : T} (GRa GLa : p = z) (KA : GLa = GRa) (t : F p = z')
+  : inv (nP.lem F GRa GLa t)
+    *> pmap (\lam q => pmap F q *> t) (pmap (idp *>) (inv (pmap (\lam q => Ew q GLa) KA)) *> idp_*> (Ew GLa GLa))
+    *> pmap (`*> t) (cv0 F GLa GLa)
+    = pmap (\lam q => idp *> (Ew q (pmap F GLa) *> t)) (inv (pmap (pmap F) KA)) *> idp_*> (Ew (pmap F GLa) (pmap F GLa) *> t)
+  \elim z, z', GRa, GLa, KA, t
+  | _, _, _, idp, idp, idp => idp
+
+\func gAs {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+          {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => AsTo (pmap (\lam x => J2 x c1) e) (Wb idp (GR c1) (GL xb) (GL xb))
+          (Wg (pmap (\lam y => J2 x0 (inc y)) gp) (GL x0) (GL xb)) (Wg (pmap (\lam y => J2 xb (inc y)) gp) (GL xb) (GL xb))
+          (Ix (GL xb) (GL xb)) (*>-assoc (pmap (\lam y => J2 xb (inc y)) gp) (Ew (Ix (GL xb) (GL xb)) (Ix (GL xb) (GL xb))) (Ix (GL xb) (GL xb)))
+
+\func gRMr1 {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+            (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+            {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => gRMr (\lam x => J2 x c1) (\lam c => J2 xb c) (\lam c => J2 xb c) (\lam x => x) (idp {X} {xb}) (idp {X} {xb}) (pmap inc gp)
+          (pmap (\lam y => J2 xb (inc y)) gp) (idp {C} {inc yb})
+          (Ew (GR c1) (GL xb)) (Ew (GL xb) (GL xb)) (Ew (GL xb) (GL xb))
+
+\func gM' {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+          {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => pMo (\lam c => J2 xb c) (\lam c => idp *> Ew (GR c) (GL xb)) hn (pmap inc gp) idp H hb (Ew (GL xb) (GL xb))
+
+\func gZ' {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+  => ZRo (pmap (idp *>) (inv (pmap (\lam q => Ew q (GL xb)) cr)) *> idp_*> (Ew (GL xb) (GL xb))) (idp *> Ew (GL xb) (GL xb))
+
+\func goc {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+          {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => *>-assoc (pmap (\lam x => J2 x c1) e) (inv idp *> (pmap (\lam c => J2 xb c) hn *> Ew (GL xb) (GL xb))) idp
+     *> pmap (pmap (\lam x => J2 x c1) e *>)
+          (paste {T} {_} {_} {_} {_} {inv idp} {pmap (\lam c => J2 xb c) hn *> Ew (GL xb) (GL xb)} {_} {_} {idp}
+                 (tinv (idp_*> _ *> inv (gRMr1 J2 inc GL GR cr e hn gp hb)))
+                 (paste {T} {_} {_} {_} {_} {pmap (\lam c => J2 xb c) hn} {Ew (GL xb) (GL xb)} {_} {_} {idp}
+                        (gM' J2 inc GL GR cr e hn gp hb) (gZ' J2 inc GL GR cr)))
+
+\func gRMtP {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+            (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+            {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => gRMt (\lam x => J2 x c1) (\lam c => J2 x0 c) (\lam c => J2 x0 c) (\lam x => x) (idp {X} {x0}) (idp {X} {x0}) (pmap inc gp)
+          (pmap (\lam y => J2 x0 (inc y)) gp) (idp {C} {inc yb})
+          (pmap (\lam x => J2 x c1) e *> Ew (GR c1) (GL xb)) (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb))
+
+\func gMT {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+          {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => pMo (\lam c => J2 x0 c) (\lam c => idp *> (Ew (pmap (\lam x => J2 x c) e *> Ew (GR c) (GL xb)) (Ix (GL x0) (GL xb)) *> Ix (GL x0) (GL xb)))
+         hn (pmap inc gp) idp H hb (Ew (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb)) *> Ix (GL x0) (GL xb))
+
+\func gZT {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+          {x0 : X} (e : x0 = xb)
+  => pmap (Ew (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb)) *>) (idp_*> (Ix (GL x0) (GL xb)))
+     *> ZRo (pmap (\lam q => idp *> (Ew q (Ix (GL x0) (GL xb)) *> Ix (GL x0) (GL xb))) (inv (preCx J2 GL GR cr e))
+             *> idp_*> (Ew (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb)) *> Ix (GL x0) (GL xb)))
+            (idp *> (Ew (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb)) *> Ix (GL x0) (GL xb)))
+
+\func gNT {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+          {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => paste {T} {_} {_} {_} {_} {inv idp} {pmap (\lam c => J2 x0 c) hn *> Ew (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb))} {_} {_} {idp *> Ix (GL x0) (GL xb)}
+           (tinv (idp_*> _ *> inv (gRMtP J2 inc GL GR cr e hn gp hb)))
+           (paste {T} {_} {_} {_} {_} {pmap (\lam c => J2 x0 c) hn} {Ew (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb))} {_} {_} {idp *> Ix (GL x0) (GL xb)}
+                  (gMT J2 inc GL GR cr e hn gp hb) (gZT J2 inc GL GR cr e))
+
+\func gD {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+         (GL : \Pi (x : X) -> J2 x (inc yb) = pt) {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb)
+  => pmap (pmap (\lam x => J2 x c1) e *>) (idp_*> (pmap (\lam c => J2 xb c) hn *> Ew (GL xb) (GL xb)))
+     *> inv (natN {X} {T} {\lam a => J2 a c1} {\lam _ => J2 xb (inc yb)} (\lam a => pmap (\lam c => J2 a c) hn *> Ew (GL a) (GL xb)) e)
+     *> inv (idp_*> (pmap (\lam c => J2 x0 c) hn *> Ew (GL x0) (GL xb)))
+
+\func gKP {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb)
+  => KPo (pmap (\lam c => J2 x0 c) hn) (Ew (GL x0) (GL xb)) (Ew (GL x0) (GL xb)) (gD J2 inc GL e hn)
+
+\func gCP {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+          {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => paste (gAs J2 inc GL GR cr e hn gp hb)
+           (paste (goc J2 inc GL GR cr e hn gp hb)
+                  (paste (Czg (Ix (GL x0) (GL xb))) (tinv (gNT J2 inc GL GR cr e hn gp hb))))
+
+\func gRMtA {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+            (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+            {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => gRMt (\lam x => J2 x c1) (\lam y => J2 x0 (inc y)) (\lam y => J2 xb (inc y)) (\lam x => x) e (idp {X} {xb}) (idp *> gp)
+          (idp {T} {J2 x0 (inc y0)}) gp
+          (Ix (GR c1) (GL xb)) (Ix (GL x0) (GL xb)) (Ix (GL xb) (GL xb)) (Ix (GL xb) (GL xb)) (Ix (GL xb) (GL xb))
+
+\func gRMtB {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+            (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+            {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => gRMt (\lam x => J2 x c1) (\lam y => J2 x0 (inc y)) (\lam y => J2 x0 (inc y)) (\lam x => x) (idp {X} {x0}) e gp
+          (pmap (\lam y => J2 x0 (inc y)) gp) (idp {Y} {yb})
+          (Ix (GR c1) (GL xb)) (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb)) (Ix (GL xb) (GL xb)) (Ix (GL xb) (GL xb))
+
+\func gRSt {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+           (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+           {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => inv (gRMtA J2 inc GL GR cr e hn gp hb)
+     *> (pmap (\lam (v : x0 = xb) => (pmap (\lam x => J2 x c1) v *> (Ew (Ix (GR c1) (GL xb)) (Ix (GL xb) (GL xb)) *> Ix (GL xb) (GL xb)))
+                                     *> (inv (pmap (\lam y => J2 x0 (inc y)) (idp *> gp) *> (Ew (Ix (GL x0) (GL xb)) (Ix (GL xb) (GL xb)) *> Ix (GL xb) (GL xb)))
+                                         *> (pmap (\lam y => J2 x0 (inc y)) (idp *> gp) *> (Ew (Ix (GL x0) (GL xb)) (Ix (GL xb) (GL xb)) *> Ix (GL xb) (GL xb)))))
+             (inv (inv idp *> idp_*> e))
+     *> (pmap (\lam (v : y0 = yb) => (pmap (\lam x => J2 x c1) (idp *> e) *> (Ew (Ix (GR c1) (GL xb)) (Ix (GL xb) (GL xb)) *> Ix (GL xb) (GL xb)))
+                                     *> (inv (pmap (\lam y => J2 x0 (inc y)) v *> (Ew (Ix (GL x0) (GL xb)) (Ix (GL xb) (GL xb)) *> Ix (GL xb) (GL xb)))
+                                         *> (pmap (\lam y => J2 x0 (inc y)) v *> (Ew (Ix (GL x0) (GL xb)) (Ix (GL xb) (GL xb)) *> Ix (GL xb) (GL xb)))))
+             (inv idp *> idp_*> gp)
+     *> gRMtB J2 inc GL GR cr e hn gp hb))
+
+\func gRMrA {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+            (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) {x0 : X} (e : x0 = xb) {c1 : C}
+  => gRMr (\lam x => J2 x c1) (\lam c => J2 x0 c) (\lam c => J2 xb c) (\lam x => x) e (idp {X} {xb}) (idp {C} {inc yb})
+          (idp {T} {J2 x0 (inc yb)}) (idp {C} {inc yb})
+          (Ew (GR c1) (GL xb)) (Ew (GL x0) (GL xb)) (Ew (GL xb) (GL xb))
+
+\func gRMrB {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+            (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) {x0 : X} (e : x0 = xb) {c1 : C}
+  => gRMr (\lam x => J2 x c1) (\lam c => J2 x0 c) (\lam c => J2 x0 c) (\lam x => x) (idp {X} {x0}) e (idp {C} {inc yb})
+          (idp {T} {J2 x0 (inc yb)}) (idp {C} {inc yb})
+          (Ew (GR c1) (GL xb)) (Ew (GL x0) (GL xb)) (Ew (GL x0) (GL xb))
+
+\func gU1 {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) {x0 : X} (e : x0 = xb) {c1 : C}
+  => pmap (\lam (c : x0 = xb) => (pmap (\lam x => J2 x c1) c *> Ew (GR c1) (GL xb))
+                                 *> (inv (idp *> Ew (GL x0) (GL xb)) *> (idp *> Ew (GL x0) (GL xb))))
+          (inv (inv idp *> idp_*> e))
+
+\func gCQ {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+          (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+          {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => paste (gcQ1 J2 inc GL GR cr e hn gp hb) (paste (gcQ2 J2 inc GL GR cr e hn gp hb) (paste (gcQ3 J2 inc GL GR cr e hn gp hb) (gcQ4 J2 inc GL GR cr e hn gp hb)))
+
+\func gcQ1 {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+           (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+           {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => idp_*> _ *> inv (gRSt J2 inc GL GR cr e hn gp hb)
+
+\func gcQ2 {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+           (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+           {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => AsT2 (idp {T} {J2 x0 c1}) (pmap (\lam y => J2 x0 (inc y)) gp)
+          (Wb (pmap (\lam x => J2 x c1) e) (GR c1) (GL xb) (GL xb)) (Wb idp (GL x0) (GL xb) (GL xb)) (Ix (GL xb) (GL xb))
+          (*>-assoc idp (Ew (Ix (GL x0) (GL xb)) (Ix (GL xb) (GL xb))) (Ix (GL xb) (GL xb)))
+
+\func gcQ3 {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+           (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+           {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => pg {T} {_} {_} {_} {_} {_} {idp} {idp} {idp} {idp} (idp_*> (idp {T} {J2 x0 c1}))
+        (idp_*> _ *> inv (inv (gRMrA J2 inc GL GR {x0} e {c1})
+                          *> (gU1 J2 inc GL GR {x0} e {c1} *> (idp *> gRMrB J2 inc GL GR {x0} e {c1}))))
+
+\func gcQ4 {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+           (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+           {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => AsT3 (idp {T} {J2 x0 c1}) (pmap (\lam y => J2 x0 (inc y)) gp)
+          (idp *> (pmap (\lam s => s) (pmap (\lam x => J2 x c1) e *> Ew (GR c1) (GL xb)) *> inv (pmap (\lam s => s) (Ix (GL x0) (GL xb))) *> idp))
+          (Wb idp (GL x0) (GL x0) (GL xb)) (Ix (GL x0) (GL xb))
+          (*>-assoc idp (Ew (Ix (GL x0) (GL xb)) (Ix (GL x0) (GL xb))) (Ix (GL x0) (GL xb)))
+
+\sfunc gsQ {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+           (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+           {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+           {q1 : Ty (gcQ1 J2 inc GL GR cr e hn gp hb)} {q2 : Ty (gcQ2 J2 inc GL GR cr e hn gp hb)}
+           {q3 : Ty (gcQ3 J2 inc GL GR cr e hn gp hb)} {q4 : Ty (gcQ4 J2 inc GL GR cr e hn gp hb)}
+           (e1 : q1 = gcQ1 J2 inc GL GR cr e hn gp hb) (e2 : q2 = gcQ2 J2 inc GL GR cr e hn gp hb)
+           (e3 : q3 = gcQ3 J2 inc GL GR cr e hn gp hb) (e4 : q4 = gcQ4 J2 inc GL GR cr e hn gp hb)
+  : ch idp idp idp (paste q1 (paste q2 (paste q3 q4))) = gTTR J2 inc GL GR cr e hn gp hb
+  => cp4 e1 e2 e3 e4
+
+\func gTTs {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+           (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+           {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => gTTL J2 inc GL GR cr e hn gp hb = gTTR J2 inc GL GR cr e hn gp hb
+
+\func gTTL {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+           (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+           {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => ch (gKP J2 inc GL e hn) idp idp (gCP J2 inc GL GR cr e hn gp hb)
+
+\func gTTR {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+           (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+           {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  => ch idp idp idp (gCQ J2 inc GL GR cr e hn gp hb)
+
+\func gTTg {X C T Y : \Type} (J2 : X -> C -> T) {xb : X} {yb : Y} (inc : Y -> C) {pt : T}
+           (GL : \Pi (x : X) -> J2 x (inc yb) = pt) (GR : \Pi (c : C) -> J2 xb c = pt) (cr : GL xb = GR (inc yb))
+           {x0 : X} (e : x0 = xb) {c1 : C} (hn : c1 = inc yb) {y0 : Y} (gp : y0 = yb) {H : inc y0 = inc yb} (hb : H *> idp = pmap inc gp)
+  : gTTs J2 inc GL GR cr e hn gp hb \elim x0, e, c1, hn, y0, gp, H, hb
+  | _, idp, _, idp, _, idp, _, idp => gTT2 (GL xb) (GR (inc yb)) cr
+
+\func gTT2 {T : \Type} {P pt : T} (L0 R0 : P = pt) (cr : L0 = R0)
+  : gTTs {T} {T} {T} {T} (\lam _ _ => P) {P} {P} (\lam y => y) {pt} (\lam _ => L0) (\lam _ => R0) cr {P} idp {P} idp {P} idp {idp} idp
+  \elim pt, L0, R0, cr
+  | _, idp, _, idp => idp

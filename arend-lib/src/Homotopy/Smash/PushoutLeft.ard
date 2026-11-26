@@ -69,7 +69,10 @@
       => convL.{u} f g t *> pmap (\lam (s : Smash.map.{u} (->*.id {X}) (Cof.inc g) ∘* (Smash.map.{u} (->*.id {X}) g ∘* Smash.map.{u} f (->*.id {B}))
                                             = Smash.map.{u} f (->*.id {Cof.pointed g}) ∘* (Smash.map.{u} (->*.id {A}) (Cof.inc g) ∘* Smash.map.{u} (->*.id {A}) g)) =>
                                      ->*.happly s t)
-                                 (smashExt2.{u} (rr.{u} f g) (\lam a b => inv (convL.{u} f g (Smash.proj.1 (a, b))) *> point.{u} f g a b *> convR.{u} f g (Smash.proj.1 (a, b))))
+                                 (smashExt2.{u} {A} {B} {Smash.{u} X (Cof.pointed g)}
+                                                {Smash.map.{u} (->*.id {X}) (Cof.inc g) ∘* (Smash.map.{u} (->*.id {X}) g ∘* Smash.map.{u} f (->*.id {B}))}
+                                                {Smash.map.{u} f (->*.id {Cof.pointed g}) ∘* (Smash.map.{u} (->*.id {A}) (Cof.inc g) ∘* Smash.map.{u} (->*.id {A}) g)}
+                                                {pp.{u} f g} {qq.{u} f g} (rr.{u} f g) (\lam a b => inv (convL.{u} f g (Smash.proj.1 (a, b))) *> point.{u} f g a b *> convR.{u} f g (Smash.proj.1 (a, b))))
          *> inv (convR.{u} f g t)
       \where {
         \func pp.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)

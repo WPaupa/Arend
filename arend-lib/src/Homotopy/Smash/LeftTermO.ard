@@ -1,0 +1,159 @@
+\import Homotopy.Cofiber
+\import Homotopy.Pointed
+\import Homotopy.Pushout \hiding (PushoutPointed)
+\import Homotopy.Smash
+\import Homotopy.Smash.Cell
+\import Homotopy.Smash.LeftBoundary (AsT2, AsT3)
+\import Homotopy.Smash.LeftEdgeO
+\import Homotopy.Smash.LeftInnerPO
+\import Homotopy.Smash.LeftInnerQO
+\import Homotopy.Smash.LeftNorm (Wc, WG, xiA)
+\import Homotopy.Smash.LeftNormO
+\import Homotopy.Smash.LeftNullO (ZRo)
+\import Homotopy.Smash.LeftPost (Ew, nP)
+\import Homotopy.Smash.PreKScalar (cv0)
+\import Homotopy.Smash.LeftPostO
+\import Homotopy.Smash.LeftPreSq (JB, WI, WF)
+\import Homotopy.Smash.LeftScalar (Ty, cp4, Xi, Cz, cat3)
+\import Homotopy.Smash.LeftTermOG
+\import Paths
+
+\open ->* (∘*)
+\open PushoutData (ppglue)
+
+\func XiA.{u} (X : Pointed.{u}) {B Y : Pointed.{u}} (g : B ->* Y)
+  => Xi (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 (\lam (y : Y) => (pinl (base, y) : Smash.{u} X Y)) g.2
+        (ppglue (pinl base)) (ppglue (pinl base)) (Smash.map.{u} (->*.id {X}) (Cof.inc g)).2
+
+\func CzA.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+  => Cz (Smash.map.{u} f (->*.id {Cof.pointed g})).1 {base {Smash.{u} A (Cof.pointed g)}} (Smash.map.{u} f (->*.id {Cof.pointed g})).2
+
+\func XiQ.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+  => Xi (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 (\lam (y : Y) => (pinl (f.1 base, y) : Smash.{u} X Y)) (->*.id {Y}).2
+        (ppglue (pinl (f.1 base))) (ppglue (pinl base)) (Smash.map.{u} (->*.id {X}) (Cof.inc g)).2
+
+\func XiK.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+  => Xi (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (\lam (c : Cof.pointed g) => (pinl (base, c) : Smash.{u} A (Cof.pointed g))) (Cof.inc g).2
+        (ppglue (pinl base)) (ppglue (pinl base)) (Smash.map.{u} f (->*.id {Cof.pointed g})).2
+
+\func preCe.{u} {X C : Pointed.{u}} {x0 : X} (a : x0 = base)
+  : SmashCocone.pre.corner {X} {C} {Smash.{u} X C} (Smash.restrict.{u} (->*.id {Smash.{u} X C})) a (idp {C} {base})
+    = preCx (\lam (x : X) (c : C) => (pinl (x, c) : Smash.{u} X C)) (\lam (x : X) => ppglue (pinl x)) (\lam (c : C) => ppglue (pinr c))
+            (Smash.restrict.corner.{u} X C) a
+  \elim x0, a
+  | _, idp => idp
+
+\func oPT.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B) => ch (kPo.{u} f g b) idp idp (oPSR.{u} f g b)
+
+\func oQT.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => ch idp idp idp (paste (oQ1c.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) b) (paste (oQ2c.{u} f g b) (paste (oQ3c.{u} f g b) (oQ4c.{u} f g b))))
+
+\func oKc.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y)
+  => inv (nP.lem (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinr base)) (ppglue (pinl base)) (Smash.map.{u} f (->*.id {Cof.pointed g})).2)
+     *> pmap (\lam p => pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 p *> (Smash.map.{u} f (->*.id {Cof.pointed g})).2) (KcA.{u} {A} g)
+     *> pmap (`*> (Smash.map.{u} f (->*.id {Cof.pointed g})).2)
+             (cv0 (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base)) (ppglue (pinl base)))
+
+\func oPk.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B) (x : Ty (xiA.{u} X g))
+          (c : Ty (ch idp (oeP3.{u} f g b) idp (oNcz0.{u} f g b))) (K : Ty (oKc.{u} f g))
+  => ch (kPo.{u} f g b) idp idp
+        (paste (AsTo (pmap (\lam s => (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 ((Smash.map.{u} (->*.id {X}) g).1 s)) (pmap (\lam (a : X) => (pinl (a, b) : Smash.{u} X B)) f.2))
+                     (Wc (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 (idp {Smash.{u} X Y} {pinl (base, g.1 b)}) (ppglue (pinr (g.1 b))) (ppglue (pinl base)))
+                     (WG.{u} g (f.1 base)) (WG.{u} g (base {X})) (Smash.map.{u} (->*.id {X}) (Cof.inc g)).2 x)
+               (paste (oc'.{u} f g b)
+                      (paste c
+                             (tinv (paste {_} {_} {_} {_} {_} {inv idp}
+                                          {pmap (\lam (c : Cof.pointed g) => (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (pinl ((->*.id {A} ∘* ->*.id {A}).1 base, c))) (->*.happly (Cof.inc-null g) b)
+                                           *> Ew (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base))) (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base)))}
+                                          {_} {_} {idp *> (Smash.map.{u} f (->*.id {Cof.pointed g})).2}
+                                          (tinv (oCT.{u} f g b))
+                                          (paste {_} {_} {_} {_} {_}
+                                                 {pmap (\lam (c : Cof.pointed g) => (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (pinl ((->*.id {A} ∘* ->*.id {A}).1 base, c))) (->*.happly (Cof.inc-null g) b)}
+                                                 {Ew (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base))) (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base)))}
+                                                 {_} {_} {idp *> (Smash.map.{u} f (->*.id {Cof.pointed g})).2}
+                                                 (oMT.{u} f g b)
+                                                 (pmap (Ew (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base))) (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base))) *>)
+                                                       (idp_*> (Smash.map.{u} f (->*.id {Cof.pointed g})).2)
+                                                  *> ZRo K (idp *> (Ew (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base))) (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base)))
+                                                                    *> (Smash.map.{u} f (->*.id {Cof.pointed g})).2)))))))))
+
+\sfunc osP.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : oPT.{u} f g b
+    = gTTL (\lam (x : X) (c : Cof.pointed g) => (pinl (x, c) : Smash.{u} X (Cof.pointed g))) (Cof.inc g).1
+           (\lam (x : X) => ppglue (pinl x)) (\lam (c : Cof.pointed g) => ppglue (pinr c)) (Smash.restrict.corner.{u} X (Cof.pointed g))
+           f.2 (->*.happly (Cof.inc-null g) b) g.2 (->*.happly-base (Cof.inc-null g))
+  => cong3 (oPk.{u} f g b) (XiA.{u} X g) (CzA.{u} f g)
+             (oKz (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinr base)) (ppglue (pinl base)) (Smash.restrict.corner.{u} A (Cof.pointed g))
+                  (Smash.map.{u} f (->*.id {Cof.pointed g})).2
+              *> pmap (\lam KK => pmap (\lam q => idp *> (Ew q (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base))) *> (Smash.map.{u} f (->*.id {Cof.pointed g})).2))
+                                       (inv KK)
+                                  *> idp_*> (Ew (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base))) (pmap (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (ppglue (pinl base)))
+                                             *> (Smash.map.{u} f (->*.id {Cof.pointed g})).2))
+                      (preCe.{u} {X} {Cof.pointed g} f.2))
+
+\func cong3 {P Q R S : \Type} (F : P -> Q -> R -> S) {p p' : P} (ep : p = p') {q q' : Q} (eq : q = q') {r r' : R} (er : r = r')
+  : F p q r = F p' q' r' \elim ep, eq, er
+  | idp, idp, idp => idp
+
+\sfunc osQ.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : oQT.{u} f g b
+    = gTTR (\lam (x : X) (c : Cof.pointed g) => (pinl (x, c) : Smash.{u} X (Cof.pointed g))) (Cof.inc g).1
+           (\lam (x : X) => ppglue (pinl x)) (\lam (c : Cof.pointed g) => ppglue (pinr c)) (Smash.restrict.corner.{u} X (Cof.pointed g))
+           f.2 (->*.happly (Cof.inc-null g) b) g.2 (->*.happly-base (Cof.inc-null g))
+  => gsQ (\lam (x : X) (c : Cof.pointed g) => (pinl (x, c) : Smash.{u} X (Cof.pointed g))) (Cof.inc g).1
+         (\lam (x : X) => ppglue (pinl x)) (\lam (c : Cof.pointed g) => ppglue (pinr c)) (Smash.restrict.corner.{u} X (Cof.pointed g))
+         f.2 (->*.happly (Cof.inc-null g) b) g.2 (->*.happly-base (Cof.inc-null g))
+         (oqc1.{u} f g b) (oqc2.{u} f g b) (oqc3.{u} f g b) (oqc4.{u} f g b)
+
+\sfunc oqc1.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : oQ1c.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) b
+    = gcQ1 (\lam (x : X) (c : Cof.pointed g) => (pinl (x, c) : Smash.{u} X (Cof.pointed g))) (Cof.inc g).1
+           (\lam (x : X) => ppglue (pinl x)) (\lam (c : Cof.pointed g) => ppglue (pinr c)) (Smash.restrict.corner.{u} X (Cof.pointed g))
+           f.2 (->*.happly (Cof.inc-null g) b) g.2 (->*.happly-base (Cof.inc-null g))
+  => (\peval oQ1c.{u} f g (Smash.map.{u} (->*.id {X}) (Cof.inc g)) b) *> idp
+
+\sfunc oqc3.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : oQ3c.{u} f g b
+    = gcQ3 (\lam (x : X) (c : Cof.pointed g) => (pinl (x, c) : Smash.{u} X (Cof.pointed g))) (Cof.inc g).1
+           (\lam (x : X) => ppglue (pinl x)) (\lam (c : Cof.pointed g) => ppglue (pinr c)) (Smash.restrict.corner.{u} X (Cof.pointed g))
+           f.2 (->*.happly (Cof.inc-null g) b) g.2 (->*.happly-base (Cof.inc-null g))
+  => (\peval oQ3c.{u} f g b) *> idp
+
+\sfunc oqc2.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : oQ2c.{u} f g b
+    = gcQ2 (\lam (x : X) (c : Cof.pointed g) => (pinl (x, c) : Smash.{u} X (Cof.pointed g))) (Cof.inc g).1
+           (\lam (x : X) => ppglue (pinl x)) (\lam (c : Cof.pointed g) => ppglue (pinr c)) (Smash.restrict.corner.{u} X (Cof.pointed g))
+           f.2 (->*.happly (Cof.inc-null g) b) g.2 (->*.happly-base (Cof.inc-null g))
+  => (\peval oQ2c.{u} f g b)
+          *> pmap (AsT2 (idp {Smash.{u} X (Cof.pointed g)} {(Smash.map.{u} (->*.id {X}) (Cof.inc g) ∘* Smash.map.{u} f (->*.id {Y})).1 (pinl (base, g.1 b))}) (JB.{u} f g)
+                        (Wc (Smash.map.{u} (->*.id {X}) (Cof.inc g)).1 (pmap (\lam (x : X) => (pinl (x, g.1 b) : Smash.{u} X Y)) f.2) (ppglue (pinr (g.1 b))) (ppglue (pinl base)))
+                        (WI.{u} g (f.1 base)) (Smash.map.{u} (->*.id {X}) (Cof.inc g)).2)
+                  (XiQ.{u} f g)
+
+\sfunc oqc4.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  : oQ4c.{u} f g b
+    = gcQ4 (\lam (x : X) (c : Cof.pointed g) => (pinl (x, c) : Smash.{u} X (Cof.pointed g))) (Cof.inc g).1
+           (\lam (x : X) => ppglue (pinl x)) (\lam (c : Cof.pointed g) => ppglue (pinr c)) (Smash.restrict.corner.{u} X (Cof.pointed g))
+           f.2 (->*.happly (Cof.inc-null g) b) g.2 (->*.happly-base (Cof.inc-null g))
+  => (\peval oQ4c.{u} f g b)
+          *> pmap (AsT3 (idp {Smash.{u} X (Cof.pointed g)} {(Smash.map.{u} f (->*.id {Cof.pointed g}) ∘* Smash.map.{u} (->*.id {A}) (Cof.inc g)).1 (pinl (base, g.1 b))}) (JB.{u} f g)
+                        (Wc (Smash.map.{u} f (->*.id {Cof.pointed g})).1 (idp {Smash.{u} A (Cof.pointed g)} {pinl (base, (Cof.inc g).1 (g.1 b))})
+                            (ppglue (pinr ((Cof.inc g).1 (g.1 b)))) (ppglue (pinl base)))
+                        (WF.{u} f g base) (Smash.map.{u} f (->*.id {Cof.pointed g})).2)
+                  (XiK.{u} f g)
+
+\sfunc oTT.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B) : oPT.{u} f g b = oQT.{u} f g b
+  => cat3 {_} {oPT.{u} f g b}
+          {gTTL (\lam (x : X) (c : Cof.pointed g) => (pinl (x, c) : Smash.{u} X (Cof.pointed g))) (Cof.inc g).1
+                (\lam (x : X) => ppglue (pinl x)) (\lam (c : Cof.pointed g) => ppglue (pinr c)) (Smash.restrict.corner.{u} X (Cof.pointed g))
+                f.2 (->*.happly (Cof.inc-null g) b) g.2 (->*.happly-base (Cof.inc-null g))}
+          {gTTR (\lam (x : X) (c : Cof.pointed g) => (pinl (x, c) : Smash.{u} X (Cof.pointed g))) (Cof.inc g).1
+                (\lam (x : X) => ppglue (pinl x)) (\lam (c : Cof.pointed g) => ppglue (pinr c)) (Smash.restrict.corner.{u} X (Cof.pointed g))
+                f.2 (->*.happly (Cof.inc-null g) b) g.2 (->*.happly-base (Cof.inc-null g))}
+          {oQT.{u} f g b}
+          (osP.{u} f g b) (oTTi.{u} f g b) (osQ.{u} f g b)
+
+\func oTTi.{u} {A X B Y : Pointed.{u}} (f : A ->* X) (g : B ->* Y) (b : B)
+  => gTTg (\lam (x : X) (c : Cof.pointed g) => (pinl (x, c) : Smash.{u} X (Cof.pointed g))) (Cof.inc g).1
+          (\lam (x : X) => ppglue (pinl x)) (\lam (c : Cof.pointed g) => ppglue (pinr c)) (Smash.restrict.corner.{u} X (Cof.pointed g))
+          f.2 (->*.happly (Cof.inc-null g) b) g.2 (->*.happly-base (Cof.inc-null g))
